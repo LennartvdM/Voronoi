@@ -374,6 +374,13 @@
                     <span class="control-value" id="boundaryStiffnessVal">0.08</span>
                 </div>
             </div>
+            <div class="control-group hide-mobile">
+                <label>Hover Privilege</label>
+                <div class="control-row">
+                    <input type="range" id="hoverBleedPrivilege" min="0" max="100" value="50">
+                    <span class="control-value" id="hoverBleedPrivilegeVal">0.50</span>
+                </div>
+            </div>
 
             <div class="divider"></div>
 
@@ -422,7 +429,8 @@
             contentZoneTop: 0.15,        // 0-0.5: top margin as fraction of height
             contentZoneBottom: 0.15,     // 0-0.5: bottom margin as fraction of height
             boundaryStiffness: 0.08,     // 0-0.3: how strongly cells are pushed back
-            boundaryDamping: 0.85        // 0-1: damping applied to cells in buffer zone
+            boundaryDamping: 0.85,       // 0-1: damping applied to cells in buffer zone
+            hoverBleedPrivilege: 0.5     // 0-1: how much more the hovered cell can bleed (0=same as others, 1=full freedom)
         };
 
         // ========== SAMPLE DATA ==========
@@ -543,21 +551,26 @@
                     const zoneTop = height * config.contentZoneTop;
                     const zoneBottom = height * (1 - config.contentZoneBottom);
 
+                    // Hovered cell gets privilege - reduced push force
+                    const privilegeMultiplier = isHovered ? (1 - config.hoverBleedPrivilege) : 1;
+
                     // Check if cell is outside content zone (vertically)
                     if (this.y < zoneTop) {
                         // Cell is above content zone - push down
                         const overshoot = zoneTop - this.y;
-                        const pushForce = overshoot * config.boundaryStiffness;
+                        const pushForce = overshoot * config.boundaryStiffness * privilegeMultiplier;
                         this.vy += pushForce * dt;
-                        // Apply damping when in buffer zone
-                        this.vy *= config.boundaryDamping;
+                        // Apply damping when in buffer zone (less damping for hovered)
+                        const dampingAmount = config.boundaryDamping + (1 - config.boundaryDamping) * (1 - privilegeMultiplier);
+                        this.vy *= dampingAmount;
                     } else if (this.y > zoneBottom) {
                         // Cell is below content zone - push up
                         const overshoot = this.y - zoneBottom;
-                        const pushForce = overshoot * config.boundaryStiffness;
+                        const pushForce = overshoot * config.boundaryStiffness * privilegeMultiplier;
                         this.vy -= pushForce * dt;
-                        // Apply damping when in buffer zone
-                        this.vy *= config.boundaryDamping;
+                        // Apply damping when in buffer zone (less damping for hovered)
+                        const dampingAmount = config.boundaryDamping + (1 - config.boundaryDamping) * (1 - privilegeMultiplier);
+                        this.vy *= dampingAmount;
                     }
                 }
 
@@ -1268,6 +1281,13 @@
             boundaryStiffnessEl.addEventListener('input', () => {
                 config.boundaryStiffness = +boundaryStiffnessEl.value / 100;
                 boundaryStiffnessVal.textContent = config.boundaryStiffness.toFixed(2);
+            });
+
+            const hoverBleedPrivilegeEl = document.getElementById('hoverBleedPrivilege');
+            const hoverBleedPrivilegeVal = document.getElementById('hoverBleedPrivilegeVal');
+            hoverBleedPrivilegeEl.addEventListener('input', () => {
+                config.hoverBleedPrivilege = +hoverBleedPrivilegeEl.value / 100;
+                hoverBleedPrivilegeVal.textContent = config.hoverBleedPrivilege.toFixed(2);
             });
 
             // Buttons
