@@ -907,38 +907,31 @@
                 cells.push(cell);
             }
 
-            // Generate ghost cells in the margin zones (if content zone enabled)
+            // Generate ghost cells at the boundary edges (if content zone enabled)
+            // Ghost cells form a wall at the zone boundaries, creating clean edges
             if (config.contentZoneEnabled) {
-                const ghostSpacing = 120; // Space between ghost cells
-                const ghostCountX = Math.ceil(width / ghostSpacing);
+                const ghostSpacing = 60; // Tighter spacing for smoother boundary
+                const ghostCountX = Math.ceil(width / ghostSpacing) + 1;
 
-                // Top margin ghost cells (2 rows)
-                const topMarginHeight = zoneTop;
-                if (topMarginHeight > 50) {
-                    for (let row = 0; row < 2; row++) {
-                        const y = (topMarginHeight / 3) * (row + 1);
-                        for (let col = 0; col < ghostCountX; col++) {
-                            const x = (col + 0.5) * ghostSpacing + (row % 2) * (ghostSpacing / 2);
-                            if (x > 0 && x < width) {
-                                const ghost = new Cell(x, y, cells.length, true);
-                                cells.push(ghost);
-                            }
-                        }
+                // Top boundary - single row of ghost cells right at the edge
+                if (zoneTop > 30) {
+                    for (let col = 0; col < ghostCountX; col++) {
+                        const x = col * ghostSpacing;
+                        // Position ghost cells just above the zone boundary
+                        const y = zoneTop - 40;
+                        const ghost = new Cell(x, y, cells.length, true);
+                        cells.push(ghost);
                     }
                 }
 
-                // Bottom margin ghost cells (2 rows)
-                const bottomMarginHeight = height - zoneBottom;
-                if (bottomMarginHeight > 50) {
-                    for (let row = 0; row < 2; row++) {
-                        const y = zoneBottom + (bottomMarginHeight / 3) * (row + 1);
-                        for (let col = 0; col < ghostCountX; col++) {
-                            const x = (col + 0.5) * ghostSpacing + (row % 2) * (ghostSpacing / 2);
-                            if (x > 0 && x < width) {
-                                const ghost = new Cell(x, y, cells.length, true);
-                                cells.push(ghost);
-                            }
-                        }
+                // Bottom boundary - single row of ghost cells right at the edge
+                if (height - zoneBottom > 30) {
+                    for (let col = 0; col < ghostCountX; col++) {
+                        const x = col * ghostSpacing;
+                        // Position ghost cells just below the zone boundary
+                        const y = zoneBottom + 40;
+                        const ghost = new Cell(x, y, cells.length, true);
+                        cells.push(ghost);
                     }
                 }
             }
