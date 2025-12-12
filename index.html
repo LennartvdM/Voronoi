@@ -278,6 +278,52 @@
 
             <div class="divider"></div>
 
+            <!-- Hover Dynamics -->
+            <div class="control-group">
+                <label>Hover Speed</label>
+                <div class="control-row">
+                    <input type="range" id="hoverSpeed" min="0" max="100" value="50">
+                    <span class="control-value" id="hoverSpeedVal">0.50</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Overshoot</label>
+                <div class="control-row">
+                    <input type="range" id="overshoot" min="0" max="100" value="30">
+                    <span class="control-value" id="overshootVal">0.30</span>
+                </div>
+            </div>
+            <div class="control-group hide-tablet">
+                <label>Decay Speed</label>
+                <div class="control-row">
+                    <input type="range" id="decaySpeed" min="0" max="100" value="50">
+                    <span class="control-value" id="decaySpeedVal">0.50</span>
+                </div>
+            </div>
+            <div class="control-group hide-mobile">
+                <label>Trigger Burst</label>
+                <div class="control-row">
+                    <input type="range" id="triggerBurst" min="0" max="200" value="100">
+                    <span class="control-value" id="triggerBurstVal">1.00</span>
+                </div>
+            </div>
+            <div class="control-group hide-mobile">
+                <label>Sustain Growth</label>
+                <div class="control-row">
+                    <input type="range" id="sustainGrowth" min="0" max="100" value="30">
+                    <span class="control-value" id="sustainGrowthVal">0.30</span>
+                </div>
+            </div>
+            <div class="control-group hide-tablet">
+                <label>Max Expansion</label>
+                <div class="control-row">
+                    <input type="range" id="maxExpansion" min="50" max="500" value="150">
+                    <span class="control-value" id="maxExpansionVal">150</span>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
             <!-- Buttons -->
             <div class="btn-group">
                 <button class="btn btn-secondary" id="togglePhysics">Pause</button>
@@ -304,7 +350,14 @@
             centerRelevance: 0.70, // 0 = expand uniformly, 1 = direction matters
             zoomScale: 1.15,
             physicsEnabled: true,
-            debugMode: false
+            debugMode: false,
+            // New hover dynamics
+            hoverSpeed: 0.5,       // 0-1: how fast cells respond to hover
+            overshoot: 0.3,        // 0-1: bounce past target before settling
+            decaySpeed: 0.5,       // 0-1: how fast cells return to rest
+            triggerBurst: 1.0,     // Initial burst when entering cell
+            sustainGrowth: 0.3,    // Continuous growth while hovering
+            maxExpansion: 150      // Max pixels a cell can move from rest
         };
 
         // ========== SAMPLE DATA ==========
@@ -346,6 +399,8 @@
         let width, height;
         let cells = [];
         let hoveredCell = -1;
+        let prevHoveredCell = -1;
+        let hoverStartTime = 0;
         let mouseX = -9999, mouseY = -9999;
         let tooltip;
         let animationId;
@@ -373,7 +428,7 @@
                 this.pattern = null;
             }
 
-            update(dt) {
+            update(dt, isHovered) {
                 if (!config.physicsEnabled) {
                     this.zoom += (this.targetZoom - this.zoom) * 0.12;
                     return;
@@ -382,17 +437,38 @@
                 // Spring force to rest position
                 const dx = this.restX - this.x;
                 const dy = this.restY - this.y;
+                const distFromRest = Math.sqrt(dx * dx + dy * dy);
 
-                this.vx += dx * config.spring * dt;
-                this.vy += dy * config.spring * dt;
+                // Use different spring strength based on hover state
+                // Decay speed affects how fast cells return when not hovered
+                const effectiveSpring = isHovered
+                    ? config.spring * (1 - config.hoverSpeed * 0.8)  // Slower spring when hovered
+                    : config.spring * (0.5 + config.decaySpeed * 0.5); // Decay speed affects return
 
-                // Damping
-                this.vx *= config.damping;
-                this.vy *= config.damping;
+                this.vx += dx * effectiveSpring * dt;
+                this.vy += dy * effectiveSpring * dt;
+
+                // Damping - overshoot reduces damping for bouncier effect
+                const effectiveDamping = config.damping - (config.overshoot * 0.15);
+                this.vx *= effectiveDamping;
+                this.vy *= effectiveDamping;
 
                 // Update position
                 this.x += this.vx;
                 this.y += this.vy;
+
+                // Max expansion limit
+                const newDx = this.x - this.restX;
+                const newDy = this.y - this.restY;
+                const newDist = Math.sqrt(newDx * newDx + newDy * newDy);
+                if (newDist > config.maxExpansion) {
+                    const scale = config.maxExpansion / newDist;
+                    this.x = this.restX + newDx * scale;
+                    this.y = this.restY + newDy * scale;
+                    // Reduce velocity when hitting limit
+                    this.vx *= 0.5;
+                    this.vy *= 0.5;
+                }
 
                 // Keep in bounds
                 const margin = 30;
@@ -932,6 +1008,54 @@
                 centerVal.textContent = config.centerRelevance.toFixed(2);
             });
 
+            // Hover Speed
+            const hoverSpeedEl = document.getElementById('hoverSpeed');
+            const hoverSpeedVal = document.getElementById('hoverSpeedVal');
+            hoverSpeedEl.addEventListener('input', () => {
+                config.hoverSpeed = +hoverSpeedEl.value / 100;
+                hoverSpeedVal.textContent = config.hoverSpeed.toFixed(2);
+            });
+
+            // Overshoot
+            const overshootEl = document.getElementById('overshoot');
+            const overshootVal = document.getElementById('overshootVal');
+            overshootEl.addEventListener('input', () => {
+                config.overshoot = +overshootEl.value / 100;
+                overshootVal.textContent = config.overshoot.toFixed(2);
+            });
+
+            // Decay Speed
+            const decaySpeedEl = document.getElementById('decaySpeed');
+            const decaySpeedVal = document.getElementById('decaySpeedVal');
+            decaySpeedEl.addEventListener('input', () => {
+                config.decaySpeed = +decaySpeedEl.value / 100;
+                decaySpeedVal.textContent = config.decaySpeed.toFixed(2);
+            });
+
+            // Trigger Burst
+            const triggerBurstEl = document.getElementById('triggerBurst');
+            const triggerBurstVal = document.getElementById('triggerBurstVal');
+            triggerBurstEl.addEventListener('input', () => {
+                config.triggerBurst = +triggerBurstEl.value / 100;
+                triggerBurstVal.textContent = config.triggerBurst.toFixed(2);
+            });
+
+            // Sustain Growth
+            const sustainGrowthEl = document.getElementById('sustainGrowth');
+            const sustainGrowthVal = document.getElementById('sustainGrowthVal');
+            sustainGrowthEl.addEventListener('input', () => {
+                config.sustainGrowth = +sustainGrowthEl.value / 100;
+                sustainGrowthVal.textContent = config.sustainGrowth.toFixed(2);
+            });
+
+            // Max Expansion
+            const maxExpansionEl = document.getElementById('maxExpansion');
+            const maxExpansionVal = document.getElementById('maxExpansionVal');
+            maxExpansionEl.addEventListener('input', () => {
+                config.maxExpansion = +maxExpansionEl.value;
+                maxExpansionVal.textContent = config.maxExpansion;
+            });
+
             // Buttons
             document.getElementById('regenerate').addEventListener('click', generateCells);
 
@@ -998,8 +1122,26 @@
 
         // ========== PHYSICS ==========
         function updatePhysics(dt) {
+            const currentTime = performance.now();
+
+            // Track hover state changes for two-phase system
+            if (hoveredCell !== prevHoveredCell) {
+                if (hoveredCell >= 0) {
+                    hoverStartTime = currentTime;
+                }
+                prevHoveredCell = hoveredCell;
+            }
+
             if (hoveredCell >= 0 && config.physicsEnabled) {
                 const hovered = cells[hoveredCell];
+                const hoverDuration = (currentTime - hoverStartTime) / 1000; // seconds
+
+                // Two-phase hover system:
+                // Phase 1 (trigger): Strong initial burst that decays over ~0.3s
+                // Phase 2 (sustain): Continuous growth while hovering
+                const triggerPhase = Math.exp(-hoverDuration * 5) * config.triggerBurst;
+                const sustainPhase = config.sustainGrowth * Math.min(1, hoverDuration * 2);
+                const phaseMultiplier = triggerPhase + sustainPhase;
 
                 // Direction from cursor to cell center
                 const dx = hovered.x - mouseX;
@@ -1007,22 +1149,18 @@
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
                 if (dist > 1) {
+                    // Hover speed affects force application rate
+                    const speedMultiplier = 0.3 + config.hoverSpeed * 0.7;
+
                     // Center relevance controls how much direction matters
-                    // At 0: push in all directions equally (expand uniformly)
-                    // At 1: push away from cursor (current behavior)
+                    const directedForce = config.hoverForce / dist * 0.5 * speedMultiplier * phaseMultiplier;
+                    const uniformForce = config.hoverForce * 0.03 * speedMultiplier * phaseMultiplier;
 
-                    const directedForce = config.hoverForce / dist * 0.5;
-
-                    // Uniform expansion force (push all neighbors, cell stays put)
-                    const uniformForce = config.hoverForce * 0.03;
-
-                    // Blend based on centerRelevance
                     const cr = config.centerRelevance;
 
-                    // Directed component
+                    // Directed component (pushes hovered cell away from cursor)
                     const dirX = dx / dist * directedForce * cr;
                     const dirY = dy / dist * directedForce * cr;
-
                     hovered.applyForce(dirX, dirY);
 
                     // Push neighbors away from hovered cell
@@ -1035,11 +1173,13 @@
                         const threshold = config.repulsion * 6;
 
                         if (odist > 1 && odist < threshold) {
+                            const falloff = (threshold - odist) / threshold;
+
                             // Directed repulsion (from hovered cell)
-                            const directedRepulsion = ((threshold - odist) / threshold) * config.repulsion * 0.025 * cr;
+                            const directedRepulsion = falloff * config.repulsion * 0.025 * cr * phaseMultiplier;
 
                             // Uniform repulsion (equal in all directions, creates expansion)
-                            const uniformRepulsion = uniformForce * (1 - cr) * (threshold - odist) / threshold;
+                            const uniformRepulsion = uniformForce * (1 - cr) * falloff;
 
                             const totalForce = directedRepulsion + uniformRepulsion;
                             other.applyForce(odx / odist * totalForce, ody / odist * totalForce);
@@ -1048,8 +1188,9 @@
                 }
             }
 
-            for (const cell of cells) {
-                cell.update(dt);
+            for (let i = 0; i < cells.length; i++) {
+                const cell = cells[i];
+                cell.update(dt, i === hoveredCell);
             }
 
             computeVoronoi();
