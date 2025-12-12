@@ -342,6 +342,13 @@
                     <span class="control-value" id="nonHoverImageZoomVal">1.7</span>
                 </div>
             </div>
+            <div class="control-group hide-mobile">
+                <label>Zoom Speed</label>
+                <div class="control-row">
+                    <input type="range" id="imageZoomSpeed" min="1" max="50" value="12">
+                    <span class="control-value" id="imageZoomSpeedVal">0.12</span>
+                </div>
+            </div>
 
             <div class="divider"></div>
 
@@ -371,6 +378,7 @@
             centerRelevance: 0.70, // 0 = expand uniformly, 1 = direction matters
             zoomScale: 1.15,
             nonHoverImageZoom: 1.7, // Non-hover image zoom level (1.0-8.0)
+            imageZoomSpeed: 0.12,   // 0.01-0.5: how fast image zoom transitions happen
             physicsEnabled: true,
             debugMode: false,
             // New hover dynamics
@@ -457,7 +465,7 @@
 
             update(dt, isHovered) {
                 if (!config.physicsEnabled) {
-                    this.zoom += (this.targetZoom - this.zoom) * 0.12;
+                    this.zoom += (this.targetZoom - this.zoom) * config.imageZoomSpeed;
                     this.opacity += (this.targetOpacity - this.opacity) * config.opacityTransitionSpeed;
                     return;
                 }
@@ -504,7 +512,7 @@
                 this.y = Math.max(margin, Math.min(height - margin, this.y));
 
                 // Smooth zoom and opacity transitions
-                this.zoom += (this.targetZoom - this.zoom) * 0.12;
+                this.zoom += (this.targetZoom - this.zoom) * config.imageZoomSpeed;
                 this.opacity += (this.targetOpacity - this.opacity) * config.opacityTransitionSpeed;
             }
 
@@ -1132,6 +1140,14 @@
                         c.targetZoom = config.nonHoverImageZoom;
                     }
                 });
+            });
+
+            // Image Zoom Speed
+            const imageZoomSpeedEl = document.getElementById('imageZoomSpeed');
+            const imageZoomSpeedVal = document.getElementById('imageZoomSpeedVal');
+            imageZoomSpeedEl.addEventListener('input', () => {
+                config.imageZoomSpeed = +imageZoomSpeedEl.value / 100;
+                imageZoomSpeedVal.textContent = config.imageZoomSpeed.toFixed(2);
             });
 
             // Buttons
