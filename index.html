@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Voronoi Grid with Physics</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .canvas-wrapper {
+            flex: 1;
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #111;
+        }
+
+        #voronoiCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .controls {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 150px;
+        }
+
+        .control-group label {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #4a9eff;
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+
+        .control-group input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .control-value {
+            font-size: 14px;
+            color: #fff;
+            font-weight: 500;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #4a9eff;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #3a8eef;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #333;
+            color: #fff;
+        }
+
+        .btn-secondary:hover {
+            background: #444;
+        }
+
+        .info {
+            font-size: 12px;
+            color: #666;
+            margin-left: auto;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.85);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 100;
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tooltip.visible {
+            opacity: 1;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+                gap: 10px;
+            }
+
+            .controls {
+                padding: 15px;
+                gap: 15px;
+            }
+
+            .control-group {
+                min-width: 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="canvas-wrapper">
+            <canvas id="voronoiCanvas"></canvas>
+            <div class="tooltip" id="tooltip"></div>
+        </div>
+        <div class="controls">
+            <div class="control-group">
+                <label>Cell Count</label>
+                <input type="range" id="cellCount" min="5" max="50" value="15">
+                <span class="control-value" id="cellCountValue">15</span>
+            </div>
+            <div class="control-group">
+                <label>Spring Strength</label>
+                <input type="range" id="springStrength" min="1" max="100" value="35">
+                <span class="control-value" id="springStrengthValue">0.35</span>
+            </div>
+            <div class="control-group">
+                <label>Damping</label>
+                <input type="range" id="damping" min="1" max="99" value="85">
+                <span class="control-value" id="dampingValue">0.85</span>
+            </div>
+            <div class="control-group">
+                <label>Hover Force</label>
+                <input type="range" id="hoverForce" min="10" max="200" value="80">
+                <span class="control-value" id="hoverForceValue">80</span>
+            </div>
+            <div class="control-group">
+                <label>Neighbor Push</label>
+                <input type="range" id="neighborPush" min="0" max="100" value="40">
+                <span class="control-value" id="neighborPushValue">40</span>
+            </div>
+            <button class="btn btn-primary" id="regenerate">Regenerate</button>
+            <button class="btn btn-secondary" id="toggleImages">Toggle Images</button>
+            <span class="info">Hover over cells to interact</span>
+        </div>
+    </div>
+
+    <!-- d3-delaunay library (minified, self-contained) -->
+    <script>
+    // Delaunay triangulation and Voronoi diagram implementation
+    // Based on d3-delaunay by Mike Bostock
+    (function() {
+        const EPSILON = 1e-6;
+
+        class Delaunay {
+            constructor(points) {
+                const n = points.length >> 1;
+                if (n < 1) {
+                    this.points = new Float64Array(0);
+                    this.triangles = new Uint32Array(0);
+                    this.halfedges = new Int32Array(0);
+                    this.hull = new Uint32Array(0);
+                    return;
+                }
+
+                this.points = points;
+
+                const coords = points;
+                const triangles = this._triangulate(coords, n);
+
+                this.triangles = triangles.triangles;
+                this.halfedges = triangles.halfedges;
+                this.hull = triangles.hull;
+            }
+
+            static from(points) {
+                const n = points.length;
+                const coords = new Float64Array(n * 2);
+                for (let i = 0; i < n; i++) {
+                    const p = points[i];
+                    coords[i * 2] = p[0];
+                    coords[i * 2 + 1] = p[1];
+                }
+                return new Delaunay(coords);
+            }
+
+            _triangulate(coords, n) {
+                const minX = Math.min(...Array.from({length: n}, (_, i) => coords[i * 2]));
+                const minY = Math.min(...Array.from({length: n}, (_, i) => coords[i * 2 + 1]));
+                const maxX = Math.max(...Array.from({length: n}, (_, i) => coords[i * 2]));
+                const maxY = Math.max(...Array.from({length: n}, (_, i) => coords[i * 2 + 1]));
+                const cx = (minX + maxX) / 2;
+                const cy = (minY + maxY) / 2;
+
+                let minDist = Infinity;
+                let i0 = 0, i1 = 0, i2 = 0;
+
+                for (let i = 0; i < n; i++) {
+                    const d = dist(cx, cy, coords[2 * i], coords[2 * i + 1]);
+                    if (d < minDist) {
+                        i0 = i;
+                        minDist = d;
+                    }
+                }
+
+                const i0x = coords[2 * i0];
+                const i0y = coords[2 * i0 + 1];
+
+                minDist = Infinity;
+                for (let i = 0; i < n; i++) {
+                    if (i === i0) continue;
+                    const d = dist(i0x, i0y, coords[2 * i], coords[2 * i + 1]);
+                    if (d < minDist && d > 0) {
+                        i1 = i;
+                        minDist = d;
+                    }
+                }
+
+                let i1x = coords[2 * i1];
+                let i1y = coords[2 * i1 + 1];
+
+                let minRadius = Infinity;
+                for (let i = 0; i < n; i++) {
+                    if (i === i0 || i === i1) continue;
+                    const r = circumradius(i0x, i0y, i1x, i1y, coords[2 * i], coords[2 * i + 1]);
+                    if (r < minRadius) {
+                        i2 = i;
+                        minRadius = r;
+                    }
+                }
+
+                let i2x = coords[2 * i2];
+                let i2y = coords[2 * i2 + 1];
+
+                if (minRadius === Infinity) {
+                    // Collinear points
+                    const order = new Uint32Array(n);
+                    for (let i = 0; i < n; i++) order[i] = i;
+                    order.sort((i, j) => coords[2 * i] - coords[2 * j] || coords[2 * i + 1] - coords[2 * j + 1]);
+                    return { triangles: new Uint32Array(0), halfedges: new Int32Array(0), hull: order };
+                }
+
+                if (orient(i0x, i0y, i1x, i1y, i2x, i2y) < 0) {
+                    const tmp = i1;
+                    i1 = i2;
+                    i2 = tmp;
+                    const tmpx = i1x, tmpy = i1y;
+                    i1x = i2x; i1y = i2y;
+                    i2x = tmpx; i2y = tmpy;
+                }
+
+                const center = circumcenter(i0x, i0y, i1x, i1y, i2x, i2y);
+                const dists = new Float64Array(n);
+                for (let i = 0; i < n; i++) {
+                    dists[i] = dist(coords[2 * i], coords[2 * i + 1], center.x, center.y);
+                }
+
+                const ids = new Uint32Array(n);
+                for (let i = 0; i < n; i++) ids[i] = i;
+                quicksort(ids, dists, 0, n - 1);
+
+                let hullStart = i0;
+                let hullSize = 3;
+                const hullNext = new Int32Array(n).fill(-1);
+                const hullPrev = new Int32Array(n).fill(-1);
+                const hullTri = new Int32Array(n).fill(-1);
+                const hullHash = new Int32Array(Math.ceil(Math.sqrt(n))).fill(-1);
+
+                hullNext[i0] = hullPrev[i2] = i1;
+                hullNext[i1] = hullPrev[i0] = i2;
+                hullNext[i2] = hullPrev[i1] = i0;
+
+                hullTri[i0] = 0;
+                hullTri[i1] = 1;
+                hullTri[i2] = 2;
+
+                const hashKey = (x, y) => Math.floor(pseudoAngle(x - center.x, y - center.y) * hullHash.length) % hullHash.length;
+
+                hullHash[hashKey(i0x, i0y)] = i0;
+                hullHash[hashKey(i1x, i1y)] = i1;
+                hullHash[hashKey(i2x, i2y)] = i2;
+
+                const maxTriangles = Math.max(2 * n - 5, 0);
+                const triangles = new Uint32Array(maxTriangles * 3);
+                const halfedges = new Int32Array(maxTriangles * 3).fill(-1);
+
+                let trianglesLen = 0;
+
+                function addTriangle(i0, i1, i2, a, b, c) {
+                    const t = trianglesLen;
+                    triangles[t] = i0;
+                    triangles[t + 1] = i1;
+                    triangles[t + 2] = i2;
+                    link(t, a);
+                    link(t + 1, b);
+                    link(t + 2, c);
+                    trianglesLen += 3;
+                    return t;
+                }
+
+                function link(a, b) {
+                    halfedges[a] = b;
+                    if (b !== -1) halfedges[b] = a;
+                }
+
+                function legalize(a) {
+                    let i = 0;
+                    let ar;
+                    const stack = [];
+                    stack.push(a);
+
+                    while (stack.length > 0) {
+                        a = stack.pop();
+                        const b = halfedges[a];
+
+                        if (b === -1) continue;
+
+                        const a0 = a - a % 3;
+                        ar = a0 + (a + 2) % 3;
+
+                        const b0 = b - b % 3;
+                        const al = a0 + (a + 1) % 3;
+                        const bl = b0 + (b + 2) % 3;
+
+                        const p0 = triangles[ar];
+                        const pr = triangles[a];
+                        const pl = triangles[al];
+                        const p1 = triangles[bl];
+
+                        const illegal = inCircle(
+                            coords[2 * p0], coords[2 * p0 + 1],
+                            coords[2 * pr], coords[2 * pr + 1],
+                            coords[2 * pl], coords[2 * pl + 1],
+                            coords[2 * p1], coords[2 * p1 + 1]
+                        );
+
+                        if (illegal) {
+                            triangles[a] = p1;
+                            triangles[b] = p0;
+
+                            const hbl = halfedges[bl];
+                            if (hbl === -1) {
+                                let e = hullStart;
+                                do {
+                                    if (hullTri[e] === bl) {
+                                        hullTri[e] = a;
+                                        break;
+                                    }
+                                    e = hullPrev[e];
+                                } while (e !== hullStart);
+                            }
+                            link(a, hbl);
+                            link(b, halfedges[ar]);
+                            link(ar, bl);
+
+                            const br = b0 + (b + 1) % 3;
+                            stack.push(a);
+                            stack.push(br);
+                        }
+                    }
+                    return ar;
+                }
+
+                addTriangle(i0, i1, i2, -1, -1, -1);
+
+                for (let k = 0; k < n; k++) {
+                    const i = ids[k];
+                    const x = coords[2 * i];
+                    const y = coords[2 * i + 1];
+
+                    if (k > 0 && Math.abs(x - coords[2 * ids[k - 1]]) <= EPSILON &&
+                        Math.abs(y - coords[2 * ids[k - 1] + 1]) <= EPSILON) continue;
+
+                    if (i === i0 || i === i1 || i === i2) continue;
+
+                    let start = 0;
+                    const key = hashKey(x, y);
+                    for (let j = 0; j < hullHash.length; j++) {
+                        start = hullHash[(key + j) % hullHash.length];
+                        if (start !== -1 && start !== hullNext[start]) break;
+                    }
+
+                    start = hullPrev[start];
+                    let e = start;
+                    let q;
+
+                    while (q = hullNext[e], orient(x, y, coords[2 * e], coords[2 * e + 1], coords[2 * q], coords[2 * q + 1]) >= 0) {
+                        e = q;
+                        if (e === start) {
+                            e = -1;
+                            break;
+                        }
+                    }
+
+                    if (e === -1) continue;
+
+                    let t = addTriangle(e, i, hullNext[e], -1, -1, hullTri[e]);
+                    hullTri[i] = legalize(t + 2);
+                    hullTri[e] = t;
+                    hullSize++;
+
+                    let next = hullNext[e];
+                    while (q = hullNext[next], orient(x, y, coords[2 * next], coords[2 * next + 1], coords[2 * q], coords[2 * q + 1]) < 0) {
+                        t = addTriangle(next, i, q, hullTri[i], -1, hullTri[next]);
+                        hullTri[i] = legalize(t + 2);
+                        hullNext[next] = next;
+                        hullSize--;
+                        next = q;
+                    }
+
+                    if (e === start) {
+                        while (q = hullPrev[e], orient(x, y, coords[2 * q], coords[2 * q + 1], coords[2 * e], coords[2 * e + 1]) < 0) {
+                            t = addTriangle(q, i, e, -1, hullTri[e], hullTri[q]);
+                            legalize(t + 2);
+                            hullTri[q] = t;
+                            hullNext[e] = e;
+                            hullSize--;
+                            e = q;
+                        }
+                    }
+
+                    hullStart = hullPrev[i] = e;
+                    hullNext[e] = hullPrev[next] = i;
+                    hullNext[i] = next;
+
+                    hullHash[hashKey(x, y)] = i;
+                    hullHash[hashKey(coords[2 * e], coords[2 * e + 1])] = e;
+                }
+
+                const hull = new Uint32Array(hullSize);
+                let s = hullStart;
+                for (let i = 0; i < hullSize; i++) {
+                    hull[i] = s;
+                    s = hullNext[s];
+                }
+
+                return {
+                    triangles: triangles.slice(0, trianglesLen),
+                    halfedges: halfedges.slice(0, trianglesLen),
+                    hull
+                };
+            }
+
+            find(x, y, i = 0) {
+                const n = this.points.length >> 1;
+                if (n === 0) return -1;
+
+                let minDist = Infinity;
+                let closest = 0;
+
+                for (let j = 0; j < n; j++) {
+                    const d = dist(x, y, this.points[j * 2], this.points[j * 2 + 1]);
+                    if (d < minDist) {
+                        minDist = d;
+                        closest = j;
+                    }
+                }
+
+                return closest;
+            }
+
+            voronoi(bounds) {
+                return new Voronoi(this, bounds);
+            }
+        }
+
+        class Voronoi {
+            constructor(delaunay, bounds = [0, 0, 960, 500]) {
+                this.delaunay = delaunay;
+                this.circumcenters = new Float64Array(delaunay.triangles.length / 3 * 2);
+                this.vectors = new Float64Array(delaunay.points.length * 2);
+                this.xmin = bounds[0];
+                this.ymin = bounds[1];
+                this.xmax = bounds[2];
+                this.ymax = bounds[3];
+                this._init();
+            }
+
+            _init() {
+                const { delaunay, circumcenters } = this;
+                const { points, triangles } = delaunay;
+                const n = triangles.length / 3;
+
+                for (let i = 0; i < n; i++) {
+                    const i0 = triangles[i * 3];
+                    const i1 = triangles[i * 3 + 1];
+                    const i2 = triangles[i * 3 + 2];
+                    const x0 = points[i0 * 2], y0 = points[i0 * 2 + 1];
+                    const x1 = points[i1 * 2], y1 = points[i1 * 2 + 1];
+                    const x2 = points[i2 * 2], y2 = points[i2 * 2 + 1];
+                    const c = circumcenter(x0, y0, x1, y1, x2, y2);
+                    circumcenters[i * 2] = c.x;
+                    circumcenters[i * 2 + 1] = c.y;
+                }
+
+                // Calculate vectors for unbounded edges
+                const { hull, halfedges } = delaunay;
+                let h = hull.length;
+                let p0, p1 = hull[h - 1];
+                for (let i = 0; i < h; i++) {
+                    p0 = p1;
+                    p1 = hull[i];
+                    const vx = points[p1 * 2] - points[p0 * 2];
+                    const vy = points[p1 * 2 + 1] - points[p0 * 2 + 1];
+                    this.vectors[p0 * 2] = vy;
+                    this.vectors[p0 * 2 + 1] = -vx;
+                }
+            }
+
+            cellPolygon(i) {
+                const polygon = [];
+                this._renderCell(i, polygon);
+                if (polygon.length === 0) return null;
+                polygon.push(polygon[0], polygon[1]);
+                return polygon;
+            }
+
+            _renderCell(i, polygon) {
+                const { delaunay, circumcenters, vectors, xmin, ymin, xmax, ymax } = this;
+                const { triangles, halfedges, hull, points } = delaunay;
+
+                const incoming = new Int32Array(points.length / 2).fill(-1);
+                for (let e = 0; e < triangles.length; e++) {
+                    const p = triangles[e % 3 === 2 ? e - 2 : e + 1];
+                    if (incoming[p] === -1 || triangles[halfedges[incoming[p]]] !== p) {
+                        incoming[p] = e;
+                    }
+                }
+
+                let e0 = incoming[i];
+                if (e0 === -1) {
+                    // Point is on convex hull - need special handling
+                    const hi = hull.indexOf(i);
+                    if (hi === -1) return;
+
+                    // For hull points, we need to find triangles they belong to
+                    const triIndices = [];
+                    for (let t = 0; t < triangles.length / 3; t++) {
+                        if (triangles[t * 3] === i || triangles[t * 3 + 1] === i || triangles[t * 3 + 2] === i) {
+                            triIndices.push(t);
+                        }
+                    }
+
+                    if (triIndices.length === 0) {
+                        // Single hull point - create bounding cell
+                        const px = points[i * 2], py = points[i * 2 + 1];
+                        const margin = 50;
+                        polygon.push(
+                            Math.max(xmin, px - margin), Math.max(ymin, py - margin),
+                            Math.min(xmax, px + margin), Math.max(ymin, py - margin),
+                            Math.min(xmax, px + margin), Math.min(ymax, py + margin),
+                            Math.max(xmin, px - margin), Math.min(ymax, py + margin)
+                        );
+                        return;
+                    }
+
+                    // Get circumcenters of triangles containing this point
+                    for (const t of triIndices) {
+                        polygon.push(circumcenters[t * 2], circumcenters[t * 2 + 1]);
+                    }
+
+                    // Add corner projections for hull
+                    const px = points[i * 2], py = points[i * 2 + 1];
+                    const vx = vectors[i * 2], vy = vectors[i * 2 + 1];
+
+                    if (vx || vy) {
+                        const project = this._project(polygon[polygon.length - 2], polygon[polygon.length - 1], vx, vy);
+                        if (project) polygon.push(project[0], project[1]);
+
+                        const prevHull = hull[(hi + hull.length - 1) % hull.length];
+                        const pvx = vectors[prevHull * 2], pvy = vectors[prevHull * 2 + 1];
+                        const project2 = this._project(polygon[0], polygon[1], -pvx, -pvy);
+                        if (project2) polygon.unshift(project2[0], project2[1]);
+                    }
+
+                    return;
+                }
+
+                let e = e0;
+                const cell = [];
+                do {
+                    const t = Math.floor(e / 3);
+                    cell.push(circumcenters[t * 2], circumcenters[t * 2 + 1]);
+
+                    e = e % 3 === 2 ? e - 2 : e + 1;
+                    if (triangles[e] !== i) break;
+
+                    e = halfedges[e];
+                    if (e === -1) {
+                        // Hit boundary
+                        const t = Math.floor((e0 % 3 === 2 ? e0 - 2 : e0 + 1) / 3);
+                        const cx = circumcenters[t * 2], cy = circumcenters[t * 2 + 1];
+                        const vx = vectors[i * 2], vy = vectors[i * 2 + 1];
+                        if (vx || vy) {
+                            const p = this._project(cx, cy, vx, vy);
+                            if (p) cell.push(p[0], p[1]);
+                        }
+                        break;
+                    }
+                } while (e !== e0);
+
+                // Clip cell to bounds
+                const clipped = this._clipCell(cell);
+                for (const pt of clipped) {
+                    polygon.push(pt[0], pt[1]);
+                }
+            }
+
+            _project(x0, y0, vx, vy) {
+                const { xmin, ymin, xmax, ymax } = this;
+                let t = Infinity;
+
+                if (vy < 0) t = Math.min(t, (ymin - y0) / vy);
+                else if (vy > 0) t = Math.min(t, (ymax - y0) / vy);
+
+                if (vx < 0) t = Math.min(t, (xmin - x0) / vx);
+                else if (vx > 0) t = Math.min(t, (xmax - x0) / vx);
+
+                return t === Infinity ? null : [x0 + t * vx, y0 + t * vy];
+            }
+
+            _clipCell(cell) {
+                if (cell.length < 4) return [];
+
+                const { xmin, ymin, xmax, ymax } = this;
+                let points = [];
+                for (let i = 0; i < cell.length; i += 2) {
+                    points.push([cell[i], cell[i + 1]]);
+                }
+
+                // Sutherland-Hodgman clipping
+                const edges = [
+                    { x: 1, y: 0, c: -xmin },  // left
+                    { x: -1, y: 0, c: xmax },   // right
+                    { x: 0, y: 1, c: -ymin },  // top
+                    { x: 0, y: -1, c: ymax }    // bottom
+                ];
+
+                for (const edge of edges) {
+                    if (points.length === 0) break;
+
+                    const input = points;
+                    points = [];
+
+                    const inside = (p) => edge.x * p[0] + edge.y * p[1] + edge.c >= 0;
+                    const intersect = (p1, p2) => {
+                        const d1 = edge.x * p1[0] + edge.y * p1[1] + edge.c;
+                        const d2 = edge.x * p2[0] + edge.y * p2[1] + edge.c;
+                        const t = d1 / (d1 - d2);
+                        return [p1[0] + t * (p2[0] - p1[0]), p1[1] + t * (p2[1] - p1[1])];
+                    };
+
+                    for (let i = 0; i < input.length; i++) {
+                        const curr = input[i];
+                        const next = input[(i + 1) % input.length];
+
+                        if (inside(curr)) {
+                            points.push(curr);
+                            if (!inside(next)) {
+                                points.push(intersect(curr, next));
+                            }
+                        } else if (inside(next)) {
+                            points.push(intersect(curr, next));
+                        }
+                    }
+                }
+
+                return points;
+            }
+
+            contains(i, x, y) {
+                const polygon = this.cellPolygon(i);
+                if (!polygon) return false;
+
+                let inside = false;
+                const n = polygon.length / 2 - 1;
+                for (let j = 0, k = n - 1; j < n; k = j++) {
+                    const xi = polygon[j * 2], yi = polygon[j * 2 + 1];
+                    const xj = polygon[k * 2], yj = polygon[k * 2 + 1];
+                    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+                        inside = !inside;
+                    }
+                }
+                return inside;
+            }
+        }
+
+        function dist(ax, ay, bx, by) {
+            const dx = ax - bx, dy = ay - by;
+            return dx * dx + dy * dy;
+        }
+
+        function orient(ax, ay, bx, by, cx, cy) {
+            return (by - ay) * (cx - bx) - (bx - ax) * (cy - by);
+        }
+
+        function circumradius(ax, ay, bx, by, cx, cy) {
+            const dx = bx - ax, dy = by - ay;
+            const ex = cx - ax, ey = cy - ay;
+            const bl = dx * dx + dy * dy;
+            const cl = ex * ex + ey * ey;
+            const d = 0.5 / (dx * ey - dy * ex);
+            const x = (ey * bl - dy * cl) * d;
+            const y = (dx * cl - ex * bl) * d;
+            return x * x + y * y;
+        }
+
+        function circumcenter(ax, ay, bx, by, cx, cy) {
+            const dx = bx - ax, dy = by - ay;
+            const ex = cx - ax, ey = cy - ay;
+            const bl = dx * dx + dy * dy;
+            const cl = ex * ex + ey * ey;
+            const d = 0.5 / (dx * ey - dy * ex);
+            const x = ax + (ey * bl - dy * cl) * d;
+            const y = ay + (dx * cl - ex * bl) * d;
+            return { x, y };
+        }
+
+        function inCircle(ax, ay, bx, by, cx, cy, px, py) {
+            const dx = ax - px, dy = ay - py;
+            const ex = bx - px, ey = by - py;
+            const fx = cx - px, fy = cy - py;
+            const ap = dx * dx + dy * dy;
+            const bp = ex * ex + ey * ey;
+            const cp = fx * fx + fy * fy;
+            return dx * (ey * cp - bp * fy) - dy * (ex * cp - bp * fx) + ap * (ex * fy - ey * fx) < 0;
+        }
+
+        function pseudoAngle(dx, dy) {
+            const p = dx / (Math.abs(dx) + Math.abs(dy));
+            return (dy > 0 ? 3 - p : 1 + p) / 4;
+        }
+
+        function quicksort(ids, dists, left, right) {
+            if (right - left <= 20) {
+                for (let i = left + 1; i <= right; i++) {
+                    const temp = ids[i];
+                    const tempDist = dists[temp];
+                    let j = i - 1;
+                    while (j >= left && dists[ids[j]] > tempDist) {
+                        ids[j + 1] = ids[j];
+                        j--;
+                    }
+                    ids[j + 1] = temp;
+                }
+            } else {
+                const mid = (left + right) >> 1;
+                let i = left + 1, j = right;
+                [ids[mid], ids[i]] = [ids[i], ids[mid]];
+                if (dists[ids[left]] > dists[ids[right]]) [ids[left], ids[right]] = [ids[right], ids[left]];
+                if (dists[ids[i]] > dists[ids[right]]) [ids[i], ids[right]] = [ids[right], ids[i]];
+                if (dists[ids[left]] > dists[ids[i]]) [ids[left], ids[i]] = [ids[i], ids[left]];
+                const temp = ids[i];
+                const tempDist = dists[temp];
+                while (true) {
+                    do i++; while (dists[ids[i]] < tempDist);
+                    do j--; while (dists[ids[j]] > tempDist);
+                    if (j < i) break;
+                    [ids[i], ids[j]] = [ids[j], ids[i]];
+                }
+                ids[left + 1] = ids[j];
+                ids[j] = temp;
+                if (right - i + 1 >= j - left) {
+                    quicksort(ids, dists, i, right);
+                    quicksort(ids, dists, left, j - 1);
+                } else {
+                    quicksort(ids, dists, left, j - 1);
+                    quicksort(ids, dists, i, right);
+                }
+            }
+        }
+
+        window.Delaunay = Delaunay;
+    })();
+    </script>
+
+    <script>
+    // Main Voronoi Physics Application
+    (function() {
+        // Configuration
+        const config = {
+            cellCount: 15,
+            springStrength: 0.35,
+            damping: 0.85,
+            hoverForce: 80,
+            neighborPush: 40,
+            showImages: true,
+            imageZoomScale: 1.15,
+            animationSpeed: 1
+        };
+
+        // Color palette for cells
+        const colors = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+            '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+            '#F8B500', '#00CED1', '#FF69B4', '#32CD32', '#FF7F50'
+        ];
+
+        // Sample cell data with titles and links
+        // You can customize this array to add your own images, titles, and links
+        const cellData = [
+            { title: 'Project Alpha', link: '#project-alpha' },
+            { title: 'Creative Design', link: '#creative-design' },
+            { title: 'Tech Innovation', link: '#tech-innovation' },
+            { title: 'Art Gallery', link: '#art-gallery' },
+            { title: 'Music Hub', link: '#music-hub' },
+            { title: 'Photo Stream', link: '#photo-stream' },
+            { title: 'Code Lab', link: '#code-lab' },
+            { title: 'Design Studio', link: '#design-studio' },
+            { title: 'Video Works', link: '#video-works' },
+            { title: 'Blog Posts', link: '#blog-posts' },
+            { title: 'Portfolio', link: '#portfolio' },
+            { title: 'About Me', link: '#about-me' },
+            { title: 'Contact', link: '#contact' },
+            { title: 'Services', link: '#services' },
+            { title: 'Resources', link: '#resources' }
+        ];
+
+        // State
+        let canvas, ctx;
+        let width, height;
+        let seeds = [];
+        let voronoi = null;
+        let hoveredCell = -1;
+        let mouseX = -1000, mouseY = -1000;
+        let animationId = null;
+        let tooltip = null;
+
+        // Seed point class
+        class Seed {
+            constructor(x, y, index) {
+                this.index = index;
+                this.restX = x;
+                this.restY = y;
+                this.x = x;
+                this.y = y;
+                this.vx = 0;
+                this.vy = 0;
+                this.color = colors[index % colors.length];
+                this.targetZoom = 1;
+                this.currentZoom = 1;
+                this.image = null;
+                this.imageLoaded = false;
+
+                // Cell data (title, link, custom image)
+                const data = cellData[index % cellData.length];
+                this.title = data.title || `Cell ${index + 1}`;
+                this.link = data.link || null;
+                this.imageUrl = data.imageUrl || null;
+            }
+
+            update(dt) {
+                // Spring force toward rest position
+                const dx = this.restX - this.x;
+                const dy = this.restY - this.y;
+
+                // Apply spring force
+                this.vx += dx * config.springStrength * dt;
+                this.vy += dy * config.springStrength * dt;
+
+                // Apply damping
+                this.vx *= config.damping;
+                this.vy *= config.damping;
+
+                // Update position
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Clamp to bounds with margin
+                const margin = 20;
+                this.x = Math.max(margin, Math.min(width - margin, this.x));
+                this.y = Math.max(margin, Math.min(height - margin, this.y));
+
+                // Smooth zoom transition
+                this.currentZoom += (this.targetZoom - this.currentZoom) * 0.15;
+            }
+
+            applyForce(fx, fy) {
+                this.vx += fx;
+                this.vy += fy;
+            }
+        }
+
+        // Initialize
+        function init() {
+            canvas = document.getElementById('voronoiCanvas');
+            ctx = canvas.getContext('2d');
+            tooltip = document.getElementById('tooltip');
+
+            setupEventListeners();
+            resize();
+            generateSeeds();
+            createImagePatterns();
+            animate();
+        }
+
+        function setupEventListeners() {
+            window.addEventListener('resize', resize);
+
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseleave', handleMouseLeave);
+            canvas.addEventListener('click', handleClick);
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd);
+
+            // Control listeners
+            document.getElementById('cellCount').addEventListener('input', (e) => {
+                config.cellCount = parseInt(e.target.value);
+                document.getElementById('cellCountValue').textContent = config.cellCount;
+            });
+
+            document.getElementById('springStrength').addEventListener('input', (e) => {
+                config.springStrength = parseInt(e.target.value) / 100;
+                document.getElementById('springStrengthValue').textContent = config.springStrength.toFixed(2);
+            });
+
+            document.getElementById('damping').addEventListener('input', (e) => {
+                config.damping = parseInt(e.target.value) / 100;
+                document.getElementById('dampingValue').textContent = config.damping.toFixed(2);
+            });
+
+            document.getElementById('hoverForce').addEventListener('input', (e) => {
+                config.hoverForce = parseInt(e.target.value);
+                document.getElementById('hoverForceValue').textContent = config.hoverForce;
+            });
+
+            document.getElementById('neighborPush').addEventListener('input', (e) => {
+                config.neighborPush = parseInt(e.target.value);
+                document.getElementById('neighborPushValue').textContent = config.neighborPush;
+            });
+
+            document.getElementById('regenerate').addEventListener('click', () => {
+                generateSeeds();
+                createImagePatterns();
+            });
+
+            document.getElementById('toggleImages').addEventListener('click', () => {
+                config.showImages = !config.showImages;
+            });
+        }
+
+        function resize() {
+            const wrapper = canvas.parentElement;
+            const rect = wrapper.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+
+            width = rect.width;
+            height = rect.height;
+
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+
+            ctx.scale(dpr, dpr);
+
+            // Update rest positions if seeds exist
+            if (seeds.length > 0) {
+                const oldSeeds = [...seeds];
+                generateSeeds();
+                // Try to preserve relative positions
+                for (let i = 0; i < Math.min(oldSeeds.length, seeds.length); i++) {
+                    seeds[i].vx = oldSeeds[i].vx;
+                    seeds[i].vy = oldSeeds[i].vy;
+                }
+            }
+        }
+
+        function generateSeeds() {
+            seeds = [];
+            const margin = 60;
+            const cellW = (width - margin * 2);
+            const cellH = (height - margin * 2);
+
+            // Use Poisson disk sampling for better distribution
+            const minDist = Math.sqrt((cellW * cellH) / config.cellCount) * 0.7;
+            const points = poissonDiskSampling(margin, margin, width - margin, height - margin, minDist, config.cellCount);
+
+            for (let i = 0; i < points.length; i++) {
+                seeds.push(new Seed(points[i][0], points[i][1], i));
+            }
+        }
+
+        function poissonDiskSampling(minX, minY, maxX, maxY, minDist, targetCount) {
+            const points = [];
+            const active = [];
+            const cellSize = minDist / Math.sqrt(2);
+            const gridW = Math.ceil((maxX - minX) / cellSize);
+            const gridH = Math.ceil((maxY - minY) / cellSize);
+            const grid = new Array(gridW * gridH).fill(-1);
+
+            function addPoint(x, y) {
+                const i = Math.floor((x - minX) / cellSize);
+                const j = Math.floor((y - minY) / cellSize);
+                const index = points.length;
+                points.push([x, y]);
+                active.push(index);
+                grid[i + j * gridW] = index;
+            }
+
+            function isValid(x, y) {
+                if (x < minX || x >= maxX || y < minY || y >= maxY) return false;
+
+                const i = Math.floor((x - minX) / cellSize);
+                const j = Math.floor((y - minY) / cellSize);
+
+                const i0 = Math.max(0, i - 2);
+                const i1 = Math.min(gridW - 1, i + 2);
+                const j0 = Math.max(0, j - 2);
+                const j1 = Math.min(gridH - 1, j + 2);
+
+                for (let jj = j0; jj <= j1; jj++) {
+                    for (let ii = i0; ii <= i1; ii++) {
+                        const idx = grid[ii + jj * gridW];
+                        if (idx !== -1) {
+                            const dx = points[idx][0] - x;
+                            const dy = points[idx][1] - y;
+                            if (dx * dx + dy * dy < minDist * minDist) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+                return true;
+            }
+
+            // Start with random point
+            addPoint(
+                minX + Math.random() * (maxX - minX),
+                minY + Math.random() * (maxY - minY)
+            );
+
+            while (active.length > 0 && points.length < targetCount * 2) {
+                const randIdx = Math.floor(Math.random() * active.length);
+                const idx = active[randIdx];
+                const [px, py] = points[idx];
+
+                let found = false;
+                for (let k = 0; k < 30; k++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const r = minDist * (1 + Math.random());
+                    const x = px + r * Math.cos(angle);
+                    const y = py + r * Math.sin(angle);
+
+                    if (isValid(x, y)) {
+                        addPoint(x, y);
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    active.splice(randIdx, 1);
+                }
+            }
+
+            // Return only the requested number
+            return points.slice(0, targetCount);
+        }
+
+        function createImagePatterns() {
+            // Create colorful gradient patterns for each seed
+            for (let i = 0; i < seeds.length; i++) {
+                const seed = seeds[i];
+
+                // If seed has an image URL, try to load it
+                if (seed.imageUrl) {
+                    loadExternalImage(seed);
+                } else {
+                    // Create generated pattern
+                    createGeneratedPattern(seed, i);
+                }
+            }
+        }
+
+        function loadExternalImage(seed) {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                seed.image = img;
+                seed.imageLoaded = true;
+            };
+            img.onerror = () => {
+                // Fallback to generated pattern
+                createGeneratedPattern(seed, seed.index);
+            };
+            img.src = seed.imageUrl;
+        }
+
+        function createGeneratedPattern(seed, index) {
+            const patternCanvas = document.createElement('canvas');
+            patternCanvas.width = 200;
+            patternCanvas.height = 200;
+            const pctx = patternCanvas.getContext('2d');
+
+            // Create gradient background
+            const gradient = pctx.createLinearGradient(0, 0, 200, 200);
+            const baseColor = seed.color;
+            gradient.addColorStop(0, baseColor);
+            gradient.addColorStop(1, adjustColor(baseColor, -30));
+            pctx.fillStyle = gradient;
+            pctx.fillRect(0, 0, 200, 200);
+
+            // Add some decorative elements
+            pctx.fillStyle = 'rgba(255,255,255,0.1)';
+            for (let j = 0; j < 5; j++) {
+                const x = Math.random() * 200;
+                const y = Math.random() * 200;
+                const r = 20 + Math.random() * 40;
+                pctx.beginPath();
+                pctx.arc(x, y, r, 0, Math.PI * 2);
+                pctx.fill();
+            }
+
+            // Add cell number
+            pctx.fillStyle = 'rgba(255,255,255,0.3)';
+            pctx.font = 'bold 80px sans-serif';
+            pctx.textAlign = 'center';
+            pctx.textBaseline = 'middle';
+            pctx.fillText(index + 1, 100, 100);
+
+            seed.image = patternCanvas;
+            seed.imageLoaded = true;
+        }
+
+        function adjustColor(hex, amount) {
+            const num = parseInt(hex.slice(1), 16);
+            const r = Math.min(255, Math.max(0, (num >> 16) + amount));
+            const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amount));
+            const b = Math.min(255, Math.max(0, (num & 0x0000FF) + amount));
+            return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
+        }
+
+        function handleMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+            updateHoveredCell();
+            updateTooltip(e.clientX, e.clientY);
+        }
+
+        function handleClick(e) {
+            if (hoveredCell >= 0 && hoveredCell < seeds.length) {
+                const seed = seeds[hoveredCell];
+                if (seed.link) {
+                    // Navigate to link
+                    window.location.href = seed.link;
+                }
+            }
+        }
+
+        let touchStartTime = 0;
+        let touchStartCell = -1;
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            touchStartTime = Date.now();
+            if (e.touches.length > 0) {
+                const rect = canvas.getBoundingClientRect();
+                mouseX = e.touches[0].clientX - rect.left;
+                mouseY = e.touches[0].clientY - rect.top;
+                updateHoveredCell();
+                touchStartCell = hoveredCell;
+            }
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+            if (e.touches.length > 0) {
+                const rect = canvas.getBoundingClientRect();
+                mouseX = e.touches[0].clientX - rect.left;
+                mouseY = e.touches[0].clientY - rect.top;
+                updateHoveredCell();
+            }
+        }
+
+        function handleTouchEnd(e) {
+            // Check for tap gesture (short touch on same cell)
+            const touchDuration = Date.now() - touchStartTime;
+            if (touchDuration < 300 && touchStartCell === hoveredCell && hoveredCell >= 0) {
+                const seed = seeds[hoveredCell];
+                if (seed.link) {
+                    window.location.href = seed.link;
+                }
+            }
+
+            // Reset after short delay to allow visual feedback
+            setTimeout(() => {
+                mouseX = -1000;
+                mouseY = -1000;
+                hoveredCell = -1;
+                for (const seed of seeds) {
+                    seed.targetZoom = 1;
+                }
+                hideTooltip();
+            }, 100);
+        }
+
+        function handleMouseLeave() {
+            mouseX = -1000;
+            mouseY = -1000;
+            hoveredCell = -1;
+            for (const seed of seeds) {
+                seed.targetZoom = 1;
+            }
+            hideTooltip();
+        }
+
+        function updateTooltip(clientX, clientY) {
+            if (!tooltip) return;
+
+            if (hoveredCell >= 0 && hoveredCell < seeds.length) {
+                const seed = seeds[hoveredCell];
+                tooltip.textContent = seed.title;
+                tooltip.classList.add('visible');
+
+                // Position tooltip near cursor
+                const rect = canvas.parentElement.getBoundingClientRect();
+                const x = clientX - rect.left + 15;
+                const y = clientY - rect.top - 30;
+
+                tooltip.style.left = Math.min(x, rect.width - 150) + 'px';
+                tooltip.style.top = Math.max(10, y) + 'px';
+
+                // Update cursor style
+                canvas.style.cursor = seed.link ? 'pointer' : 'default';
+            } else {
+                hideTooltip();
+                canvas.style.cursor = 'default';
+            }
+        }
+
+        function hideTooltip() {
+            if (tooltip) {
+                tooltip.classList.remove('visible');
+            }
+        }
+
+        function updateHoveredCell() {
+            if (!voronoi) return;
+
+            let found = -1;
+            for (let i = 0; i < seeds.length; i++) {
+                if (voronoi.contains(i, mouseX, mouseY)) {
+                    found = i;
+                    break;
+                }
+            }
+
+            if (found !== hoveredCell) {
+                // Reset previous hovered cell
+                if (hoveredCell >= 0 && hoveredCell < seeds.length) {
+                    seeds[hoveredCell].targetZoom = 1;
+                }
+                hoveredCell = found;
+                // Set new hovered cell zoom
+                if (hoveredCell >= 0) {
+                    seeds[hoveredCell].targetZoom = config.imageZoomScale;
+                }
+            }
+        }
+
+        function updatePhysics() {
+            const dt = config.animationSpeed;
+
+            // Apply hover forces
+            if (hoveredCell >= 0 && hoveredCell < seeds.length) {
+                const hovered = seeds[hoveredCell];
+
+                // Push hovered seed outward from cursor
+                const dx = hovered.x - mouseX;
+                const dy = hovered.y - mouseY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > 0 && dist < config.hoverForce * 2) {
+                    const force = (config.hoverForce - dist * 0.5) * 0.02;
+                    hovered.applyForce(dx / dist * force, dy / dist * force);
+                }
+
+                // Push neighboring seeds away
+                for (let i = 0; i < seeds.length; i++) {
+                    if (i === hoveredCell) continue;
+
+                    const seed = seeds[i];
+                    const ndx = seed.x - hovered.x;
+                    const ndy = seed.y - hovered.y;
+                    const ndist = Math.sqrt(ndx * ndx + ndy * ndy);
+                    const threshold = config.neighborPush * 3;
+
+                    if (ndist > 0 && ndist < threshold) {
+                        const force = (1 - ndist / threshold) * config.neighborPush * 0.01;
+                        seed.applyForce(ndx / ndist * force, ndy / ndist * force);
+                    }
+                }
+            }
+
+            // Update all seeds
+            for (const seed of seeds) {
+                seed.update(dt);
+            }
+
+            // Rebuild Voronoi
+            rebuildVoronoi();
+        }
+
+        function rebuildVoronoi() {
+            if (seeds.length < 3) return;
+
+            const points = seeds.map(s => [s.x, s.y]);
+            try {
+                const delaunay = Delaunay.from(points);
+                voronoi = delaunay.voronoi([0, 0, width, height]);
+            } catch (e) {
+                console.warn('Voronoi computation failed:', e);
+            }
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, width, height);
+
+            if (!voronoi || seeds.length < 3) return;
+
+            // Draw cells
+            for (let i = 0; i < seeds.length; i++) {
+                const seed = seeds[i];
+                const polygon = voronoi.cellPolygon(i);
+
+                if (!polygon || polygon.length < 6) continue;
+
+                ctx.save();
+
+                // Create path for cell
+                ctx.beginPath();
+                ctx.moveTo(polygon[0], polygon[1]);
+                for (let j = 2; j < polygon.length - 2; j += 2) {
+                    ctx.lineTo(polygon[j], polygon[j + 1]);
+                }
+                ctx.closePath();
+
+                // Clip to cell
+                ctx.clip();
+
+                if (config.showImages && seed.imageLoaded && seed.image) {
+                    // Calculate bounding box
+                    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                    for (let j = 0; j < polygon.length - 2; j += 2) {
+                        minX = Math.min(minX, polygon[j]);
+                        maxX = Math.max(maxX, polygon[j]);
+                        minY = Math.min(minY, polygon[j + 1]);
+                        maxY = Math.max(maxY, polygon[j + 1]);
+                    }
+
+                    const cellW = maxX - minX;
+                    const cellH = maxY - minY;
+                    const centerX = (minX + maxX) / 2;
+                    const centerY = (minY + maxY) / 2;
+
+                    // Draw image with zoom
+                    const zoom = seed.currentZoom;
+                    const imgW = cellW * zoom * 1.2;
+                    const imgH = cellH * zoom * 1.2;
+
+                    ctx.drawImage(
+                        seed.image,
+                        centerX - imgW / 2,
+                        centerY - imgH / 2,
+                        imgW,
+                        imgH
+                    );
+                } else {
+                    // Draw solid color
+                    ctx.fillStyle = seed.color;
+                    ctx.fill();
+                }
+
+                ctx.restore();
+
+                // Draw cell border
+                ctx.beginPath();
+                ctx.moveTo(polygon[0], polygon[1]);
+                for (let j = 2; j < polygon.length - 2; j += 2) {
+                    ctx.lineTo(polygon[j], polygon[j + 1]);
+                }
+                ctx.closePath();
+                ctx.strokeStyle = i === hoveredCell ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.15)';
+                ctx.lineWidth = i === hoveredCell ? 3 : 1;
+                ctx.stroke();
+            }
+
+            // Draw seed points (debug)
+            // for (const seed of seeds) {
+            //     ctx.beginPath();
+            //     ctx.arc(seed.x, seed.y, 4, 0, Math.PI * 2);
+            //     ctx.fillStyle = '#fff';
+            //     ctx.fill();
+            // }
+        }
+
+        function animate() {
+            updatePhysics();
+            render();
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // Global API for programmatic control
+        window.VoronoiGrid = {
+            // Set cell data (array of {title, link, imageUrl} objects)
+            setCellData: function(data) {
+                cellData.length = 0;
+                cellData.push(...data);
+                generateSeeds();
+                createImagePatterns();
+            },
+
+            // Update config
+            setConfig: function(newConfig) {
+                Object.assign(config, newConfig);
+            },
+
+            // Get current config
+            getConfig: function() {
+                return { ...config };
+            },
+
+            // Regenerate grid
+            regenerate: function() {
+                generateSeeds();
+                createImagePatterns();
+            },
+
+            // Get seed data
+            getSeeds: function() {
+                return seeds.map(s => ({
+                    x: s.x,
+                    y: s.y,
+                    title: s.title,
+                    link: s.link
+                }));
+            }
+        };
+
+        // Start when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
+    </script>
+
+    <!--
+    =====================================================
+    USAGE GUIDE
+    =====================================================
+
+    This interactive Voronoi grid can be customized in several ways:
+
+    1. CUSTOMIZE CELL DATA:
+       Edit the cellData array to add your own titles, links, and images:
+
+       const cellData = [
+           { title: 'My Project', link: 'https://example.com', imageUrl: 'path/to/image.jpg' },
+           { title: 'Another Item', link: '/page', imageUrl: 'https://example.com/image.png' },
+           // ... more cells
+       ];
+
+    2. PROGRAMMATIC CONTROL:
+       Use the global VoronoiGrid API:
+
+       // Set new cell data
+       VoronoiGrid.setCellData([
+           { title: 'Cell 1', link: '/page1' },
+           { title: 'Cell 2', link: '/page2' }
+       ]);
+
+       // Update physics config
+       VoronoiGrid.setConfig({
+           cellCount: 20,
+           springStrength: 0.5,
+           damping: 0.9
+       });
+
+       // Regenerate with current settings
+       VoronoiGrid.regenerate();
+
+    3. CONFIG OPTIONS:
+       - cellCount: Number of cells (5-50)
+       - springStrength: How strongly cells return to rest (0.01-1.0)
+       - damping: Velocity decay (0.5-0.99)
+       - hoverForce: Push force on hover (10-200)
+       - neighborPush: Force on neighboring cells (0-100)
+       - showImages: Toggle image display
+       - imageZoomScale: Zoom amount on hover (1.0-1.5)
+
+    =====================================================
+    -->
+</body>
+</html>
