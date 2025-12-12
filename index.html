@@ -317,8 +317,22 @@
             <div class="control-group hide-tablet">
                 <label>Max Expansion</label>
                 <div class="control-row">
-                    <input type="range" id="maxExpansion" min="50" max="500" value="150">
+                    <input type="range" id="maxExpansion" min="50" max="5000" value="150">
                     <span class="control-value" id="maxExpansionVal">150</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Non-Hover Opacity</label>
+                <div class="control-row">
+                    <input type="range" id="nonHoveredOpacity" min="0" max="100" value="60">
+                    <span class="control-value" id="nonHoveredOpacityVal">0.60</span>
+                </div>
+            </div>
+            <div class="control-group hide-mobile">
+                <label>Opacity Speed</label>
+                <div class="control-row">
+                    <input type="range" id="opacityTransitionSpeed" min="1" max="100" value="15">
+                    <span class="control-value" id="opacityTransitionSpeedVal">0.15</span>
                 </div>
             </div>
 
@@ -357,7 +371,10 @@
             decaySpeed: 0.5,       // 0-1: how fast cells return to rest
             triggerBurst: 1.0,     // Initial burst when entering cell
             sustainGrowth: 0.3,    // Continuous growth while hovering
-            maxExpansion: 150      // Max pixels a cell can move from rest
+            maxExpansion: 150,     // Max pixels a cell can move from rest
+            // Opacity controls
+            nonHoveredOpacity: 0.6,      // 0-1: opacity for non-hovered cells
+            opacityTransitionSpeed: 0.15 // 0-1: how fast opacity transitions happen
         };
 
         // ========== SAMPLE DATA ==========
@@ -420,6 +437,8 @@
                 this.displayPolygon = null; // With gap applied
                 this.zoom = 1;
                 this.targetZoom = 1;
+                this.opacity = config.nonHoveredOpacity;
+                this.targetOpacity = config.nonHoveredOpacity;
 
                 const data = cellData[index % cellData.length];
                 this.title = data.title;
@@ -431,6 +450,7 @@
             update(dt, isHovered) {
                 if (!config.physicsEnabled) {
                     this.zoom += (this.targetZoom - this.zoom) * 0.12;
+                    this.opacity += (this.targetOpacity - this.opacity) * config.opacityTransitionSpeed;
                     return;
                 }
 
@@ -475,8 +495,9 @@
                 this.x = Math.max(margin, Math.min(width - margin, this.x));
                 this.y = Math.max(margin, Math.min(height - margin, this.y));
 
-                // Smooth zoom
+                // Smooth zoom and opacity transitions
                 this.zoom += (this.targetZoom - this.zoom) * 0.12;
+                this.opacity += (this.targetOpacity - this.opacity) * config.opacityTransitionSpeed;
             }
 
             applyForce(fx, fy) {
@@ -814,7 +835,10 @@
             mouseX = -9999;
             mouseY = -9999;
             hoveredCell = -1;
-            cells.forEach(c => c.targetZoom = 1);
+            cells.forEach(c => {
+                c.targetZoom = 1;
+                c.targetOpacity = config.nonHoveredOpacity;
+            });
             tooltip.classList.remove('visible');
         }
 
@@ -858,7 +882,10 @@
                 mouseX = -9999;
                 mouseY = -9999;
                 hoveredCell = -1;
-                cells.forEach(c => c.targetZoom = 1);
+                cells.forEach(c => {
+                    c.targetZoom = 1;
+                    c.targetOpacity = config.nonHoveredOpacity;
+                });
             }, 100);
         }
 
@@ -873,9 +900,15 @@
             }
 
             if (found !== hoveredCell) {
-                if (hoveredCell >= 0) cells[hoveredCell].targetZoom = 1;
+                if (hoveredCell >= 0) {
+                    cells[hoveredCell].targetZoom = 1;
+                    cells[hoveredCell].targetOpacity = config.nonHoveredOpacity;
+                }
                 hoveredCell = found;
-                if (hoveredCell >= 0) cells[hoveredCell].targetZoom = config.zoomScale;
+                if (hoveredCell >= 0) {
+                    cells[hoveredCell].targetZoom = config.zoomScale;
+                    cells[hoveredCell].targetOpacity = 1.0;
+                }
             }
 
             canvas.style.cursor = hoveredCell >= 0 ? 'pointer' : 'default';
@@ -1056,6 +1089,28 @@
                 maxExpansionVal.textContent = config.maxExpansion;
             });
 
+            // Non-Hovered Opacity
+            const nonHoveredOpacityEl = document.getElementById('nonHoveredOpacity');
+            const nonHoveredOpacityVal = document.getElementById('nonHoveredOpacityVal');
+            nonHoveredOpacityEl.addEventListener('input', () => {
+                config.nonHoveredOpacity = +nonHoveredOpacityEl.value / 100;
+                nonHoveredOpacityVal.textContent = config.nonHoveredOpacity.toFixed(2);
+                // Update all non-hovered cells
+                cells.forEach((c, i) => {
+                    if (i !== hoveredCell) {
+                        c.targetOpacity = config.nonHoveredOpacity;
+                    }
+                });
+            });
+
+            // Opacity Transition Speed
+            const opacityTransitionSpeedEl = document.getElementById('opacityTransitionSpeed');
+            const opacityTransitionSpeedVal = document.getElementById('opacityTransitionSpeedVal');
+            opacityTransitionSpeedEl.addEventListener('input', () => {
+                config.opacityTransitionSpeed = +opacityTransitionSpeedEl.value / 100;
+                opacityTransitionSpeedVal.textContent = config.opacityTransitionSpeed.toFixed(2);
+            });
+
             // Buttons
             document.getElementById('regenerate').addEventListener('click', generateCells);
 
@@ -1207,6 +1262,9 @@
                 if (!polygon || polygon.length < 3) continue;
 
                 ctx.save();
+
+                // Apply opacity
+                ctx.globalAlpha = cell.opacity;
 
                 // Create rounded clipping path
                 drawRoundedPolygon(ctx, polygon, config.cornerRadius);
