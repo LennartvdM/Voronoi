@@ -1522,44 +1522,20 @@
         function render() {
             ctx.clearRect(0, 0, width, height);
 
-            // Draw ghost pins first (behind visible cells)
+            // Draw the margin background first
             if (config.contentZoneEnabled) {
                 const zoneTop = height * config.contentZoneTop;
                 const zoneBottom = height * (1 - config.contentZoneBottom);
 
-                for (const pin of cells) {
-                    if (!pin.isGhost) continue;
-
-                    const pinW = pin.pinWidth || 20;
-                    const pinH = pin.ghostSide === 'top' ? zoneTop : (height - zoneBottom);
-                    const push = pin.push;
-
-                    ctx.fillStyle = 'rgba(30, 35, 50, 0.95)';
-
-                    if (pin.ghostSide === 'top') {
-                        // Pin extends from top of canvas down, pushed further by cells
-                        ctx.fillRect(
-                            pin.x - pinW / 2,
-                            0,
-                            pinW,
-                            pinH + push
-                        );
-                    } else {
-                        // Pin extends from bottom of canvas up, pushed further by cells
-                        ctx.fillRect(
-                            pin.x - pinW / 2,
-                            height - pinH - push,
-                            pinW,
-                            pinH + push
-                        );
-                    }
-                }
+                ctx.fillStyle = 'rgba(26, 26, 46, 1)'; // Match body background
+                ctx.fillRect(0, 0, width, zoneTop);
+                ctx.fillRect(0, zoneBottom, width, height - zoneBottom);
             }
 
+            // Draw visible cells
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
 
-                // Skip ghost cells (already rendered as pins)
                 if (cell.isGhost) continue;
 
                 const polygon = cell.displayPolygon;
@@ -1619,6 +1595,42 @@
                 }
                 ctx.stroke();
                 ctx.shadowBlur = 0;
+            }
+
+            // Draw ghost pins ON TOP of cells (so they visibly yield into content area)
+            if (config.contentZoneEnabled) {
+                const zoneTop = height * config.contentZoneTop;
+                const zoneBottom = height * (1 - config.contentZoneBottom);
+
+                for (const pin of cells) {
+                    if (!pin.isGhost) continue;
+
+                    const pinW = pin.pinWidth || 20;
+                    const push = pin.push;
+
+                    // Only draw the "yield" portion that extends into content area
+                    if (push > 0) {
+                        ctx.fillStyle = 'rgba(26, 26, 46, 1)'; // Match background
+
+                        if (pin.ghostSide === 'top') {
+                            // Pin yields downward into content
+                            ctx.fillRect(
+                                pin.x - pinW / 2,
+                                zoneTop,
+                                pinW,
+                                push
+                            );
+                        } else {
+                            // Pin yields upward into content
+                            ctx.fillRect(
+                                pin.x - pinW / 2,
+                                zoneBottom - push,
+                                pinW,
+                                push
+                            );
+                        }
+                    }
+                }
             }
 
             // Debug mode
