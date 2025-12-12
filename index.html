@@ -486,6 +486,10 @@
         let tooltip;
         let animationId;
         let lastTime = 0;
+        // Smooth bounds for organic bleed
+        let currentBoundsTop = 0;
+        let currentBoundsBottom = 0;
+        let boundsInitialized = false;
 
         // ========== CELL CLASS ==========
         class Cell {
@@ -645,21 +649,67 @@
 
         // ========== VORONOI ==========
         function computeVoronoi() {
-            // Calculate bounds - either full canvas or content zone with fixed bleed buffer
-            let boundsTop = 0;
-            let boundsBottom = height;
+            // Calculate bounds - either full canvas or content zone with smooth bleed
+            let targetTop = 0;
+            let targetBottom = height;
 
             if (config.contentZoneEnabled) {
                 const zoneTop = height * config.contentZoneTop;
                 const zoneBottom = height * (1 - config.contentZoneBottom);
 
-                // Fixed bleed buffer - cells can push into this area but bounds stay stable
-                // This prevents the jarring "whole voronoi jumps" effect
-                boundsTop = Math.max(0, zoneTop - config.bleedBuffer);
-                boundsBottom = Math.min(height, zoneBottom + config.bleedBuffer);
+                // Base bounds = content zone (creates actual whitespace)
+                targetTop = zoneTop;
+                targetBottom = zoneBottom;
+
+                // Expand bounds only where cells have actually pushed outside
+                // This creates organic, per-cell bleed rather than pre-expanded space
+                for (const cell of cells) {
+                    if (cell.y < targetTop) {
+                        // Cell bleeding above - expand bounds to follow it
+                        const bleedAmount = targetTop - cell.y + 30;
+                        const maxBleed = config.bleedBuffer;
+                        targetTop = zoneTop - Math.min(bleedAmount, maxBleed);
+                    }
+                    if (cell.y > targetBottom) {
+                        // Cell bleeding below - expand bounds to follow it
+                        const bleedAmount = cell.y - targetBottom + 30;
+                        const maxBleed = config.bleedBuffer;
+                        targetBottom = zoneBottom + Math.min(bleedAmount, maxBleed);
+                    }
+                }
+
+                // Clamp to canvas
+                targetTop = Math.max(0, targetTop);
+                targetBottom = Math.min(height, targetBottom);
+
+                // Initialize or smoothly interpolate bounds
+                if (!boundsInitialized) {
+                    currentBoundsTop = targetTop;
+                    currentBoundsBottom = targetBottom;
+                    boundsInitialized = true;
+                } else {
+                    // Smooth interpolation - faster expand, slower contract
+                    const expandSpeed = 0.3;  // Fast when cells push out
+                    const contractSpeed = 0.08; // Slow when returning to zone
+
+                    if (targetTop < currentBoundsTop) {
+                        currentBoundsTop += (targetTop - currentBoundsTop) * expandSpeed;
+                    } else {
+                        currentBoundsTop += (targetTop - currentBoundsTop) * contractSpeed;
+                    }
+
+                    if (targetBottom > currentBoundsBottom) {
+                        currentBoundsBottom += (targetBottom - currentBoundsBottom) * expandSpeed;
+                    } else {
+                        currentBoundsBottom += (targetBottom - currentBoundsBottom) * contractSpeed;
+                    }
+                }
+            } else {
+                currentBoundsTop = 0;
+                currentBoundsBottom = height;
             }
 
-            const bounds = [[0, boundsTop], [width, boundsTop], [width, boundsBottom], [0, boundsBottom]];
+            const bounds = [[0, currentBoundsTop], [width, currentBoundsTop], [width, currentBoundsBottom], [0, currentBoundsBottom]];
 
             for (let i = 0; i < cells.length; i++) {
                 cells[i].polygon = computeCellPolygon(i, bounds);
@@ -873,6 +923,7 @@
 
         function generateCells() {
             cells = [];
+            boundsInitialized = false; // Reset smooth bounds
             const margin = 80;
 
             // Calculate vertical bounds based on content zone
@@ -1515,20 +1566,25 @@
                 if (config.contentZoneEnabled) {
                     const zoneTop = height * config.contentZoneTop;
                     const zoneBottom = height * (1 - config.contentZoneBottom);
-                    const bleedTop = Math.max(0, zoneTop - config.bleedBuffer);
-                    const bleedBottom = Math.min(height, zoneBottom + config.bleedBuffer);
+                    const maxBleedTop = Math.max(0, zoneTop - config.bleedBuffer);
+                    const maxBleedBottom = Math.min(height, zoneBottom + config.bleedBuffer);
 
-                    // Bleed buffer zones (lighter)
-                    ctx.fillStyle = 'rgba(100, 100, 255, 0.1)';
-                    ctx.fillRect(0, bleedTop, width, zoneTop - bleedTop);
-                    ctx.fillRect(0, zoneBottom, width, bleedBottom - zoneBottom);
+                    // Max bleed zone (where cells could potentially go)
+                    ctx.fillStyle = 'rgba(255, 100, 100, 0.1)';
+                    ctx.fillRect(0, 0, width, maxBleedTop);
+                    ctx.fillRect(0, maxBleedBottom, width, height - maxBleedBottom);
 
-                    // Hard boundary (outside bleed) - red
-                    ctx.fillStyle = 'rgba(255, 100, 100, 0.2)';
-                    ctx.fillRect(0, 0, width, bleedTop);
-                    ctx.fillRect(0, bleedBottom, width, height - bleedBottom);
+                    // Current active bleed (where bounds actually are)
+                    if (currentBoundsTop < zoneTop) {
+                        ctx.fillStyle = 'rgba(100, 200, 255, 0.2)';
+                        ctx.fillRect(0, currentBoundsTop, width, zoneTop - currentBoundsTop);
+                    }
+                    if (currentBoundsBottom > zoneBottom) {
+                        ctx.fillStyle = 'rgba(100, 200, 255, 0.2)';
+                        ctx.fillRect(0, zoneBottom, width, currentBoundsBottom - zoneBottom);
+                    }
 
-                    // Content zone boundary lines (solid)
+                    // Content zone boundary lines (solid green)
                     ctx.strokeStyle = 'rgba(100, 255, 100, 0.8)';
                     ctx.lineWidth = 2;
                     ctx.setLineDash([]);
@@ -1539,14 +1595,24 @@
                     ctx.lineTo(width, zoneBottom);
                     ctx.stroke();
 
-                    // Bleed buffer boundary lines (dashed)
-                    ctx.strokeStyle = 'rgba(100, 100, 255, 0.6)';
+                    // Current bounds (animated, cyan)
+                    ctx.strokeStyle = 'rgba(0, 200, 255, 0.9)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, currentBoundsTop);
+                    ctx.lineTo(width, currentBoundsTop);
+                    ctx.moveTo(0, currentBoundsBottom);
+                    ctx.lineTo(width, currentBoundsBottom);
+                    ctx.stroke();
+
+                    // Max bleed boundary lines (dashed red)
+                    ctx.strokeStyle = 'rgba(255, 100, 100, 0.5)';
                     ctx.setLineDash([8, 8]);
                     ctx.beginPath();
-                    ctx.moveTo(0, bleedTop);
-                    ctx.lineTo(width, bleedTop);
-                    ctx.moveTo(0, bleedBottom);
-                    ctx.lineTo(width, bleedBottom);
+                    ctx.moveTo(0, maxBleedTop);
+                    ctx.lineTo(width, maxBleedTop);
+                    ctx.moveTo(0, maxBleedBottom);
+                    ctx.lineTo(width, maxBleedBottom);
                     ctx.stroke();
                     ctx.setLineDash([]);
                 }
