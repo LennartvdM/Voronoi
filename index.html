@@ -637,15 +637,20 @@
         }
 
         // ========== VORONOI ==========
+        const maxBleed = 60; // Maximum pixels cells can bleed into margins
+
         function computeVoronoi() {
-            // Bounds are the content zone - creates clean horizontal edges
-            // Ghost pins handle the organic boundary interaction separately
+            // Bounds extend beyond content zone so cells CAN bleed into margins
+            // The pin physics will push them back - this allows real interaction
             let boundsTop = 0;
             let boundsBottom = height;
 
             if (config.contentZoneEnabled) {
-                boundsTop = height * config.contentZoneTop;
-                boundsBottom = height * (1 - config.contentZoneBottom);
+                const zoneTop = height * config.contentZoneTop;
+                const zoneBottom = height * (1 - config.contentZoneBottom);
+                // Allow cells to extend into margin by maxBleed amount
+                boundsTop = Math.max(0, zoneTop - maxBleed);
+                boundsBottom = Math.min(height, zoneBottom + maxBleed);
             }
 
             const bounds = [[0, boundsTop], [width, boundsTop], [width, boundsBottom], [0, boundsBottom]];
@@ -1539,15 +1544,8 @@
         function render() {
             ctx.clearRect(0, 0, width, height);
 
-            // Draw the margin background first
-            if (config.contentZoneEnabled) {
-                const zoneTop = height * config.contentZoneTop;
-                const zoneBottom = height * (1 - config.contentZoneBottom);
-
-                ctx.fillStyle = 'rgba(26, 26, 46, 1)'; // Match body background
-                ctx.fillRect(0, 0, width, zoneTop);
-                ctx.fillRect(0, zoneBottom, width, height - zoneBottom);
-            }
+            // Don't pre-fill margins - let cells bleed into them
+            // Pins will cover the margins and retract when pushed
 
             // Draw visible cells
             for (let i = 0; i < cells.length; i++) {
@@ -1614,36 +1612,49 @@
                 ctx.shadowBlur = 0;
             }
 
-            // Draw ghost pins ON TOP of cells (so they visibly yield into content area)
+            // Draw pin-art margins - pins cover margins by default, retract when cells push
             if (config.contentZoneEnabled) {
                 const zoneTop = height * config.contentZoneTop;
                 const zoneBottom = height * (1 - config.contentZoneBottom);
 
+                ctx.fillStyle = 'rgba(26, 26, 46, 1)'; // Match background
+
+                // First, fill entire margins at a baseline level (covers gaps between pins)
+                // Leave room for maximum possible bleed (uses global maxBleed constant)
+                ctx.fillRect(0, 0, width, zoneTop - maxBleed);
+                ctx.fillRect(0, zoneBottom + maxBleed, width, height - zoneBottom - maxBleed);
+
+                // Now draw individual pins which extend further and can retract
                 for (const pin of cells) {
                     if (!pin.isGhost) continue;
 
                     const pinW = pin.pinWidth || 20;
-                    const push = pin.push;
+                    const push = pin.push; // How much the pin has yielded
 
-                    // Only draw the "yield" portion that extends into content area
-                    if (push > 0) {
-                        ctx.fillStyle = 'rgba(26, 26, 46, 1)'; // Match background
-
-                        if (pin.ghostSide === 'top') {
-                            // Pin yields downward into content
+                    if (pin.ghostSide === 'top') {
+                        // Pin covers from baseline down to (zoneTop - push)
+                        // When pushed, it retracts upward, revealing more of the cell
+                        const pinBottom = zoneTop - push;
+                        const pinTop = zoneTop - maxBleed;
+                        if (pinBottom > pinTop) {
                             ctx.fillRect(
                                 pin.x - pinW / 2,
-                                zoneTop,
+                                pinTop,
                                 pinW,
-                                push
+                                pinBottom - pinTop
                             );
-                        } else {
-                            // Pin yields upward into content
+                        }
+                    } else {
+                        // Pin covers from (zoneBottom + push) up to baseline
+                        // When pushed, it retracts downward, revealing more of the cell
+                        const pinTop = zoneBottom + push;
+                        const pinBottom = zoneBottom + maxBleed;
+                        if (pinBottom > pinTop) {
                             ctx.fillRect(
                                 pin.x - pinW / 2,
-                                zoneBottom - push,
+                                pinTop,
                                 pinW,
-                                push
+                                pinBottom - pinTop
                             );
                         }
                     }
