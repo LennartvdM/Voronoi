@@ -624,7 +624,31 @@
 
         // ========== VORONOI ==========
         function computeVoronoi() {
-            const bounds = [[0, 0], [width, 0], [width, height], [0, height]];
+            // Calculate bounds - either full canvas or content zone
+            let boundsTop = 0;
+            let boundsBottom = height;
+
+            if (config.contentZoneEnabled) {
+                const zoneTop = height * config.contentZoneTop;
+                const zoneBottom = height * (1 - config.contentZoneBottom);
+
+                // Start with content zone bounds
+                boundsTop = zoneTop;
+                boundsBottom = zoneBottom;
+
+                // Expand bounds dynamically if any cell has bled outside
+                // This allows temporary bleed during interactions
+                for (const cell of cells) {
+                    if (cell.y < boundsTop) {
+                        boundsTop = Math.max(0, cell.y - 30);
+                    }
+                    if (cell.y > boundsBottom) {
+                        boundsBottom = Math.min(height, cell.y + 30);
+                    }
+                }
+            }
+
+            const bounds = [[0, boundsTop], [width, boundsTop], [width, boundsBottom], [0, boundsBottom]];
 
             for (let i = 0; i < cells.length; i++) {
                 cells[i].polygon = computeCellPolygon(i, bounds);
