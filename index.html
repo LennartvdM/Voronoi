@@ -645,29 +645,19 @@
         }
 
         // ========== VORONOI ==========
-        const maxBleed = 60; // Maximum pixels cells can bleed into margins
-
         function computeVoronoi() {
-            // Bounds extend beyond content zone so cells CAN bleed into margins
-            // The pin physics will push them back - this allows real interaction
+            // Bounds extend to full canvas - ghost cells in margins will clip visible cells
             let boundsTop = 0;
             let boundsBottom = height;
 
-            if (config.contentZoneEnabled) {
-                const zoneTop = height * config.contentZoneTop;
-                const zoneBottom = height * (1 - config.contentZoneBottom);
-                // Allow cells to extend into margin by maxBleed amount
-                boundsTop = Math.max(0, zoneTop - maxBleed);
-                boundsBottom = Math.min(height, zoneBottom + maxBleed);
-            }
-
             const bounds = [[0, boundsTop], [width, boundsTop], [width, boundsBottom], [0, boundsBottom]];
 
-            // Only compute Voronoi for visible cells (not ghost pins)
+            // Compute Voronoi for ALL cells (including ghosts - they participate in computation)
             for (let i = 0; i < cells.length; i++) {
-                if (cells[i].isGhost) continue;
                 cells[i].polygon = computeCellPolygon(i, bounds);
-                cells[i].displayPolygon = applyGap(cells[i].polygon, config.gap);
+                if (!cells[i].isGhost) {
+                    cells[i].displayPolygon = applyGap(cells[i].polygon, config.gap);
+                }
             }
         }
 
@@ -677,8 +667,7 @@
 
             for (let j = 0; j < cells.length; j++) {
                 if (index === j) continue;
-                // Skip ghost cells - they don't participate in Voronoi
-                if (cells[j].isGhost) continue;
+                // Ghost cells NOW participate in Voronoi - they clip visible cells
                 const other = cells[j];
 
                 const midX = (cell.x + other.x) / 2;
@@ -938,30 +927,29 @@
                 cells.push(cell);
             }
 
-            // Generate ghost pins at the boundary edges (if content zone enabled)
-            // Pins are rectangular elements that get pushed by nearby visible cells
+            // Generate ghost cells in margins that participate in Voronoi computation
+            // These cells "own" the margin space and clip visible cells at the boundary
             if (config.contentZoneEnabled) {
-                const pinWidth = 20;  // Width of each pin
-                const pinGap = 2;     // Gap between pins
-                const pinSpacing = pinWidth + pinGap;
-                const pinCount = Math.ceil(width / pinSpacing) + 1;
+                const ghostSpacing = 40; // Spacing between ghost cell centers
+                const ghostCount = Math.ceil(width / ghostSpacing) + 1;
 
-                // Top boundary pins
-                if (zoneTop > 20) {
-                    for (let i = 0; i < pinCount; i++) {
-                        const x = i * pinSpacing + pinWidth / 2;
-                        const ghost = new Cell(x, zoneTop, cells.length, true, 'top');
-                        ghost.pinWidth = pinWidth;
+                // Top margin ghost cells - positioned in middle of margin
+                if (zoneTop > 30) {
+                    const ghostY = zoneTop / 2; // Middle of top margin
+                    for (let i = 0; i < ghostCount; i++) {
+                        const x = i * ghostSpacing + ghostSpacing / 2;
+                        const ghost = new Cell(x, ghostY, cells.length, true, 'top');
                         cells.push(ghost);
                     }
                 }
 
-                // Bottom boundary pins
-                if (height - zoneBottom > 20) {
-                    for (let i = 0; i < pinCount; i++) {
-                        const x = i * pinSpacing + pinWidth / 2;
-                        const ghost = new Cell(x, zoneBottom, cells.length, true, 'bottom');
-                        ghost.pinWidth = pinWidth;
+                // Bottom margin ghost cells - positioned in middle of margin
+                const bottomMargin = height - zoneBottom;
+                if (bottomMargin > 30) {
+                    const ghostY = zoneBottom + bottomMargin / 2; // Middle of bottom margin
+                    for (let i = 0; i < ghostCount; i++) {
+                        const x = i * ghostSpacing + ghostSpacing / 2;
+                        const ghost = new Cell(x, ghostY, cells.length, true, 'bottom');
                         cells.push(ghost);
                     }
                 }
@@ -1483,59 +1471,31 @@
                 }
             }
 
-            // Calculate pin push based on visible cells approaching boundaries
-            // AND apply reciprocal force - pins push cells back!
+            // Soft boundary force - gently push visible cells away from content zone edges
+            // Ghost cells handle the Voronoi clipping, but this prevents cell centers
+            // from getting too close to the boundary (which would create thin slivers)
             if (config.contentZoneEnabled) {
                 const zoneTop = height * config.contentZoneTop;
                 const zoneBottom = height * (1 - config.contentZoneBottom);
-                const pushRange = 80; // How far cells can push pins
-                const maxPush = 60;   // Maximum push distance
+                const softZone = 60; // Distance from boundary where soft force kicks in
 
                 for (const cell of cells) {
                     if (cell.isGhost) continue;
 
-                    // Check cell proximity to boundaries and apply pushback force
                     const topDist = cell.y - zoneTop;
                     const bottomDist = zoneBottom - cell.y;
 
-                    // Pushback force when cell approaches boundary
-                    if (topDist < pushRange && topDist > -maxPush) {
-                        const penetration = pushRange - topDist;
-                        const pushbackForce = penetration * 0.02 * config.spring;
-                        cell.vy += pushbackForce; // Push down (away from top)
+                    // Soft push away from top boundary
+                    if (topDist < softZone && topDist > 0) {
+                        const penetration = softZone - topDist;
+                        const pushForce = penetration * 0.01 * config.spring;
+                        cell.vy += pushForce;
                     }
-                    if (bottomDist < pushRange && bottomDist > -maxPush) {
-                        const penetration = pushRange - bottomDist;
-                        const pushbackForce = penetration * 0.02 * config.spring;
-                        cell.vy -= pushbackForce; // Push up (away from bottom)
-                    }
-
-                    // Check each ghost pin for visual push
-                    for (const pin of cells) {
-                        if (!pin.isGhost) continue;
-
-                        // Horizontal distance to pin
-                        const hdist = Math.abs(cell.x - pin.x);
-                        if (hdist > pushRange) continue;
-
-                        // Calculate push based on cell proximity to boundary
-                        let pushAmount = 0;
-                        if (pin.ghostSide === 'top') {
-                            const penetration = zoneTop - cell.y + pushRange;
-                            if (penetration > 0) {
-                                const hFalloff = 1 - (hdist / pushRange);
-                                pushAmount = Math.min(penetration * hFalloff * 0.8, maxPush);
-                            }
-                        } else if (pin.ghostSide === 'bottom') {
-                            const penetration = cell.y - zoneBottom + pushRange;
-                            if (penetration > 0) {
-                                const hFalloff = 1 - (hdist / pushRange);
-                                pushAmount = Math.min(penetration * hFalloff * 0.8, maxPush);
-                            }
-                        }
-
-                        // Accumulate push from multiple cells
-                        pin.targetPush = Math.max(pin.targetPush, pushAmount);
+                    // Soft push away from bottom boundary
+                    if (bottomDist < softZone && bottomDist > 0) {
+                        const penetration = softZone - bottomDist;
+                        const pushForce = penetration * 0.01 * config.spring;
+                        cell.vy -= pushForce;
                     }
                 }
             }
@@ -1620,53 +1580,20 @@
                 ctx.shadowBlur = 0;
             }
 
-            // Draw pin-art margins - pins cover margins by default, retract when cells push
-            if (config.contentZoneEnabled) {
-                const zoneTop = height * config.contentZoneTop;
-                const zoneBottom = height * (1 - config.contentZoneBottom);
+            // Draw ghost cells with background color - they define the margin boundaries
+            // Ghost cells participate in Voronoi, so visible cells are naturally clipped by them
+            ctx.fillStyle = 'rgba(26, 26, 46, 1)'; // Match background
+            for (const cell of cells) {
+                if (!cell.isGhost) continue;
+                if (!cell.polygon || cell.polygon.length < 3) continue;
 
-                ctx.fillStyle = 'rgba(26, 26, 46, 1)'; // Match background
-
-                // First, fill entire margins at a baseline level (covers gaps between pins)
-                // Leave room for maximum possible bleed (uses global maxBleed constant)
-                ctx.fillRect(0, 0, width, zoneTop - maxBleed);
-                ctx.fillRect(0, zoneBottom + maxBleed, width, height - zoneBottom - maxBleed);
-
-                // Now draw individual pins which extend further and can retract
-                for (const pin of cells) {
-                    if (!pin.isGhost) continue;
-
-                    const pinW = pin.pinWidth || 20;
-                    const push = pin.push; // How much the pin has yielded
-
-                    if (pin.ghostSide === 'top') {
-                        // Pin covers from baseline down to (zoneTop - push)
-                        // When pushed, it retracts upward, revealing more of the cell
-                        const pinBottom = zoneTop - push;
-                        const pinTop = zoneTop - maxBleed;
-                        if (pinBottom > pinTop) {
-                            ctx.fillRect(
-                                pin.x - pinW / 2,
-                                pinTop,
-                                pinW,
-                                pinBottom - pinTop
-                            );
-                        }
-                    } else {
-                        // Pin covers from (zoneBottom + push) up to baseline
-                        // When pushed, it retracts downward, revealing more of the cell
-                        const pinTop = zoneBottom + push;
-                        const pinBottom = zoneBottom + maxBleed;
-                        if (pinBottom > pinTop) {
-                            ctx.fillRect(
-                                pin.x - pinW / 2,
-                                pinTop,
-                                pinW,
-                                pinBottom - pinTop
-                            );
-                        }
-                    }
+                ctx.beginPath();
+                ctx.moveTo(cell.polygon[0][0], cell.polygon[0][1]);
+                for (let i = 1; i < cell.polygon.length; i++) {
+                    ctx.lineTo(cell.polygon[i][0], cell.polygon[i][1]);
                 }
+                ctx.closePath();
+                ctx.fill();
             }
 
             // Debug mode
