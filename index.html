@@ -368,17 +368,24 @@
                 </div>
             </div>
             <div class="control-group hide-tablet">
+                <label>Bleed Buffer</label>
+                <div class="control-row">
+                    <input type="range" id="bleedBuffer" min="20" max="200" value="80">
+                    <span class="control-value" id="bleedBufferVal">80</span>
+                </div>
+            </div>
+            <div class="control-group hide-tablet">
                 <label>Boundary Push</label>
                 <div class="control-row">
-                    <input type="range" id="boundaryStiffness" min="1" max="30" value="8">
-                    <span class="control-value" id="boundaryStiffnessVal">0.08</span>
+                    <input type="range" id="boundaryStiffness" min="1" max="50" value="15">
+                    <span class="control-value" id="boundaryStiffnessVal">0.15</span>
                 </div>
             </div>
             <div class="control-group hide-mobile">
                 <label>Hover Privilege</label>
                 <div class="control-row">
-                    <input type="range" id="hoverBleedPrivilege" min="0" max="100" value="50">
-                    <span class="control-value" id="hoverBleedPrivilegeVal">0.50</span>
+                    <input type="range" id="hoverBleedPrivilege" min="0" max="100" value="70">
+                    <span class="control-value" id="hoverBleedPrivilegeVal">0.70</span>
                 </div>
             </div>
 
@@ -428,9 +435,10 @@
             contentZoneEnabled: true,    // Enable/disable content zone constraint
             contentZoneTop: 0.15,        // 0-0.5: top margin as fraction of height
             contentZoneBottom: 0.15,     // 0-0.5: bottom margin as fraction of height
-            boundaryStiffness: 0.08,     // 0-0.3: how strongly cells are pushed back
-            boundaryDamping: 0.85,       // 0-1: damping applied to cells in buffer zone
-            hoverBleedPrivilege: 0.5     // 0-1: how much more the hovered cell can bleed (0=same as others, 1=full freedom)
+            bleedBuffer: 80,             // Fixed pixel buffer beyond content zone where cells can bleed
+            boundaryStiffness: 0.15,     // 0-0.3: how strongly cells are pushed back (increased default)
+            boundaryDamping: 0.82,       // 0-1: damping applied to cells in buffer zone
+            hoverBleedPrivilege: 0.7     // 0-1: how much more the hovered cell can bleed (increased default)
         };
 
         // ========== SAMPLE DATA ==========
@@ -637,7 +645,7 @@
 
         // ========== VORONOI ==========
         function computeVoronoi() {
-            // Calculate bounds - either full canvas or content zone
+            // Calculate bounds - either full canvas or content zone with fixed bleed buffer
             let boundsTop = 0;
             let boundsBottom = height;
 
@@ -645,20 +653,10 @@
                 const zoneTop = height * config.contentZoneTop;
                 const zoneBottom = height * (1 - config.contentZoneBottom);
 
-                // Start with content zone bounds
-                boundsTop = zoneTop;
-                boundsBottom = zoneBottom;
-
-                // Expand bounds dynamically if any cell has bled outside
-                // This allows temporary bleed during interactions
-                for (const cell of cells) {
-                    if (cell.y < boundsTop) {
-                        boundsTop = Math.max(0, cell.y - 30);
-                    }
-                    if (cell.y > boundsBottom) {
-                        boundsBottom = Math.min(height, cell.y + 30);
-                    }
-                }
+                // Fixed bleed buffer - cells can push into this area but bounds stay stable
+                // This prevents the jarring "whole voronoi jumps" effect
+                boundsTop = Math.max(0, zoneTop - config.bleedBuffer);
+                boundsBottom = Math.min(height, zoneBottom + config.bleedBuffer);
             }
 
             const bounds = [[0, boundsTop], [width, boundsTop], [width, boundsBottom], [0, boundsBottom]];
@@ -1276,6 +1274,14 @@
             });
             contentZoneBottomEl.addEventListener('change', generateCells);
 
+            const bleedBufferEl = document.getElementById('bleedBuffer');
+            const bleedBufferVal = document.getElementById('bleedBufferVal');
+            bleedBufferEl.addEventListener('input', () => {
+                config.bleedBuffer = +bleedBufferEl.value;
+                bleedBufferVal.textContent = config.bleedBuffer;
+                computeVoronoi(); // Recompute with new buffer
+            });
+
             const boundaryStiffnessEl = document.getElementById('boundaryStiffness');
             const boundaryStiffnessVal = document.getElementById('boundaryStiffnessVal');
             boundaryStiffnessEl.addEventListener('input', () => {
@@ -1509,30 +1515,38 @@
                 if (config.contentZoneEnabled) {
                     const zoneTop = height * config.contentZoneTop;
                     const zoneBottom = height * (1 - config.contentZoneBottom);
+                    const bleedTop = Math.max(0, zoneTop - config.bleedBuffer);
+                    const bleedBottom = Math.min(height, zoneBottom + config.bleedBuffer);
 
-                    // Top boundary - gradient fade
-                    const topGradient = ctx.createLinearGradient(0, 0, 0, zoneTop);
-                    topGradient.addColorStop(0, 'rgba(255, 100, 100, 0.3)');
-                    topGradient.addColorStop(1, 'rgba(255, 100, 100, 0)');
-                    ctx.fillStyle = topGradient;
-                    ctx.fillRect(0, 0, width, zoneTop);
+                    // Bleed buffer zones (lighter)
+                    ctx.fillStyle = 'rgba(100, 100, 255, 0.1)';
+                    ctx.fillRect(0, bleedTop, width, zoneTop - bleedTop);
+                    ctx.fillRect(0, zoneBottom, width, bleedBottom - zoneBottom);
 
-                    // Bottom boundary - gradient fade
-                    const bottomGradient = ctx.createLinearGradient(0, zoneBottom, 0, height);
-                    bottomGradient.addColorStop(0, 'rgba(255, 100, 100, 0)');
-                    bottomGradient.addColorStop(1, 'rgba(255, 100, 100, 0.3)');
-                    ctx.fillStyle = bottomGradient;
-                    ctx.fillRect(0, zoneBottom, width, height - zoneBottom);
+                    // Hard boundary (outside bleed) - red
+                    ctx.fillStyle = 'rgba(255, 100, 100, 0.2)';
+                    ctx.fillRect(0, 0, width, bleedTop);
+                    ctx.fillRect(0, bleedBottom, width, height - bleedBottom);
 
-                    // Boundary lines
-                    ctx.strokeStyle = 'rgba(255, 100, 100, 0.8)';
+                    // Content zone boundary lines (solid)
+                    ctx.strokeStyle = 'rgba(100, 255, 100, 0.8)';
                     ctx.lineWidth = 2;
-                    ctx.setLineDash([8, 8]);
+                    ctx.setLineDash([]);
                     ctx.beginPath();
                     ctx.moveTo(0, zoneTop);
                     ctx.lineTo(width, zoneTop);
                     ctx.moveTo(0, zoneBottom);
                     ctx.lineTo(width, zoneBottom);
+                    ctx.stroke();
+
+                    // Bleed buffer boundary lines (dashed)
+                    ctx.strokeStyle = 'rgba(100, 100, 255, 0.6)';
+                    ctx.setLineDash([8, 8]);
+                    ctx.beginPath();
+                    ctx.moveTo(0, bleedTop);
+                    ctx.lineTo(width, bleedTop);
+                    ctx.moveTo(0, bleedBottom);
+                    ctx.lineTo(width, bleedBottom);
                     ctx.stroke();
                     ctx.setLineDash([]);
                 }
