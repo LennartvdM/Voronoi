@@ -502,14 +502,14 @@
     function defaultGetX(p) { return p[0]; }
     function defaultGetY(p) { return p[1]; }
 
-    // Voronoi class built on Delaunator
+    // Voronoi class built on Delaunator - simple brute force approach
     class Voronoi {
         constructor(points, bounds) {
             this.points = points;
             this.bounds = bounds; // [xmin, ymin, xmax, ymax]
             this._delaunay = null;
             this._circumcenters = null;
-            this._inedges = null;
+            this._pointToTriangles = null; // Map point index -> list of triangle indices
             this.update();
         }
 
@@ -518,174 +518,161 @@
 
             this._delaunay = Delaunator.from(this.points);
             this._computeCircumcenters();
-            this._computeInedges();
+            this._buildPointToTriangles();
         }
 
         _computeCircumcenters() {
             const { _delaunay: { triangles, coords } } = this;
-            const n = triangles.length / 3;
-            this._circumcenters = new Float64Array(n * 2);
+            const numTriangles = triangles.length / 3;
+            this._circumcenters = new Float64Array(numTriangles * 2);
 
-            for (let i = 0; i < n; i++) {
-                const i0 = triangles[i * 3];
-                const i1 = triangles[i * 3 + 1];
-                const i2 = triangles[i * 3 + 2];
+            for (let t = 0; t < numTriangles; t++) {
+                const i0 = triangles[t * 3];
+                const i1 = triangles[t * 3 + 1];
+                const i2 = triangles[t * 3 + 2];
                 const x0 = coords[i0 * 2], y0 = coords[i0 * 2 + 1];
                 const x1 = coords[i1 * 2], y1 = coords[i1 * 2 + 1];
                 const x2 = coords[i2 * 2], y2 = coords[i2 * 2 + 1];
 
                 const c = circumcenter(x0, y0, x1, y1, x2, y2);
-                this._circumcenters[i * 2] = c.x;
-                this._circumcenters[i * 2 + 1] = c.y;
+                this._circumcenters[t * 2] = c.x;
+                this._circumcenters[t * 2 + 1] = c.y;
             }
         }
 
-        _computeInedges() {
-            const { _delaunay: { triangles, halfedges }, points } = this;
-            this._inedges = new Int32Array(points.length).fill(-1);
+        _buildPointToTriangles() {
+            const { _delaunay: { triangles }, points } = this;
+            const numTriangles = triangles.length / 3;
 
-            for (let e = 0; e < triangles.length; e++) {
-                const p = triangles[e];
-                // Store the incoming edge for each point
-                // Prefer hull edges (halfedge === -1) for boundary cells
-                if (this._inedges[p] === -1 || halfedges[e] === -1) {
-                    this._inedges[p] = e;
-                }
+            // For each point, store list of triangles containing it
+            this._pointToTriangles = new Array(points.length);
+            for (let i = 0; i < points.length; i++) {
+                this._pointToTriangles[i] = [];
+            }
+
+            for (let t = 0; t < numTriangles; t++) {
+                const i0 = triangles[t * 3];
+                const i1 = triangles[t * 3 + 1];
+                const i2 = triangles[t * 3 + 2];
+                this._pointToTriangles[i0].push(t);
+                this._pointToTriangles[i1].push(t);
+                this._pointToTriangles[i2].push(t);
             }
         }
 
         cellPolygon(i) {
             if (!this._delaunay || this.points.length < 3) return null;
+            if (i < 0 || i >= this.points.length) return null;
 
-            const { _delaunay: { triangles, halfedges }, _circumcenters, _inedges, bounds, points } = this;
+            const { _circumcenters, _pointToTriangles, bounds, points } = this;
             const [xmin, ymin, xmax, ymax] = bounds;
 
-            const e0 = _inedges[i];
-            if (e0 === -1) return null; // Point not in triangulation
+            // Get all triangles containing this point
+            const triangleIndices = _pointToTriangles[i];
+            if (!triangleIndices || triangleIndices.length === 0) return null;
 
+            // Collect circumcenters
             const vertices = [];
-            let e = e0;
-
-            // Walk around the point, collecting circumcenters
-            do {
-                const t = Math.floor(e / 3);
+            for (const t of triangleIndices) {
                 vertices.push([_circumcenters[t * 2], _circumcenters[t * 2 + 1]]);
+            }
 
-                // Move to next edge around vertex i
-                e = (e % 3 === 2) ? e - 2 : e + 1; // next edge in triangle
+            // Sort vertices by angle around the seed point
+            const px = points[i][0], py = points[i][1];
+            vertices.sort((a, b) => Math.atan2(a[1] - py, a[0] - px) - Math.atan2(b[1] - py, b[0] - px));
 
-                if (triangles[e] !== i) {
-                    // This shouldn't happen in a valid triangulation
-                    break;
-                }
+            // Check if this is a boundary cell (on convex hull)
+            const hull = this._delaunay.hull;
+            const isOnHull = hull.includes(i);
 
-                e = halfedges[e]; // move to adjacent triangle
-
-                if (e === -1) {
-                    // Hit convex hull boundary - this is an open cell
-                    // We need to project to infinity (bounding box)
-                    break;
-                }
-            } while (e !== e0);
-
-            // If we hit the boundary (e === -1), we need to close the cell
-            // by projecting to the bounding box and walking back
-            if (e === -1) {
-                // This is a boundary cell - need to add projected vertices
-                // Find the other boundary edge for this point
-                let eStart = e0;
-
-                // Walk backwards to find where we started on the hull
-                let ePrev = e0;
-                do {
-                    const prevEdge = (ePrev % 3 === 0) ? ePrev + 2 : ePrev - 1;
-                    const twin = halfedges[prevEdge];
-                    if (twin === -1) {
-                        eStart = prevEdge;
-                        break;
-                    }
-                    ePrev = twin;
-                } while (ePrev !== e0);
-
-                // Project the cell to the bounding box
-                // Get the last circumcenter we added
-                const lastCC = vertices[vertices.length - 1];
-                const px = points[i][0], py = points[i][1];
-
-                // Project outward from last circumcenter through perpendicular
-                const projected1 = this._projectToBounds(lastCC[0], lastCC[1], px, py);
-                if (projected1) vertices.push(projected1);
-
-                // Add bounding box corners if needed
-                this._addBoundaryCorners(vertices, px, py);
-
-                // Project from first circumcenter
-                const firstCC = vertices[0];
-                const projected2 = this._projectToBounds(firstCC[0], firstCC[1], px, py);
-                if (projected2) vertices.unshift(projected2);
+            if (isOnHull) {
+                // For boundary cells, we need to extend to the bounding box
+                // Add projected points and corners
+                this._extendBoundaryCell(vertices, px, py);
             }
 
             if (vertices.length < 3) return null;
-
-            // Sort vertices by angle around seed point for consistent winding
-            const px = points[i][0], py = points[i][1];
-            vertices.sort((a, b) => Math.atan2(a[1] - py, a[0] - px) - Math.atan2(b[1] - py, b[0] - px));
 
             // Clip to bounds
             return this._clip(vertices);
         }
 
-        _projectToBounds(cx, cy, px, py) {
+        _extendBoundaryCell(vertices, px, py) {
             const [xmin, ymin, xmax, ymax] = this.bounds;
 
-            // Direction from circumcenter away from seed point
-            const dx = cx - px;
-            const dy = cy - py;
-            const len = Math.sqrt(dx * dx + dy * dy);
-            if (len === 0) return null;
+            // Project first and last circumcenters outward
+            if (vertices.length >= 2) {
+                const first = vertices[0];
+                const last = vertices[vertices.length - 1];
 
-            // Project far enough to hit bounds
-            const scale = Math.max(xmax - xmin, ymax - ymin) * 2;
-            return [cx + (dx / len) * scale, cy + (dy / len) * scale];
-        }
+                // Project in direction away from seed point
+                const proj1 = this._projectRay(first[0], first[1], px, py);
+                const proj2 = this._projectRay(last[0], last[1], px, py);
 
-        _addBoundaryCorners(vertices, px, py) {
-            const [xmin, ymin, xmax, ymax] = this.bounds;
+                if (proj1) vertices.unshift(proj1);
+                if (proj2) vertices.push(proj2);
+            }
+
+            // Add corners that belong to this cell
             const corners = [[xmin, ymin], [xmax, ymin], [xmax, ymax], [xmin, ymax]];
-
-            // Add corners that are in the cell's region (closest to this seed)
             for (const corner of corners) {
-                // Simple heuristic: add corner if it's roughly in the direction of the cell
-                const dx = corner[0] - px;
-                const dy = corner[1] - py;
-                const dist = dx * dx + dy * dy;
-
-                // Check if this corner should belong to this cell
-                let dominated = false;
-                for (const otherPoint of this.points) {
-                    if (otherPoint[0] === px && otherPoint[1] === py) continue;
-                    const odx = corner[0] - otherPoint[0];
-                    const ody = corner[1] - otherPoint[1];
-                    if (odx * odx + ody * ody < dist) {
-                        dominated = true;
-                        break;
-                    }
-                }
-
-                if (!dominated) {
+                if (this._isClosestPoint(corner[0], corner[1], px, py)) {
                     vertices.push(corner);
                 }
             }
+
+            // Re-sort after adding new vertices
+            vertices.sort((a, b) => Math.atan2(a[1] - py, a[0] - px) - Math.atan2(b[1] - py, b[0] - px));
+        }
+
+        _projectRay(cx, cy, px, py) {
+            const [xmin, ymin, xmax, ymax] = this.bounds;
+
+            // Direction from seed point through circumcenter
+            const dx = cx - px;
+            const dy = cy - py;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            if (len < 0.001) return null;
+
+            // Normalize
+            const ndx = dx / len;
+            const ndy = dy / len;
+
+            // Find intersection with bounding box
+            let tMin = Infinity;
+
+            if (ndx > 0) tMin = Math.min(tMin, (xmax - cx) / ndx);
+            else if (ndx < 0) tMin = Math.min(tMin, (xmin - cx) / ndx);
+
+            if (ndy > 0) tMin = Math.min(tMin, (ymax - cy) / ndy);
+            else if (ndy < 0) tMin = Math.min(tMin, (ymin - cy) / ndy);
+
+            if (tMin === Infinity || tMin < 0) return null;
+
+            return [cx + ndx * tMin, cy + ndy * tMin];
+        }
+
+        _isClosestPoint(x, y, px, py) {
+            const distToP = (x - px) * (x - px) + (y - py) * (y - py);
+
+            for (const other of this.points) {
+                if (other[0] === px && other[1] === py) continue;
+                const distToOther = (x - other[0]) * (x - other[0]) + (y - other[1]) * (y - other[1]);
+                if (distToOther < distToP - 0.001) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         _clip(polygon) {
             const [xmin, ymin, xmax, ymax] = this.bounds;
 
             const clips = [
-                { inside: p => p[0] >= xmin - 0.5, intersect: (a, b) => [xmin, a[1] + (b[1] - a[1]) * (xmin - a[0]) / (b[0] - a[0])] },
-                { inside: p => p[0] <= xmax + 0.5, intersect: (a, b) => [xmax, a[1] + (b[1] - a[1]) * (xmax - a[0]) / (b[0] - a[0])] },
-                { inside: p => p[1] >= ymin - 0.5, intersect: (a, b) => [a[0] + (b[0] - a[0]) * (ymin - a[1]) / (b[1] - a[1]), ymin] },
-                { inside: p => p[1] <= ymax + 0.5, intersect: (a, b) => [a[0] + (b[0] - a[0]) * (ymax - a[1]) / (b[1] - a[1]), ymax] }
+                { inside: p => p[0] >= xmin, intersect: (a, b) => [xmin, a[1] + (b[1] - a[1]) * (xmin - a[0]) / (b[0] - a[0])] },
+                { inside: p => p[0] <= xmax, intersect: (a, b) => [xmax, a[1] + (b[1] - a[1]) * (xmax - a[0]) / (b[0] - a[0])] },
+                { inside: p => p[1] >= ymin, intersect: (a, b) => [a[0] + (b[0] - a[0]) * (ymin - a[1]) / (b[1] - a[1]), ymin] },
+                { inside: p => p[1] <= ymax, intersect: (a, b) => [a[0] + (b[0] - a[0]) * (ymax - a[1]) / (b[1] - a[1]), ymax] }
             ];
 
             let output = polygon;
@@ -695,9 +682,9 @@
                 const input = output;
                 output = [];
 
-                for (let i = 0; i < input.length; i++) {
-                    const curr = input[i];
-                    const prev = input[(i + input.length - 1) % input.length];
+                for (let j = 0; j < input.length; j++) {
+                    const curr = input[j];
+                    const prev = input[(j + input.length - 1) % input.length];
 
                     if (inside(curr)) {
                         if (!inside(prev)) {
@@ -710,11 +697,10 @@
                 }
             }
 
-            return output;
+            return output.length >= 3 ? output : null;
         }
 
         findCell(x, y) {
-            // Find closest point (simple brute force for small n)
             let minDist = Infinity;
             let closest = -1;
             for (let i = 0; i < this.points.length; i++) {
