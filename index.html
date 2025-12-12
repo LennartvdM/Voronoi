@@ -352,8 +352,34 @@
 
             <div class="divider"></div>
 
+            <!-- Content Zone / Layout -->
+            <div class="control-group">
+                <label>Zone Top</label>
+                <div class="control-row">
+                    <input type="range" id="contentZoneTop" min="0" max="40" value="15">
+                    <span class="control-value" id="contentZoneTopVal">15%</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Zone Bottom</label>
+                <div class="control-row">
+                    <input type="range" id="contentZoneBottom" min="0" max="40" value="15">
+                    <span class="control-value" id="contentZoneBottomVal">15%</span>
+                </div>
+            </div>
+            <div class="control-group hide-tablet">
+                <label>Boundary Push</label>
+                <div class="control-row">
+                    <input type="range" id="boundaryStiffness" min="1" max="30" value="8">
+                    <span class="control-value" id="boundaryStiffnessVal">0.08</span>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
             <!-- Buttons -->
             <div class="btn-group">
+                <button class="btn btn-secondary" id="toggleContentZone">Zone</button>
                 <button class="btn btn-secondary" id="togglePhysics">Pause</button>
                 <button class="btn btn-secondary" id="toggleDebug">Debug</button>
                 <button class="btn btn-secondary" id="loadUnsplash">Unsplash</button>
@@ -390,7 +416,13 @@
             maxExpansion: 150,     // Max pixels a cell can move from rest
             // Opacity controls
             nonHoveredOpacity: 0.6,      // 0-1: opacity for non-hovered cells
-            opacityTransitionSpeed: 0.15 // 0-1: how fast opacity transitions happen
+            opacityTransitionSpeed: 0.15, // 0-1: how fast opacity transitions happen
+            // Soft boundary / content zone controls
+            contentZoneEnabled: true,    // Enable/disable content zone constraint
+            contentZoneTop: 0.15,        // 0-0.5: top margin as fraction of height
+            contentZoneBottom: 0.15,     // 0-0.5: bottom margin as fraction of height
+            boundaryStiffness: 0.08,     // 0-0.3: how strongly cells are pushed back
+            boundaryDamping: 0.85        // 0-1: damping applied to cells in buffer zone
         };
 
         // ========== SAMPLE DATA ==========
@@ -506,7 +538,30 @@
                     this.vy *= 0.5;
                 }
 
-                // Keep in bounds
+                // Soft boundary - content zone constraint
+                if (config.contentZoneEnabled) {
+                    const zoneTop = height * config.contentZoneTop;
+                    const zoneBottom = height * (1 - config.contentZoneBottom);
+
+                    // Check if cell is outside content zone (vertically)
+                    if (this.y < zoneTop) {
+                        // Cell is above content zone - push down
+                        const overshoot = zoneTop - this.y;
+                        const pushForce = overshoot * config.boundaryStiffness;
+                        this.vy += pushForce * dt;
+                        // Apply damping when in buffer zone
+                        this.vy *= config.boundaryDamping;
+                    } else if (this.y > zoneBottom) {
+                        // Cell is below content zone - push up
+                        const overshoot = this.y - zoneBottom;
+                        const pushForce = overshoot * config.boundaryStiffness;
+                        this.vy -= pushForce * dt;
+                        // Apply damping when in buffer zone
+                        this.vy *= config.boundaryDamping;
+                    }
+                }
+
+                // Keep in bounds (hard limit at canvas edge)
                 const margin = 30;
                 this.x = Math.max(margin, Math.min(width - margin, this.x));
                 this.y = Math.max(margin, Math.min(height - margin, this.y));
@@ -784,14 +839,31 @@
         function generateCells() {
             cells = [];
             const margin = 80;
-            const minDist = Math.sqrt((width * height) / config.cellCount) * 0.6;
+
+            // Calculate vertical bounds based on content zone
+            let yMin, yMax;
+            if (config.contentZoneEnabled) {
+                yMin = height * config.contentZoneTop + margin;
+                yMax = height * (1 - config.contentZoneBottom) - margin;
+                // Ensure valid range
+                if (yMax <= yMin) {
+                    yMin = margin;
+                    yMax = height - margin;
+                }
+            } else {
+                yMin = margin;
+                yMax = height - margin;
+            }
+
+            const contentHeight = yMax - yMin;
+            const minDist = Math.sqrt((width * contentHeight) / config.cellCount) * 0.6;
 
             const points = [];
             let attempts = 0;
 
             while (points.length < config.cellCount && attempts < 2000) {
                 const x = margin + Math.random() * (width - 2 * margin);
-                const y = margin + Math.random() * (height - 2 * margin);
+                const y = yMin + Math.random() * (yMax - yMin);
 
                 let valid = true;
                 for (const p of points) {
@@ -809,7 +881,7 @@
             while (points.length < config.cellCount) {
                 points.push([
                     margin + Math.random() * (width - 2 * margin),
-                    margin + Math.random() * (height - 2 * margin)
+                    yMin + Math.random() * (yMax - yMin)
                 ]);
             }
 
@@ -1150,8 +1222,40 @@
                 imageZoomSpeedVal.textContent = config.imageZoomSpeed.toFixed(2);
             });
 
+            // Content Zone Controls
+            const contentZoneTopEl = document.getElementById('contentZoneTop');
+            const contentZoneTopVal = document.getElementById('contentZoneTopVal');
+            contentZoneTopEl.addEventListener('input', () => {
+                config.contentZoneTop = +contentZoneTopEl.value / 100;
+                contentZoneTopVal.textContent = contentZoneTopEl.value + '%';
+            });
+            contentZoneTopEl.addEventListener('change', generateCells);
+
+            const contentZoneBottomEl = document.getElementById('contentZoneBottom');
+            const contentZoneBottomVal = document.getElementById('contentZoneBottomVal');
+            contentZoneBottomEl.addEventListener('input', () => {
+                config.contentZoneBottom = +contentZoneBottomEl.value / 100;
+                contentZoneBottomVal.textContent = contentZoneBottomEl.value + '%';
+            });
+            contentZoneBottomEl.addEventListener('change', generateCells);
+
+            const boundaryStiffnessEl = document.getElementById('boundaryStiffness');
+            const boundaryStiffnessVal = document.getElementById('boundaryStiffnessVal');
+            boundaryStiffnessEl.addEventListener('input', () => {
+                config.boundaryStiffness = +boundaryStiffnessEl.value / 100;
+                boundaryStiffnessVal.textContent = config.boundaryStiffness.toFixed(2);
+            });
+
             // Buttons
             document.getElementById('regenerate').addEventListener('click', generateCells);
+
+            const toggleContentZone = document.getElementById('toggleContentZone');
+            toggleContentZone.classList.toggle('active', config.contentZoneEnabled);
+            toggleContentZone.addEventListener('click', () => {
+                config.contentZoneEnabled = !config.contentZoneEnabled;
+                toggleContentZone.classList.toggle('active', config.contentZoneEnabled);
+                generateCells();
+            });
 
             const togglePhysics = document.getElementById('togglePhysics');
             togglePhysics.addEventListener('click', () => {
@@ -1357,6 +1461,38 @@
 
             // Debug mode
             if (config.debugMode) {
+                // Draw content zone boundaries
+                if (config.contentZoneEnabled) {
+                    const zoneTop = height * config.contentZoneTop;
+                    const zoneBottom = height * (1 - config.contentZoneBottom);
+
+                    // Top boundary - gradient fade
+                    const topGradient = ctx.createLinearGradient(0, 0, 0, zoneTop);
+                    topGradient.addColorStop(0, 'rgba(255, 100, 100, 0.3)');
+                    topGradient.addColorStop(1, 'rgba(255, 100, 100, 0)');
+                    ctx.fillStyle = topGradient;
+                    ctx.fillRect(0, 0, width, zoneTop);
+
+                    // Bottom boundary - gradient fade
+                    const bottomGradient = ctx.createLinearGradient(0, zoneBottom, 0, height);
+                    bottomGradient.addColorStop(0, 'rgba(255, 100, 100, 0)');
+                    bottomGradient.addColorStop(1, 'rgba(255, 100, 100, 0.3)');
+                    ctx.fillStyle = bottomGradient;
+                    ctx.fillRect(0, zoneBottom, width, height - zoneBottom);
+
+                    // Boundary lines
+                    ctx.strokeStyle = 'rgba(255, 100, 100, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([8, 8]);
+                    ctx.beginPath();
+                    ctx.moveTo(0, zoneTop);
+                    ctx.lineTo(width, zoneTop);
+                    ctx.moveTo(0, zoneBottom);
+                    ctx.lineTo(width, zoneBottom);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
                 for (const cell of cells) {
                     // Current position
                     ctx.fillStyle = '#fff';
