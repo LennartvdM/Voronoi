@@ -236,6 +236,13 @@
                     <span class="control-value" id="cornerRadiusVal">12</span>
                 </div>
             </div>
+            <div class="control-group">
+                <label>Base Zoom</label>
+                <div class="control-row">
+                    <input type="range" id="baseZoom" min="100" max="200" value="130">
+                    <span class="control-value" id="baseZoomVal">1.30</span>
+                </div>
+            </div>
 
             <div class="divider"></div>
 
@@ -348,7 +355,8 @@
             hoverForce: 60,
             repulsion: 35,
             centerRelevance: 0.70, // 0 = expand uniformly, 1 = direction matters
-            zoomScale: 1.15,
+            baseZoom: 1.3,         // Rest state zoom (>1 = zoomed in)
+            hoverZoom: 1.0,        // Hover state zoom (1 = normal, <baseZoom = zoom out effect)
             physicsEnabled: true,
             debugMode: false,
             // New hover dynamics
@@ -418,8 +426,8 @@
                 this.vy = 0;
                 this.polygon = null;
                 this.displayPolygon = null; // With gap applied
-                this.zoom = 1;
-                this.targetZoom = 1;
+                this.zoom = config.baseZoom;
+                this.targetZoom = config.baseZoom;
 
                 const data = cellData[index % cellData.length];
                 this.title = data.title;
@@ -814,7 +822,7 @@
             mouseX = -9999;
             mouseY = -9999;
             hoveredCell = -1;
-            cells.forEach(c => c.targetZoom = 1);
+            cells.forEach(c => c.targetZoom = config.baseZoom);
             tooltip.classList.remove('visible');
         }
 
@@ -858,7 +866,7 @@
                 mouseX = -9999;
                 mouseY = -9999;
                 hoveredCell = -1;
-                cells.forEach(c => c.targetZoom = 1);
+                cells.forEach(c => c.targetZoom = config.baseZoom);
             }, 100);
         }
 
@@ -873,9 +881,9 @@
             }
 
             if (found !== hoveredCell) {
-                if (hoveredCell >= 0) cells[hoveredCell].targetZoom = 1;
+                if (hoveredCell >= 0) cells[hoveredCell].targetZoom = config.baseZoom;
                 hoveredCell = found;
-                if (hoveredCell >= 0) cells[hoveredCell].targetZoom = config.zoomScale;
+                if (hoveredCell >= 0) cells[hoveredCell].targetZoom = config.hoverZoom;
             }
 
             canvas.style.cursor = hoveredCell >= 0 ? 'pointer' : 'default';
@@ -966,6 +974,20 @@
             cornerEl.addEventListener('input', () => {
                 config.cornerRadius = +cornerEl.value;
                 cornerVal.textContent = config.cornerRadius;
+            });
+
+            // Base Zoom
+            const baseZoomEl = document.getElementById('baseZoom');
+            const baseZoomVal = document.getElementById('baseZoomVal');
+            baseZoomEl.addEventListener('input', () => {
+                config.baseZoom = +baseZoomEl.value / 100;
+                baseZoomVal.textContent = config.baseZoom.toFixed(2);
+                // Update all non-hovered cells to new base zoom
+                cells.forEach((c, i) => {
+                    if (i !== hoveredCell) {
+                        c.targetZoom = config.baseZoom;
+                    }
+                });
             });
 
             // Spring
