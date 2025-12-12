@@ -282,6 +282,7 @@
             <div class="btn-group">
                 <button class="btn btn-secondary" id="togglePhysics">Pause</button>
                 <button class="btn btn-secondary" id="toggleDebug">Debug</button>
+                <button class="btn btn-secondary" id="loadUnsplash">Unsplash</button>
                 <button class="btn btn-primary" id="regenerate">Regenerate</button>
             </div>
         </div>
@@ -798,15 +799,44 @@
 
         function updateTooltip(clientX, clientY) {
             if (hoveredCell >= 0 && cells[hoveredCell]) {
-                tooltip.textContent = cells[hoveredCell].title;
+                const cell = cells[hoveredCell];
+                tooltip.textContent = cell.title;
                 tooltip.classList.add('visible');
 
                 const rect = canvas.parentElement.getBoundingClientRect();
-                const x = clientX - rect.left + 15;
-                const y = clientY - rect.top - 40;
+                const cursorX = clientX - rect.left;
+                const cursorY = clientY - rect.top;
 
-                tooltip.style.left = Math.min(x, width - 150) + 'px';
-                tooltip.style.top = Math.max(10, y) + 'px';
+                // Direction from cell center to cursor
+                const dx = cursorX - cell.x;
+                const dy = cursorY - cell.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                // Position tooltip on opposite side of cursor from cell center
+                // (in the "shadow" cast by cursor, away from the cell center "sun")
+                const offset = 50;
+                let tooltipX, tooltipY;
+
+                if (dist > 1) {
+                    // Normalize and extend in same direction (away from center)
+                    tooltipX = cursorX + (dx / dist) * offset;
+                    tooltipY = cursorY + (dy / dist) * offset;
+                } else {
+                    tooltipX = cursorX + offset;
+                    tooltipY = cursorY;
+                }
+
+                // Get tooltip dimensions for boundary checking
+                const tooltipRect = tooltip.getBoundingClientRect();
+                const tw = tooltipRect.width || 100;
+                const th = tooltipRect.height || 30;
+
+                // Keep tooltip in bounds
+                tooltipX = Math.max(5, Math.min(width - tw - 5, tooltipX));
+                tooltipY = Math.max(5, Math.min(height - th - 5, tooltipY));
+
+                tooltip.style.left = tooltipX + 'px';
+                tooltip.style.top = tooltipY + 'px';
             } else {
                 tooltip.classList.remove('visible');
             }
@@ -893,6 +923,53 @@
             toggleDebug.addEventListener('click', () => {
                 config.debugMode = !config.debugMode;
                 toggleDebug.classList.toggle('active', config.debugMode);
+            });
+
+            const loadUnsplash = document.getElementById('loadUnsplash');
+            loadUnsplash.addEventListener('click', loadUnsplashImages);
+        }
+
+        // ========== UNSPLASH IMAGES ==========
+        function loadUnsplashImages() {
+            const btn = document.getElementById('loadUnsplash');
+            btn.textContent = 'Loading...';
+            btn.disabled = true;
+
+            let loaded = 0;
+            const total = cells.length;
+
+            cells.forEach((cell, i) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                // Use random seed for variety, sig for cache busting
+                img.src = `https://picsum.photos/300/300?random=${i}&t=${Date.now()}`;
+
+                img.onload = () => {
+                    const size = 300;
+                    const patternCanvas = document.createElement('canvas');
+                    patternCanvas.width = size;
+                    patternCanvas.height = size;
+                    const pctx = patternCanvas.getContext('2d');
+
+                    // Draw image covering the canvas
+                    pctx.drawImage(img, 0, 0, size, size);
+
+                    cell.pattern = patternCanvas;
+                    loaded++;
+
+                    if (loaded >= total) {
+                        btn.textContent = 'Unsplash';
+                        btn.disabled = false;
+                    }
+                };
+
+                img.onerror = () => {
+                    loaded++;
+                    if (loaded >= total) {
+                        btn.textContent = 'Unsplash';
+                        btn.disabled = false;
+                    }
+                };
             });
         }
 
