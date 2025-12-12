@@ -65,36 +65,40 @@
             background: rgba(20, 20, 35, 0.95);
             backdrop-filter: blur(10px);
             border-top: 1px solid rgba(255,255,255,0.1);
-            padding: 16px 20px;
+            padding: 12px 20px;
             display: flex;
             flex-wrap: wrap;
-            gap: 16px;
+            gap: 12px 16px;
             align-items: flex-end;
+        }
+
+        .control-section {
+            display: contents;
         }
 
         .control-group {
             display: flex;
             flex-direction: column;
-            gap: 6px;
-            min-width: 120px;
+            gap: 4px;
+            min-width: 100px;
         }
 
         .control-group.wide {
-            min-width: 160px;
+            min-width: 130px;
         }
 
         .control-group label {
-            font-size: 10px;
+            font-size: 9px;
             color: rgba(255,255,255,0.5);
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
             font-weight: 600;
         }
 
         .control-row {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         input[type="range"] {
@@ -108,25 +112,24 @@
 
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
             background: #6366f1;
             cursor: pointer;
             box-shadow: 0 2px 6px rgba(99,102,241,0.4);
-            transition: transform 0.15s, box-shadow 0.15s;
+            transition: transform 0.15s;
         }
 
         input[type="range"]::-webkit-slider-thumb:hover {
-            transform: scale(1.2);
-            box-shadow: 0 2px 10px rgba(99,102,241,0.6);
+            transform: scale(1.15);
         }
 
         .control-value {
-            font-size: 12px;
+            font-size: 11px;
             color: #fff;
             font-weight: 600;
-            min-width: 32px;
+            min-width: 28px;
             text-align: right;
             font-variant-numeric: tabular-nums;
         }
@@ -138,16 +141,13 @@
         }
 
         .btn {
-            padding: 10px 18px;
+            padding: 8px 14px;
             border: none;
-            border-radius: 8px;
-            font-size: 13px;
+            border-radius: 6px;
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
         }
 
         .btn-primary {
@@ -157,7 +157,7 @@
         }
 
         .btn-primary:hover {
-            transform: translateY(-2px);
+            transform: translateY(-1px);
             box-shadow: 0 6px 20px rgba(99,102,241,0.4);
         }
 
@@ -178,18 +178,23 @@
 
         .divider {
             width: 1px;
-            height: 40px;
+            height: 36px;
             background: rgba(255,255,255,0.1);
-            margin: 0 8px;
         }
 
-        @media (max-width: 900px) {
-            .controls {
-                padding: 12px 16px;
-                gap: 12px;
+        @media (max-width: 1100px) {
+            .control-group.hide-tablet {
+                display: none;
             }
-            .control-group {
-                min-width: 100px;
+        }
+
+        @media (max-width: 800px) {
+            .controls {
+                padding: 10px 12px;
+                gap: 10px 12px;
+            }
+            .control-group.hide-mobile {
+                display: none;
             }
             .btn-group {
                 width: 100%;
@@ -197,15 +202,6 @@
                 justify-content: flex-end;
             }
             .divider {
-                display: none;
-            }
-        }
-
-        @media (max-width: 600px) {
-            .controls {
-                padding: 10px 12px;
-            }
-            .control-group.hide-mobile {
                 display: none;
             }
         }
@@ -218,6 +214,7 @@
             <div class="tooltip" id="tooltip"></div>
         </div>
         <div class="controls">
+            <!-- Grid Settings -->
             <div class="control-group">
                 <label>Cells</label>
                 <div class="control-row">
@@ -225,14 +222,32 @@
                     <span class="control-value" id="cellCountVal">12</span>
                 </div>
             </div>
+            <div class="control-group">
+                <label>Gap</label>
+                <div class="control-row">
+                    <input type="range" id="gap" min="0" max="30" value="4">
+                    <span class="control-value" id="gapVal">4</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Corners</label>
+                <div class="control-row">
+                    <input type="range" id="cornerRadius" min="0" max="40" value="12">
+                    <span class="control-value" id="cornerRadiusVal">12</span>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Physics Settings -->
             <div class="control-group wide">
-                <label>Spring Strength</label>
+                <label>Spring</label>
                 <div class="control-row">
                     <input type="range" id="spring" min="5" max="80" value="30">
                     <span class="control-value" id="springVal">0.30</span>
                 </div>
             </div>
-            <div class="control-group">
+            <div class="control-group hide-tablet">
                 <label>Damping</label>
                 <div class="control-row">
                     <input type="range" id="damping" min="50" max="98" value="88">
@@ -253,7 +268,17 @@
                     <span class="control-value" id="repulsionVal">35</span>
                 </div>
             </div>
+            <div class="control-group wide">
+                <label>Center Pull</label>
+                <div class="control-row">
+                    <input type="range" id="centerRelevance" min="0" max="100" value="70">
+                    <span class="control-value" id="centerRelevanceVal">0.70</span>
+                </div>
+            </div>
+
             <div class="divider"></div>
+
+            <!-- Buttons -->
             <div class="btn-group">
                 <button class="btn btn-secondary" id="togglePhysics">Pause</button>
                 <button class="btn btn-secondary" id="toggleDebug">Debug</button>
@@ -269,11 +294,14 @@
         // ========== CONFIGURATION ==========
         const config = {
             cellCount: 12,
+            gap: 4,
+            cornerRadius: 12,
             spring: 0.30,
             damping: 0.88,
             hoverForce: 60,
             repulsion: 35,
-            zoomScale: 1.2,
+            centerRelevance: 0.70, // 0 = expand uniformly, 1 = direction matters
+            zoomScale: 1.15,
             physicsEnabled: true,
             debugMode: false
         };
@@ -333,6 +361,7 @@
                 this.vx = 0;
                 this.vy = 0;
                 this.polygon = null;
+                this.displayPolygon = null; // With gap applied
                 this.zoom = 1;
                 this.targetZoom = 1;
 
@@ -345,7 +374,7 @@
 
             update(dt) {
                 if (!config.physicsEnabled) {
-                    this.zoom += (this.targetZoom - this.zoom) * 0.15;
+                    this.zoom += (this.targetZoom - this.zoom) * 0.12;
                     return;
                 }
 
@@ -370,7 +399,7 @@
                 this.y = Math.max(margin, Math.min(height - margin, this.y));
 
                 // Smooth zoom
-                this.zoom += (this.targetZoom - this.zoom) * 0.15;
+                this.zoom += (this.targetZoom - this.zoom) * 0.12;
             }
 
             applyForce(fx, fy) {
@@ -393,8 +422,8 @@
                 pctx.fillRect(0, 0, size, size);
 
                 // Decorative circles
-                pctx.globalAlpha = 0.1;
-                for (let i = 0; i < 6; i++) {
+                pctx.globalAlpha = 0.08;
+                for (let i = 0; i < 5; i++) {
                     const cx = Math.random() * size;
                     const cy = Math.random() * size;
                     const r = 30 + Math.random() * 60;
@@ -405,9 +434,9 @@
                 }
 
                 // Cell number
-                pctx.globalAlpha = 0.25;
+                pctx.globalAlpha = 0.2;
                 pctx.fillStyle = '#fff';
-                pctx.font = `bold ${size * 0.4}px system-ui, sans-serif`;
+                pctx.font = `bold ${size * 0.35}px system-ui, sans-serif`;
                 pctx.textAlign = 'center';
                 pctx.textBaseline = 'middle';
                 pctx.fillText(this.index + 1, size / 2, size / 2);
@@ -424,76 +453,17 @@
             }
         }
 
-        // ========== VORONOI (Half-plane intersection - guaranteed correct) ==========
+        // ========== VORONOI ==========
         function computeVoronoi() {
             const bounds = [[0, 0], [width, 0], [width, height], [0, height]];
 
             for (let i = 0; i < cells.length; i++) {
-                cells[i].polygon = computeCell(i, bounds);
+                cells[i].polygon = computeCellPolygon(i, bounds);
+                cells[i].displayPolygon = applyGap(cells[i].polygon, config.gap);
             }
         }
 
-        function computeCell(index, bounds) {
-            const cell = cells[index];
-            let polygon = [...bounds]; // Start with bounding box
-
-            // Clip against half-plane for each other point
-            for (let j = 0; j < cells.length; j++) {
-                if (i === j) continue;
-                const other = cells[j];
-
-                // Perpendicular bisector between cell and other
-                const midX = (cell.x + other.x) / 2;
-                const midY = (cell.y + other.y) / 2;
-
-                // Normal pointing toward cell (away from other)
-                const nx = cell.x - other.x;
-                const ny = cell.y - other.y;
-
-                // Clip polygon to half-plane
-                polygon = clipPolygon(polygon, midX, midY, nx, ny);
-
-                if (polygon.length < 3) break;
-            }
-
-            return polygon.length >= 3 ? polygon : null;
-        }
-
-        function clipPolygon(polygon, px, py, nx, ny) {
-            // Sutherland-Hodgman clipping against half-plane
-            // Keep points where (point - p) · n >= 0
-            const output = [];
-            const n = polygon.length;
-
-            for (let i = 0; i < n; i++) {
-                const curr = polygon[i];
-                const next = polygon[(i + 1) % n];
-
-                const currDist = (curr[0] - px) * nx + (curr[1] - py) * ny;
-                const nextDist = (next[0] - px) * nx + (next[1] - py) * ny;
-
-                if (currDist >= 0) {
-                    output.push(curr);
-                    if (nextDist < 0) {
-                        output.push(intersect(curr, next, px, py, nx, ny));
-                    }
-                } else if (nextDist >= 0) {
-                    output.push(intersect(curr, next, px, py, nx, ny));
-                }
-            }
-
-            return output;
-        }
-
-        function intersect(a, b, px, py, nx, ny) {
-            const dx = b[0] - a[0];
-            const dy = b[1] - a[1];
-            const t = ((px - a[0]) * nx + (py - a[1]) * ny) / (dx * nx + dy * ny);
-            return [a[0] + t * dx, a[1] + t * dy];
-        }
-
-        // Fix: the loop variable was wrong
-        function computeCellFixed(index, bounds) {
+        function computeCellPolygon(index, bounds) {
             const cell = cells[index];
             let polygon = [...bounds];
 
@@ -511,6 +481,134 @@
             }
 
             return polygon.length >= 3 ? polygon : null;
+        }
+
+        function clipPolygon(polygon, px, py, nx, ny) {
+            const output = [];
+            const n = polygon.length;
+
+            for (let i = 0; i < n; i++) {
+                const curr = polygon[i];
+                const next = polygon[(i + 1) % n];
+
+                const currDist = (curr[0] - px) * nx + (curr[1] - py) * ny;
+                const nextDist = (next[0] - px) * nx + (next[1] - py) * ny;
+
+                if (currDist >= 0) {
+                    output.push(curr);
+                    if (nextDist < 0) {
+                        output.push(lineIntersect(curr, next, px, py, nx, ny));
+                    }
+                } else if (nextDist >= 0) {
+                    output.push(lineIntersect(curr, next, px, py, nx, ny));
+                }
+            }
+
+            return output;
+        }
+
+        function lineIntersect(a, b, px, py, nx, ny) {
+            const dx = b[0] - a[0];
+            const dy = b[1] - a[1];
+            const t = ((px - a[0]) * nx + (py - a[1]) * ny) / (dx * nx + dy * ny);
+            return [a[0] + t * dx, a[1] + t * dy];
+        }
+
+        // ========== GAP (shrink polygon toward centroid) ==========
+        function applyGap(polygon, gap) {
+            if (!polygon || polygon.length < 3 || gap <= 0) return polygon;
+
+            // Find centroid
+            let cx = 0, cy = 0;
+            for (const p of polygon) {
+                cx += p[0];
+                cy += p[1];
+            }
+            cx /= polygon.length;
+            cy /= polygon.length;
+
+            // Shrink each point toward centroid
+            return polygon.map(p => {
+                const dx = p[0] - cx;
+                const dy = p[1] - cy;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < gap) return [cx, cy];
+                const shrink = gap / dist;
+                return [
+                    p[0] - dx * shrink,
+                    p[1] - dy * shrink
+                ];
+            });
+        }
+
+        // ========== ROUNDED CORNERS ==========
+        function drawRoundedPolygon(ctx, polygon, radius) {
+            if (!polygon || polygon.length < 3) return;
+
+            if (radius <= 0) {
+                // No rounding - just draw straight
+                ctx.beginPath();
+                ctx.moveTo(polygon[0][0], polygon[0][1]);
+                for (let i = 1; i < polygon.length; i++) {
+                    ctx.lineTo(polygon[i][0], polygon[i][1]);
+                }
+                ctx.closePath();
+                return;
+            }
+
+            const n = polygon.length;
+            ctx.beginPath();
+
+            for (let i = 0; i < n; i++) {
+                const prev = polygon[(i - 1 + n) % n];
+                const curr = polygon[i];
+                const next = polygon[(i + 1) % n];
+
+                // Vectors from current point to neighbors
+                let dx1 = prev[0] - curr[0];
+                let dy1 = prev[1] - curr[1];
+                let dx2 = next[0] - curr[0];
+                let dy2 = next[1] - curr[1];
+
+                // Distances
+                const dist1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+                const dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+
+                // Limit radius to half the shorter edge
+                const maxRadius = Math.min(dist1, dist2) / 2;
+                const r = Math.min(radius, maxRadius);
+
+                if (r < 1 || dist1 < 1 || dist2 < 1) {
+                    // Too small to round
+                    if (i === 0) {
+                        ctx.moveTo(curr[0], curr[1]);
+                    } else {
+                        ctx.lineTo(curr[0], curr[1]);
+                    }
+                    continue;
+                }
+
+                // Normalize
+                dx1 /= dist1; dy1 /= dist1;
+                dx2 /= dist2; dy2 /= dist2;
+
+                // Points where the arc starts and ends
+                const startX = curr[0] + dx1 * r;
+                const startY = curr[1] + dy1 * r;
+                const endX = curr[0] + dx2 * r;
+                const endY = curr[1] + dy2 * r;
+
+                if (i === 0) {
+                    ctx.moveTo(startX, startY);
+                } else {
+                    ctx.lineTo(startX, startY);
+                }
+
+                // Draw arc
+                ctx.arcTo(curr[0], curr[1], endX, endY, r);
+            }
+
+            ctx.closePath();
         }
 
         // ========== INITIALIZATION ==========
@@ -541,7 +639,6 @@
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
             if (cells.length > 0) {
-                // Reposition cells proportionally
                 generateCells();
             }
         }
@@ -551,7 +648,6 @@
             const margin = 80;
             const minDist = Math.sqrt((width * height) / config.cellCount) * 0.6;
 
-            // Poisson-like distribution
             const points = [];
             let attempts = 0;
 
@@ -568,13 +664,10 @@
                     }
                 }
 
-                if (valid) {
-                    points.push([x, y]);
-                }
+                if (valid) points.push([x, y]);
                 attempts++;
             }
 
-            // Fill remaining if needed
             while (points.length < config.cellCount) {
                 points.push([
                     margin + Math.random() * (width - 2 * margin),
@@ -598,17 +691,14 @@
                 computeVoronoi();
             });
 
-            // Mouse
             canvas.addEventListener('mousemove', handlePointerMove);
             canvas.addEventListener('mouseleave', handlePointerLeave);
             canvas.addEventListener('click', handleClick);
 
-            // Touch
             canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
             canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
             canvas.addEventListener('touchend', handleTouchEnd);
 
-            // Controls
             setupControls();
         }
 
@@ -633,7 +723,6 @@
                 const cell = cells[hoveredCell];
                 if (cell.link) {
                     console.log('Navigate to:', cell.link);
-                    // window.location.href = cell.link;
                 }
             }
         }
@@ -676,7 +765,6 @@
         function updateHover() {
             let found = -1;
 
-            // Find which cell contains the mouse
             for (let i = 0; i < cells.length; i++) {
                 if (cells[i].polygon && pointInPolygon(mouseX, mouseY, cells[i].polygon)) {
                     found = i;
@@ -734,6 +822,23 @@
             });
             cellCountEl.addEventListener('change', generateCells);
 
+            // Gap
+            const gapEl = document.getElementById('gap');
+            const gapVal = document.getElementById('gapVal');
+            gapEl.addEventListener('input', () => {
+                config.gap = +gapEl.value;
+                gapVal.textContent = config.gap;
+                computeVoronoi();
+            });
+
+            // Corner radius
+            const cornerEl = document.getElementById('cornerRadius');
+            const cornerVal = document.getElementById('cornerRadiusVal');
+            cornerEl.addEventListener('input', () => {
+                config.cornerRadius = +cornerEl.value;
+                cornerVal.textContent = config.cornerRadius;
+            });
+
             // Spring
             const springEl = document.getElementById('spring');
             const springVal = document.getElementById('springVal');
@@ -766,6 +871,14 @@
                 repulsionVal.textContent = config.repulsion;
             });
 
+            // Center relevance
+            const centerEl = document.getElementById('centerRelevance');
+            const centerVal = document.getElementById('centerRelevanceVal');
+            centerEl.addEventListener('input', () => {
+                config.centerRelevance = +centerEl.value / 100;
+                centerVal.textContent = config.centerRelevance.toFixed(2);
+            });
+
             // Buttons
             document.getElementById('regenerate').addEventListener('click', generateCells);
 
@@ -785,74 +898,77 @@
 
         // ========== PHYSICS ==========
         function updatePhysics(dt) {
-            // Apply hover forces
             if (hoveredCell >= 0 && config.physicsEnabled) {
                 const hovered = cells[hoveredCell];
 
-                // Push hovered cell away from cursor
+                // Direction from cursor to cell center
                 const dx = hovered.x - mouseX;
                 const dy = hovered.y - mouseY;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
-                if (dist > 1 && dist < config.hoverForce * 2) {
-                    const force = (config.hoverForce / dist) * 0.15;
-                    hovered.applyForce(dx * force, dy * force);
-                }
+                if (dist > 1) {
+                    // Center relevance controls how much direction matters
+                    // At 0: push in all directions equally (expand uniformly)
+                    // At 1: push away from cursor (current behavior)
 
-                // Push neighbors away
-                for (let i = 0; i < cells.length; i++) {
-                    if (i === hoveredCell) continue;
-                    const other = cells[i];
-                    const odx = other.x - hovered.x;
-                    const ody = other.y - hovered.y;
-                    const odist = Math.sqrt(odx * odx + ody * ody);
-                    const threshold = config.repulsion * 4;
+                    const directedForce = config.hoverForce / dist * 0.15;
 
-                    if (odist > 1 && odist < threshold) {
-                        const force = ((threshold - odist) / threshold) * config.repulsion * 0.008;
-                        other.applyForce(odx / odist * force, ody / odist * force);
+                    // Uniform expansion force (push all neighbors, cell stays put)
+                    const uniformForce = config.hoverForce * 0.008;
+
+                    // Blend based on centerRelevance
+                    const cr = config.centerRelevance;
+
+                    // Directed component
+                    const dirX = dx / dist * directedForce * cr;
+                    const dirY = dy / dist * directedForce * cr;
+
+                    hovered.applyForce(dirX, dirY);
+
+                    // Push neighbors away from hovered cell
+                    for (let i = 0; i < cells.length; i++) {
+                        if (i === hoveredCell) continue;
+                        const other = cells[i];
+                        const odx = other.x - hovered.x;
+                        const ody = other.y - hovered.y;
+                        const odist = Math.sqrt(odx * odx + ody * ody);
+                        const threshold = config.repulsion * 5;
+
+                        if (odist > 1 && odist < threshold) {
+                            // Directed repulsion (from hovered cell)
+                            const directedRepulsion = ((threshold - odist) / threshold) * config.repulsion * 0.006 * cr;
+
+                            // Uniform repulsion (equal in all directions, creates expansion)
+                            const uniformRepulsion = uniformForce * (1 - cr) * (threshold - odist) / threshold;
+
+                            const totalForce = directedRepulsion + uniformRepulsion;
+                            other.applyForce(odx / odist * totalForce, ody / odist * totalForce);
+                        }
                     }
                 }
             }
 
-            // Update all cells
             for (const cell of cells) {
                 cell.update(dt);
             }
 
-            // Recompute Voronoi
             computeVoronoi();
-        }
-
-        // Fix computeVoronoi to use the correct function
-        function computeVoronoi() {
-            const bounds = [[0, 0], [width, 0], [width, height], [0, height]];
-
-            for (let i = 0; i < cells.length; i++) {
-                cells[i].polygon = computeCellFixed(i, bounds);
-            }
         }
 
         // ========== RENDERING ==========
         function render() {
             ctx.clearRect(0, 0, width, height);
 
-            // Draw cells
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
-                const polygon = cell.polygon;
+                const polygon = cell.displayPolygon;
 
                 if (!polygon || polygon.length < 3) continue;
 
                 ctx.save();
 
-                // Create path
-                ctx.beginPath();
-                ctx.moveTo(polygon[0][0], polygon[0][1]);
-                for (let j = 1; j < polygon.length; j++) {
-                    ctx.lineTo(polygon[j][0], polygon[j][1]);
-                }
-                ctx.closePath();
+                // Create rounded clipping path
+                drawRoundedPolygon(ctx, polygon, config.cornerRadius);
                 ctx.clip();
 
                 // Calculate bounds
@@ -872,7 +988,7 @@
                 // Draw pattern with zoom
                 if (cell.pattern) {
                     const zoom = cell.zoom;
-                    const size = Math.max(cellW, cellH) * 1.3 * zoom;
+                    const size = Math.max(cellW, cellH) * 1.4 * zoom;
                     ctx.drawImage(
                         cell.pattern,
                         centerX - size / 2,
@@ -885,20 +1001,15 @@
                 ctx.restore();
 
                 // Draw border
-                ctx.beginPath();
-                ctx.moveTo(polygon[0][0], polygon[0][1]);
-                for (let j = 1; j < polygon.length; j++) {
-                    ctx.lineTo(polygon[j][0], polygon[j][1]);
-                }
-                ctx.closePath();
+                drawRoundedPolygon(ctx, polygon, config.cornerRadius);
 
                 if (i === hoveredCell) {
                     ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-                    ctx.lineWidth = 3;
+                    ctx.lineWidth = 2;
                     ctx.shadowColor = 'rgba(255,255,255,0.5)';
-                    ctx.shadowBlur = 10;
+                    ctx.shadowBlur = 15;
                 } else {
-                    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
                     ctx.lineWidth = 1;
                     ctx.shadowBlur = 0;
                 }
@@ -908,14 +1019,16 @@
 
             // Debug mode
             if (config.debugMode) {
-                ctx.fillStyle = '#fff';
                 for (const cell of cells) {
+                    // Current position
+                    ctx.fillStyle = '#fff';
                     ctx.beginPath();
-                    ctx.arc(cell.x, cell.y, 5, 0, Math.PI * 2);
+                    ctx.arc(cell.x, cell.y, 4, 0, Math.PI * 2);
                     ctx.fill();
 
                     // Rest position
-                    ctx.strokeStyle = 'rgba(255,255,0,0.5)';
+                    ctx.strokeStyle = 'rgba(255,255,0,0.6)';
+                    ctx.lineWidth = 2;
                     ctx.beginPath();
                     ctx.arc(cell.restX, cell.restY, 8, 0, Math.PI * 2);
                     ctx.stroke();
@@ -931,7 +1044,7 @@
 
         // ========== ANIMATION LOOP ==========
         function animate(time) {
-            const dt = Math.min((time - lastTime) / 16, 3); // Cap at ~3x speed
+            const dt = Math.min((time - lastTime) / 16, 3);
             lastTime = time;
 
             updatePhysics(dt);
