@@ -988,10 +988,10 @@
                     // At 0: push in all directions equally (expand uniformly)
                     // At 1: push away from cursor (current behavior)
 
-                    const directedForce = config.hoverForce / dist * 0.15;
+                    const directedForce = config.hoverForce / dist * 0.5;
 
                     // Uniform expansion force (push all neighbors, cell stays put)
-                    const uniformForce = config.hoverForce * 0.008;
+                    const uniformForce = config.hoverForce * 0.03;
 
                     // Blend based on centerRelevance
                     const cr = config.centerRelevance;
@@ -1009,11 +1009,11 @@
                         const odx = other.x - hovered.x;
                         const ody = other.y - hovered.y;
                         const odist = Math.sqrt(odx * odx + ody * ody);
-                        const threshold = config.repulsion * 5;
+                        const threshold = config.repulsion * 6;
 
                         if (odist > 1 && odist < threshold) {
                             // Directed repulsion (from hovered cell)
-                            const directedRepulsion = ((threshold - odist) / threshold) * config.repulsion * 0.006 * cr;
+                            const directedRepulsion = ((threshold - odist) / threshold) * config.repulsion * 0.025 * cr;
 
                             // Uniform repulsion (equal in all directions, creates expansion)
                             const uniformRepulsion = uniformForce * (1 - cr) * (threshold - odist) / threshold;
