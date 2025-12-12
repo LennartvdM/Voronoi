@@ -675,8 +675,9 @@
                 const dist1 = Math.sqrt((prev[0] - curr[0]) ** 2 + (prev[1] - curr[1]) ** 2);
                 const dist2 = Math.sqrt((next[0] - curr[0]) ** 2 + (next[1] - curr[1]) ** 2);
 
-                // Limit radius to 40% of the shorter edge (less aggressive than 50%)
-                const maxRadius = Math.min(dist1, dist2) * 0.4;
+                // Limit radius to 50% of the shorter edge - allows corners to meet at edge midpoints
+                // arcTo() handles overflow gracefully, so this is safe even for tight corners
+                const maxRadius = Math.min(dist1, dist2) * 0.5;
                 radii[i] = Math.max(0, Math.min(radius, maxRadius));
             }
 
