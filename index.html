@@ -664,162 +664,104 @@
         }
 
         // ========== VORONOI ==========
-        // Build stepped bounds polygon based on cell proximity to boundaries
-        // SIMPLIFIED: Smooth, organic response driven primarily by hovered cell
+        // Build organic bounds that smoothly yield to cell pressure
         function buildSteppedBounds(zoneTop, zoneBottom) {
             if (!config.steppedBoundsEnabled) {
                 return [[0, zoneTop], [width, zoneTop], [width, zoneBottom], [0, zoneBottom]];
             }
 
-            const mapSize = Math.ceil(width) + 1;
+            // Sample points along the boundary (fewer = smoother curves)
+            const sampleCount = 32;
+            const sampleWidth = width / (sampleCount - 1);
 
-            // Initialize smoothed depth maps if needed
-            if (!smoothedTopDepths || smoothedTopDepths.length !== mapSize) {
-                smoothedTopDepths = new Array(mapSize).fill(0);
+            // Initialize smoothed depths if needed
+            if (!smoothedTopDepths || smoothedTopDepths.length !== sampleCount) {
+                smoothedTopDepths = new Array(sampleCount).fill(0);
             }
-            if (!smoothedBottomDepths || smoothedBottomDepths.length !== mapSize) {
-                smoothedBottomDepths = new Array(mapSize).fill(0);
+            if (!smoothedBottomDepths || smoothedBottomDepths.length !== sampleCount) {
+                smoothedBottomDepths = new Array(sampleCount).fill(0);
             }
 
-            // Build TARGET depth maps based on cell proximity
-            const targetTopDepths = new Array(mapSize).fill(0);
-            const targetBottomDepths = new Array(mapSize).fill(0);
-
-            // Detection range from boundary
-            const detectionRange = 120;
+            // Calculate target depths at each sample point
+            const targetTop = new Array(sampleCount).fill(0);
+            const targetBottom = new Array(sampleCount).fill(0);
 
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
                 if (cell.isGhost) continue;
 
-                // Get cell's horizontal extent from polygon or estimate from position
-                let cellLeft, cellRight;
-                if (cell.polygon && cell.polygon.length >= 3) {
-                    cellLeft = Math.min(...cell.polygon.map(v => v[0]));
-                    cellRight = Math.max(...cell.polygon.map(v => v[0]));
-                } else {
-                    // Fallback: estimate based on typical cell size
-                    cellLeft = cell.x - 80;
-                    cellRight = cell.x + 80;
-                }
-
-                // Hovered cell gets a boost to push boundaries more
                 const isHovered = (i === hoveredCell);
-                const hoverBoost = isHovered ? 2.5 : 1.0;
+                const influence = isHovered ? config.maxPlateDepth : config.maxPlateDepth * 0.4;
+                const radius = isHovered ? 180 : 120; // How wide the bulge spreads
 
-                // Check proximity to top boundary
-                const topDistance = cell.y - zoneTop;
-                if (topDistance < detectionRange && topDistance > -config.maxPlateDepth) {
-                    // Quadratic falloff - closer = exponentially more pressure
-                    const proximity = 1 - Math.max(0, topDistance) / detectionRange;
-                    const rawDepth = proximity * proximity * config.maxPlateDepth * hoverBoost;
-                    const depth = Math.min(rawDepth, config.maxPlateDepth);
+                // Top boundary pressure
+                const topDist = cell.y - zoneTop;
+                if (topDist < radius && topDist > -config.maxPlateDepth) {
+                    const verticalFactor = Math.max(0, 1 - Math.max(0, topDist) / radius);
+                    const pressure = verticalFactor * verticalFactor * influence;
 
-                    if (depth > config.plateThreshold * 0.5) {
-                        const left = Math.max(0, Math.floor(cellLeft));
-                        const right = Math.min(mapSize - 1, Math.ceil(cellRight));
-                        for (let x = left; x <= right; x++) {
-                            targetTopDepths[x] = Math.max(targetTopDepths[x], depth);
+                    // Apply gaussian-like spread across sample points
+                    for (let s = 0; s < sampleCount; s++) {
+                        const sampleX = s * sampleWidth;
+                        const horizDist = Math.abs(sampleX - cell.x);
+                        if (horizDist < radius) {
+                            const horizFactor = 1 - (horizDist / radius);
+                            const combined = pressure * horizFactor * horizFactor;
+                            targetTop[s] = Math.max(targetTop[s], combined);
                         }
                     }
                 }
 
-                // Check proximity to bottom boundary
-                const bottomDistance = zoneBottom - cell.y;
-                if (bottomDistance < detectionRange && bottomDistance > -config.maxPlateDepth) {
-                    const proximity = 1 - Math.max(0, bottomDistance) / detectionRange;
-                    const rawDepth = proximity * proximity * config.maxPlateDepth * hoverBoost;
-                    const depth = Math.min(rawDepth, config.maxPlateDepth);
+                // Bottom boundary pressure
+                const bottomDist = zoneBottom - cell.y;
+                if (bottomDist < radius && bottomDist > -config.maxPlateDepth) {
+                    const verticalFactor = Math.max(0, 1 - Math.max(0, bottomDist) / radius);
+                    const pressure = verticalFactor * verticalFactor * influence;
 
-                    if (depth > config.plateThreshold * 0.5) {
-                        const left = Math.max(0, Math.floor(cellLeft));
-                        const right = Math.min(mapSize - 1, Math.ceil(cellRight));
-                        for (let x = left; x <= right; x++) {
-                            targetBottomDepths[x] = Math.max(targetBottomDepths[x], depth);
+                    for (let s = 0; s < sampleCount; s++) {
+                        const sampleX = s * sampleWidth;
+                        const horizDist = Math.abs(sampleX - cell.x);
+                        if (horizDist < radius) {
+                            const horizFactor = 1 - (horizDist / radius);
+                            const combined = pressure * horizFactor * horizFactor;
+                            targetBottom[s] = Math.max(targetBottom[s], combined);
                         }
                     }
                 }
             }
 
-            // Smooth toward target depths with responsive easing
-            const smoothSpeed = 0.18;   // How fast plates yield outward
-            const returnSpeed = 0.08;   // How fast plates return (slower = more organic)
+            // Smooth depths toward targets (asymmetric: fast yield, slow return)
+            const yieldSpeed = 0.15;
+            const returnSpeed = 0.06;
 
-            for (let x = 0; x < mapSize; x++) {
-                // Top depths - smooth with asymmetric easing
-                const topTarget = targetTopDepths[x];
-                const topDiff = topTarget - smoothedTopDepths[x];
-                const topSpeed = topDiff > 0 ? smoothSpeed : returnSpeed;
-                smoothedTopDepths[x] += topDiff * topSpeed;
-                if (smoothedTopDepths[x] < 0.5) smoothedTopDepths[x] = 0;
+            for (let s = 0; s < sampleCount; s++) {
+                const topDiff = targetTop[s] - smoothedTopDepths[s];
+                smoothedTopDepths[s] += topDiff * (topDiff > 0 ? yieldSpeed : returnSpeed);
+                if (smoothedTopDepths[s] < 0.5) smoothedTopDepths[s] = 0;
 
-                // Bottom depths
-                const bottomTarget = targetBottomDepths[x];
-                const bottomDiff = bottomTarget - smoothedBottomDepths[x];
-                const bottomSpeed = bottomDiff > 0 ? smoothSpeed : returnSpeed;
-                smoothedBottomDepths[x] += bottomDiff * bottomSpeed;
-                if (smoothedBottomDepths[x] < 0.5) smoothedBottomDepths[x] = 0;
+                const bottomDiff = targetBottom[s] - smoothedBottomDepths[s];
+                smoothedBottomDepths[s] += bottomDiff * (bottomDiff > 0 ? yieldSpeed : returnSpeed);
+                if (smoothedBottomDepths[s] < 0.5) smoothedBottomDepths[s] = 0;
             }
 
-            // Clean quantization - must produce exact step values for clean edges
-            // The smoothing above handles the organic feel; quantization must be crisp
-            const quantizedTopDepths = smoothedTopDepths.map(d =>
-                d < config.plateThreshold ? 0 : Math.round(d / config.plateDepthStep) * config.plateDepthStep
-            );
-            const quantizedBottomDepths = smoothedBottomDepths.map(d =>
-                d < config.plateThreshold ? 0 : Math.round(d / config.plateDepthStep) * config.plateDepthStep
-            );
-
-            // Convert depth maps to stepped edges
-            function buildEdgeFromDepthMap(depthMap, baseY, direction) {
-                // direction: -1 for top (yields upward), +1 for bottom (yields downward)
-                const edge = [];
-                let currentDepth = depthMap[0];
-                let segmentStart = 0;
-
-                for (let x = 1; x <= width; x++) {
-                    const depth = x < depthMap.length ? depthMap[x] : 0;
-                    if (depth !== currentDepth) {
-                        // End current segment, make step
-                        edge.push([segmentStart, baseY + direction * currentDepth]);
-                        edge.push([x, baseY + direction * currentDepth]);
-                        edge.push([x, baseY + direction * depth]);
-                        currentDepth = depth;
-                        segmentStart = x;
-                    }
-                }
-                // Final segment
-                edge.push([segmentStart, baseY + direction * currentDepth]);
-                edge.push([width, baseY + direction * currentDepth]);
-
-                return edge;
-            }
-
-            const topEdge = buildEdgeFromDepthMap(quantizedTopDepths, zoneTop, -1);
-            const bottomEdge = buildEdgeFromDepthMap(quantizedBottomDepths, zoneBottom, 1);
-
-            // Combine into closed polygon
+            // Build smooth polygon
             const bounds = [];
 
-            // Top edge (left to right)
-            bounds.push(...topEdge);
-
-            // Right side down
-            const topRightY = topEdge.length > 0 ? topEdge[topEdge.length - 1][1] : zoneTop;
-            const bottomRightY = bottomEdge.length > 0 ? bottomEdge[0][1] : zoneBottom;
-            bounds.push([width, bottomRightY]);
-
-            // Bottom edge (right to left) - reverse it
-            for (let i = bottomEdge.length - 1; i >= 0; i--) {
-                bounds.push(bottomEdge[i]);
+            // Top edge (left to right) - smooth curve
+            for (let s = 0; s < sampleCount; s++) {
+                bounds.push([s * sampleWidth, zoneTop - smoothedTopDepths[s]]);
             }
 
-            // Left side up (closes polygon)
-            const bottomLeftY = bottomEdge.length > 0 ? bottomEdge[0][1] : zoneBottom;
-            const topLeftY = topEdge.length > 0 ? topEdge[0][1] : zoneTop;
-            if (bottomLeftY !== topLeftY) {
-                bounds.push([0, topLeftY]);
+            // Right side
+            bounds.push([width, zoneBottom + smoothedBottomDepths[sampleCount - 1]]);
+
+            // Bottom edge (right to left) - smooth curve
+            for (let s = sampleCount - 1; s >= 0; s--) {
+                bounds.push([s * sampleWidth, zoneBottom + smoothedBottomDepths[s]]);
             }
+
+            // Close to top-left
+            bounds.push([0, zoneTop - smoothedTopDepths[0]]);
 
             return bounds;
         }
