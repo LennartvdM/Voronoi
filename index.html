@@ -411,8 +411,8 @@
             cellCount: 12,
             gap: 4,
             cornerRadius: 12,
-            spring: 0.30,
-            damping: 0.88,
+            spring: 0.25,          // Slightly softer spring for smoother motion
+            damping: 0.82,         // Lower damping allows more fluid motion
             hoverForce: 60,
             repulsion: 35,
             centerRelevance: 0.70, // 0 = expand uniformly, 1 = direction matters
@@ -423,7 +423,7 @@
             debugMode: false,
             // New hover dynamics
             hoverSpeed: 0.5,       // 0-1: how fast cells respond to hover
-            overshoot: 0.3,        // 0-1: bounce past target before settling
+            overshoot: 0.4,        // 0-1: bounce past target before settling (slightly more bounce)
             decaySpeed: 0.5,       // 0-1: how fast cells return to rest
             triggerBurst: 1.0,     // Initial burst when entering cell
             sustainGrowth: 0.3,    // Continuous growth while hovering
@@ -441,8 +441,8 @@
             hoverBleedPrivilege: 0.7,    // 0-1: how much more the hovered cell can bleed (increased default)
             // Stepped plate system
             steppedBoundsEnabled: true,  // Enable stepped boundary that yields to pressure
-            plateThreshold: 15,          // Minimum pressure to start forming a plate
-            plateDepthStep: 20,          // Quantize plate depth to this step size (pixels)
+            plateThreshold: 8,           // Lower threshold for earlier pressure response
+            plateDepthStep: 12,          // Smaller steps for smoother boundary transitions
             maxPlateDepth: 80            // Maximum depth a plate can yield
         };
 
@@ -532,14 +532,23 @@
             update(dt, isHovered) {
                 // Ghost pins have simpler physics - just smooth push animation
                 if (this.isGhost) {
-                    // Smooth push animation with spring-like return
-                    const pushSpeed = 0.15;
-                    const returnSpeed = 0.08;
-                    if (Math.abs(this.targetPush) > Math.abs(this.push)) {
-                        this.push += (this.targetPush - this.push) * pushSpeed;
+                    // Faster, more responsive push animation that syncs with cell movement
+                    const pushSpeed = 0.22;   // Faster response to pressure
+                    const returnSpeed = 0.10; // Slightly faster return for less "sticky" feel
+                    const diff = this.targetPush - this.push;
+
+                    // Use smooth interpolation with dt scaling for frame-rate independence
+                    if (Math.abs(diff) > Math.abs(this.push) * 0.1 || Math.abs(this.targetPush) > Math.abs(this.push)) {
+                        this.push += diff * pushSpeed * Math.min(dt, 2);
                     } else {
-                        this.push += (this.targetPush - this.push) * returnSpeed;
+                        this.push += diff * returnSpeed * Math.min(dt, 2);
                     }
+
+                    // Gentle decay when very close to zero
+                    if (Math.abs(this.push) < 0.5 && Math.abs(this.targetPush) < 0.5) {
+                        this.push *= 0.95;
+                    }
+
                     // Reset target push each frame (will be recalculated in physics)
                     this.targetPush = 0;
                     return;
@@ -571,16 +580,38 @@
                 this.x += this.vx;
                 this.y += this.vy;
 
-                // Max expansion limit
+                // Soft max expansion limit - gradual resistance instead of hard clamp
                 const newDx = this.x - this.restX;
                 const newDy = this.y - this.restY;
                 const newDist = Math.sqrt(newDx * newDx + newDy * newDy);
-                if (newDist > config.maxExpansion) {
-                    const scale = config.maxExpansion / newDist;
-                    this.x = this.restX + newDx * scale;
-                    this.y = this.restY + newDy * scale;
-                    this.vx *= 0.5;
-                    this.vy *= 0.5;
+
+                if (newDist > 0) {
+                    // Start applying soft resistance at 60% of max expansion
+                    const softStart = config.maxExpansion * 0.6;
+                    const hardLimit = config.maxExpansion * 1.2; // Allow slight overshoot
+
+                    if (newDist > softStart) {
+                        // Smooth cubic falloff for resistance
+                        const overExtend = (newDist - softStart) / (hardLimit - softStart);
+                        const resistance = Math.min(1, overExtend * overExtend * overExtend);
+
+                        // Apply gentle pull-back force proportional to over-extension
+                        const pullBack = resistance * 0.15;
+                        this.vx -= (newDx / newDist) * pullBack * newDist * dt;
+                        this.vy -= (newDy / newDist) * pullBack * newDist * dt;
+
+                        // Gentle velocity damping that increases with over-extension
+                        const extraDamping = 1 - (resistance * 0.08);
+                        this.vx *= extraDamping;
+                        this.vy *= extraDamping;
+
+                        // Only hard clamp at the true hard limit
+                        if (newDist > hardLimit) {
+                            const scale = hardLimit / newDist;
+                            this.x = this.restX + newDx * scale;
+                            this.y = this.restY + newDy * scale;
+                        }
+                    }
                 }
 
                 // Keep in bounds (hard limit at canvas edge)
@@ -666,8 +697,8 @@
             const targetTopDepths = new Array(mapSize).fill(0);
             const targetBottomDepths = new Array(mapSize).fill(0);
 
-            // Detection range from boundary
-            const detectionRange = 120;
+            // Detection range from boundary - larger range for earlier, gentler response
+            const detectionRange = 150;
 
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
@@ -686,17 +717,22 @@
 
                 // Hovered cell gets a significant boost
                 const isHovered = (i === hoveredCell);
-                const hoverBoost = isHovered ? 2.5 : 1.0;
+                const hoverBoost = isHovered ? 3.0 : 1.0;
+
+                // Also consider cells that are moving toward the boundary
+                const velocityBoost = cell.vy ? Math.max(1.0, 1.0 + Math.abs(cell.vy) * 0.02) : 1.0;
 
                 // Check proximity to top boundary
                 const topDistance = cell.y - zoneTop;
                 if (topDistance < detectionRange && topDistance > -config.maxPlateDepth) {
-                    // Closer = more push, with exponential falloff
-                    const proximity = 1 - Math.max(0, topDistance) / detectionRange;
-                    const rawDepth = proximity * proximity * config.maxPlateDepth * hoverBoost;
+                    // Smoother proximity curve - starts gentler, increases faster near boundary
+                    const normalizedDist = Math.max(0, topDistance) / detectionRange;
+                    const proximity = Math.pow(1 - normalizedDist, 1.5); // Smoother curve than square
+                    const rawDepth = proximity * config.maxPlateDepth * hoverBoost * velocityBoost;
                     const depth = Math.min(rawDepth, config.maxPlateDepth);
 
-                    if (depth > 5) {
+                    // Lower threshold for earlier response
+                    if (depth > 2) {
                         const left = Math.max(0, Math.floor(cellLeft));
                         const right = Math.min(mapSize - 1, Math.ceil(cellRight));
                         for (let x = left; x <= right; x++) {
@@ -708,11 +744,12 @@
                 // Check proximity to bottom boundary
                 const bottomDistance = zoneBottom - cell.y;
                 if (bottomDistance < detectionRange && bottomDistance > -config.maxPlateDepth) {
-                    const proximity = 1 - Math.max(0, bottomDistance) / detectionRange;
-                    const rawDepth = proximity * proximity * config.maxPlateDepth * hoverBoost;
+                    const normalizedDist = Math.max(0, bottomDistance) / detectionRange;
+                    const proximity = Math.pow(1 - normalizedDist, 1.5);
+                    const rawDepth = proximity * config.maxPlateDepth * hoverBoost * velocityBoost;
                     const depth = Math.min(rawDepth, config.maxPlateDepth);
 
-                    if (depth > 5) {
+                    if (depth > 2) {
                         const left = Math.max(0, Math.floor(cellLeft));
                         const right = Math.min(mapSize - 1, Math.ceil(cellRight));
                         for (let x = left; x <= right; x++) {
@@ -722,33 +759,43 @@
                 }
             }
 
-            // Smooth toward target depths with easing
-            const smoothSpeed = 0.12;   // How fast plates yield outward
-            const returnSpeed = 0.06;   // How fast plates return (slower = more organic)
+            // Smooth toward target depths with responsive easing
+            // Faster speeds for more immediate response to pressure
+            const smoothSpeed = 0.25;   // How fast plates yield outward (faster = more responsive)
+            const returnSpeed = 0.12;   // How fast plates return (slower = more organic settle)
 
             for (let x = 0; x < mapSize; x++) {
                 // Top depths - smooth with easing
                 const topTarget = targetTopDepths[x];
                 const topDiff = topTarget - smoothedTopDepths[x];
+                // Use exponential easing for smoother transitions
                 const topSpeed = topDiff > 0 ? smoothSpeed : returnSpeed;
                 smoothedTopDepths[x] += topDiff * topSpeed;
-                if (smoothedTopDepths[x] < 0.5) smoothedTopDepths[x] = 0;
+                // Very gradual fade to zero to prevent snapping
+                if (smoothedTopDepths[x] < 0.1) smoothedTopDepths[x] *= 0.9;
 
                 // Bottom depths
                 const bottomTarget = targetBottomDepths[x];
                 const bottomDiff = bottomTarget - smoothedBottomDepths[x];
                 const bottomSpeed = bottomDiff > 0 ? smoothSpeed : returnSpeed;
                 smoothedBottomDepths[x] += bottomDiff * bottomSpeed;
-                if (smoothedBottomDepths[x] < 0.5) smoothedBottomDepths[x] = 0;
+                if (smoothedBottomDepths[x] < 0.1) smoothedBottomDepths[x] *= 0.9;
             }
 
-            // Quantize to discrete steps for clean horizontal lines
-            // But use the SMOOTHED values so transitions are gradual
+            // Soft quantization - blend between smooth and stepped for organic feel
+            // This reduces harsh stepping while maintaining the visual structure
+            const softQuantize = (d, step, threshold) => {
+                if (d < threshold * 0.5) return d * 0.5; // Gentle fade for small values
+                const quantized = Math.round(d / step) * step;
+                // Blend 70% quantized with 30% smooth for softer transitions
+                return quantized * 0.7 + d * 0.3;
+            };
+
             const quantizedTopDepths = smoothedTopDepths.map(d =>
-                d < config.plateThreshold ? 0 : Math.round(d / config.plateDepthStep) * config.plateDepthStep
+                softQuantize(d, config.plateDepthStep, config.plateThreshold)
             );
             const quantizedBottomDepths = smoothedBottomDepths.map(d =>
-                d < config.plateThreshold ? 0 : Math.round(d / config.plateDepthStep) * config.plateDepthStep
+                softQuantize(d, config.plateDepthStep, config.plateThreshold)
             );
 
             // Convert depth maps to stepped edges
