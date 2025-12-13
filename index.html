@@ -660,49 +660,49 @@
                 smoothedBottomDepths = new Array(sampleCount).fill(0);
             }
 
-            // Calculate boundary pressure from cell velocity (not position)
-            // Any cell moving toward a boundary creates pressure there
+            // Calculate boundary pressure from hovered cell's velocity only
+            // Only intentional pushes (from hover) should affect the boundary
             const targetTop = new Array(sampleCount).fill(0);
             const targetBottom = new Array(sampleCount).fill(0);
 
-            const pressureScale = 8; // Convert velocity to pressure
-
-            for (let i = 0; i < cells.length; i++) {
-                const cell = cells[i];
-                const isHovered = (i === hoveredCell);
+            if (hoveredCell >= 0) {
+                const cell = cells[hoveredCell];
+                const pressureScale = 4;
+                const velocityThreshold = 0.5; // Ignore tiny oscillations
 
                 // Upward velocity (negative vy) pushes top boundary
-                const topPush = Math.max(0, -cell.vy * pressureScale);
+                const rawTopPush = -cell.vy;
+                const topPush = rawTopPush > velocityThreshold ? rawTopPush * pressureScale : 0;
+
                 // Downward velocity (positive vy) pushes bottom boundary
-                const bottomPush = Math.max(0, cell.vy * pressureScale);
+                const rawBottomPush = cell.vy;
+                const bottomPush = rawBottomPush > velocityThreshold ? rawBottomPush * pressureScale : 0;
 
                 if (topPush > 0) {
-                    const influence = isHovered ? topPush * 1.5 : topPush;
-                    const clampedInfluence = Math.min(influence, config.maxPlateDepth);
+                    const clampedInfluence = Math.min(topPush, config.maxPlateDepth);
 
                     for (let s = 0; s < sampleCount; s++) {
                         const sampleX = s * sampleWidth;
                         const dist = Math.abs(sampleX - cell.x);
-                        const spreadRadius = isHovered ? 250 : 150;
+                        const spreadRadius = 250;
                         if (dist < spreadRadius) {
                             const falloff = 1 - (dist / spreadRadius);
-                            const contribution = clampedInfluence * falloff * falloff * falloff;
+                            const contribution = clampedInfluence * falloff * falloff;
                             targetTop[s] = Math.max(targetTop[s], contribution);
                         }
                     }
                 }
 
                 if (bottomPush > 0) {
-                    const influence = isHovered ? bottomPush * 1.5 : bottomPush;
-                    const clampedInfluence = Math.min(influence, config.maxPlateDepth);
+                    const clampedInfluence = Math.min(bottomPush, config.maxPlateDepth);
 
                     for (let s = 0; s < sampleCount; s++) {
                         const sampleX = s * sampleWidth;
                         const dist = Math.abs(sampleX - cell.x);
-                        const spreadRadius = isHovered ? 250 : 150;
+                        const spreadRadius = 250;
                         if (dist < spreadRadius) {
                             const falloff = 1 - (dist / spreadRadius);
-                            const contribution = clampedInfluence * falloff * falloff * falloff;
+                            const contribution = clampedInfluence * falloff * falloff;
                             targetBottom[s] = Math.max(targetBottom[s], contribution);
                         }
                     }
