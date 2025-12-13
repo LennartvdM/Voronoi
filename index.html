@@ -646,19 +646,124 @@
 
         // ========== VORONOI ==========
         function computeVoronoi() {
-            // Bounds extend to full canvas - ghost cells in margins will clip visible cells
-            let boundsTop = 0;
-            let boundsBottom = height;
+            // Bounds extend to full canvas - ghost cells participate in computation
+            const bounds = [[0, 0], [width, 0], [width, height], [0, height]];
 
-            const bounds = [[0, boundsTop], [width, boundsTop], [width, boundsBottom], [0, boundsBottom]];
+            const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
+            const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
 
-            // Compute Voronoi for ALL cells (including ghosts - they participate in computation)
+            // Compute Voronoi for ALL cells (including ghosts)
             for (let i = 0; i < cells.length; i++) {
                 cells[i].polygon = computeCellPolygon(i, bounds);
-                if (!cells[i].isGhost) {
-                    cells[i].displayPolygon = applyGap(cells[i].polygon, config.gap);
+
+                if (!cells[i].isGhost && cells[i].polygon) {
+                    // Rectangularize margin edges - each cell gets horizontal boundaries
+                    // but extends different amounts (like dominos/jenga)
+                    let display = cells[i].polygon;
+                    if (config.contentZoneEnabled) {
+                        display = rectangularizeMargins(display, zoneTop, zoneBottom);
+                    }
+                    cells[i].displayPolygon = display ? applyGap(display, config.gap) : null;
                 }
             }
+        }
+
+        // Make margin edges horizontal while preserving each cell's unique extension depth
+        // Creates the "messy dominos" / "jenga tower" effect
+        function rectangularizeMargins(polygon, zoneTop, zoneBottom) {
+            if (!polygon || polygon.length < 3) return null;
+
+            // Find bounding box
+            let minY = Infinity, maxY = -Infinity;
+            for (const p of polygon) {
+                minY = Math.min(minY, p[1]);
+                maxY = Math.max(maxY, p[1]);
+            }
+
+            // Check if cell extends into margins
+            const extendsIntoTop = minY < zoneTop;
+            const extendsIntoBottom = maxY > zoneBottom;
+
+            if (!extendsIntoTop && !extendsIntoBottom) {
+                return polygon; // Cell fully within content zone
+            }
+
+            // Build new polygon with horizontal margin caps
+            const result = [];
+
+            for (let i = 0; i < polygon.length; i++) {
+                const curr = polygon[i];
+                const next = polygon[(i + 1) % polygon.length];
+
+                // Handle top margin: replace angled edges with horizontal
+                if (extendsIntoTop) {
+                    if (curr[1] >= zoneTop && next[1] < zoneTop) {
+                        // Exiting content zone into top margin
+                        result.push(curr);
+                        // Find where edge crosses zoneTop
+                        const t = (zoneTop - curr[1]) / (next[1] - curr[1]);
+                        const crossX = curr[0] + t * (next[0] - curr[0]);
+                        result.push([crossX, zoneTop]);
+                        result.push([crossX, minY]); // Go straight up to cell's max extent
+                    } else if (curr[1] < zoneTop && next[1] < zoneTop) {
+                        // Both in top margin - make horizontal at minY
+                        if (result.length === 0 || result[result.length-1][1] !== minY) {
+                            result.push([curr[0], minY]);
+                        }
+                        result.push([next[0], minY]);
+                    } else if (curr[1] < zoneTop && next[1] >= zoneTop) {
+                        // Re-entering content zone from top margin
+                        const t = (zoneTop - curr[1]) / (next[1] - curr[1]);
+                        const crossX = curr[0] + t * (next[0] - curr[0]);
+                        result.push([crossX, minY]); // Horizontal cap
+                        result.push([crossX, zoneTop]);
+                    } else {
+                        // Both in content zone
+                        result.push(curr);
+                    }
+                }
+                // Handle bottom margin
+                else if (extendsIntoBottom) {
+                    if (curr[1] <= zoneBottom && next[1] > zoneBottom) {
+                        // Exiting content zone into bottom margin
+                        result.push(curr);
+                        const t = (zoneBottom - curr[1]) / (next[1] - curr[1]);
+                        const crossX = curr[0] + t * (next[0] - curr[0]);
+                        result.push([crossX, zoneBottom]);
+                        result.push([crossX, maxY]); // Go straight down to cell's max extent
+                    } else if (curr[1] > zoneBottom && next[1] > zoneBottom) {
+                        // Both in bottom margin - make horizontal at maxY
+                        if (result.length === 0 || result[result.length-1][1] !== maxY) {
+                            result.push([curr[0], maxY]);
+                        }
+                        result.push([next[0], maxY]);
+                    } else if (curr[1] > zoneBottom && next[1] <= zoneBottom) {
+                        // Re-entering content zone from bottom margin
+                        const t = (zoneBottom - curr[1]) / (next[1] - curr[1]);
+                        const crossX = curr[0] + t * (next[0] - curr[0]);
+                        result.push([crossX, maxY]); // Horizontal cap
+                        result.push([crossX, zoneBottom]);
+                    } else {
+                        // Both in content zone
+                        result.push(curr);
+                    }
+                }
+                else {
+                    result.push(curr);
+                }
+            }
+
+            // Clean up duplicates
+            const cleaned = [];
+            for (const p of result) {
+                if (cleaned.length === 0 ||
+                    Math.abs(p[0] - cleaned[cleaned.length-1][0]) > 0.1 ||
+                    Math.abs(p[1] - cleaned[cleaned.length-1][1]) > 0.1) {
+                    cleaned.push(p);
+                }
+            }
+
+            return cleaned.length >= 3 ? cleaned : polygon;
         }
 
         function computeCellPolygon(index, bounds) {
