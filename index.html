@@ -443,7 +443,10 @@
             steppedBoundsEnabled: true,  // Enable stepped boundary that yields to pressure
             plateThreshold: 12,          // Minimum pressure to start forming a plate
             plateDepthStep: 16,          // Step size for plate depth quantization
-            maxPlateDepth: 80            // Maximum depth a plate can yield
+            maxPlateDepth: 80,           // Maximum depth a plate can yield
+            // Buffer resolution
+            bufferResolutionDelay: 0.3,  // Seconds before cells start returning from buffer
+            bufferResolutionForce: 0.02  // How strongly cells are pushed back to container
         };
 
         // ========== SAMPLE DATA ==========
@@ -764,17 +767,23 @@
                 zoneBottom = height * (1 - config.contentZoneBottom);
             }
 
-            // Build yielding boundary - this is where the magic happens
-            // Cells push against it, it yields, cells fill the yielded space
-            const bounds = buildSteppedBounds(zoneTop, zoneBottom);
+            // Use simple, generous rectangular bounds for stable Voronoi
+            // Cells can spill into buffer freely - containment is visual, not geometric
+            const buffer = config.bleedBuffer;
+            const simpleBounds = [
+                [0, zoneTop - buffer],
+                [width, zoneTop - buffer],
+                [width, zoneBottom + buffer],
+                [0, zoneBottom + buffer]
+            ];
 
-            // Compute each cell's polygon, clipped to the yielded boundary
+            // Compute each cell's polygon with simple bounds (no complex clipping)
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
                 const isHovered = (i === hoveredCell);
 
                 // Compute raw Voronoi polygon
-                cell.polygon = computeCellPolygon(i, bounds);
+                cell.polygon = computeCellPolygon(i, simpleBounds);
 
                 // Apply gap and simplify
                 const gapped = applyGap(cell.polygon, config.gap);
@@ -1651,7 +1660,33 @@
                 }
             }
 
-            // Ghost pin physics removed - boundary yields based on cell positions directly
+            // Buffer resolution: gently push non-hovered cells back into container
+            if (config.contentZoneEnabled) {
+                const zoneTop = height * config.contentZoneTop;
+                const zoneBottom = height * (1 - config.contentZoneBottom);
+                const resolutionForce = config.bufferResolutionForce;
+
+                for (let i = 0; i < cells.length; i++) {
+                    // Hovered cell gets to stay in buffer
+                    if (i === hoveredCell) continue;
+
+                    const cell = cells[i];
+
+                    // Check if cell is above content zone (in top buffer)
+                    if (cell.y < zoneTop) {
+                        const penetration = zoneTop - cell.y;
+                        // Gentle push back down, proportional to penetration
+                        cell.applyForce(0, penetration * resolutionForce);
+                    }
+
+                    // Check if cell is below content zone (in bottom buffer)
+                    if (cell.y > zoneBottom) {
+                        const penetration = cell.y - zoneBottom;
+                        // Gentle push back up, proportional to penetration
+                        cell.applyForce(0, -penetration * resolutionForce);
+                    }
+                }
+            }
 
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
@@ -1665,14 +1700,44 @@
         function render() {
             ctx.clearRect(0, 0, width, height);
 
-            // Draw the margin background first
+            // Draw the margin background with yielding boundary effect
             if (config.contentZoneEnabled) {
                 const zoneTop = height * config.contentZoneTop;
                 const zoneBottom = height * (1 - config.contentZoneBottom);
 
+                // Build yielding boundary for visual effect (updates smoothed depths)
+                const yieldingBounds = buildSteppedBounds(zoneTop, zoneBottom);
+
                 ctx.fillStyle = 'rgba(26, 26, 46, 1)'; // Match body background
-                ctx.fillRect(0, 0, width, zoneTop);
-                ctx.fillRect(0, zoneBottom, width, height - zoneBottom);
+
+                // Draw top margin with yielding edge
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(width, 0);
+                ctx.lineTo(width, zoneTop);
+                // Follow the yielding boundary (top portion of yieldingBounds)
+                // yieldingBounds starts at top-left, goes right along top, then down right side
+                const sampleCount = smoothedTopDepths ? smoothedTopDepths.length : 20;
+                const sampleWidth = width / (sampleCount - 1);
+                for (let s = sampleCount - 1; s >= 0; s--) {
+                    const depth = smoothedTopDepths ? smoothedTopDepths[s] : 0;
+                    ctx.lineTo(s * sampleWidth, zoneTop - depth);
+                }
+                ctx.closePath();
+                ctx.fill();
+
+                // Draw bottom margin with yielding edge
+                ctx.beginPath();
+                ctx.moveTo(0, height);
+                ctx.lineTo(width, height);
+                ctx.lineTo(width, zoneBottom);
+                // Follow the yielding boundary (bottom portion)
+                for (let s = sampleCount - 1; s >= 0; s--) {
+                    const depth = smoothedBottomDepths ? smoothedBottomDepths[s] : 0;
+                    ctx.lineTo(s * sampleWidth, zoneBottom + depth);
+                }
+                ctx.closePath();
+                ctx.fill();
             }
 
             // Draw cells
