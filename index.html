@@ -642,21 +642,11 @@
         }
 
         // ========== VORONOI ==========
-        // Build stepped bounds polygon from pin pressure
-        // Creates horizontal shelves at discrete depths with vertical steps between them
+        // Build stepped bounds polygon from cell contact with boundaries
+        // Each cell that touches the boundary creates one horizontal plate
+        // matching the width of its contact surface
         function buildSteppedBounds(zoneTop, zoneBottom) {
             if (!config.steppedBoundsEnabled) {
-                return [[0, zoneTop], [width, zoneTop], [width, zoneBottom], [0, zoneBottom]];
-            }
-
-            // Collect pins sorted by x position
-            const topPins = cells.filter(c => c.isGhost && c.ghostSide === 'top')
-                .sort((a, b) => a.x - b.x);
-            const bottomPins = cells.filter(c => c.isGhost && c.ghostSide === 'bottom')
-                .sort((a, b) => a.x - b.x);
-
-            // If no pins, return simple rectangle
-            if (topPins.length === 0 && bottomPins.length === 0) {
                 return [[0, zoneTop], [width, zoneTop], [width, zoneBottom], [0, zoneBottom]];
             }
 
@@ -667,104 +657,140 @@
                 return Math.round(depth / config.plateDepthStep) * config.plateDepthStep;
             }
 
-            // Build top edge: creates horizontal shelves with vertical steps
-            // Goes left to right, yields UPWARD (into top margin) where pressure exists
-            const topEdge = [];
-            let currentY = zoneTop;
-            let lastX = 0;
+            // Find plates from cell boundary contacts
+            const topPlates = [];    // { leftX, rightX, depth }
+            const bottomPlates = [];
 
-            for (let i = 0; i < topPins.length; i++) {
-                const pin = topPins[i];
-                const depth = quantizeDepth(pin.push || 0);
-                const targetY = zoneTop - depth;  // Negative = up into margin
-                const pinHalfWidth = (pin.pinWidth || 20) / 2;
+            const boundaryTolerance = 5; // How close to boundary counts as "touching"
 
-                if (targetY !== currentY) {
-                    // Step transition at the leading edge of this pin
-                    const stepX = Math.max(0, pin.x - pinHalfWidth);
+            for (const cell of cells) {
+                if (cell.isGhost) continue;
+                if (!cell.polygon || cell.polygon.length < 3) continue;
 
-                    // Horizontal segment to step point
-                    if (stepX > lastX) {
-                        topEdge.push([lastX, currentY]);
-                        topEdge.push([stepX, currentY]);
+                // Find where this cell's polygon touches the boundaries
+                let topContactLeft = Infinity;
+                let topContactRight = -Infinity;
+                let bottomContactLeft = Infinity;
+                let bottomContactRight = -Infinity;
+                let touchesTop = false;
+                let touchesBottom = false;
+
+                for (const vertex of cell.polygon) {
+                    const [vx, vy] = vertex;
+
+                    // Check top boundary contact
+                    if (Math.abs(vy - zoneTop) < boundaryTolerance) {
+                        touchesTop = true;
+                        topContactLeft = Math.min(topContactLeft, vx);
+                        topContactRight = Math.max(topContactRight, vx);
                     }
 
-                    // Vertical step
-                    topEdge.push([stepX, targetY]);
+                    // Check bottom boundary contact
+                    if (Math.abs(vy - zoneBottom) < boundaryTolerance) {
+                        touchesBottom = true;
+                        bottomContactLeft = Math.min(bottomContactLeft, vx);
+                        bottomContactRight = Math.max(bottomContactRight, vx);
+                    }
+                }
 
-                    currentY = targetY;
-                    lastX = stepX;
+                // Calculate push amount based on cell center proximity to boundary
+                const pushRange = 80;
+
+                if (touchesTop && topContactRight > topContactLeft) {
+                    const penetration = zoneTop - cell.y + pushRange;
+                    if (penetration > 0) {
+                        const depth = quantizeDepth(penetration * 0.8);
+                        if (depth > 0) {
+                            topPlates.push({
+                                leftX: topContactLeft,
+                                rightX: topContactRight,
+                                depth: depth
+                            });
+                        }
+                    }
+                }
+
+                if (touchesBottom && bottomContactRight > bottomContactLeft) {
+                    const penetration = cell.y - zoneBottom + pushRange;
+                    if (penetration > 0) {
+                        const depth = quantizeDepth(penetration * 0.8);
+                        if (depth > 0) {
+                            bottomPlates.push({
+                                leftX: bottomContactLeft,
+                                rightX: bottomContactRight,
+                                depth: depth
+                            });
+                        }
+                    }
                 }
             }
 
-            // Final horizontal segment to right edge
-            if (lastX < width) {
-                topEdge.push([lastX, currentY]);
-                topEdge.push([width, currentY]);
-            }
-
-            // Build bottom edge: goes right to left, yields DOWNWARD where pressure exists
-            const bottomEdge = [];
-            currentY = zoneBottom;
-            lastX = width;
-
-            for (let i = bottomPins.length - 1; i >= 0; i--) {
-                const pin = bottomPins[i];
-                const depth = quantizeDepth(pin.push || 0);
-                const targetY = zoneBottom + depth;  // Positive = down into bottom margin
-                const pinHalfWidth = (pin.pinWidth || 20) / 2;
-
-                if (targetY !== currentY) {
-                    // Step transition at the trailing edge of this pin
-                    const stepX = Math.min(width, pin.x + pinHalfWidth);
-
-                    // Horizontal segment to step point
-                    if (stepX < lastX) {
-                        bottomEdge.push([lastX, currentY]);
-                        bottomEdge.push([stepX, currentY]);
-                    }
-
-                    // Vertical step
-                    bottomEdge.push([stepX, targetY]);
-
-                    currentY = targetY;
-                    lastX = stepX;
+            // Build depth map for top edge (sample at each pixel, take max depth)
+            const topDepthMap = new Array(Math.ceil(width) + 1).fill(0);
+            for (const plate of topPlates) {
+                const left = Math.max(0, Math.floor(plate.leftX));
+                const right = Math.min(width, Math.ceil(plate.rightX));
+                for (let x = left; x <= right; x++) {
+                    topDepthMap[x] = Math.max(topDepthMap[x], plate.depth);
                 }
             }
 
-            // Final horizontal segment to left edge
-            if (lastX > 0) {
-                bottomEdge.push([lastX, currentY]);
-                bottomEdge.push([0, currentY]);
+            // Build depth map for bottom edge
+            const bottomDepthMap = new Array(Math.ceil(width) + 1).fill(0);
+            for (const plate of bottomPlates) {
+                const left = Math.max(0, Math.floor(plate.leftX));
+                const right = Math.min(width, Math.ceil(plate.rightX));
+                for (let x = left; x <= right; x++) {
+                    bottomDepthMap[x] = Math.max(bottomDepthMap[x], plate.depth);
+                }
             }
 
-            // Combine into closed polygon (clockwise)
-            // Top-left -> top edge (right) -> right side down -> bottom edge (left) -> left side up
+            // Convert depth maps to stepped edges
+            function buildEdgeFromDepthMap(depthMap, baseY, direction) {
+                // direction: -1 for top (yields upward), +1 for bottom (yields downward)
+                const edge = [];
+                let currentDepth = depthMap[0];
+                let segmentStart = 0;
+
+                for (let x = 1; x <= width; x++) {
+                    const depth = x < depthMap.length ? depthMap[x] : 0;
+                    if (depth !== currentDepth) {
+                        // End current segment, make step
+                        edge.push([segmentStart, baseY + direction * currentDepth]);
+                        edge.push([x, baseY + direction * currentDepth]);
+                        edge.push([x, baseY + direction * depth]);
+                        currentDepth = depth;
+                        segmentStart = x;
+                    }
+                }
+                // Final segment
+                edge.push([segmentStart, baseY + direction * currentDepth]);
+                edge.push([width, baseY + direction * currentDepth]);
+
+                return edge;
+            }
+
+            const topEdge = buildEdgeFromDepthMap(topDepthMap, zoneTop, -1);
+            const bottomEdge = buildEdgeFromDepthMap(bottomDepthMap, zoneBottom, 1);
+
+            // Combine into closed polygon
             const bounds = [];
 
-            // Top edge
-            if (topEdge.length > 0) {
-                bounds.push(...topEdge);
-            } else {
-                bounds.push([0, zoneTop], [width, zoneTop]);
-            }
+            // Top edge (left to right)
+            bounds.push(...topEdge);
 
-            // Right side: from top-right to bottom-right
+            // Right side down
             const topRightY = topEdge.length > 0 ? topEdge[topEdge.length - 1][1] : zoneTop;
             const bottomRightY = bottomEdge.length > 0 ? bottomEdge[0][1] : zoneBottom;
-            if (topRightY !== bottomRightY) {
-                bounds.push([width, bottomRightY]);
+            bounds.push([width, bottomRightY]);
+
+            // Bottom edge (right to left) - reverse it
+            for (let i = bottomEdge.length - 1; i >= 0; i--) {
+                bounds.push(bottomEdge[i]);
             }
 
-            // Bottom edge
-            if (bottomEdge.length > 0) {
-                bounds.push(...bottomEdge);
-            } else {
-                bounds.push([width, zoneBottom], [0, zoneBottom]);
-            }
-
-            // Left side: from bottom-left to top-left (closes the polygon)
-            const bottomLeftY = bottomEdge.length > 0 ? bottomEdge[bottomEdge.length - 1][1] : zoneBottom;
+            // Left side up (closes polygon)
+            const bottomLeftY = bottomEdge.length > 0 ? bottomEdge[0][1] : zoneBottom;
             const topLeftY = topEdge.length > 0 ? topEdge[0][1] : zoneTop;
             if (bottomLeftY !== topLeftY) {
                 bounds.push([0, topLeftY]);
@@ -774,8 +800,7 @@
         }
 
         function computeVoronoi() {
-            // Bounds are the content zone - creates clean horizontal edges
-            // Ghost pins handle the organic boundary interaction separately
+            // Bounds are the content zone with stepped plates where cells push
             let boundsTop = 0;
             let boundsBottom = height;
 
@@ -784,7 +809,7 @@
                 boundsBottom = height * (1 - config.contentZoneBottom);
             }
 
-            // Build stepped bounds based on pin pressure
+            // Build stepped bounds based on cell boundary contact
             const bounds = buildSteppedBounds(boundsTop, boundsBottom);
 
             // Only compute Voronoi for visible cells (not ghost pins)
