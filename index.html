@@ -399,6 +399,14 @@
                 <button class="btn btn-secondary" id="loadUnsplash">Unsplash</button>
                 <button class="btn btn-primary" id="regenerate">Regenerate</button>
             </div>
+
+            <div style="margin-top: 16px; text-align: center;">
+                <a href="https://github.com/LennartvdM/Voronoi/compare/main...claude/voronoi-whitespace-layout-01XaYA3b1QVAMGpmNss353hA"
+                   target="_blank"
+                   style="color: rgba(255,255,255,0.5); font-size: 11px; text-decoration: none;">
+                    View PR
+                </a>
+            </div>
         </div>
     </div>
 
@@ -638,109 +646,124 @@
 
         // ========== VORONOI ==========
         function computeVoronoi() {
-            let boundsTop = 0;
-            let boundsBottom = height;
+            // Bounds extend to full canvas - ghost cells participate in computation
+            const bounds = [[0, 0], [width, 0], [width, height], [0, height]];
 
-            if (config.contentZoneEnabled) {
-                boundsTop = height * config.contentZoneTop;
-                boundsBottom = height * (1 - config.contentZoneBottom);
-            }
+            const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
+            const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
 
-            // Build deformable bounds based on pin pressure
-            // The boundary "yields" where cells push against it
-            const bounds = buildDeformableBounds(boundsTop, boundsBottom);
-
-            // Only compute Voronoi for visible cells (not ghost pins)
+            // Compute Voronoi for ALL cells (including ghosts)
             for (let i = 0; i < cells.length; i++) {
-                if (cells[i].isGhost) continue;
                 cells[i].polygon = computeCellPolygon(i, bounds);
-                cells[i].displayPolygon = applyGap(cells[i].polygon, config.gap);
+
+                if (!cells[i].isGhost && cells[i].polygon) {
+                    // Rectangularize margin edges - each cell gets horizontal boundaries
+                    // but extends different amounts (like dominos/jenga)
+                    let display = cells[i].polygon;
+                    if (config.contentZoneEnabled) {
+                        display = rectangularizeMargins(display, zoneTop, zoneBottom);
+                    }
+                    cells[i].displayPolygon = display ? applyGap(display, config.gap) : null;
+                }
             }
         }
 
-        // Build bounds polygon that deforms based on pin pressure
-        // Creates STEPPED horizontal segments, not smooth curves
-        function buildDeformableBounds(zoneTop, zoneBottom) {
-            // Collect pins sorted by x position
-            const topPins = cells.filter(c => c.isGhost && c.ghostSide === 'top')
-                                 .sort((a, b) => a.x - b.x);
-            const bottomPins = cells.filter(c => c.isGhost && c.ghostSide === 'bottom')
-                                    .sort((a, b) => a.x - b.x);
+        // Make margin edges horizontal while preserving each cell's unique extension depth
+        // Creates the "messy dominos" / "jenga tower" effect
+        function rectangularizeMargins(polygon, zoneTop, zoneBottom) {
+            if (!polygon || polygon.length < 3) return null;
 
-            // If no pins, use simple rectangle
-            if (topPins.length === 0 && bottomPins.length === 0) {
-                return [[0, zoneTop], [width, zoneTop], [width, zoneBottom], [0, zoneBottom]];
+            // Find bounding box
+            let minY = Infinity, maxY = -Infinity;
+            for (const p of polygon) {
+                minY = Math.min(minY, p[1]);
+                maxY = Math.max(maxY, p[1]);
             }
 
-            // Build top edge with HORIZONTAL STEPS (staggered shelves)
-            const topEdge = [];
-            let lastY = zoneTop;
+            // Check if cell extends into margins
+            const extendsIntoTop = minY < zoneTop;
+            const extendsIntoBottom = maxY > zoneBottom;
 
-            for (let i = 0; i < topPins.length; i++) {
-                const pin = topPins[i];
-                const yieldAmount = pin.push || 0;
-                const shelfY = zoneTop - yieldAmount;
+            if (!extendsIntoTop && !extendsIntoBottom) {
+                return polygon; // Cell fully within content zone
+            }
 
-                // Calculate shelf boundaries (midpoint between adjacent pins)
-                const leftX = i === 0 ? 0 : (topPins[i-1].x + pin.x) / 2;
-                const rightX = i === topPins.length - 1 ? width : (pin.x + topPins[i+1].x) / 2;
+            // Build new polygon with horizontal margin caps
+            const result = [];
 
-                // Vertical step from previous level
-                if (Math.abs(shelfY - lastY) > 0.5) {
-                    topEdge.push([leftX, lastY]);    // End of previous shelf
-                    topEdge.push([leftX, shelfY]);   // Vertical drop/rise
+            for (let i = 0; i < polygon.length; i++) {
+                const curr = polygon[i];
+                const next = polygon[(i + 1) % polygon.length];
+
+                // Handle top margin: replace angled edges with horizontal
+                if (extendsIntoTop) {
+                    if (curr[1] >= zoneTop && next[1] < zoneTop) {
+                        // Exiting content zone into top margin
+                        result.push(curr);
+                        // Find where edge crosses zoneTop
+                        const t = (zoneTop - curr[1]) / (next[1] - curr[1]);
+                        const crossX = curr[0] + t * (next[0] - curr[0]);
+                        result.push([crossX, zoneTop]);
+                        result.push([crossX, minY]); // Go straight up to cell's max extent
+                    } else if (curr[1] < zoneTop && next[1] < zoneTop) {
+                        // Both in top margin - make horizontal at minY
+                        if (result.length === 0 || result[result.length-1][1] !== minY) {
+                            result.push([curr[0], minY]);
+                        }
+                        result.push([next[0], minY]);
+                    } else if (curr[1] < zoneTop && next[1] >= zoneTop) {
+                        // Re-entering content zone from top margin
+                        const t = (zoneTop - curr[1]) / (next[1] - curr[1]);
+                        const crossX = curr[0] + t * (next[0] - curr[0]);
+                        result.push([crossX, minY]); // Horizontal cap
+                        result.push([crossX, zoneTop]);
+                    } else {
+                        // Both in content zone
+                        result.push(curr);
+                    }
                 }
-
-                // Horizontal shelf at this level
-                topEdge.push([leftX, shelfY]);
-                topEdge.push([rightX, shelfY]);
-
-                lastY = shelfY;
-            }
-            // Close to right edge
-            if (topPins.length > 0 && lastY !== zoneTop) {
-                topEdge.push([width, lastY]);
-                topEdge.push([width, zoneTop]);
-            } else {
-                topEdge.push([width, zoneTop]);
-            }
-
-            // Build bottom edge with HORIZONTAL STEPS
-            const bottomEdge = [];
-            lastY = zoneBottom;
-
-            // Go right to left for bottom edge
-            for (let i = bottomPins.length - 1; i >= 0; i--) {
-                const pin = bottomPins[i];
-                const yieldAmount = pin.push || 0;
-                const shelfY = zoneBottom + yieldAmount;
-
-                const rightX = i === bottomPins.length - 1 ? width : (pin.x + bottomPins[i+1].x) / 2;
-                const leftX = i === 0 ? 0 : (bottomPins[i-1].x + pin.x) / 2;
-
-                // Vertical step from previous level
-                if (Math.abs(shelfY - lastY) > 0.5) {
-                    bottomEdge.push([rightX, lastY]);
-                    bottomEdge.push([rightX, shelfY]);
+                // Handle bottom margin
+                else if (extendsIntoBottom) {
+                    if (curr[1] <= zoneBottom && next[1] > zoneBottom) {
+                        // Exiting content zone into bottom margin
+                        result.push(curr);
+                        const t = (zoneBottom - curr[1]) / (next[1] - curr[1]);
+                        const crossX = curr[0] + t * (next[0] - curr[0]);
+                        result.push([crossX, zoneBottom]);
+                        result.push([crossX, maxY]); // Go straight down to cell's max extent
+                    } else if (curr[1] > zoneBottom && next[1] > zoneBottom) {
+                        // Both in bottom margin - make horizontal at maxY
+                        if (result.length === 0 || result[result.length-1][1] !== maxY) {
+                            result.push([curr[0], maxY]);
+                        }
+                        result.push([next[0], maxY]);
+                    } else if (curr[1] > zoneBottom && next[1] <= zoneBottom) {
+                        // Re-entering content zone from bottom margin
+                        const t = (zoneBottom - curr[1]) / (next[1] - curr[1]);
+                        const crossX = curr[0] + t * (next[0] - curr[0]);
+                        result.push([crossX, maxY]); // Horizontal cap
+                        result.push([crossX, zoneBottom]);
+                    } else {
+                        // Both in content zone
+                        result.push(curr);
+                    }
                 }
-
-                // Horizontal shelf
-                bottomEdge.push([rightX, shelfY]);
-                bottomEdge.push([leftX, shelfY]);
-
-                lastY = shelfY;
-            }
-            // Close to left edge
-            if (bottomPins.length > 0 && lastY !== zoneBottom) {
-                bottomEdge.push([0, lastY]);
-                bottomEdge.push([0, zoneBottom]);
-            } else {
-                bottomEdge.push([0, zoneBottom]);
+                else {
+                    result.push(curr);
+                }
             }
 
-            // Start with top-left, build clockwise
-            const result = [[0, zoneTop], ...topEdge, ...bottomEdge];
-            return result;
+            // Clean up duplicates
+            const cleaned = [];
+            for (const p of result) {
+                if (cleaned.length === 0 ||
+                    Math.abs(p[0] - cleaned[cleaned.length-1][0]) > 0.1 ||
+                    Math.abs(p[1] - cleaned[cleaned.length-1][1]) > 0.1) {
+                    cleaned.push(p);
+                }
+            }
+
+            return cleaned.length >= 3 ? cleaned : polygon;
         }
 
         function computeCellPolygon(index, bounds) {
@@ -749,8 +772,7 @@
 
             for (let j = 0; j < cells.length; j++) {
                 if (index === j) continue;
-                // Skip ghost cells - they don't participate in Voronoi
-                if (cells[j].isGhost) continue;
+                // Ghost cells NOW participate in Voronoi - they clip visible cells
                 const other = cells[j];
 
                 const midX = (cell.x + other.x) / 2;
@@ -1010,30 +1032,29 @@
                 cells.push(cell);
             }
 
-            // Generate ghost pins at the boundary edges (if content zone enabled)
-            // Pins are rectangular elements that get pushed by nearby visible cells
+            // Generate ghost cells in margins that participate in Voronoi computation
+            // These cells "own" the margin space and clip visible cells at the boundary
             if (config.contentZoneEnabled) {
-                const pinWidth = 20;  // Width of each pin
-                const pinGap = 2;     // Gap between pins
-                const pinSpacing = pinWidth + pinGap;
-                const pinCount = Math.ceil(width / pinSpacing) + 1;
+                const ghostSpacing = 40; // Spacing between ghost cell centers
+                const ghostCount = Math.ceil(width / ghostSpacing) + 1;
 
-                // Top boundary pins
-                if (zoneTop > 20) {
-                    for (let i = 0; i < pinCount; i++) {
-                        const x = i * pinSpacing + pinWidth / 2;
-                        const ghost = new Cell(x, zoneTop, cells.length, true, 'top');
-                        ghost.pinWidth = pinWidth;
+                // Top margin ghost cells - positioned in middle of margin
+                if (zoneTop > 30) {
+                    const ghostY = zoneTop / 2; // Middle of top margin
+                    for (let i = 0; i < ghostCount; i++) {
+                        const x = i * ghostSpacing + ghostSpacing / 2;
+                        const ghost = new Cell(x, ghostY, cells.length, true, 'top');
                         cells.push(ghost);
                     }
                 }
 
-                // Bottom boundary pins
-                if (height - zoneBottom > 20) {
-                    for (let i = 0; i < pinCount; i++) {
-                        const x = i * pinSpacing + pinWidth / 2;
-                        const ghost = new Cell(x, zoneBottom, cells.length, true, 'bottom');
-                        ghost.pinWidth = pinWidth;
+                // Bottom margin ghost cells - positioned in middle of margin
+                const bottomMargin = height - zoneBottom;
+                if (bottomMargin > 30) {
+                    const ghostY = zoneBottom + bottomMargin / 2; // Middle of bottom margin
+                    for (let i = 0; i < ghostCount; i++) {
+                        const x = i * ghostSpacing + ghostSpacing / 2;
+                        const ghost = new Cell(x, ghostY, cells.length, true, 'bottom');
                         cells.push(ghost);
                     }
                 }
@@ -1555,42 +1576,31 @@
                 }
             }
 
-            // Calculate pin push based on visible cells approaching boundaries
+            // Soft boundary force - gently push visible cells away from content zone edges
+            // Ghost cells handle the Voronoi clipping, but this prevents cell centers
+            // from getting too close to the boundary (which would create thin slivers)
             if (config.contentZoneEnabled) {
                 const zoneTop = height * config.contentZoneTop;
                 const zoneBottom = height * (1 - config.contentZoneBottom);
-                const pushRange = 80; // How far cells can push pins
-                const maxPush = 60;   // Maximum push distance
+                const softZone = 60; // Distance from boundary where soft force kicks in
 
                 for (const cell of cells) {
                     if (cell.isGhost) continue;
 
-                    // Check each ghost pin
-                    for (const pin of cells) {
-                        if (!pin.isGhost) continue;
+                    const topDist = cell.y - zoneTop;
+                    const bottomDist = zoneBottom - cell.y;
 
-                        // Horizontal distance to pin
-                        const hdist = Math.abs(cell.x - pin.x);
-                        if (hdist > pushRange) continue;
-
-                        // Calculate push based on cell proximity to boundary
-                        let pushAmount = 0;
-                        if (pin.ghostSide === 'top') {
-                            const penetration = zoneTop - cell.y + pushRange;
-                            if (penetration > 0) {
-                                const hFalloff = 1 - (hdist / pushRange);
-                                pushAmount = Math.min(penetration * hFalloff * 0.8, maxPush);
-                            }
-                        } else if (pin.ghostSide === 'bottom') {
-                            const penetration = cell.y - zoneBottom + pushRange;
-                            if (penetration > 0) {
-                                const hFalloff = 1 - (hdist / pushRange);
-                                pushAmount = Math.min(penetration * hFalloff * 0.8, maxPush);
-                            }
-                        }
-
-                        // Accumulate push from multiple cells
-                        pin.targetPush = Math.max(pin.targetPush, pushAmount);
+                    // Soft push away from top boundary
+                    if (topDist < softZone && topDist > 0) {
+                        const penetration = softZone - topDist;
+                        const pushForce = penetration * 0.01 * config.spring;
+                        cell.vy += pushForce;
+                    }
+                    // Soft push away from bottom boundary
+                    if (bottomDist < softZone && bottomDist > 0) {
+                        const penetration = softZone - bottomDist;
+                        const pushForce = penetration * 0.01 * config.spring;
+                        cell.vy -= pushForce;
                     }
                 }
             }
@@ -1607,15 +1617,8 @@
         function render() {
             ctx.clearRect(0, 0, width, height);
 
-            // Draw the margin background first
-            if (config.contentZoneEnabled) {
-                const zoneTop = height * config.contentZoneTop;
-                const zoneBottom = height * (1 - config.contentZoneBottom);
-
-                ctx.fillStyle = 'rgba(26, 26, 46, 1)'; // Match body background
-                ctx.fillRect(0, 0, width, zoneTop);
-                ctx.fillRect(0, zoneBottom, width, height - zoneBottom);
-            }
+            // Don't pre-fill margins - let cells bleed into them
+            // Pins will cover the margins and retract when pushed
 
             // Draw visible cells
             for (let i = 0; i < cells.length; i++) {
@@ -1682,40 +1685,20 @@
                 ctx.shadowBlur = 0;
             }
 
-            // Draw ghost pins ON TOP of cells (so they visibly yield into content area)
-            if (config.contentZoneEnabled) {
-                const zoneTop = height * config.contentZoneTop;
-                const zoneBottom = height * (1 - config.contentZoneBottom);
+            // Draw ghost cells with background color - they define the margin boundaries
+            // Ghost cells participate in Voronoi, so visible cells are naturally clipped by them
+            ctx.fillStyle = 'rgba(26, 26, 46, 1)'; // Match background
+            for (const cell of cells) {
+                if (!cell.isGhost) continue;
+                if (!cell.polygon || cell.polygon.length < 3) continue;
 
-                for (const pin of cells) {
-                    if (!pin.isGhost) continue;
-
-                    const pinW = pin.pinWidth || 20;
-                    const push = pin.push;
-
-                    // Only draw the "yield" portion that extends into content area
-                    if (push > 0) {
-                        ctx.fillStyle = 'rgba(26, 26, 46, 1)'; // Match background
-
-                        if (pin.ghostSide === 'top') {
-                            // Pin yields downward into content
-                            ctx.fillRect(
-                                pin.x - pinW / 2,
-                                zoneTop,
-                                pinW,
-                                push
-                            );
-                        } else {
-                            // Pin yields upward into content
-                            ctx.fillRect(
-                                pin.x - pinW / 2,
-                                zoneBottom - push,
-                                pinW,
-                                push
-                            );
-                        }
-                    }
+                ctx.beginPath();
+                ctx.moveTo(cell.polygon[0][0], cell.polygon[0][1]);
+                for (let i = 1; i < cell.polygon.length; i++) {
+                    ctx.lineTo(cell.polygon[i][0], cell.polygon[i][1]);
                 }
+                ctx.closePath();
+                ctx.fill();
             }
 
             // Debug mode
