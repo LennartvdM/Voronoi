@@ -869,7 +869,9 @@
             for (let i = 0; i < cells.length; i++) {
                 if (cells[i].isGhost) continue;
                 cells[i].polygon = computeCellPolygon(i, bounds);
-                cells[i].displayPolygon = applyGap(cells[i].polygon, config.gap);
+                // Apply gap then simplify to help corner rounding
+                const gapped = applyGap(cells[i].polygon, config.gap);
+                cells[i].displayPolygon = simplifyPolygon(gapped);
             }
         }
 
@@ -951,6 +953,79 @@
                     p[1] - dy * shrink
                 ];
             });
+        }
+
+        // ========== POLYGON SIMPLIFICATION ==========
+        // Removes nearly-collinear vertices and merges close points
+        // This helps corner rounding work better on clipped polygons
+        function simplifyPolygon(polygon, minEdgeLength = 8, collinearThreshold = 0.98) {
+            if (!polygon || polygon.length < 3) return polygon;
+
+            // First pass: merge vertices that are too close together
+            let simplified = [];
+            for (let i = 0; i < polygon.length; i++) {
+                const curr = polygon[i];
+                const last = simplified[simplified.length - 1];
+
+                if (!last) {
+                    simplified.push(curr);
+                    continue;
+                }
+
+                const dist = Math.sqrt((curr[0] - last[0]) ** 2 + (curr[1] - last[1]) ** 2);
+                if (dist >= minEdgeLength) {
+                    simplified.push(curr);
+                } else {
+                    // Merge: keep the midpoint
+                    simplified[simplified.length - 1] = [(curr[0] + last[0]) / 2, (curr[1] + last[1]) / 2];
+                }
+            }
+
+            // Check first and last vertex distance
+            if (simplified.length > 2) {
+                const first = simplified[0];
+                const last = simplified[simplified.length - 1];
+                const dist = Math.sqrt((first[0] - last[0]) ** 2 + (first[1] - last[1]) ** 2);
+                if (dist < minEdgeLength) {
+                    simplified[0] = [(first[0] + last[0]) / 2, (first[1] + last[1]) / 2];
+                    simplified.pop();
+                }
+            }
+
+            if (simplified.length < 3) return polygon;
+
+            // Second pass: remove nearly-collinear points
+            const result = [];
+            const n = simplified.length;
+
+            for (let i = 0; i < n; i++) {
+                const prev = simplified[(i - 1 + n) % n];
+                const curr = simplified[i];
+                const next = simplified[(i + 1) % n];
+
+                // Calculate vectors
+                const v1x = curr[0] - prev[0];
+                const v1y = curr[1] - prev[1];
+                const v2x = next[0] - curr[0];
+                const v2y = next[1] - curr[1];
+
+                const len1 = Math.sqrt(v1x * v1x + v1y * v1y);
+                const len2 = Math.sqrt(v2x * v2x + v2y * v2y);
+
+                if (len1 < 0.001 || len2 < 0.001) {
+                    continue; // Skip degenerate edges
+                }
+
+                // Dot product of normalized vectors
+                const dot = (v1x * v2x + v1y * v2y) / (len1 * len2);
+
+                // If vectors are nearly parallel (dot close to 1), skip this vertex
+                if (dot < collinearThreshold) {
+                    result.push(curr);
+                }
+            }
+
+            return result.length >= 3 ? result : polygon;
         }
 
         // ========== ROUNDED CORNERS ==========
