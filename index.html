@@ -495,6 +495,9 @@
         let currentBoundsTop = 0;
         let currentBoundsBottom = 0;
         let boundsInitialized = false;
+        // Smoothed plate depth maps (persisted across frames)
+        let smoothedTopDepths = null;
+        let smoothedBottomDepths = null;
 
         // ========== CELL CLASS ==========
         class Cell {
@@ -645,9 +648,20 @@
         // Build stepped bounds polygon from cell contact with boundaries
         // Each cell that touches the boundary creates one horizontal plate
         // matching the width of its contact surface
+        // Depths are SMOOTHED over time to prevent oscillation
         function buildSteppedBounds(zoneTop, zoneBottom) {
             if (!config.steppedBoundsEnabled) {
                 return [[0, zoneTop], [width, zoneTop], [width, zoneBottom], [0, zoneBottom]];
+            }
+
+            const mapSize = Math.ceil(width) + 1;
+
+            // Initialize smoothed depth maps if needed
+            if (!smoothedTopDepths || smoothedTopDepths.length !== mapSize) {
+                smoothedTopDepths = new Array(mapSize).fill(0);
+            }
+            if (!smoothedBottomDepths || smoothedBottomDepths.length !== mapSize) {
+                smoothedBottomDepths = new Array(mapSize).fill(0);
             }
 
             // Quantize pressure to discrete shelf levels
@@ -661,33 +675,35 @@
             const topPlates = [];    // { leftX, rightX, depth }
             const bottomPlates = [];
 
-            const boundaryTolerance = 5; // How close to boundary counts as "touching"
+            // Use larger tolerance to detect cells near the CURRENT smoothed boundary
+            const boundaryTolerance = config.maxPlateDepth + 10;
 
             for (const cell of cells) {
                 if (cell.isGhost) continue;
                 if (!cell.polygon || cell.polygon.length < 3) continue;
 
                 // Find where this cell's polygon touches the boundaries
+                // Check against BASELINE boundary, not the yielded one
                 let topContactLeft = Infinity;
                 let topContactRight = -Infinity;
                 let bottomContactLeft = Infinity;
                 let bottomContactRight = -Infinity;
-                let touchesTop = false;
-                let touchesBottom = false;
+                let nearTop = false;
+                let nearBottom = false;
 
                 for (const vertex of cell.polygon) {
                     const [vx, vy] = vertex;
 
-                    // Check top boundary contact
-                    if (Math.abs(vy - zoneTop) < boundaryTolerance) {
-                        touchesTop = true;
+                    // Check top boundary contact (vertex is at or above baseline)
+                    if (vy <= zoneTop + boundaryTolerance) {
+                        nearTop = true;
                         topContactLeft = Math.min(topContactLeft, vx);
                         topContactRight = Math.max(topContactRight, vx);
                     }
 
-                    // Check bottom boundary contact
-                    if (Math.abs(vy - zoneBottom) < boundaryTolerance) {
-                        touchesBottom = true;
+                    // Check bottom boundary contact (vertex is at or below baseline)
+                    if (vy >= zoneBottom - boundaryTolerance) {
+                        nearBottom = true;
                         bottomContactLeft = Math.min(bottomContactLeft, vx);
                         bottomContactRight = Math.max(bottomContactRight, vx);
                     }
@@ -696,7 +712,7 @@
                 // Calculate push amount based on cell center proximity to boundary
                 const pushRange = 80;
 
-                if (touchesTop && topContactRight > topContactLeft) {
+                if (nearTop && topContactRight > topContactLeft) {
                     const penetration = zoneTop - cell.y + pushRange;
                     if (penetration > 0) {
                         const depth = quantizeDepth(penetration * 0.8);
@@ -710,7 +726,7 @@
                     }
                 }
 
-                if (touchesBottom && bottomContactRight > bottomContactLeft) {
+                if (nearBottom && bottomContactRight > bottomContactLeft) {
                     const penetration = cell.y - zoneBottom + pushRange;
                     if (penetration > 0) {
                         const depth = quantizeDepth(penetration * 0.8);
@@ -725,25 +741,62 @@
                 }
             }
 
-            // Build depth map for top edge (sample at each pixel, take max depth)
-            const topDepthMap = new Array(Math.ceil(width) + 1).fill(0);
+            // Build TARGET depth map for top edge
+            const targetTopDepths = new Array(mapSize).fill(0);
             for (const plate of topPlates) {
                 const left = Math.max(0, Math.floor(plate.leftX));
                 const right = Math.min(width, Math.ceil(plate.rightX));
                 for (let x = left; x <= right; x++) {
-                    topDepthMap[x] = Math.max(topDepthMap[x], plate.depth);
+                    targetTopDepths[x] = Math.max(targetTopDepths[x], plate.depth);
                 }
             }
 
-            // Build depth map for bottom edge
-            const bottomDepthMap = new Array(Math.ceil(width) + 1).fill(0);
+            // Build TARGET depth map for bottom edge
+            const targetBottomDepths = new Array(mapSize).fill(0);
             for (const plate of bottomPlates) {
                 const left = Math.max(0, Math.floor(plate.leftX));
                 const right = Math.min(width, Math.ceil(plate.rightX));
                 for (let x = left; x <= right; x++) {
-                    bottomDepthMap[x] = Math.max(bottomDepthMap[x], plate.depth);
+                    targetBottomDepths[x] = Math.max(targetBottomDepths[x], plate.depth);
                 }
             }
+
+            // Smooth toward target depths (prevents oscillation)
+            const smoothSpeed = 0.15;  // How fast plates yield outward
+            const returnSpeed = 0.08;  // How fast plates return (slower for stability)
+
+            for (let x = 0; x < mapSize; x++) {
+                // Top depths
+                const topTarget = targetTopDepths[x];
+                const topCurrent = smoothedTopDepths[x];
+                if (topTarget > topCurrent) {
+                    // Growing - smooth toward target
+                    smoothedTopDepths[x] += (topTarget - topCurrent) * smoothSpeed;
+                } else if (topTarget < topCurrent) {
+                    // Shrinking - slower return for stability
+                    smoothedTopDepths[x] += (topTarget - topCurrent) * returnSpeed;
+                }
+                // Snap to zero if very small
+                if (smoothedTopDepths[x] < 1) smoothedTopDepths[x] = 0;
+
+                // Bottom depths
+                const bottomTarget = targetBottomDepths[x];
+                const bottomCurrent = smoothedBottomDepths[x];
+                if (bottomTarget > bottomCurrent) {
+                    smoothedBottomDepths[x] += (bottomTarget - bottomCurrent) * smoothSpeed;
+                } else if (bottomTarget < bottomCurrent) {
+                    smoothedBottomDepths[x] += (bottomTarget - bottomCurrent) * returnSpeed;
+                }
+                if (smoothedBottomDepths[x] < 1) smoothedBottomDepths[x] = 0;
+            }
+
+            // Quantize the smoothed depths for clean steps
+            const quantizedTopDepths = smoothedTopDepths.map(d =>
+                d < config.plateThreshold ? 0 : Math.round(d / config.plateDepthStep) * config.plateDepthStep
+            );
+            const quantizedBottomDepths = smoothedBottomDepths.map(d =>
+                d < config.plateThreshold ? 0 : Math.round(d / config.plateDepthStep) * config.plateDepthStep
+            );
 
             // Convert depth maps to stepped edges
             function buildEdgeFromDepthMap(depthMap, baseY, direction) {
@@ -770,8 +823,8 @@
                 return edge;
             }
 
-            const topEdge = buildEdgeFromDepthMap(topDepthMap, zoneTop, -1);
-            const bottomEdge = buildEdgeFromDepthMap(bottomDepthMap, zoneBottom, 1);
+            const topEdge = buildEdgeFromDepthMap(quantizedTopDepths, zoneTop, -1);
+            const bottomEdge = buildEdgeFromDepthMap(quantizedBottomDepths, zoneBottom, 1);
 
             // Combine into closed polygon
             const bounds = [];
