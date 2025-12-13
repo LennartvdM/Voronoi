@@ -257,7 +257,7 @@
             <div class="control-group hide-mobile">
                 <label>Hover Force</label>
                 <div class="control-row">
-                    <input type="range" id="hoverForce" min="20" max="5000" value="60">
+                    <input type="range" id="hoverForce" min="20" max="20000" value="60">
                     <span class="control-value" id="hoverForceVal">60</span>
                 </div>
             </div>
@@ -317,7 +317,7 @@
             <div class="control-group hide-tablet">
                 <label>Max Expansion</label>
                 <div class="control-row">
-                    <input type="range" id="maxExpansion" min="50" max="5000" value="150">
+                    <input type="range" id="maxExpansion" min="50" max="10000" value="150">
                     <span class="control-value" id="maxExpansionVal">150</span>
                 </div>
             </div>
@@ -1623,9 +1623,11 @@
                     // Hover speed affects force application rate
                     const speedMultiplier = 0.3 + config.hoverSpeed * 0.7;
 
-                    // Center relevance controls how much direction matters
-                    const directedForce = config.hoverForce / dist * 0.5 * speedMultiplier * phaseMultiplier;
-                    const uniformForce = config.hoverForce * 0.03 * speedMultiplier * phaseMultiplier;
+                    // Force scales with hoverForce directly, distance just affects direction weight
+                    // Closer to center = stronger push, but minimum 20% force even at edge
+                    const distanceFactor = Math.max(0.2, 1 - dist / 200);
+                    const directedForce = config.hoverForce * 0.01 * distanceFactor * speedMultiplier * phaseMultiplier;
+                    const uniformForce = config.hoverForce * 0.005 * speedMultiplier * phaseMultiplier;
 
                     const cr = config.centerRelevance;
 
