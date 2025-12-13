@@ -767,8 +767,8 @@
                 zoneBottom = height * (1 - config.contentZoneBottom);
             }
 
-            // Use simple, generous rectangular bounds for stable Voronoi
-            // Cells can spill into buffer freely - containment is visual, not geometric
+            // Voronoi bounds must contain all possible cell positions (hard container)
+            // Cells are kept within soft container by physics, not by Voronoi clipping
             const buffer = config.bleedBuffer;
             const simpleBounds = [
                 [0, zoneTop - buffer],
