@@ -438,7 +438,12 @@
             bleedBuffer: 80,             // Fixed pixel buffer beyond content zone where cells can bleed
             boundaryStiffness: 0.15,     // 0-0.3: how strongly cells are pushed back (increased default)
             boundaryDamping: 0.82,       // 0-1: damping applied to cells in buffer zone
-            hoverBleedPrivilege: 0.7     // 0-1: how much more the hovered cell can bleed (increased default)
+            hoverBleedPrivilege: 0.7,    // 0-1: how much more the hovered cell can bleed (increased default)
+            // Stepped plate system
+            steppedBoundsEnabled: true,  // Enable stepped boundary that yields to pressure
+            plateThreshold: 15,          // Minimum pressure to start forming a plate
+            plateDepthStep: 20,          // Quantize plate depth to this step size (pixels)
+            maxPlateDepth: 80            // Maximum depth a plate can yield
         };
 
         // ========== SAMPLE DATA ==========
@@ -637,6 +642,137 @@
         }
 
         // ========== VORONOI ==========
+        // Build stepped bounds polygon from pin pressure
+        // Creates horizontal shelves at discrete depths with vertical steps between them
+        function buildSteppedBounds(zoneTop, zoneBottom) {
+            if (!config.steppedBoundsEnabled) {
+                return [[0, zoneTop], [width, zoneTop], [width, zoneBottom], [0, zoneBottom]];
+            }
+
+            // Collect pins sorted by x position
+            const topPins = cells.filter(c => c.isGhost && c.ghostSide === 'top')
+                .sort((a, b) => a.x - b.x);
+            const bottomPins = cells.filter(c => c.isGhost && c.ghostSide === 'bottom')
+                .sort((a, b) => a.x - b.x);
+
+            // If no pins, return simple rectangle
+            if (topPins.length === 0 && bottomPins.length === 0) {
+                return [[0, zoneTop], [width, zoneTop], [width, zoneBottom], [0, zoneBottom]];
+            }
+
+            // Quantize pressure to discrete shelf levels
+            function quantizeDepth(pressure) {
+                if (pressure < config.plateThreshold) return 0;
+                const depth = Math.min(pressure, config.maxPlateDepth);
+                return Math.round(depth / config.plateDepthStep) * config.plateDepthStep;
+            }
+
+            // Build top edge: creates horizontal shelves with vertical steps
+            // Goes left to right, yields UPWARD (into top margin) where pressure exists
+            const topEdge = [];
+            let currentY = zoneTop;
+            let lastX = 0;
+
+            for (let i = 0; i < topPins.length; i++) {
+                const pin = topPins[i];
+                const depth = quantizeDepth(pin.push || 0);
+                const targetY = zoneTop - depth;  // Negative = up into margin
+                const pinHalfWidth = (pin.pinWidth || 20) / 2;
+
+                if (targetY !== currentY) {
+                    // Step transition at the leading edge of this pin
+                    const stepX = Math.max(0, pin.x - pinHalfWidth);
+
+                    // Horizontal segment to step point
+                    if (stepX > lastX) {
+                        topEdge.push([lastX, currentY]);
+                        topEdge.push([stepX, currentY]);
+                    }
+
+                    // Vertical step
+                    topEdge.push([stepX, targetY]);
+
+                    currentY = targetY;
+                    lastX = stepX;
+                }
+            }
+
+            // Final horizontal segment to right edge
+            if (lastX < width) {
+                topEdge.push([lastX, currentY]);
+                topEdge.push([width, currentY]);
+            }
+
+            // Build bottom edge: goes right to left, yields DOWNWARD where pressure exists
+            const bottomEdge = [];
+            currentY = zoneBottom;
+            lastX = width;
+
+            for (let i = bottomPins.length - 1; i >= 0; i--) {
+                const pin = bottomPins[i];
+                const depth = quantizeDepth(pin.push || 0);
+                const targetY = zoneBottom + depth;  // Positive = down into bottom margin
+                const pinHalfWidth = (pin.pinWidth || 20) / 2;
+
+                if (targetY !== currentY) {
+                    // Step transition at the trailing edge of this pin
+                    const stepX = Math.min(width, pin.x + pinHalfWidth);
+
+                    // Horizontal segment to step point
+                    if (stepX < lastX) {
+                        bottomEdge.push([lastX, currentY]);
+                        bottomEdge.push([stepX, currentY]);
+                    }
+
+                    // Vertical step
+                    bottomEdge.push([stepX, targetY]);
+
+                    currentY = targetY;
+                    lastX = stepX;
+                }
+            }
+
+            // Final horizontal segment to left edge
+            if (lastX > 0) {
+                bottomEdge.push([lastX, currentY]);
+                bottomEdge.push([0, currentY]);
+            }
+
+            // Combine into closed polygon (clockwise)
+            // Top-left -> top edge (right) -> right side down -> bottom edge (left) -> left side up
+            const bounds = [];
+
+            // Top edge
+            if (topEdge.length > 0) {
+                bounds.push(...topEdge);
+            } else {
+                bounds.push([0, zoneTop], [width, zoneTop]);
+            }
+
+            // Right side: from top-right to bottom-right
+            const topRightY = topEdge.length > 0 ? topEdge[topEdge.length - 1][1] : zoneTop;
+            const bottomRightY = bottomEdge.length > 0 ? bottomEdge[0][1] : zoneBottom;
+            if (topRightY !== bottomRightY) {
+                bounds.push([width, bottomRightY]);
+            }
+
+            // Bottom edge
+            if (bottomEdge.length > 0) {
+                bounds.push(...bottomEdge);
+            } else {
+                bounds.push([width, zoneBottom], [0, zoneBottom]);
+            }
+
+            // Left side: from bottom-left to top-left (closes the polygon)
+            const bottomLeftY = bottomEdge.length > 0 ? bottomEdge[bottomEdge.length - 1][1] : zoneBottom;
+            const topLeftY = topEdge.length > 0 ? topEdge[0][1] : zoneTop;
+            if (bottomLeftY !== topLeftY) {
+                bounds.push([0, topLeftY]);
+            }
+
+            return bounds;
+        }
+
         function computeVoronoi() {
             // Bounds are the content zone - creates clean horizontal edges
             // Ghost pins handle the organic boundary interaction separately
@@ -648,7 +784,8 @@
                 boundsBottom = height * (1 - config.contentZoneBottom);
             }
 
-            const bounds = [[0, boundsTop], [width, boundsTop], [width, boundsBottom], [0, boundsBottom]];
+            // Build stepped bounds based on pin pressure
+            const bounds = buildSteppedBounds(boundsTop, boundsBottom);
 
             // Only compute Voronoi for visible cells (not ghost pins)
             for (let i = 0; i < cells.length; i++) {
@@ -1635,21 +1772,38 @@
 
             // Debug mode
             if (config.debugMode) {
-                // Draw content zone boundary lines
+                // Draw content zone boundary - either stepped or simple lines
                 if (config.contentZoneEnabled) {
                     const zoneTop = height * config.contentZoneTop;
                     const zoneBottom = height * (1 - config.contentZoneBottom);
 
-                    // Content zone boundary lines (solid green)
+                    // Draw the actual bounds polygon (stepped if enabled)
+                    const bounds = buildSteppedBounds(zoneTop, zoneBottom);
+
                     ctx.strokeStyle = 'rgba(100, 255, 100, 0.8)';
                     ctx.lineWidth = 2;
                     ctx.setLineDash([]);
+                    ctx.beginPath();
+
+                    if (bounds.length > 0) {
+                        ctx.moveTo(bounds[0][0], bounds[0][1]);
+                        for (let i = 1; i < bounds.length; i++) {
+                            ctx.lineTo(bounds[i][0], bounds[i][1]);
+                        }
+                        ctx.closePath();
+                    }
+                    ctx.stroke();
+
+                    // Also draw baseline reference (dashed)
+                    ctx.strokeStyle = 'rgba(100, 255, 100, 0.3)';
+                    ctx.setLineDash([5, 5]);
                     ctx.beginPath();
                     ctx.moveTo(0, zoneTop);
                     ctx.lineTo(width, zoneTop);
                     ctx.moveTo(0, zoneBottom);
                     ctx.lineTo(width, zoneBottom);
                     ctx.stroke();
+                    ctx.setLineDash([]);
                 }
 
                 // Draw cell debug info
