@@ -664,17 +664,17 @@
         }
 
         // ========== VORONOI ==========
-        // Build organic bounds that smoothly yield to cell pressure
+        // Trace boundary from actual cell polygon edges
+        // The boundary follows where cells actually ARE, not pressure calculations
         function buildSteppedBounds(zoneTop, zoneBottom) {
             if (!config.steppedBoundsEnabled) {
                 return [[0, zoneTop], [width, zoneTop], [width, zoneBottom], [0, zoneBottom]];
             }
 
-            // Sample points along the boundary (fewer = smoother curves)
-            const sampleCount = 32;
+            const sampleCount = 48;
             const sampleWidth = width / (sampleCount - 1);
 
-            // Initialize smoothed depths if needed
+            // Initialize smoothed depths
             if (!smoothedTopDepths || smoothedTopDepths.length !== sampleCount) {
                 smoothedTopDepths = new Array(sampleCount).fill(0);
             }
@@ -682,121 +682,114 @@
                 smoothedBottomDepths = new Array(sampleCount).fill(0);
             }
 
-            // Calculate target depths at each sample point
+            // Scan actual cell polygons to find where they protrude beyond baseline
             const targetTop = new Array(sampleCount).fill(0);
             const targetBottom = new Array(sampleCount).fill(0);
 
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
-                if (cell.isGhost) continue;
+                if (cell.isGhost || !cell.polygon || cell.polygon.length < 3) continue;
 
                 const isHovered = (i === hoveredCell);
 
-                // Hovered cells can push boundary from anywhere with smooth falloff
-                // Non-hovered cells only affect boundary when close
-                const maxInfluence = isHovered ? config.maxPlateDepth : config.maxPlateDepth * 0.4;
-                const reachRadius = isHovered ? 500 : 120; // How far the cell can "reach" to push boundary
-                const spreadRadius = isHovered ? 200 : 120; // How wide the bulge spreads horizontally
+                // Walk polygon edges to find protrusions
+                for (let j = 0; j < cell.polygon.length; j++) {
+                    const v1 = cell.polygon[j];
+                    const v2 = cell.polygon[(j + 1) % cell.polygon.length];
 
-                // Top boundary pressure
-                const topDist = cell.y - zoneTop;
-                if (topDist > -config.maxPlateDepth) {
-                    // Smooth quadratic falloff based on distance
-                    const normalizedDist = Math.max(0, topDist) / reachRadius;
-                    const distanceFactor = Math.max(0, 1 - normalizedDist);
-                    const pressure = distanceFactor * distanceFactor * maxInfluence;
+                    // Sample along this edge
+                    const edgeLen = Math.hypot(v2[0] - v1[0], v2[1] - v1[1]);
+                    const steps = Math.max(1, Math.ceil(edgeLen / 20));
 
-                    if (pressure > 0.5) {
-                        for (let s = 0; s < sampleCount; s++) {
-                            const sampleX = s * sampleWidth;
-                            const horizDist = Math.abs(sampleX - cell.x);
-                            if (horizDist < spreadRadius) {
-                                const horizFactor = 1 - (horizDist / spreadRadius);
-                                const combined = pressure * horizFactor * horizFactor;
-                                targetTop[s] = Math.max(targetTop[s], combined);
-                            }
+                    for (let t = 0; t <= steps; t++) {
+                        const frac = t / steps;
+                        const px = v1[0] + (v2[0] - v1[0]) * frac;
+                        const py = v1[1] + (v2[1] - v1[1]) * frac;
+
+                        // Which sample bucket does this point affect?
+                        const sIdx = Math.floor(px / sampleWidth);
+                        if (sIdx < 0 || sIdx >= sampleCount) continue;
+
+                        // How much does this point protrude beyond baseline?
+                        const topProtrusion = zoneTop - py;
+                        const bottomProtrusion = py - zoneBottom;
+
+                        if (topProtrusion > 0) {
+                            targetTop[sIdx] = Math.max(targetTop[sIdx], topProtrusion);
+                            // Spread to neighbors for smoother curve
+                            if (sIdx > 0) targetTop[sIdx - 1] = Math.max(targetTop[sIdx - 1], topProtrusion * 0.5);
+                            if (sIdx < sampleCount - 1) targetTop[sIdx + 1] = Math.max(targetTop[sIdx + 1], topProtrusion * 0.5);
                         }
-                    }
-                }
-
-                // Bottom boundary pressure
-                const bottomDist = zoneBottom - cell.y;
-                if (bottomDist > -config.maxPlateDepth) {
-                    const normalizedDist = Math.max(0, bottomDist) / reachRadius;
-                    const distanceFactor = Math.max(0, 1 - normalizedDist);
-                    const pressure = distanceFactor * distanceFactor * maxInfluence;
-
-                    if (pressure > 0.5) {
-                        for (let s = 0; s < sampleCount; s++) {
-                            const sampleX = s * sampleWidth;
-                            const horizDist = Math.abs(sampleX - cell.x);
-                            if (horizDist < spreadRadius) {
-                                const horizFactor = 1 - (horizDist / spreadRadius);
-                                const combined = pressure * horizFactor * horizFactor;
-                                targetBottom[s] = Math.max(targetBottom[s], combined);
-                            }
+                        if (bottomProtrusion > 0) {
+                            targetBottom[sIdx] = Math.max(targetBottom[sIdx], bottomProtrusion);
+                            if (sIdx > 0) targetBottom[sIdx - 1] = Math.max(targetBottom[sIdx - 1], bottomProtrusion * 0.5);
+                            if (sIdx < sampleCount - 1) targetBottom[sIdx + 1] = Math.max(targetBottom[sIdx + 1], bottomProtrusion * 0.5);
                         }
                     }
                 }
             }
 
-            // Smooth depths toward targets (asymmetric: fast yield, slow return)
-            const yieldSpeed = 0.15;
-            const returnSpeed = 0.06;
+            // Smooth toward targets temporally
+            // Hovered cell protrusions yield quickly; others yield slowly and gently
+            const hasHover = hoveredCell !== null;
+            const yieldSpeed = hasHover ? 0.12 : 0.04;  // Slow gentle yield
+            const returnSpeed = 0.03;  // Very slow return for organic settle
 
             for (let s = 0; s < sampleCount; s++) {
                 const topDiff = targetTop[s] - smoothedTopDepths[s];
                 smoothedTopDepths[s] += topDiff * (topDiff > 0 ? yieldSpeed : returnSpeed);
-                if (smoothedTopDepths[s] < 0.5) smoothedTopDepths[s] = 0;
+                if (smoothedTopDepths[s] < 0.3) smoothedTopDepths[s] = 0;
 
                 const bottomDiff = targetBottom[s] - smoothedBottomDepths[s];
                 smoothedBottomDepths[s] += bottomDiff * (bottomDiff > 0 ? yieldSpeed : returnSpeed);
-                if (smoothedBottomDepths[s] < 0.5) smoothedBottomDepths[s] = 0;
+                if (smoothedBottomDepths[s] < 0.3) smoothedBottomDepths[s] = 0;
             }
 
-            // Build smooth polygon
+            // Build smooth polygon tracing actual cell edges
             const bounds = [];
 
-            // Top edge (left to right) - smooth curve
             for (let s = 0; s < sampleCount; s++) {
                 bounds.push([s * sampleWidth, zoneTop - smoothedTopDepths[s]]);
             }
-
-            // Right side
             bounds.push([width, zoneBottom + smoothedBottomDepths[sampleCount - 1]]);
-
-            // Bottom edge (right to left) - smooth curve
             for (let s = sampleCount - 1; s >= 0; s--) {
                 bounds.push([s * sampleWidth, zoneBottom + smoothedBottomDepths[s]]);
             }
-
-            // Close to top-left
             bounds.push([0, zoneTop - smoothedTopDepths[0]]);
 
             return bounds;
         }
 
         function computeVoronoi() {
-            // Bounds are the content zone with stepped plates where cells push
-            let boundsTop = 0;
-            let boundsBottom = height;
+            // Baseline content zone
+            let zoneTop = 0;
+            let zoneBottom = height;
 
             if (config.contentZoneEnabled) {
-                boundsTop = height * config.contentZoneTop;
-                boundsBottom = height * (1 - config.contentZoneBottom);
+                zoneTop = height * config.contentZoneTop;
+                zoneBottom = height * (1 - config.contentZoneBottom);
             }
 
-            // Build stepped bounds based on cell boundary contact
-            const bounds = buildSteppedBounds(boundsTop, boundsBottom);
+            // Cells can extend beyond baseline by maxPlateDepth
+            // Use generous clipping bounds so cells have room to protrude
+            const clipTop = zoneTop - config.maxPlateDepth;
+            const clipBottom = zoneBottom + config.maxPlateDepth;
+            const clipBounds = [
+                [0, clipTop], [width, clipTop],
+                [width, clipBottom], [0, clipBottom]
+            ];
 
-            // Only compute Voronoi for visible cells (not ghost pins)
+            // Compute cell polygons with generous clipping
             for (let i = 0; i < cells.length; i++) {
                 if (cells[i].isGhost) continue;
-                cells[i].polygon = computeCellPolygon(i, bounds);
-                // Apply gap then simplify to help corner rounding
+                cells[i].polygon = computeCellPolygon(i, clipBounds);
                 const gapped = applyGap(cells[i].polygon, config.gap);
                 cells[i].displayPolygon = simplifyPolygon(gapped);
             }
+
+            // Store baseline for boundary tracing (used by buildSteppedBounds)
+            computeVoronoi.zoneTop = zoneTop;
+            computeVoronoi.zoneBottom = zoneBottom;
         }
 
         function computeCellPolygon(index, bounds) {
