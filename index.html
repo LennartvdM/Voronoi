@@ -638,8 +638,6 @@
 
         // ========== VORONOI ==========
         function computeVoronoi() {
-            // Bounds are the content zone - creates clean horizontal edges
-            // Ghost pins handle the organic boundary interaction separately
             let boundsTop = 0;
             let boundsBottom = height;
 
@@ -648,7 +646,9 @@
                 boundsBottom = height * (1 - config.contentZoneBottom);
             }
 
-            const bounds = [[0, boundsTop], [width, boundsTop], [width, boundsBottom], [0, boundsBottom]];
+            // Build deformable bounds based on pin pressure
+            // The boundary "yields" where cells push against it
+            const bounds = buildDeformableBounds(boundsTop, boundsBottom);
 
             // Only compute Voronoi for visible cells (not ghost pins)
             for (let i = 0; i < cells.length; i++) {
@@ -656,6 +656,42 @@
                 cells[i].polygon = computeCellPolygon(i, bounds);
                 cells[i].displayPolygon = applyGap(cells[i].polygon, config.gap);
             }
+        }
+
+        // Build bounds polygon that deforms based on pin pressure
+        function buildDeformableBounds(zoneTop, zoneBottom) {
+            // Collect pins sorted by x position
+            const topPins = cells.filter(c => c.isGhost && c.ghostSide === 'top')
+                                 .sort((a, b) => a.x - b.x);
+            const bottomPins = cells.filter(c => c.isGhost && c.ghostSide === 'bottom')
+                                    .sort((a, b) => a.x - b.x);
+
+            // If no pins, use simple rectangle
+            if (topPins.length === 0 && bottomPins.length === 0) {
+                return [[0, zoneTop], [width, zoneTop], [width, zoneBottom], [0, zoneBottom]];
+            }
+
+            // Build top edge - yields upward (into margin) where there's pressure
+            const topEdge = [];
+            topEdge.push([0, zoneTop]); // Start at left
+            for (const pin of topPins) {
+                // Pin push makes boundary yield INTO the margin (lower y value)
+                const yieldAmount = pin.push || 0;
+                topEdge.push([pin.x, zoneTop - yieldAmount]);
+            }
+            topEdge.push([width, zoneTop]); // End at right
+
+            // Build bottom edge - yields downward where there's pressure
+            const bottomEdge = [];
+            bottomEdge.push([width, zoneBottom]); // Start at right (going counter-clockwise)
+            for (const pin of bottomPins.slice().reverse()) {
+                const yieldAmount = pin.push || 0;
+                bottomEdge.push([pin.x, zoneBottom + yieldAmount]);
+            }
+            bottomEdge.push([0, zoneBottom]); // End at left
+
+            // Combine into closed polygon (counter-clockwise)
+            return [...topEdge, ...bottomEdge];
         }
 
         function computeCellPolygon(index, bounds) {
