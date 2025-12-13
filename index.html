@@ -659,6 +659,7 @@
         }
 
         // Build bounds polygon that deforms based on pin pressure
+        // Creates STEPPED horizontal segments, not smooth curves
         function buildDeformableBounds(zoneTop, zoneBottom) {
             // Collect pins sorted by x position
             const topPins = cells.filter(c => c.isGhost && c.ghostSide === 'top')
@@ -671,27 +672,75 @@
                 return [[0, zoneTop], [width, zoneTop], [width, zoneBottom], [0, zoneBottom]];
             }
 
-            // Build top edge - yields upward (into margin) where there's pressure
+            // Build top edge with HORIZONTAL STEPS (staggered shelves)
             const topEdge = [];
-            topEdge.push([0, zoneTop]); // Start at left
-            for (const pin of topPins) {
-                // Pin push makes boundary yield INTO the margin (lower y value)
-                const yieldAmount = pin.push || 0;
-                topEdge.push([pin.x, zoneTop - yieldAmount]);
-            }
-            topEdge.push([width, zoneTop]); // End at right
+            let lastY = zoneTop;
 
-            // Build bottom edge - yields downward where there's pressure
+            for (let i = 0; i < topPins.length; i++) {
+                const pin = topPins[i];
+                const yieldAmount = pin.push || 0;
+                const shelfY = zoneTop - yieldAmount;
+
+                // Calculate shelf boundaries (midpoint between adjacent pins)
+                const leftX = i === 0 ? 0 : (topPins[i-1].x + pin.x) / 2;
+                const rightX = i === topPins.length - 1 ? width : (pin.x + topPins[i+1].x) / 2;
+
+                // Vertical step from previous level
+                if (Math.abs(shelfY - lastY) > 0.5) {
+                    topEdge.push([leftX, lastY]);    // End of previous shelf
+                    topEdge.push([leftX, shelfY]);   // Vertical drop/rise
+                }
+
+                // Horizontal shelf at this level
+                topEdge.push([leftX, shelfY]);
+                topEdge.push([rightX, shelfY]);
+
+                lastY = shelfY;
+            }
+            // Close to right edge
+            if (topPins.length > 0 && lastY !== zoneTop) {
+                topEdge.push([width, lastY]);
+                topEdge.push([width, zoneTop]);
+            } else {
+                topEdge.push([width, zoneTop]);
+            }
+
+            // Build bottom edge with HORIZONTAL STEPS
             const bottomEdge = [];
-            bottomEdge.push([width, zoneBottom]); // Start at right (going counter-clockwise)
-            for (const pin of bottomPins.slice().reverse()) {
-                const yieldAmount = pin.push || 0;
-                bottomEdge.push([pin.x, zoneBottom + yieldAmount]);
-            }
-            bottomEdge.push([0, zoneBottom]); // End at left
+            lastY = zoneBottom;
 
-            // Combine into closed polygon (counter-clockwise)
-            return [...topEdge, ...bottomEdge];
+            // Go right to left for bottom edge
+            for (let i = bottomPins.length - 1; i >= 0; i--) {
+                const pin = bottomPins[i];
+                const yieldAmount = pin.push || 0;
+                const shelfY = zoneBottom + yieldAmount;
+
+                const rightX = i === bottomPins.length - 1 ? width : (pin.x + bottomPins[i+1].x) / 2;
+                const leftX = i === 0 ? 0 : (bottomPins[i-1].x + pin.x) / 2;
+
+                // Vertical step from previous level
+                if (Math.abs(shelfY - lastY) > 0.5) {
+                    bottomEdge.push([rightX, lastY]);
+                    bottomEdge.push([rightX, shelfY]);
+                }
+
+                // Horizontal shelf
+                bottomEdge.push([rightX, shelfY]);
+                bottomEdge.push([leftX, shelfY]);
+
+                lastY = shelfY;
+            }
+            // Close to left edge
+            if (bottomPins.length > 0 && lastY !== zoneBottom) {
+                bottomEdge.push([0, lastY]);
+                bottomEdge.push([0, zoneBottom]);
+            } else {
+                bottomEdge.push([0, zoneBottom]);
+            }
+
+            // Start with top-left, build clockwise
+            const result = [[0, zoneTop], ...topEdge, ...bottomEdge];
+            return result;
         }
 
         function computeCellPolygon(index, bounds) {
