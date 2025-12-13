@@ -767,13 +767,14 @@
                 zoneBottom = height * (1 - config.contentZoneBottom);
             }
 
-            // Use SOFT container bounds for Voronoi (content zone)
-            // Buffer is for temporary spillover only, not default cell space
+            // Voronoi bounds must contain all possible cell positions (hard container)
+            // Cells are kept within soft container by physics, not by Voronoi clipping
+            const buffer = config.bleedBuffer;
             const simpleBounds = [
-                [0, zoneTop],
-                [width, zoneTop],
-                [width, zoneBottom],
-                [0, zoneBottom]
+                [0, zoneTop - buffer],
+                [width, zoneTop - buffer],
+                [width, zoneBottom + buffer],
+                [0, zoneBottom + buffer]
             ];
 
             // Compute each cell's polygon with simple bounds (no complex clipping)
