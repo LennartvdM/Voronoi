@@ -1660,30 +1660,48 @@
                 }
             }
 
-            // Buffer resolution: gently push non-hovered cells back into container
+            // Buffer management: cells can temporarily spill into buffer, but are pushed back
             if (config.contentZoneEnabled) {
                 const zoneTop = height * config.contentZoneTop;
                 const zoneBottom = height * (1 - config.contentZoneBottom);
-                const resolutionForce = config.bufferResolutionForce;
+                const buffer = config.bleedBuffer;
+                const hardTop = zoneTop - buffer;
+                const hardBottom = zoneBottom + buffer;
 
                 for (let i = 0; i < cells.length; i++) {
-                    // Hovered cell gets to stay in buffer
-                    if (i === hoveredCell) continue;
-
                     const cell = cells[i];
+                    const isHovered = (i === hoveredCell);
 
-                    // Check if cell is above content zone (in top buffer)
-                    if (cell.y < zoneTop) {
-                        const penetration = zoneTop - cell.y;
-                        // Gentle push back down, proportional to penetration
-                        cell.applyForce(0, penetration * resolutionForce);
+                    // Hard clamp at buffer edge for ALL cells (even hovered)
+                    if (cell.y < hardTop) {
+                        cell.y = hardTop;
+                        cell.vy = Math.max(0, cell.vy); // Stop upward momentum
+                    }
+                    if (cell.y > hardBottom) {
+                        cell.y = hardBottom;
+                        cell.vy = Math.min(0, cell.vy); // Stop downward momentum
                     }
 
-                    // Check if cell is below content zone (in bottom buffer)
-                    if (cell.y > zoneBottom) {
-                        const penetration = cell.y - zoneBottom;
-                        // Gentle push back up, proportional to penetration
-                        cell.applyForce(0, -penetration * resolutionForce);
+                    // Resolution force: push non-hovered cells back to container
+                    // Hovered cell gets to stay in buffer while hovered
+                    if (!isHovered) {
+                        // Strong quadratic force - scales with penetration squared
+                        const stiffness = config.boundaryStiffness;
+
+                        if (cell.y < zoneTop) {
+                            const penetration = zoneTop - cell.y;
+                            const normalizedPen = penetration / buffer; // 0-1 range
+                            // Quadratic: gentle near edge, strong deep in buffer
+                            const force = stiffness * normalizedPen * normalizedPen * buffer;
+                            cell.applyForce(0, force);
+                        }
+
+                        if (cell.y > zoneBottom) {
+                            const penetration = cell.y - zoneBottom;
+                            const normalizedPen = penetration / buffer;
+                            const force = stiffness * normalizedPen * normalizedPen * buffer;
+                            cell.applyForce(0, -force);
+                        }
                     }
                 }
             }
