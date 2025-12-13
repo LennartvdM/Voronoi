@@ -765,19 +765,14 @@
                 zoneBottom = height * (1 - config.contentZoneBottom);
             }
 
-            // Cells can extend beyond baseline by maxPlateDepth
-            // Use generous clipping bounds so cells have room to protrude
-            const clipTop = zoneTop - config.maxPlateDepth;
-            const clipBottom = zoneBottom + config.maxPlateDepth;
-            const clipBounds = [
-                [0, clipTop], [width, clipTop],
-                [width, clipBottom], [0, clipBottom]
-            ];
+            // Build the yielding boundary based on where cells are pushing
+            // This creates a feedback loop: cells push → boundary yields → cells can extend
+            const bounds = buildSteppedBounds(zoneTop, zoneBottom);
 
-            // Compute cell polygons with generous clipping
+            // Compute cell polygons clipped to the yielded boundary
             for (let i = 0; i < cells.length; i++) {
                 if (cells[i].isGhost) continue;
-                cells[i].polygon = computeCellPolygon(i, clipBounds);
+                cells[i].polygon = computeCellPolygon(i, bounds);
                 const gapped = applyGap(cells[i].polygon, config.gap);
                 const newDisplayPolygon = simplifyPolygon(gapped);
 
@@ -787,7 +782,6 @@
 
                 if (cell.displayPolygon && cell.displayPolygon.length === newDisplayPolygon.length) {
                     // Same vertex count - interpolate each vertex
-                    // Hovered cell responds faster, neighbors respond slower
                     const speed = isHovered ? 0.3 : 0.12;
 
                     for (let v = 0; v < newDisplayPolygon.length; v++) {
@@ -795,12 +789,11 @@
                         cell.displayPolygon[v][1] += (newDisplayPolygon[v][1] - cell.displayPolygon[v][1]) * speed;
                     }
                 } else {
-                    // Vertex count changed - just assign (topology change)
                     cell.displayPolygon = newDisplayPolygon;
                 }
             }
 
-            // Store baseline for boundary tracing (used by buildSteppedBounds)
+            // Store baseline for debug visualization
             computeVoronoi.zoneTop = zoneTop;
             computeVoronoi.zoneBottom = zoneBottom;
         }
