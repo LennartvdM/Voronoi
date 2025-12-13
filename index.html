@@ -1824,31 +1824,33 @@
 
             // Debug mode
             if (config.debugMode) {
-                // Draw content zone boundary - either stepped or simple lines
                 if (config.contentZoneEnabled) {
                     const zoneTop = height * config.contentZoneTop;
                     const zoneBottom = height * (1 - config.contentZoneBottom);
+                    const buffer = config.bleedBuffer;
+                    const hardTop = zoneTop - buffer;
+                    const hardBottom = zoneBottom + buffer;
 
-                    // Draw the actual bounds polygon (stepped if enabled)
-                    const bounds = buildSteppedBounds(zoneTop, zoneBottom);
+                    // Check if soft and hard container overlap (buffer = 0 or very small)
+                    const overlapping = buffer < 5;
+                    const hardColor = overlapping ? 'rgba(255, 100, 100, 0.9)' : 'rgba(255, 150, 50, 0.9)';
+                    const softColor = overlapping ? 'rgba(255, 100, 100, 0.6)' : 'rgba(100, 255, 100, 0.6)';
 
-                    ctx.strokeStyle = 'rgba(100, 255, 100, 0.8)';
-                    ctx.lineWidth = 2;
+                    // SOLID LINE = Hard container (buffer edge - absolute limit)
+                    ctx.strokeStyle = hardColor;
+                    ctx.lineWidth = 3;
                     ctx.setLineDash([]);
                     ctx.beginPath();
-
-                    if (bounds.length > 0) {
-                        ctx.moveTo(bounds[0][0], bounds[0][1]);
-                        for (let i = 1; i < bounds.length; i++) {
-                            ctx.lineTo(bounds[i][0], bounds[i][1]);
-                        }
-                        ctx.closePath();
-                    }
+                    ctx.moveTo(0, hardTop);
+                    ctx.lineTo(width, hardTop);
+                    ctx.moveTo(0, hardBottom);
+                    ctx.lineTo(width, hardBottom);
                     ctx.stroke();
 
-                    // Also draw baseline reference (dashed)
-                    ctx.strokeStyle = 'rgba(100, 255, 100, 0.3)';
-                    ctx.setLineDash([5, 5]);
+                    // DASHED LINE = Soft container (content zone - where cells should stay)
+                    ctx.strokeStyle = softColor;
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([8, 4]);
                     ctx.beginPath();
                     ctx.moveTo(0, zoneTop);
                     ctx.lineTo(width, zoneTop);
@@ -1856,6 +1858,18 @@
                     ctx.lineTo(width, zoneBottom);
                     ctx.stroke();
                     ctx.setLineDash([]);
+
+                    // Label the zones
+                    ctx.font = '11px monospace';
+                    ctx.fillStyle = hardColor;
+                    ctx.fillText('HARD (buffer edge)', 10, hardTop - 5);
+                    ctx.fillStyle = softColor;
+                    ctx.fillText('SOFT (content zone)', 10, zoneTop + 15);
+
+                    if (overlapping) {
+                        ctx.fillStyle = 'rgba(255, 100, 100, 1)';
+                        ctx.fillText('⚠ OVERLAPPING - buffer too small!', 10, (zoneTop + hardTop) / 2);
+                    }
                 }
 
                 // Draw cell debug info
