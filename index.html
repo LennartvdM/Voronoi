@@ -779,7 +779,25 @@
                 if (cells[i].isGhost) continue;
                 cells[i].polygon = computeCellPolygon(i, clipBounds);
                 const gapped = applyGap(cells[i].polygon, config.gap);
-                cells[i].displayPolygon = simplifyPolygon(gapped);
+                const newDisplayPolygon = simplifyPolygon(gapped);
+
+                // Smooth polygon transitions - don't snap, interpolate
+                const cell = cells[i];
+                const isHovered = (i === hoveredCell);
+
+                if (cell.displayPolygon && cell.displayPolygon.length === newDisplayPolygon.length) {
+                    // Same vertex count - interpolate each vertex
+                    // Hovered cell responds faster, neighbors respond slower
+                    const speed = isHovered ? 0.3 : 0.12;
+
+                    for (let v = 0; v < newDisplayPolygon.length; v++) {
+                        cell.displayPolygon[v][0] += (newDisplayPolygon[v][0] - cell.displayPolygon[v][0]) * speed;
+                        cell.displayPolygon[v][1] += (newDisplayPolygon[v][1] - cell.displayPolygon[v][1]) * speed;
+                    }
+                } else {
+                    // Vertex count changed - just assign (topology change)
+                    cell.displayPolygon = newDisplayPolygon;
+                }
             }
 
             // Store baseline for boundary tracing (used by buildSteppedBounds)
