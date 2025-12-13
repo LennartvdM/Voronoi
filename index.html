@@ -666,7 +666,8 @@
                 return [[0, zoneTop], [width, zoneTop], [width, zoneBottom], [0, zoneBottom]];
             }
 
-            const sampleCount = 40;
+            // Fewer samples = smoother boundary with fewer vertices for cells to clip to
+            const sampleCount = 20;
             const sampleWidth = width / (sampleCount - 1);
 
             // Initialize depth arrays on first call
@@ -686,10 +687,7 @@
                 if (cell.isGhost) continue;
 
                 const isHovered = (i === hoveredCell);
-
-                // Use cell position directly - how far is it from the boundary?
-                // This works even on first frame (no polygon yet)
-                const cellRadius = 80; // Approximate cell radius
+                const cellRadius = 80;
 
                 // Top boundary: cell pushes up
                 const topPush = (zoneTop + cellRadius) - cell.y;
@@ -697,14 +695,14 @@
                     const influence = isHovered ? topPush * 1.5 : topPush * 0.8;
                     const clampedInfluence = Math.min(influence, config.maxPlateDepth);
 
-                    // Spread across sample points based on cell x position
                     for (let s = 0; s < sampleCount; s++) {
                         const sampleX = s * sampleWidth;
                         const dist = Math.abs(sampleX - cell.x);
-                        const spreadRadius = isHovered ? 200 : 120;
+                        const spreadRadius = isHovered ? 250 : 150;
                         if (dist < spreadRadius) {
                             const falloff = 1 - (dist / spreadRadius);
-                            const contribution = clampedInfluence * falloff * falloff;
+                            // Smoother falloff curve
+                            const contribution = clampedInfluence * falloff * falloff * falloff;
                             targetTop[s] = Math.max(targetTop[s], contribution);
                         }
                     }
@@ -719,47 +717,56 @@
                     for (let s = 0; s < sampleCount; s++) {
                         const sampleX = s * sampleWidth;
                         const dist = Math.abs(sampleX - cell.x);
-                        const spreadRadius = isHovered ? 200 : 120;
+                        const spreadRadius = isHovered ? 250 : 150;
                         if (dist < spreadRadius) {
                             const falloff = 1 - (dist / spreadRadius);
-                            const contribution = clampedInfluence * falloff * falloff;
+                            const contribution = clampedInfluence * falloff * falloff * falloff;
                             targetBottom[s] = Math.max(targetBottom[s], contribution);
                         }
                     }
                 }
             }
 
-            // Smooth toward targets - fast yield, slow return
-            const yieldSpeed = 0.15;
-            const returnSpeed = 0.04;
+            // Spatial smoothing - blur the targets so boundary is smooth, not jagged
+            function blur(arr) {
+                const result = new Array(arr.length);
+                for (let i = 0; i < arr.length; i++) {
+                    const prev = arr[Math.max(0, i - 1)];
+                    const curr = arr[i];
+                    const next = arr[Math.min(arr.length - 1, i + 1)];
+                    result[i] = prev * 0.25 + curr * 0.5 + next * 0.25;
+                }
+                return result;
+            }
+
+            // Apply blur twice for smoother curves
+            const blurredTop = blur(blur(targetTop));
+            const blurredBottom = blur(blur(targetBottom));
+
+            // Temporal smoothing - fast yield, slow return
+            const yieldSpeed = 0.12;
+            const returnSpeed = 0.03;
 
             for (let s = 0; s < sampleCount; s++) {
-                const topDiff = targetTop[s] - smoothedTopDepths[s];
+                const topDiff = blurredTop[s] - smoothedTopDepths[s];
                 smoothedTopDepths[s] += topDiff * (topDiff > 0 ? yieldSpeed : returnSpeed);
-                if (smoothedTopDepths[s] < 0.5) smoothedTopDepths[s] = 0;
+                if (smoothedTopDepths[s] < 1) smoothedTopDepths[s] = 0;
 
-                const bottomDiff = targetBottom[s] - smoothedBottomDepths[s];
+                const bottomDiff = blurredBottom[s] - smoothedBottomDepths[s];
                 smoothedBottomDepths[s] += bottomDiff * (bottomDiff > 0 ? yieldSpeed : returnSpeed);
-                if (smoothedBottomDepths[s] < 0.5) smoothedBottomDepths[s] = 0;
+                if (smoothedBottomDepths[s] < 1) smoothedBottomDepths[s] = 0;
             }
 
             // Build the boundary polygon
             const bounds = [];
 
-            // Top edge - bulges upward where cells push
             for (let s = 0; s < sampleCount; s++) {
                 bounds.push([s * sampleWidth, zoneTop - smoothedTopDepths[s]]);
             }
-
-            // Right side
             bounds.push([width, zoneBottom + smoothedBottomDepths[sampleCount - 1]]);
-
-            // Bottom edge - bulges downward where cells push
             for (let s = sampleCount - 1; s >= 0; s--) {
                 bounds.push([s * sampleWidth, zoneBottom + smoothedBottomDepths[s]]);
             }
-
-            // Left side closes the polygon
             bounds.push([0, zoneTop - smoothedTopDepths[0]]);
 
             return bounds;
@@ -895,7 +902,8 @@
         // ========== POLYGON SIMPLIFICATION ==========
         // Removes nearly-collinear vertices and merges close points
         // This helps corner rounding work better on clipped polygons
-        function simplifyPolygon(polygon, minEdgeLength = 8, collinearThreshold = 0.98) {
+        // More aggressive simplification: larger minEdgeLength, stricter collinearity
+        function simplifyPolygon(polygon, minEdgeLength = 20, collinearThreshold = 0.95) {
             if (!polygon || polygon.length < 3) return polygon;
 
             // First pass: merge vertices that are too close together
