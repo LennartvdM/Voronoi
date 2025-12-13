@@ -375,10 +375,10 @@
                 </div>
             </div>
             <div class="control-group hide-tablet">
-                <label>Boundary Push</label>
+                <label>Soft Strength</label>
                 <div class="control-row">
-                    <input type="range" id="boundaryStiffness" min="1" max="50" value="15">
-                    <span class="control-value" id="boundaryStiffnessVal">0.15</span>
+                    <input type="range" id="boundaryStiffness" min="0" max="200" value="5">
+                    <span class="control-value" id="boundaryStiffnessVal">0.05</span>
                 </div>
             </div>
             <div class="control-group hide-mobile">
@@ -436,7 +436,7 @@
             contentZoneTop: 0.15,        // 0-0.5: top margin as fraction of height
             contentZoneBottom: 0.15,     // 0-0.5: bottom margin as fraction of height
             bleedBuffer: 80,             // Fixed pixel buffer beyond content zone where cells can bleed
-            boundaryStiffness: 0.15,     // 0-0.3: how strongly cells are pushed back (increased default)
+            boundaryStiffness: 0.05,     // 0-2: soft container strength (how strongly cells are pushed back)
             boundaryDamping: 0.82,       // 0-1: damping applied to cells in buffer zone
             hoverBleedPrivilege: 0.7,    // 0-1: how much more the hovered cell can bleed (increased default)
             // Stepped plate system
