@@ -663,23 +663,31 @@
                 smoothedBottomDepths = new Array(sampleCount).fill(0);
             }
 
-            // Calculate boundary pressure from hovered cell's velocity only
-            // Only intentional pushes (from hover) should affect the boundary
+            // Calculate boundary pressure from hovered cell's displacement
+            // Soft strength controls resistance: 0 = yields easily, high = resists
             const targetTop = new Array(sampleCount).fill(0);
             const targetBottom = new Array(sampleCount).fill(0);
 
             if (hoveredCell >= 0) {
                 const cell = cells[hoveredCell];
-                const pressureScale = 4;
-                const velocityThreshold = 0.5; // Ignore tiny oscillations
+                const zoneTop = height * config.contentZoneTop;
+                const zoneBottom = height * (1 - config.contentZoneBottom);
 
-                // Upward velocity (negative vy) pushes top boundary
-                const rawTopPush = -cell.vy;
-                const topPush = rawTopPush > velocityThreshold ? rawTopPush * pressureScale : 0;
+                // How much is the cell displaced toward each boundary?
+                // Displacement from rest position, clamped to movement toward boundary
+                const topDisplacement = Math.max(0, cell.restY - cell.y); // Moving up
+                const bottomDisplacement = Math.max(0, cell.y - cell.restY); // Moving down
 
-                // Downward velocity (positive vy) pushes bottom boundary
-                const rawBottomPush = cell.vy;
-                const bottomPush = rawBottomPush > velocityThreshold ? rawBottomPush * pressureScale : 0;
+                // Soft strength resistance: at 0, full pressure; at 2, heavily dampened
+                const resistance = 1 / (1 + config.boundaryStiffness * 2);
+                const pressureScale = 1.5 * resistance;
+
+                // How close is the cell to the boundary? Closer = more pressure
+                const topProximity = Math.max(0, 1 - (cell.y - zoneTop) / 150);
+                const bottomProximity = Math.max(0, 1 - (zoneBottom - cell.y) / 150);
+
+                const topPush = topDisplacement * pressureScale * (0.5 + topProximity);
+                const bottomPush = bottomDisplacement * pressureScale * (0.5 + bottomProximity);
 
                 if (topPush > 0) {
                     const clampedInfluence = Math.min(topPush, config.maxPlateDepth);
