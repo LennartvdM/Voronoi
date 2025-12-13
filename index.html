@@ -411,10 +411,10 @@
             cellCount: 12,
             gap: 4,
             cornerRadius: 12,
-            spring: 0.25,          // Slightly softer spring for smoother motion
-            damping: 0.82,         // Lower damping allows more fluid motion
-            hoverForce: 60,
-            repulsion: 35,
+            spring: 0.35,          // Taut spring for snappy return
+            damping: 0.92,         // High damping = decisive movement, no wobble
+            hoverForce: 70,        // Slightly stronger to overcome taut physics
+            repulsion: 40,
             centerRelevance: 0.70, // 0 = expand uniformly, 1 = direction matters
             zoomScale: 1.15,
             nonHoverImageZoom: 1.7, // Non-hover image zoom level (1.0-8.0)
@@ -422,9 +422,9 @@
             physicsEnabled: true,
             debugMode: false,
             // New hover dynamics
-            hoverSpeed: 0.5,       // 0-1: how fast cells respond to hover
-            overshoot: 0.4,        // 0-1: bounce past target before settling (slightly more bounce)
-            decaySpeed: 0.5,       // 0-1: how fast cells return to rest
+            hoverSpeed: 0.6,       // 0-1: how fast cells respond to hover
+            overshoot: 0.15,       // Low overshoot = minimal bounce, taut feel
+            decaySpeed: 0.6,       // 0-1: how fast cells return to rest
             triggerBurst: 1.0,     // Initial burst when entering cell
             sustainGrowth: 0.3,    // Continuous growth while hovering
             maxExpansion: 150,     // Max pixels a cell can move from rest
@@ -574,26 +574,21 @@
                 const newDist = Math.sqrt(newDx * newDx + newDy * newDy);
 
                 if (newDist > 0) {
-                    // Start applying soft resistance at 60% of max expansion
-                    const softStart = config.maxExpansion * 0.6;
-                    const hardLimit = config.maxExpansion * 1.2; // Allow slight overshoot
+                    // Tension starts building at 40% of max - feels like stretching a balloon
+                    const tensionStart = config.maxExpansion * 0.4;
+                    const hardLimit = config.maxExpansion * 1.1;
 
-                    if (newDist > softStart) {
-                        // Smooth cubic falloff for resistance
-                        const overExtend = (newDist - softStart) / (hardLimit - softStart);
-                        const resistance = Math.min(1, overExtend * overExtend * overExtend);
+                    if (newDist > tensionStart) {
+                        // Quadratic tension - builds more immediately than cubic
+                        const stretch = (newDist - tensionStart) / (hardLimit - tensionStart);
+                        const tension = Math.min(1, stretch * stretch);
 
-                        // Apply gentle pull-back force proportional to over-extension
-                        const pullBack = resistance * 0.15;
+                        // Pull-back force proportional to tension (like rubber band)
+                        const pullBack = tension * 0.25;
                         this.vx -= (newDx / newDist) * pullBack * newDist * dt;
                         this.vy -= (newDy / newDist) * pullBack * newDist * dt;
 
-                        // Gentle velocity damping that increases with over-extension
-                        const extraDamping = 1 - (resistance * 0.08);
-                        this.vx *= extraDamping;
-                        this.vy *= extraDamping;
-
-                        // Only hard clamp at the true hard limit
+                        // Hard clamp at limit
                         if (newDist > hardLimit) {
                             const scale = hardLimit / newDist;
                             this.x = this.restX + newDx * scale;
@@ -784,7 +779,25 @@
                 if (cells[i].isGhost) continue;
                 cells[i].polygon = computeCellPolygon(i, clipBounds);
                 const gapped = applyGap(cells[i].polygon, config.gap);
-                cells[i].displayPolygon = simplifyPolygon(gapped);
+                const newDisplayPolygon = simplifyPolygon(gapped);
+
+                // Smooth polygon transitions - don't snap, interpolate
+                const cell = cells[i];
+                const isHovered = (i === hoveredCell);
+
+                if (cell.displayPolygon && cell.displayPolygon.length === newDisplayPolygon.length) {
+                    // Same vertex count - interpolate each vertex
+                    // Hovered cell responds faster, neighbors respond slower
+                    const speed = isHovered ? 0.3 : 0.12;
+
+                    for (let v = 0; v < newDisplayPolygon.length; v++) {
+                        cell.displayPolygon[v][0] += (newDisplayPolygon[v][0] - cell.displayPolygon[v][0]) * speed;
+                        cell.displayPolygon[v][1] += (newDisplayPolygon[v][1] - cell.displayPolygon[v][1]) * speed;
+                    }
+                } else {
+                    // Vertex count changed - just assign (topology change)
+                    cell.displayPolygon = newDisplayPolygon;
+                }
             }
 
             // Store baseline for boundary tracing (used by buildSteppedBounds)
@@ -1804,44 +1817,31 @@
                 ctx.shadowBlur = 0;
             }
 
-            // Draw ghost pins ON TOP of cells (so they visibly yield into content area)
-            if (config.contentZoneEnabled) {
-                const zoneTop = height * config.contentZoneTop;
-                const zoneBottom = height * (1 - config.contentZoneBottom);
+            // Debug mode
+            if (config.debugMode) {
+                // Draw ghost pins (now debug-only, obsolete with edge-tracing boundary)
+                if (config.contentZoneEnabled) {
+                    const zoneTop = height * config.contentZoneTop;
+                    const zoneBottom = height * (1 - config.contentZoneBottom);
 
-                for (const pin of cells) {
-                    if (!pin.isGhost) continue;
+                    for (const pin of cells) {
+                        if (!pin.isGhost) continue;
 
-                    const pinW = pin.pinWidth || 20;
-                    const push = pin.push;
+                        const pinW = pin.pinWidth || 20;
+                        const push = pin.push;
 
-                    // Only draw the "yield" portion that extends into content area
-                    if (push > 0) {
-                        ctx.fillStyle = 'rgba(26, 26, 46, 1)'; // Match background
+                        if (push > 0) {
+                            ctx.fillStyle = 'rgba(26, 26, 46, 0.8)';
 
-                        if (pin.ghostSide === 'top') {
-                            // Pin yields downward into content
-                            ctx.fillRect(
-                                pin.x - pinW / 2,
-                                zoneTop,
-                                pinW,
-                                push
-                            );
-                        } else {
-                            // Pin yields upward into content
-                            ctx.fillRect(
-                                pin.x - pinW / 2,
-                                zoneBottom - push,
-                                pinW,
-                                push
-                            );
+                            if (pin.ghostSide === 'top') {
+                                ctx.fillRect(pin.x - pinW / 2, zoneTop, pinW, push);
+                            } else {
+                                ctx.fillRect(pin.x - pinW / 2, zoneBottom - push, pinW, push);
+                            }
                         }
                     }
                 }
-            }
 
-            // Debug mode
-            if (config.debugMode) {
                 // Draw content zone boundary - either stepped or simple lines
                 if (config.contentZoneEnabled) {
                     const zoneTop = height * config.contentZoneTop;
