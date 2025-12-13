@@ -257,7 +257,7 @@
             <div class="control-group hide-mobile">
                 <label>Hover Force</label>
                 <div class="control-row">
-                    <input type="range" id="hoverForce" min="20" max="5000" value="60">
+                    <input type="range" id="hoverForce" min="20" max="20000" value="60">
                     <span class="control-value" id="hoverForceVal">60</span>
                 </div>
             </div>
@@ -317,7 +317,7 @@
             <div class="control-group hide-tablet">
                 <label>Max Expansion</label>
                 <div class="control-row">
-                    <input type="range" id="maxExpansion" min="50" max="5000" value="150">
+                    <input type="range" id="maxExpansion" min="50" max="10000" value="150">
                     <span class="control-value" id="maxExpansionVal">150</span>
                 </div>
             </div>
@@ -1623,9 +1623,11 @@
                     // Hover speed affects force application rate
                     const speedMultiplier = 0.3 + config.hoverSpeed * 0.7;
 
-                    // Center relevance controls how much direction matters
-                    const directedForce = config.hoverForce / dist * 0.5 * speedMultiplier * phaseMultiplier;
-                    const uniformForce = config.hoverForce * 0.03 * speedMultiplier * phaseMultiplier;
+                    // Force scales with hoverForce directly, distance just affects direction weight
+                    // Closer to center = stronger push, but minimum 20% force even at edge
+                    const distanceFactor = Math.max(0.2, 1 - dist / 200);
+                    const directedForce = config.hoverForce * 0.01 * distanceFactor * speedMultiplier * phaseMultiplier;
+                    const uniformForce = config.hoverForce * 0.005 * speedMultiplier * phaseMultiplier;
 
                     const cr = config.centerRelevance;
 
@@ -1660,30 +1662,48 @@
                 }
             }
 
-            // Buffer resolution: gently push non-hovered cells back into container
+            // Buffer management: cells can temporarily spill into buffer, but are pushed back
             if (config.contentZoneEnabled) {
                 const zoneTop = height * config.contentZoneTop;
                 const zoneBottom = height * (1 - config.contentZoneBottom);
-                const resolutionForce = config.bufferResolutionForce;
+                const buffer = config.bleedBuffer;
+                const hardTop = zoneTop - buffer;
+                const hardBottom = zoneBottom + buffer;
 
                 for (let i = 0; i < cells.length; i++) {
-                    // Hovered cell gets to stay in buffer
-                    if (i === hoveredCell) continue;
-
                     const cell = cells[i];
+                    const isHovered = (i === hoveredCell);
 
-                    // Check if cell is above content zone (in top buffer)
-                    if (cell.y < zoneTop) {
-                        const penetration = zoneTop - cell.y;
-                        // Gentle push back down, proportional to penetration
-                        cell.applyForce(0, penetration * resolutionForce);
+                    // Hard clamp at buffer edge for ALL cells (even hovered)
+                    if (cell.y < hardTop) {
+                        cell.y = hardTop;
+                        cell.vy = Math.max(0, cell.vy); // Stop upward momentum
+                    }
+                    if (cell.y > hardBottom) {
+                        cell.y = hardBottom;
+                        cell.vy = Math.min(0, cell.vy); // Stop downward momentum
                     }
 
-                    // Check if cell is below content zone (in bottom buffer)
-                    if (cell.y > zoneBottom) {
-                        const penetration = cell.y - zoneBottom;
-                        // Gentle push back up, proportional to penetration
-                        cell.applyForce(0, -penetration * resolutionForce);
+                    // Resolution force: push non-hovered cells back to container
+                    // Hovered cell gets to stay in buffer while hovered
+                    if (!isHovered) {
+                        // Strong quadratic force - scales with penetration squared
+                        const stiffness = config.boundaryStiffness;
+
+                        if (cell.y < zoneTop) {
+                            const penetration = zoneTop - cell.y;
+                            const normalizedPen = penetration / buffer; // 0-1 range
+                            // Quadratic: gentle near edge, strong deep in buffer
+                            const force = stiffness * normalizedPen * normalizedPen * buffer;
+                            cell.applyForce(0, force);
+                        }
+
+                        if (cell.y > zoneBottom) {
+                            const penetration = cell.y - zoneBottom;
+                            const normalizedPen = penetration / buffer;
+                            const force = stiffness * normalizedPen * normalizedPen * buffer;
+                            cell.applyForce(0, -force);
+                        }
                     }
                 }
             }
@@ -1804,31 +1824,33 @@
 
             // Debug mode
             if (config.debugMode) {
-                // Draw content zone boundary - either stepped or simple lines
                 if (config.contentZoneEnabled) {
                     const zoneTop = height * config.contentZoneTop;
                     const zoneBottom = height * (1 - config.contentZoneBottom);
+                    const buffer = config.bleedBuffer;
+                    const hardTop = zoneTop - buffer;
+                    const hardBottom = zoneBottom + buffer;
 
-                    // Draw the actual bounds polygon (stepped if enabled)
-                    const bounds = buildSteppedBounds(zoneTop, zoneBottom);
+                    // Check if soft and hard container overlap (buffer = 0 or very small)
+                    const overlapping = buffer < 5;
+                    const hardColor = overlapping ? 'rgba(255, 100, 100, 0.9)' : 'rgba(255, 150, 50, 0.9)';
+                    const softColor = overlapping ? 'rgba(255, 100, 100, 0.6)' : 'rgba(100, 255, 100, 0.6)';
 
-                    ctx.strokeStyle = 'rgba(100, 255, 100, 0.8)';
-                    ctx.lineWidth = 2;
+                    // SOLID LINE = Hard container (buffer edge - absolute limit)
+                    ctx.strokeStyle = hardColor;
+                    ctx.lineWidth = 3;
                     ctx.setLineDash([]);
                     ctx.beginPath();
-
-                    if (bounds.length > 0) {
-                        ctx.moveTo(bounds[0][0], bounds[0][1]);
-                        for (let i = 1; i < bounds.length; i++) {
-                            ctx.lineTo(bounds[i][0], bounds[i][1]);
-                        }
-                        ctx.closePath();
-                    }
+                    ctx.moveTo(0, hardTop);
+                    ctx.lineTo(width, hardTop);
+                    ctx.moveTo(0, hardBottom);
+                    ctx.lineTo(width, hardBottom);
                     ctx.stroke();
 
-                    // Also draw baseline reference (dashed)
-                    ctx.strokeStyle = 'rgba(100, 255, 100, 0.3)';
-                    ctx.setLineDash([5, 5]);
+                    // DASHED LINE = Soft container (content zone - where cells should stay)
+                    ctx.strokeStyle = softColor;
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([8, 4]);
                     ctx.beginPath();
                     ctx.moveTo(0, zoneTop);
                     ctx.lineTo(width, zoneTop);
@@ -1836,6 +1858,18 @@
                     ctx.lineTo(width, zoneBottom);
                     ctx.stroke();
                     ctx.setLineDash([]);
+
+                    // Label the zones
+                    ctx.font = '11px monospace';
+                    ctx.fillStyle = hardColor;
+                    ctx.fillText('HARD (buffer edge)', 10, hardTop - 5);
+                    ctx.fillStyle = softColor;
+                    ctx.fillText('SOFT (content zone)', 10, zoneTop + 15);
+
+                    if (overlapping) {
+                        ctx.fillStyle = 'rgba(255, 100, 100, 1)';
+                        ctx.fillText('⚠ OVERLAPPING - buffer too small!', 10, (zoneTop + hardTop) / 2);
+                    }
                 }
 
                 // Draw cell debug info
