@@ -660,19 +660,24 @@
                 smoothedBottomDepths = new Array(sampleCount).fill(0);
             }
 
-            // Calculate how much cells protrude beyond the baseline at each sample point
+            // Calculate boundary pressure from cell velocity (not position)
+            // Any cell moving toward a boundary creates pressure there
             const targetTop = new Array(sampleCount).fill(0);
             const targetBottom = new Array(sampleCount).fill(0);
+
+            const pressureScale = 8; // Convert velocity to pressure
 
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
                 const isHovered = (i === hoveredCell);
-                const cellRadius = 80;
 
-                // Top boundary: cell pushes up
-                const topPush = (zoneTop + cellRadius) - cell.y;
+                // Upward velocity (negative vy) pushes top boundary
+                const topPush = Math.max(0, -cell.vy * pressureScale);
+                // Downward velocity (positive vy) pushes bottom boundary
+                const bottomPush = Math.max(0, cell.vy * pressureScale);
+
                 if (topPush > 0) {
-                    const influence = isHovered ? topPush * 1.5 : topPush * 0.8;
+                    const influence = isHovered ? topPush * 1.5 : topPush;
                     const clampedInfluence = Math.min(influence, config.maxPlateDepth);
 
                     for (let s = 0; s < sampleCount; s++) {
@@ -681,17 +686,14 @@
                         const spreadRadius = isHovered ? 250 : 150;
                         if (dist < spreadRadius) {
                             const falloff = 1 - (dist / spreadRadius);
-                            // Smoother falloff curve
                             const contribution = clampedInfluence * falloff * falloff * falloff;
                             targetTop[s] = Math.max(targetTop[s], contribution);
                         }
                     }
                 }
 
-                // Bottom boundary: cell pushes down
-                const bottomPush = cell.y - (zoneBottom - cellRadius);
                 if (bottomPush > 0) {
-                    const influence = isHovered ? bottomPush * 1.5 : bottomPush * 0.8;
+                    const influence = isHovered ? bottomPush * 1.5 : bottomPush;
                     const clampedInfluence = Math.min(influence, config.maxPlateDepth);
 
                     for (let s = 0; s < sampleCount; s++) {
