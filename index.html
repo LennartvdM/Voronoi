@@ -501,18 +501,14 @@
 
         // ========== CELL CLASS ==========
         class Cell {
-            constructor(x, y, index, isGhost = false, ghostSide = null) {
+            constructor(x, y, index) {
                 this.index = index;
-                this.isGhost = isGhost;
-                this.ghostSide = ghostSide; // 'top' or 'bottom' for ghost pins
                 this.x = x;
                 this.y = y;
                 this.restX = x;
                 this.restY = y;
                 this.vx = 0;
                 this.vy = 0;
-                this.push = 0;        // How much the pin is pushed (for ghost pins)
-                this.targetPush = 0;  // Target push amount
                 this.polygon = null;
                 this.displayPolygon = null; // With gap applied
                 this.zoom = config.nonHoverImageZoom;
@@ -520,28 +516,14 @@
                 this.opacity = config.nonHoveredOpacity;
                 this.targetOpacity = config.nonHoveredOpacity;
 
-                if (!isGhost) {
-                    const data = cellData[index % cellData.length];
-                    this.title = data.title;
-                    this.link = data.link;
-                    this.color = data.color;
-                    this.pattern = null;
-                }
+                const data = cellData[index % cellData.length];
+                this.title = data.title;
+                this.link = data.link;
+                this.color = data.color;
+                this.pattern = null;
             }
 
             update(dt, isHovered) {
-                // Ghost pins have simpler physics - just smooth push animation
-                if (this.isGhost) {
-                    // Asymmetric easing: faster to yield, slower to return
-                    const pushSpeed = 0.18;
-                    const returnSpeed = 0.09;
-                    const speed = Math.abs(this.targetPush) > Math.abs(this.push) ? pushSpeed : returnSpeed;
-                    this.push += (this.targetPush - this.push) * speed;
-                    // Reset target push each frame (will be recalculated in physics)
-                    this.targetPush = 0;
-                    return;
-                }
-
                 if (!config.physicsEnabled) {
                     this.zoom += (this.targetZoom - this.zoom) * config.imageZoomSpeed;
                     this.opacity += (this.targetOpacity - this.opacity) * config.opacityTransitionSpeed;
@@ -684,8 +666,6 @@
 
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
-                if (cell.isGhost) continue;
-
                 const isHovered = (i === hoveredCell);
                 const cellRadius = 80;
 
@@ -788,8 +768,6 @@
 
             // Compute each cell's polygon, clipped to the yielded boundary
             for (let i = 0; i < cells.length; i++) {
-                if (cells[i].isGhost) continue;
-
                 const cell = cells[i];
                 const isHovered = (i === hoveredCell);
 
@@ -825,8 +803,6 @@
 
             for (let j = 0; j < cells.length; j++) {
                 if (index === j) continue;
-                // Skip ghost cells - they don't participate in Voronoi
-                if (cells[j].isGhost) continue;
                 const other = cells[j];
 
                 const midX = (cell.x + other.x) / 2;
@@ -1155,39 +1131,12 @@
 
             // Create visible cells
             for (let i = 0; i < points.length; i++) {
-                const cell = new Cell(points[i][0], points[i][1], i, false);
+                const cell = new Cell(points[i][0], points[i][1], i);
                 cell.createPattern();
                 cells.push(cell);
             }
 
-            // Generate ghost pins at the boundary edges (if content zone enabled)
-            // Pins are rectangular elements that get pushed by nearby visible cells
-            if (config.contentZoneEnabled) {
-                const pinWidth = 20;  // Width of each pin
-                const pinGap = 2;     // Gap between pins
-                const pinSpacing = pinWidth + pinGap;
-                const pinCount = Math.ceil(width / pinSpacing) + 1;
-
-                // Top boundary pins
-                if (zoneTop > 20) {
-                    for (let i = 0; i < pinCount; i++) {
-                        const x = i * pinSpacing + pinWidth / 2;
-                        const ghost = new Cell(x, zoneTop, cells.length, true, 'top');
-                        ghost.pinWidth = pinWidth;
-                        cells.push(ghost);
-                    }
-                }
-
-                // Bottom boundary pins
-                if (height - zoneBottom > 20) {
-                    for (let i = 0; i < pinCount; i++) {
-                        const x = i * pinSpacing + pinWidth / 2;
-                        const ghost = new Cell(x, zoneBottom, cells.length, true, 'bottom');
-                        ghost.pinWidth = pinWidth;
-                        cells.push(ghost);
-                    }
-                }
-            }
+            // Ghost pins removed - boundary now yields based on cell positions directly
 
             computeVoronoi();
         }
@@ -1280,8 +1229,6 @@
             let found = -1;
 
             for (let i = 0; i < cells.length; i++) {
-                // Skip ghost cells for hover detection
-                if (cells[i].isGhost) continue;
                 if (cells[i].polygon && pointInPolygon(mouseX, mouseY, cells[i].polygon)) {
                     found = i;
                     break;
@@ -1595,12 +1542,10 @@
             btn.textContent = 'Loading...';
             btn.disabled = true;
 
-            // Only load images for visible cells (not ghost cells)
-            const visibleCells = cells.filter(c => !c.isGhost);
             let loaded = 0;
-            const total = visibleCells.length;
+            const total = cells.length;
 
-            visibleCells.forEach((cell, i) => {
+            cells.forEach((cell, i) => {
                 const img = new Image();
                 img.crossOrigin = 'anonymous';
                 // Use random seed for variety, sig for cache busting
@@ -1678,11 +1623,10 @@
                     const dirY = dy / dist * directedForce * cr;
                     hovered.applyForce(dirX, dirY);
 
-                    // Push neighbors away from hovered cell (skip ghost pins)
+                    // Push neighbors away from hovered cell
                     for (let i = 0; i < cells.length; i++) {
                         if (i === hoveredCell) continue;
                         const other = cells[i];
-                        if (other.isGhost) continue; // Ghost pins don't get forces this way
 
                         const odx = other.x - hovered.x;
                         const ody = other.y - hovered.y;
@@ -1705,45 +1649,7 @@
                 }
             }
 
-            // Calculate pin push based on visible cells approaching boundaries
-            if (config.contentZoneEnabled) {
-                const zoneTop = height * config.contentZoneTop;
-                const zoneBottom = height * (1 - config.contentZoneBottom);
-                const pushRange = 80; // How far cells can push pins
-                const maxPush = 60;   // Maximum push distance
-
-                for (const cell of cells) {
-                    if (cell.isGhost) continue;
-
-                    // Check each ghost pin
-                    for (const pin of cells) {
-                        if (!pin.isGhost) continue;
-
-                        // Horizontal distance to pin
-                        const hdist = Math.abs(cell.x - pin.x);
-                        if (hdist > pushRange) continue;
-
-                        // Calculate push based on cell proximity to boundary
-                        let pushAmount = 0;
-                        if (pin.ghostSide === 'top') {
-                            const penetration = zoneTop - cell.y + pushRange;
-                            if (penetration > 0) {
-                                const hFalloff = 1 - (hdist / pushRange);
-                                pushAmount = Math.min(penetration * hFalloff * 0.8, maxPush);
-                            }
-                        } else if (pin.ghostSide === 'bottom') {
-                            const penetration = cell.y - zoneBottom + pushRange;
-                            if (penetration > 0) {
-                                const hFalloff = 1 - (hdist / pushRange);
-                                pushAmount = Math.min(penetration * hFalloff * 0.8, maxPush);
-                            }
-                        }
-
-                        // Accumulate push from multiple cells
-                        pin.targetPush = Math.max(pin.targetPush, pushAmount);
-                    }
-                }
-            }
+            // Ghost pin physics removed - boundary yields based on cell positions directly
 
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
@@ -1767,12 +1673,9 @@
                 ctx.fillRect(0, zoneBottom, width, height - zoneBottom);
             }
 
-            // Draw visible cells
+            // Draw cells
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
-
-                if (cell.isGhost) continue;
-
                 const polygon = cell.displayPolygon;
 
                 if (!polygon || polygon.length < 3) continue;
@@ -1834,29 +1737,6 @@
 
             // Debug mode
             if (config.debugMode) {
-                // Draw ghost pins (now debug-only, obsolete with edge-tracing boundary)
-                if (config.contentZoneEnabled) {
-                    const zoneTop = height * config.contentZoneTop;
-                    const zoneBottom = height * (1 - config.contentZoneBottom);
-
-                    for (const pin of cells) {
-                        if (!pin.isGhost) continue;
-
-                        const pinW = pin.pinWidth || 20;
-                        const push = pin.push;
-
-                        if (push > 0) {
-                            ctx.fillStyle = 'rgba(26, 26, 46, 0.8)';
-
-                            if (pin.ghostSide === 'top') {
-                                ctx.fillRect(pin.x - pinW / 2, zoneTop, pinW, push);
-                            } else {
-                                ctx.fillRect(pin.x - pinW / 2, zoneBottom - push, pinW, push);
-                            }
-                        }
-                    }
-                }
-
                 // Draw content zone boundary - either stepped or simple lines
                 if (config.contentZoneEnabled) {
                     const zoneTop = height * config.contentZoneTop;
@@ -1893,31 +1773,24 @@
 
                 // Draw cell debug info
                 for (const cell of cells) {
-                    if (cell.isGhost) {
-                        // Ghost pin - show push value
-                        ctx.fillStyle = 'rgba(255, 200, 100, 0.8)';
-                        ctx.font = '10px monospace';
-                        ctx.fillText(cell.push.toFixed(0), cell.x - 8, cell.ghostSide === 'top' ? 20 : height - 10);
-                    } else {
-                        // Visible cell - current position (white dot)
-                        ctx.fillStyle = '#fff';
-                        ctx.beginPath();
-                        ctx.arc(cell.x, cell.y, 4, 0, Math.PI * 2);
-                        ctx.fill();
+                    // Current position (white dot)
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(cell.x, cell.y, 4, 0, Math.PI * 2);
+                    ctx.fill();
 
-                        // Rest position (yellow circle)
-                        ctx.strokeStyle = 'rgba(255,255,0,0.6)';
-                        ctx.lineWidth = 2;
-                        ctx.beginPath();
-                        ctx.arc(cell.restX, cell.restY, 8, 0, Math.PI * 2);
-                        ctx.stroke();
+                    // Rest position (yellow circle)
+                    ctx.strokeStyle = 'rgba(255,255,0,0.6)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(cell.restX, cell.restY, 8, 0, Math.PI * 2);
+                    ctx.stroke();
 
-                        // Line from rest to current
-                        ctx.beginPath();
-                        ctx.moveTo(cell.restX, cell.restY);
-                        ctx.lineTo(cell.x, cell.y);
-                        ctx.stroke();
-                    }
+                    // Line from rest to current
+                    ctx.beginPath();
+                    ctx.moveTo(cell.restX, cell.restY);
+                    ctx.lineTo(cell.x, cell.y);
+                    ctx.stroke();
                 }
             }
         }
