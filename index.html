@@ -1720,47 +1720,14 @@
         function render() {
             ctx.clearRect(0, 0, width, height);
 
-            // Draw the margin background with yielding boundary effect
+            // Update yielding boundary state (needed for visual masking)
             if (config.contentZoneEnabled) {
                 const zoneTop = height * config.contentZoneTop;
                 const zoneBottom = height * (1 - config.contentZoneBottom);
-
-                // Build yielding boundary for visual effect (updates smoothed depths)
-                const yieldingBounds = buildSteppedBounds(zoneTop, zoneBottom);
-
-                ctx.fillStyle = 'rgba(26, 26, 46, 1)'; // Match body background
-
-                // Draw top margin with yielding edge
-                ctx.beginPath();
-                ctx.moveTo(0, 0);
-                ctx.lineTo(width, 0);
-                ctx.lineTo(width, zoneTop);
-                // Follow the yielding boundary (top portion of yieldingBounds)
-                // yieldingBounds starts at top-left, goes right along top, then down right side
-                const sampleCount = smoothedTopDepths ? smoothedTopDepths.length : 20;
-                const sampleWidth = width / (sampleCount - 1);
-                for (let s = sampleCount - 1; s >= 0; s--) {
-                    const depth = smoothedTopDepths ? smoothedTopDepths[s] : 0;
-                    ctx.lineTo(s * sampleWidth, zoneTop - depth);
-                }
-                ctx.closePath();
-                ctx.fill();
-
-                // Draw bottom margin with yielding edge
-                ctx.beginPath();
-                ctx.moveTo(0, height);
-                ctx.lineTo(width, height);
-                ctx.lineTo(width, zoneBottom);
-                // Follow the yielding boundary (bottom portion)
-                for (let s = sampleCount - 1; s >= 0; s--) {
-                    const depth = smoothedBottomDepths ? smoothedBottomDepths[s] : 0;
-                    ctx.lineTo(s * sampleWidth, zoneBottom + depth);
-                }
-                ctx.closePath();
-                ctx.fill();
+                buildSteppedBounds(zoneTop, zoneBottom);
             }
 
-            // Draw cells
+            // Draw cells FIRST
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
                 const polygon = cell.displayPolygon;
@@ -1820,6 +1787,40 @@
                 }
                 ctx.stroke();
                 ctx.shadowBlur = 0;
+            }
+
+            // Draw margins ON TOP of cells to mask overflow beyond soft container
+            if (config.contentZoneEnabled) {
+                const zoneTop = height * config.contentZoneTop;
+                const zoneBottom = height * (1 - config.contentZoneBottom);
+
+                ctx.fillStyle = 'rgba(26, 26, 46, 1)'; // Match body background
+
+                // Draw top margin with yielding edge
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(width, 0);
+                ctx.lineTo(width, zoneTop);
+                const sampleCount = smoothedTopDepths ? smoothedTopDepths.length : 20;
+                const sampleWidth = width / (sampleCount - 1);
+                for (let s = sampleCount - 1; s >= 0; s--) {
+                    const depth = smoothedTopDepths ? smoothedTopDepths[s] : 0;
+                    ctx.lineTo(s * sampleWidth, zoneTop - depth);
+                }
+                ctx.closePath();
+                ctx.fill();
+
+                // Draw bottom margin with yielding edge
+                ctx.beginPath();
+                ctx.moveTo(0, height);
+                ctx.lineTo(width, height);
+                ctx.lineTo(width, zoneBottom);
+                for (let s = sampleCount - 1; s >= 0; s--) {
+                    const depth = smoothedBottomDepths ? smoothedBottomDepths[s] : 0;
+                    ctx.lineTo(s * sampleWidth, zoneBottom + depth);
+                }
+                ctx.closePath();
+                ctx.fill();
             }
 
             // Debug mode
