@@ -691,40 +691,50 @@
                 if (cell.isGhost) continue;
 
                 const isHovered = (i === hoveredCell);
-                const influence = isHovered ? config.maxPlateDepth : config.maxPlateDepth * 0.4;
-                const radius = isHovered ? 180 : 120; // How wide the bulge spreads
+
+                // Hovered cells can push boundary from anywhere with smooth falloff
+                // Non-hovered cells only affect boundary when close
+                const maxInfluence = isHovered ? config.maxPlateDepth : config.maxPlateDepth * 0.4;
+                const reachRadius = isHovered ? 500 : 120; // How far the cell can "reach" to push boundary
+                const spreadRadius = isHovered ? 200 : 120; // How wide the bulge spreads horizontally
 
                 // Top boundary pressure
                 const topDist = cell.y - zoneTop;
-                if (topDist < radius && topDist > -config.maxPlateDepth) {
-                    const verticalFactor = Math.max(0, 1 - Math.max(0, topDist) / radius);
-                    const pressure = verticalFactor * verticalFactor * influence;
+                if (topDist > -config.maxPlateDepth) {
+                    // Smooth quadratic falloff based on distance
+                    const normalizedDist = Math.max(0, topDist) / reachRadius;
+                    const distanceFactor = Math.max(0, 1 - normalizedDist);
+                    const pressure = distanceFactor * distanceFactor * maxInfluence;
 
-                    // Apply gaussian-like spread across sample points
-                    for (let s = 0; s < sampleCount; s++) {
-                        const sampleX = s * sampleWidth;
-                        const horizDist = Math.abs(sampleX - cell.x);
-                        if (horizDist < radius) {
-                            const horizFactor = 1 - (horizDist / radius);
-                            const combined = pressure * horizFactor * horizFactor;
-                            targetTop[s] = Math.max(targetTop[s], combined);
+                    if (pressure > 0.5) {
+                        for (let s = 0; s < sampleCount; s++) {
+                            const sampleX = s * sampleWidth;
+                            const horizDist = Math.abs(sampleX - cell.x);
+                            if (horizDist < spreadRadius) {
+                                const horizFactor = 1 - (horizDist / spreadRadius);
+                                const combined = pressure * horizFactor * horizFactor;
+                                targetTop[s] = Math.max(targetTop[s], combined);
+                            }
                         }
                     }
                 }
 
                 // Bottom boundary pressure
                 const bottomDist = zoneBottom - cell.y;
-                if (bottomDist < radius && bottomDist > -config.maxPlateDepth) {
-                    const verticalFactor = Math.max(0, 1 - Math.max(0, bottomDist) / radius);
-                    const pressure = verticalFactor * verticalFactor * influence;
+                if (bottomDist > -config.maxPlateDepth) {
+                    const normalizedDist = Math.max(0, bottomDist) / reachRadius;
+                    const distanceFactor = Math.max(0, 1 - normalizedDist);
+                    const pressure = distanceFactor * distanceFactor * maxInfluence;
 
-                    for (let s = 0; s < sampleCount; s++) {
-                        const sampleX = s * sampleWidth;
-                        const horizDist = Math.abs(sampleX - cell.x);
-                        if (horizDist < radius) {
-                            const horizFactor = 1 - (horizDist / radius);
-                            const combined = pressure * horizFactor * horizFactor;
-                            targetBottom[s] = Math.max(targetBottom[s], combined);
+                    if (pressure > 0.5) {
+                        for (let s = 0; s < sampleCount; s++) {
+                            const sampleX = s * sampleWidth;
+                            const horizDist = Math.abs(sampleX - cell.x);
+                            if (horizDist < spreadRadius) {
+                                const horizFactor = 1 - (horizDist / spreadRadius);
+                                const combined = pressure * horizFactor * horizFactor;
+                                targetBottom[s] = Math.max(targetBottom[s], combined);
+                            }
                         }
                     }
                 }
