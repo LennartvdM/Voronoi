@@ -421,15 +421,38 @@
             }
 
             update(dt, isHovered) {
-                // Smooth scale transition - simple lerp
+                // Smooth scale transition - frame-rate independent lerp
+                // Using exponential decay: value += (target - value) * (1 - e^(-speed * dt))
                 const speed = config.expansionSpeed;
                 if (speed > 0.0001) {
-                    this.scale += (this.targetScale - this.scale) * speed;
+                    const diff = this.targetScale - this.scale;
+                    // Snap to target when very close (reduces jitter)
+                    if (Math.abs(diff) < 0.001) {
+                        this.scale = this.targetScale;
+                    } else {
+                        // Frame-rate independent smoothing
+                        const factor = 1 - Math.exp(-speed * dt * 3);
+                        this.scale += diff * factor;
+                    }
                 }
 
-                // Smooth zoom and opacity transitions
-                this.zoom += (this.targetZoom - this.zoom) * config.imageZoomSpeed;
-                this.opacity += (this.targetOpacity - this.opacity) * config.opacityTransitionSpeed;
+                // Smooth zoom and opacity transitions (also frame-rate independent)
+                const zoomFactor = 1 - Math.exp(-config.imageZoomSpeed * dt * 3);
+                const opacityFactor = 1 - Math.exp(-config.opacityTransitionSpeed * dt * 3);
+
+                const zoomDiff = this.targetZoom - this.zoom;
+                if (Math.abs(zoomDiff) < 0.01) {
+                    this.zoom = this.targetZoom;
+                } else {
+                    this.zoom += zoomDiff * zoomFactor;
+                }
+
+                const opacityDiff = this.targetOpacity - this.opacity;
+                if (Math.abs(opacityDiff) < 0.01) {
+                    this.opacity = this.targetOpacity;
+                } else {
+                    this.opacity += opacityDiff * opacityFactor;
+                }
             }
 
             createPattern() {
@@ -488,7 +511,7 @@
         }
 
         // Compute Voronoi with current cell weights (scales)
-        // Uses power diagram: bisector shifts based on weight difference
+        // Uses weighted bisector shifting for smooth neighbor displacement
         function computeDynamicVoronoi() {
             const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
             const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
@@ -505,9 +528,7 @@
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
 
-                // Weighted Voronoi (power diagram)
-                // For standard Voronoi: boundary is equidistant from both points
-                // For weighted: boundary shifts toward the cell with smaller weight
+                // Weighted Voronoi: boundary shifts toward the cell with smaller weight
                 let polygon = bounds.map(p => [...p]);
 
                 for (let j = 0; j < cells.length; j++) {
@@ -525,22 +546,25 @@
 
                     if (dist < 0.001) continue;
 
-                    // Power diagram: bisector shifts based on weight difference
+                    // Linear weight difference for more pronounced effect
                     // When wi > wj, cell i gains territory (bisector moves toward j)
-                    // Formula: offset = (wi² - wj²) * factor / dist
-                    const weightDiff = wi * wi - wj * wj;
+                    const weightDiff = wi - wj;
 
-                    // Scale the effect: maxExpansion controls magnitude, displaceRatio controls blend
-                    // At displaceRatio=1, a fully expanded cell pushes neighbors significantly
-                    const pushStrength = config.maxExpansion * config.displaceRatio * 0.3;
-                    const offset = weightDiff * pushStrength / dist;
+                    // Push strength: how much the bisector shifts per unit of weight difference
+                    // At displaceRatio=1 and maxExpansion=150, a fully expanded cell (scale ~1.5)
+                    // can push the bisector by up to ~40% of the distance to neighbors
+                    const pushFactor = config.maxExpansion * config.displaceRatio * 0.5;
+
+                    // Shift in pixels - proportional to weight difference
+                    const pixelShift = weightDiff * pushFactor;
 
                     // Clamp to prevent extreme shifts (max 45% of distance)
                     const maxShift = dist * 0.45;
-                    const clampedOffset = Math.max(-maxShift, Math.min(maxShift, offset));
+                    const clampedShift = Math.max(-maxShift, Math.min(maxShift, pixelShift));
 
-                    // Shifted midpoint (t > 0.5 means bisector moved toward 'other')
-                    const t = 0.5 + clampedOffset / dist;
+                    // Convert to parameter t: how far along the line from cell to other
+                    // t = 0.5 is midpoint, t > 0.5 means shifted toward 'other'
+                    const t = 0.5 + clampedShift / dist;
                     const midX = cell.baseX + dx * t;
                     const midY = cell.baseY + dy * t;
 
@@ -556,7 +580,7 @@
                 cell.baseCentroid = getPolygonCentroid(cell.polygon);
 
                 // Also store as basePolygon for compatibility
-                if (cell.scale === 1.0) {
+                if (Math.abs(cell.scale - 1.0) < 0.001) {
                     cell.basePolygon = cell.polygon;
                 }
             }
@@ -635,10 +659,13 @@
                     return [cx + dx * ratio, cy + dy * ratio];
                 });
 
-                // Clip to bounds (hovered cell gets extra buffer)
-                const isHovered = (i === hoveredCell);
-                const clipTop = isHovered ? zoneTop - config.bleedBuffer : zoneTop;
-                const clipBottom = isHovered ? zoneBottom + config.bleedBuffer : zoneBottom;
+                // Clip to bounds - smoothly expand based on animated scale
+                // Scale of 1.0 = no extra buffer, higher scale = proportionally more buffer
+                const scaleExtra = Math.max(0, cell.scale - 1.0);  // 0 when scale=1, positive when expanding
+                const bufferFraction = scaleExtra / (config.maxExpansion / 300);  // Normalize to 0-1
+                const smoothBuffer = config.bleedBuffer * Math.min(1, bufferFraction);
+                const clipTop = zoneTop - smoothBuffer;
+                const clipBottom = zoneBottom + smoothBuffer;
                 const clipped = clipToRect(shrunk, 0, clipTop, width, clipBottom);
 
                 cell.displayPolygon = clipped;
@@ -1405,11 +1432,36 @@
 
                 // Draw cell debug info
                 for (const cell of cells) {
+                    const polygon = cell.displayPolygon;
+                    const centroid = cell.baseCentroid || { x: cell.baseX, y: cell.baseY };
+
+                    // Draw lines from each corner to cell center
+                    if (polygon && polygon.length >= 3) {
+                        ctx.strokeStyle = 'rgba(255, 255, 0, 0.6)';
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([3, 3]);
+                        for (const corner of polygon) {
+                            ctx.beginPath();
+                            ctx.moveTo(corner[0], corner[1]);
+                            ctx.lineTo(centroid.x, centroid.y);
+                            ctx.stroke();
+                        }
+                        ctx.setLineDash([]);
+
+                        // Draw corner dots
+                        ctx.fillStyle = 'rgba(255, 200, 0, 0.8)';
+                        for (const corner of polygon) {
+                            ctx.beginPath();
+                            ctx.arc(corner[0], corner[1], 3, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+
                     // Cell center (white dot, size indicates scale)
                     const dotSize = 4 + (cell.scale - 1) * 20;
                     ctx.fillStyle = cell.scale > 1.01 ? 'rgba(255,200,100,0.9)' : '#fff';
                     ctx.beginPath();
-                    ctx.arc(cell.x, cell.y, dotSize, 0, Math.PI * 2);
+                    ctx.arc(centroid.x, centroid.y, dotSize, 0, Math.PI * 2);
                     ctx.fill();
                 }
             }
