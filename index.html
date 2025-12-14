@@ -1222,14 +1222,7 @@
         function render() {
             ctx.clearRect(0, 0, width, height);
 
-            // Update yielding boundary state (needed for visual masking)
-            if (config.contentZoneEnabled) {
-                const zoneTop = height * config.contentZoneTop;
-                const zoneBottom = height * (1 - config.contentZoneBottom);
-                buildSteppedBounds(zoneTop, zoneBottom);
-            }
-
-            // Draw cells FIRST
+            // Draw cells
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
                 const polygon = cell.displayPolygon;
