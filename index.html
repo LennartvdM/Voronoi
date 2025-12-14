@@ -643,8 +643,10 @@
                 const scaleB = cells[edge.cellB].scale;
                 const weightDiff = scaleA - scaleB;
 
+                // Positive weightDiff means A is bigger, so edge should move AWAY from A (toward B)
+                // Since normal points from B toward A, we need NEGATIVE shift to push toward B
                 const pushFactor = config.maxExpansion * config.displaceRatio * 0.5;
-                let shift = weightDiff * pushFactor;
+                let shift = -weightDiff * pushFactor;
                 const maxShift = edge.dist * 0.4;
                 shift = Math.max(-maxShift, Math.min(maxShift, shift));
 
