@@ -626,26 +626,91 @@
             return [line1.px + t * line1.dx, line1.py + t * line1.dy];
         }
 
-        // Display polygons: base Voronoi with uniform gap inset
-        // Membranes (gaps) have fixed width - perfect tessellation guaranteed
-        // Hovered cell extends into buffer zone and is drawn on top
+        // Display polygons with neighbor displacement via seed movement
+        // Moving seeds recomputes Voronoi naturally while maintaining perfect tessellation
         function updateDisplayPolygons() {
             const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
             const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
             const buffer = config.bleedBuffer;
             const gap = config.gap;
 
+            // Compute displaced seed positions based on hover state
+            const displacedSeeds = cells.map((cell, i) => {
+                if (hoveredCell < 0 || i === hoveredCell) {
+                    return { x: cell.baseX, y: cell.baseY };
+                }
+
+                // Push this seed away from the hovered cell
+                const hovered = cells[hoveredCell];
+                const dx = cell.baseX - hovered.baseX;
+                const dy = cell.baseY - hovered.baseY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < 1) return { x: cell.baseX, y: cell.baseY };
+
+                // Push strength based on hovered cell's scale and distance
+                const hoveredScale = hovered.scale;
+                const scaleExtra = Math.max(0, hoveredScale - 1.0);
+                const pushStrength = scaleExtra * config.maxExpansion * config.displaceRatio;
+
+                // Push falls off with distance (inverse relationship)
+                const falloff = Math.max(0, 1 - dist / 400);
+                const pushAmount = pushStrength * falloff * 0.5;
+
+                return {
+                    x: cell.baseX + (dx / dist) * pushAmount,
+                    y: cell.baseY + (dy / dist) * pushAmount
+                };
+            });
+
+            // Rebuild Voronoi polygons using displaced seeds
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
+                const seed = displacedSeeds[i];
 
-                if (!cell.basePolygon || cell.basePolygon.length < 3) continue;
+                // Start with bounding box
+                let polygon = [
+                    [-buffer, zoneTop - buffer],
+                    [width + buffer, zoneTop - buffer],
+                    [width + buffer, zoneBottom + buffer],
+                    [-buffer, zoneBottom + buffer]
+                ];
 
-                // Hit detection uses base polygon
-                cell.polygon = cell.basePolygon;
+                // Clip against bisector with each other cell (using displaced seeds)
+                for (let j = 0; j < cells.length; j++) {
+                    if (i === j) continue;
 
-                // Determine clip bounds based on hover state
-                // Hovered cell can extend into buffer zone (protrusion effect)
-                // Non-hovered cells stay within content zone
+                    const other = displacedSeeds[j];
+                    const dx = other.x - seed.x;
+                    const dy = other.y - seed.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 0.001) continue;
+
+                    // Midpoint between displaced seeds
+                    const mx = (seed.x + other.x) / 2;
+                    const my = (seed.y + other.y) / 2;
+
+                    // Normal pointing toward this cell
+                    const nx = -dx / dist;
+                    const ny = -dy / dist;
+
+                    polygon = clipPolygon(polygon, mx, my, nx, ny);
+                    if (polygon.length < 3) break;
+                }
+
+                if (polygon.length < 3) {
+                    cell.polygon = cell.basePolygon;
+                    cell.displayPolygon = cell.basePolygon;
+                    continue;
+                }
+
+                // Update centroid based on new polygon
+                cell.baseCentroid = getPolygonCentroid(polygon);
+
+                // Hit detection uses the displaced polygon
+                cell.polygon = polygon;
+
+                // Clip to display bounds (hovered cell extends into buffer)
                 const isHovered = (i === hoveredCell);
                 const scaleExtra = Math.max(0, cell.scale - 1.0);
                 const bufferFraction = scaleExtra / (config.maxExpansion / 300);
@@ -656,10 +721,9 @@
                 const clipLeft = -smoothBuffer;
                 const clipRight = width + smoothBuffer;
 
-                // Clip base polygon to bounds
-                const clipped = clipToRect(cell.basePolygon, clipLeft, clipTop, clipRight, clipBottom);
+                const clipped = clipToRect(polygon, clipLeft, clipTop, clipRight, clipBottom);
 
-                // Apply uniform gap inset - membrane width is always consistent
+                // Apply uniform gap inset
                 cell.displayPolygon = gap > 0 ? insetPolygon(clipped, gap / 2) : clipped;
             }
         }
