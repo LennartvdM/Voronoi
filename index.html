@@ -487,6 +487,72 @@
         // Non-hovered cells: clipped to soft bounds (content zone)
         // Hovered cell: clipped to buffer bounds (can extend into buffer)
 
+        // Normalize polygon by sorting vertices by angle from centroid
+        // This prevents rotation by ensuring consistent vertex ordering
+        function normalizePolygon(polygon, cx, cy) {
+            if (!polygon || polygon.length < 3) return polygon;
+
+            // Calculate angle for each vertex
+            const withAngles = polygon.map(p => ({
+                x: p[0],
+                y: p[1],
+                angle: Math.atan2(p[1] - cy, p[0] - cx)
+            }));
+
+            // Sort by angle (counter-clockwise from east)
+            withAngles.sort((a, b) => a.angle - b.angle);
+
+            return withAngles.map(p => [p.x, p.y]);
+        }
+
+        // Match vertices between old and new polygon by angle, not index
+        // This prevents rotation during transitions
+        function matchVerticesByAngle(oldPoly, newPoly, cx, cy) {
+            if (!oldPoly || !newPoly || oldPoly.length !== newPoly.length) {
+                return null; // Can't match different vertex counts
+            }
+
+            // Get angles for new polygon vertices
+            const newWithAngles = newPoly.map((p, i) => ({
+                x: p[0],
+                y: p[1],
+                angle: Math.atan2(p[1] - cy, p[0] - cx),
+                index: i
+            }));
+
+            // For each old vertex, find the closest new vertex by angle
+            const matched = [];
+            const usedIndices = new Set();
+
+            for (let i = 0; i < oldPoly.length; i++) {
+                const oldAngle = Math.atan2(oldPoly[i][1] - cy, oldPoly[i][0] - cx);
+
+                let bestMatch = -1;
+                let bestAngleDiff = Infinity;
+
+                for (const nv of newWithAngles) {
+                    if (usedIndices.has(nv.index)) continue;
+
+                    let angleDiff = Math.abs(nv.angle - oldAngle);
+                    if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+
+                    if (angleDiff < bestAngleDiff) {
+                        bestAngleDiff = angleDiff;
+                        bestMatch = nv.index;
+                    }
+                }
+
+                if (bestMatch >= 0) {
+                    matched[i] = newPoly[bestMatch];
+                    usedIndices.add(bestMatch);
+                } else {
+                    matched[i] = newPoly[i]; // Fallback
+                }
+            }
+
+            return matched;
+        }
+
         function computeVoronoi() {
             // Get baseline content zone
             let zoneTop = 0;
@@ -528,17 +594,26 @@
 
                 // Apply gap and simplify
                 const gapped = applyGap(cell.polygon, config.gap);
-                const newDisplayPolygon = simplifyPolygon(gapped);
+                let newDisplayPolygon = simplifyPolygon(gapped);
+
+                // Normalize polygon by angle from cell center to prevent rotation
+                if (newDisplayPolygon && newDisplayPolygon.length >= 3) {
+                    newDisplayPolygon = normalizePolygon(newDisplayPolygon, cell.x, cell.y);
+                }
 
                 // Smooth polygon transitions - ALL cells at SAME speed to prevent overlap
-                // When expansionSpeed is 0, no transition happens (inert)
                 const speed = config.expansionSpeed;
 
-                if (cell.displayPolygon && cell.displayPolygon.length === newDisplayPolygon.length) {
-                    if (speed > 0.0001) {
-                        for (let v = 0; v < newDisplayPolygon.length; v++) {
-                            cell.displayPolygon[v][0] += (newDisplayPolygon[v][0] - cell.displayPolygon[v][0]) * speed;
-                            cell.displayPolygon[v][1] += (newDisplayPolygon[v][1] - cell.displayPolygon[v][1]) * speed;
+                if (cell.displayPolygon && newDisplayPolygon &&
+                    cell.displayPolygon.length === newDisplayPolygon.length) {
+
+                    // Match vertices by angle to prevent rotation during interpolation
+                    const matched = matchVerticesByAngle(cell.displayPolygon, newDisplayPolygon, cell.x, cell.y);
+
+                    if (matched && speed > 0.0001) {
+                        for (let v = 0; v < cell.displayPolygon.length; v++) {
+                            cell.displayPolygon[v][0] += (matched[v][0] - cell.displayPolygon[v][0]) * speed;
+                            cell.displayPolygon[v][1] += (matched[v][1] - cell.displayPolygon[v][1]) * speed;
                         }
                     }
                     // If speed ≈ 0, displayPolygon stays frozen
