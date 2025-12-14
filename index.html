@@ -638,39 +638,39 @@
                 if (index === j) continue;
                 const other = cells[j];
 
-                // Weighted Voronoi: shift midpoint based on inflation difference
+                // Use BASE positions for stable bisector direction (prevents twisting)
+                // Only the distance shifts, never the angle
+                const baseDx = other.baseX - cell.baseX;
+                const baseDy = other.baseY - cell.baseY;
+                const baseDist = Math.sqrt(baseDx * baseDx + baseDy * baseDy);
+
+                if (baseDist < 1) continue;
+
+                // Stable normalized direction (never changes)
+                const nx = baseDx / baseDist;
+                const ny = baseDy / baseDist;
+
+                // Current midpoint between actual positions
+                const midBaseX = (cell.baseX + other.baseX) / 2;
+                const midBaseY = (cell.baseY + other.baseY) / 2;
+
+                // Shift based on inflation difference
                 const inflationDiff = cell.inflation - other.inflation;
-                const dx = other.x - cell.x;
-                const dy = other.y - cell.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                if (dist < 1) continue; // Skip if cells are at same position
-
-                // Normalize direction
-                const nx = dx / dist;
-                const ny = dy / dist;
-
-                // Calculate shift based on inflation, respecting the gap
-                // Maximum shift limited to maintain gap between cells
-                const maxAllowedShift = Math.max(0, (dist - config.gap * 2) / 2);
-
-                // SAME shift factor for all cells - Voronoi bisector must be symmetric
-                // Both cells see the same bisector position
                 const shiftFactor = 0.35;
+                const maxAllowedShift = Math.max(0, (baseDist - config.gap * 2) / 2);
                 const rawShift = inflationDiff * shiftFactor;
-
-                // Clamp shift to prevent overlap
                 const shift = Math.max(-maxAllowedShift, Math.min(maxAllowedShift, rawShift));
 
-                // Midpoint shifted along the line between cells
-                const midX = (cell.x + other.x) / 2 + nx * shift;
-                const midY = (cell.y + other.y) / 2 + ny * shift;
+                // Also account for current displacement (but keep direction stable)
+                const dispX = ((cell.x - cell.baseX) + (other.x - other.baseX)) / 2;
+                const dispY = ((cell.y - cell.baseY) + (other.y - other.baseY)) / 2;
 
-                // Normal points toward this cell (away from other)
-                const clipNx = cell.x - other.x;
-                const clipNy = cell.y - other.y;
+                // Final bisector position: base midpoint + displacement + inflation shift
+                const midX = midBaseX + dispX + nx * shift;
+                const midY = midBaseY + dispY + ny * shift;
 
-                polygon = clipPolygon(polygon, midX, midY, clipNx, clipNy);
+                // Clip normal is always based on stable base direction
+                polygon = clipPolygon(polygon, midX, midY, -baseDx, -baseDy);
                 if (polygon.length < 3) break;
             }
 
