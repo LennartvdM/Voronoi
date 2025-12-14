@@ -672,36 +672,20 @@
                 // Apply gap inset for display
                 const inset = insetPolygon(polygon, gap / 2);
 
-                // For hovered cell: apply visual scaling to protrude beyond container
-                // This is on TOP of the edge-based physics - edges handle cell-to-cell,
-                // visual scaling handles the "pop out" effect into buffer zone
-                let displayPoly = inset;
+                // For expanding cells: extend into buffer zone by expanding clip bounds
+                // NO centroid-based scaling - this keeps edge angles clean (no muffin top)
+                // The cell's edges at the boundary naturally extend as bounds expand
                 const scaleExtra = Math.max(0, cell.scale - 1.0);
-
-                if (scaleExtra > 0.001) {
-                    // Scale polygon outward from centroid for visual protrusion
-                    // The (1 - displaceRatio) portion goes to visual scaling
-                    // So at displaceRatio=0, it's all visual; at 1, it's all edge-based
-                    const visualScalePortion = 1 - config.displaceRatio;
-                    const visualScale = 1 + scaleExtra * visualScalePortion;
-
-                    const cx = cell.baseCentroid.x;
-                    const cy = cell.baseCentroid.y;
-
-                    displayPoly = inset.map(p => {
-                        const dx = p[0] - cx;
-                        const dy = p[1] - cy;
-                        return [cx + dx * visualScale, cy + dy * visualScale];
-                    });
-                }
-
-                // Clip to content zone (with buffer for expanding cells)
                 const bufferFraction = scaleExtra / (config.maxExpansion / 300);
                 const smoothBuffer = buffer * Math.min(1, bufferFraction);
+
+                // Expanded bounds for hovered cell
                 const clipTop = zoneTop - smoothBuffer;
                 const clipBottom = zoneBottom + smoothBuffer;
+                const clipLeft = -smoothBuffer;
+                const clipRight = width + smoothBuffer;
 
-                cell.displayPolygon = clipToRect(displayPoly, 0, clipTop, width, clipBottom);
+                cell.displayPolygon = clipToRect(inset, clipLeft, clipTop, clipRight, clipBottom);
             }
         }
 
