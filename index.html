@@ -512,6 +512,8 @@
                 this.restY = y;
                 this.vx = 0;
                 this.vy = 0;
+                this.inflation = 0;        // Current inflation (makes polygon bigger)
+                this.targetInflation = 0;  // Target inflation (smoothly interpolated)
                 this.polygon = null;
                 this.displayPolygon = null; // With gap applied
                 this.zoom = config.nonHoverImageZoom;
@@ -527,13 +529,17 @@
             }
 
             update(dt, isHovered) {
+                // Smooth inflation transition
+                const inflationSpeed = isHovered ? 0.15 : 0.05; // Fast inflate, slow deflate
+                this.inflation += (this.targetInflation - this.inflation) * inflationSpeed;
+
                 if (!config.physicsEnabled) {
                     this.zoom += (this.targetZoom - this.zoom) * config.imageZoomSpeed;
                     this.opacity += (this.targetOpacity - this.opacity) * config.opacityTransitionSpeed;
                     return;
                 }
 
-                // Spring force to rest position
+                // Simplified physics - just gently return to rest position
                 const dx = this.restX - this.x;
                 const dy = this.restY - this.y;
 
@@ -673,21 +679,20 @@
                 const zoneTop = height * config.contentZoneTop;
                 const zoneBottom = height * (1 - config.contentZoneBottom);
 
-                // How much is the cell displaced toward each boundary?
-                // Displacement from rest position, clamped to movement toward boundary
-                const topDisplacement = Math.max(0, cell.restY - cell.y); // Moving up
-                const bottomDisplacement = Math.max(0, cell.y - cell.restY); // Moving down
+                // Inflation-based pressure: inflated cell pushes the boundary
+                const inflation = cell.inflation;
 
                 // Soft strength resistance: at 0, full pressure; at 2, heavily dampened
                 const resistance = 1 / (1 + config.boundaryStiffness * 2);
-                const pressureScale = 1.5 * resistance;
+                const pressureScale = 0.5 * resistance;
 
-                // How close is the cell to the boundary? Closer = more pressure
-                const topProximity = Math.max(0, 1 - (cell.y - zoneTop) / 150);
-                const bottomProximity = Math.max(0, 1 - (zoneBottom - cell.y) / 150);
+                // How close is the cell to each boundary? Closer = more pressure
+                const topProximity = Math.max(0, 1 - (cell.y - zoneTop) / 200);
+                const bottomProximity = Math.max(0, 1 - (zoneBottom - cell.y) / 200);
 
-                const topPush = topDisplacement * pressureScale * (0.5 + topProximity);
-                const bottomPush = bottomDisplacement * pressureScale * (0.5 + bottomProximity);
+                // Inflation creates pressure toward nearby boundaries
+                const topPush = inflation * pressureScale * topProximity;
+                const bottomPush = inflation * pressureScale * bottomProximity;
 
                 if (topPush > 0) {
                     const clampedInfluence = Math.min(topPush, config.maxPlateDepth);
@@ -824,8 +829,18 @@
                 if (index === j) continue;
                 const other = cells[j];
 
-                const midX = (cell.x + other.x) / 2;
-                const midY = (cell.y + other.y) / 2;
+                // Weighted Voronoi: shift midpoint based on inflation difference
+                // If cell is inflated, midpoint shifts toward the other cell (making cell's polygon bigger)
+                const inflationDiff = cell.inflation - other.inflation;
+                const dx = other.x - cell.x;
+                const dy = other.y - cell.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                // Shift amount: positive inflation pushes midpoint toward other cell
+                const shift = dist > 0 ? inflationDiff / dist * 0.5 : 0;
+
+                const midX = (cell.x + other.x) / 2 + dx * shift;
+                const midY = (cell.y + other.y) / 2 + dy * shift;
                 const nx = cell.x - other.x;
                 const ny = cell.y - other.y;
 
@@ -1601,72 +1616,16 @@
 
         // ========== PHYSICS ==========
         function updatePhysics(dt) {
-            const currentTime = performance.now();
-
-            // Track hover state changes for two-phase system
-            if (hoveredCell !== prevHoveredCell) {
-                if (hoveredCell >= 0) {
-                    hoverStartTime = currentTime;
-                }
-                prevHoveredCell = hoveredCell;
-            }
-
-            if (hoveredCell >= 0 && config.physicsEnabled) {
-                const hovered = cells[hoveredCell];
-                const hoverDuration = (currentTime - hoverStartTime) / 1000; // seconds
-
-                // Two-phase hover system:
-                // Phase 1 (trigger): Strong initial burst that decays over ~0.3s
-                // Phase 2 (sustain): Continuous growth while hovering
-                const triggerPhase = Math.exp(-hoverDuration * 5) * config.triggerBurst;
-                const sustainPhase = config.sustainGrowth * Math.min(1, hoverDuration * 2);
-                const phaseMultiplier = triggerPhase + sustainPhase;
-
-                // Direction from cursor to cell center
-                const dx = hovered.x - mouseX;
-                const dy = hovered.y - mouseY;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                if (dist > 1) {
-                    // Hover speed affects force application rate
-                    const speedMultiplier = 0.3 + config.hoverSpeed * 0.7;
-
-                    // Force scales with hoverForce directly, distance just affects direction weight
-                    // Closer to center = stronger push, but minimum 20% force even at edge
-                    const distanceFactor = Math.max(0.2, 1 - dist / 200);
-                    const directedForce = config.hoverForce * 0.01 * distanceFactor * speedMultiplier * phaseMultiplier;
-                    const uniformForce = config.hoverForce * 0.005 * speedMultiplier * phaseMultiplier;
-
-                    const cr = config.centerRelevance;
-
-                    // Directed component (pushes hovered cell away from cursor)
-                    const dirX = dx / dist * directedForce * cr;
-                    const dirY = dy / dist * directedForce * cr;
-                    hovered.applyForce(dirX, dirY);
-
-                    // Push neighbors away from hovered cell
-                    for (let i = 0; i < cells.length; i++) {
-                        if (i === hoveredCell) continue;
-                        const other = cells[i];
-
-                        const odx = other.x - hovered.x;
-                        const ody = other.y - hovered.y;
-                        const odist = Math.sqrt(odx * odx + ody * ody);
-                        const threshold = config.repulsion * 6;
-
-                        if (odist > 1 && odist < threshold) {
-                            const falloff = (threshold - odist) / threshold;
-
-                            // Directed repulsion (from hovered cell)
-                            const directedRepulsion = falloff * config.repulsion * 0.025 * cr * phaseMultiplier;
-
-                            // Uniform repulsion (equal in all directions, creates expansion)
-                            const uniformRepulsion = uniformForce * (1 - cr) * falloff;
-
-                            const totalForce = directedRepulsion + uniformRepulsion;
-                            other.applyForce(odx / odist * totalForce, ody / odist * totalForce);
-                        }
-                    }
+            // Simple inflation system: hovered cell inflates, others don't
+            // The weighted Voronoi handles the rest - neighbors naturally shrink
+            for (let i = 0; i < cells.length; i++) {
+                const cell = cells[i];
+                if (i === hoveredCell) {
+                    // Hovered cell inflates based on maxExpansion
+                    cell.targetInflation = config.maxExpansion;
+                } else {
+                    // Non-hovered cells deflate back to normal
+                    cell.targetInflation = 0;
                 }
             }
 
