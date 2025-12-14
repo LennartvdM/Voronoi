@@ -501,16 +501,25 @@
             }
         }
 
-        // ========== FIXED VORONOI WITH VISUAL EXPANSION ==========
-        // Base Voronoi is computed ONCE and never changes
-        // Hover effect is purely visual: scale the cell from its center, draw on top
+        // ========== EDGE-BASED VORONOI PHYSICS ==========
+        // Edges are the fundamental unit - they're shared between cells
+        // When one cell expands, it pushes shared edges toward neighbors
+        // Polygons are reconstructed from edge intersections
+
+        let voronoiEdges = [];  // Array of edges between cells
+
+        // Edge structure: { cellA, cellB, midX, midY, nx, ny, dist }
+        // cellA, cellB: indices of adjacent cells (-1 for boundary)
+        // midX, midY: base midpoint of the edge
+        // nx, ny: unit normal pointing from cellB toward cellA
+        // dist: distance between cell centers
 
         function computeBaseVoronoi() {
             const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
             const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
             const buffer = config.bleedBuffer;
 
-            // Bounds for clipping - include buffer for edge cells
+            // First, compute standard Voronoi to get base polygons and find adjacencies
             const bounds = [
                 [-buffer, zoneTop - buffer],
                 [width + buffer, zoneTop - buffer],
@@ -518,7 +527,39 @@
                 [-buffer, zoneBottom + buffer]
             ];
 
-            // Standard Voronoi: all weights = 1, bisectors at midpoints
+            // Build edges between all cell pairs
+            voronoiEdges = [];
+
+            for (let i = 0; i < cells.length; i++) {
+                for (let j = i + 1; j < cells.length; j++) {
+                    const cellA = cells[i];
+                    const cellB = cells[j];
+
+                    const dx = cellB.baseX - cellA.baseX;
+                    const dy = cellB.baseY - cellA.baseY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 0.001) continue;
+
+                    // Edge midpoint and normal
+                    const midX = (cellA.baseX + cellB.baseX) / 2;
+                    const midY = (cellA.baseY + cellB.baseY) / 2;
+
+                    // Normal points from B toward A (so positive shift benefits A)
+                    const nx = -dx / dist;
+                    const ny = -dy / dist;
+
+                    voronoiEdges.push({
+                        cellA: i,
+                        cellB: j,
+                        midX, midY,
+                        nx, ny,
+                        dist
+                    });
+                }
+            }
+
+            // Compute base polygons using standard Voronoi
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
                 let polygon = bounds.map(p => [...p]);
@@ -532,11 +573,8 @@
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     if (dist < 0.001) continue;
 
-                    // Standard Voronoi: bisector at exact midpoint
                     const midX = (cell.baseX + other.baseX) / 2;
                     const midY = (cell.baseY + other.baseY) / 2;
-
-                    // Normal points from other toward cell
                     const nx = cell.baseX - other.baseX;
                     const ny = cell.baseY - other.baseY;
 
@@ -544,13 +582,111 @@
                     if (polygon.length < 3) break;
                 }
 
-                // Store as permanent base polygon
                 cell.basePolygon = polygon.length >= 3 ? polygon : null;
                 cell.baseCentroid = getPolygonCentroid(cell.basePolygon);
             }
 
-            // Initial display polygons
             updateDisplayPolygons();
+        }
+
+        // Rebuild polygons based on current edge positions (affected by cell scales)
+        function updateDisplayPolygons() {
+            const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
+            const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
+            const buffer = config.bleedBuffer;
+            const gap = config.gap;
+
+            // Compute edge shifts based on cell scales
+            // displaceRatio controls how much edges move vs visual-only scaling
+            const edgeShifts = voronoiEdges.map(edge => {
+                const scaleA = cells[edge.cellA].scale;
+                const scaleB = cells[edge.cellB].scale;
+
+                // Weight difference determines edge shift
+                // Positive = edge moves toward B (A gains territory)
+                const weightDiff = scaleA - scaleB;
+
+                // Push strength based on config
+                const pushFactor = config.maxExpansion * config.displaceRatio * 0.5;
+                let shift = weightDiff * pushFactor;
+
+                // Clamp shift to prevent edges crossing cell centers
+                const maxShift = edge.dist * 0.4;
+                shift = Math.max(-maxShift, Math.min(maxShift, shift));
+
+                return {
+                    ...edge,
+                    // Shifted edge position
+                    shiftedMidX: edge.midX + edge.nx * shift,
+                    shiftedMidY: edge.midY + edge.ny * shift,
+                    shift
+                };
+            });
+
+            // Bounds for clipping
+            const bounds = [
+                [-buffer, zoneTop - buffer],
+                [width + buffer, zoneTop - buffer],
+                [width + buffer, zoneBottom + buffer],
+                [-buffer, zoneBottom + buffer]
+            ];
+
+            // Rebuild each cell's polygon using shifted edges
+            for (let i = 0; i < cells.length; i++) {
+                const cell = cells[i];
+                let polygon = bounds.map(p => [...p]);
+
+                // Clip against all shifted edges involving this cell
+                for (const edge of edgeShifts) {
+                    let isMyEdge = false;
+                    let normalSign = 1;
+
+                    if (edge.cellA === i) {
+                        isMyEdge = true;
+                        normalSign = 1;  // Normal points toward us
+                    } else if (edge.cellB === i) {
+                        isMyEdge = true;
+                        normalSign = -1;  // Normal points away, flip it
+                    }
+
+                    if (!isMyEdge) continue;
+
+                    // Clip polygon against this edge
+                    const nx = edge.nx * normalSign;
+                    const ny = edge.ny * normalSign;
+
+                    polygon = clipPolygon(polygon, edge.shiftedMidX, edge.shiftedMidY, nx, ny);
+                    if (polygon.length < 3) break;
+                }
+
+                if (polygon.length < 3) {
+                    cell.polygon = cell.basePolygon;
+                    cell.displayPolygon = cell.basePolygon;
+                    continue;
+                }
+
+                // Store the physics polygon (for hit testing)
+                cell.polygon = polygon;
+                cell.baseCentroid = getPolygonCentroid(polygon);
+
+                // Apply gap inset for display
+                const inset = insetPolygon(polygon, gap / 2);
+
+                // For expanding cells: extend into buffer zone by expanding clip bounds
+                // NO centroid-based scaling - this keeps edge angles clean (no muffin top)
+                // The cell's edges at the boundary naturally extend as bounds expand
+                const scaleExtra = Math.max(0, cell.scale - 1.0);
+                const bufferFraction = scaleExtra / (config.maxExpansion / 300);
+                const smoothBuffer = buffer * Math.min(1, bufferFraction);
+
+                // Expanded bounds for hovered cell
+                const clipTop = zoneTop - smoothBuffer;
+                const clipBottom = zoneBottom + smoothBuffer;
+                const clipLeft = -smoothBuffer;
+                const clipRight = width + smoothBuffer;
+
+                cell.displayPolygon = clipToRect(inset, clipLeft, clipTop, clipRight, clipBottom);
+            }
         }
 
         function clipPolygon(polygon, px, py, nx, ny) {
@@ -689,51 +825,6 @@
 
             const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
             return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
-        }
-
-        // Update display polygons with visual scaling
-        // Base Voronoi never changes - only apply visual transformations
-        function updateDisplayPolygons() {
-            const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
-            const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
-            const gap = config.gap;
-
-            for (let i = 0; i < cells.length; i++) {
-                const cell = cells[i];
-                if (!cell.basePolygon || !cell.baseCentroid) continue;
-
-                const cx = cell.baseCentroid.x;
-                const cy = cell.baseCentroid.y;
-
-                // Apply gap inset to base polygon
-                const inset = insetPolygon(cell.basePolygon, gap / 2);
-
-                // Visual scaling: expand polygon from centroid based on animated scale
-                // scale = 1.0 means no change, > 1.0 means visually larger
-                let scaled;
-                if (cell.scale > 1.001) {
-                    // Scale polygon vertices outward from centroid
-                    scaled = inset.map(p => {
-                        const dx = p[0] - cx;
-                        const dy = p[1] - cy;
-                        return [cx + dx * cell.scale, cy + dy * cell.scale];
-                    });
-                } else {
-                    scaled = inset;
-                }
-
-                // Clip to bounds - hovered cells can extend into buffer zone
-                const scaleExtra = Math.max(0, cell.scale - 1.0);
-                const bufferFraction = scaleExtra / (config.maxExpansion / 300);
-                const smoothBuffer = config.bleedBuffer * Math.min(1, bufferFraction);
-                const clipTop = zoneTop - smoothBuffer;
-                const clipBottom = zoneBottom + smoothBuffer;
-                const clipped = clipToRect(scaled, 0, clipTop, width, clipBottom);
-
-                cell.displayPolygon = clipped;
-                // Keep base polygon for hit testing (not scaled polygon)
-                cell.polygon = insetPolygon(cell.basePolygon, gap / 2);
-            }
         }
 
         // Simple rect clipping
