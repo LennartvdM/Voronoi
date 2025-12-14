@@ -1208,7 +1208,7 @@
             let found = -1;
             let closestDist = Infinity;
 
-            // Find the closest cell center within hitbox radius
+            // Find the closest cell center - hitbox is purely center-based
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
                 const centroid = cell.baseCentroid || { x: cell.baseX, y: cell.baseY };
@@ -1216,23 +1216,10 @@
                 const dy = mouseY - centroid.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
-                // Must be within hitbox radius AND closer than any other cell
+                // Only trigger if within hitbox radius of center
                 if (dist < config.hitboxRadius && dist < closestDist) {
-                    // Also verify mouse is within the cell's polygon (for edge cases)
-                    if (cells[i].polygon && pointInPolygon(mouseX, mouseY, cells[i].polygon)) {
-                        closestDist = dist;
-                        found = i;
-                    }
-                }
-            }
-
-            // If no cell found within hitbox radius, fall back to polygon hit test
-            if (found === -1) {
-                for (let i = 0; i < cells.length; i++) {
-                    if (cells[i].polygon && pointInPolygon(mouseX, mouseY, cells[i].polygon)) {
-                        found = i;
-                        break;
-                    }
+                    closestDist = dist;
+                    found = i;
                 }
             }
 
