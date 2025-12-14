@@ -626,33 +626,25 @@
             return [line1.px + t * line1.dx, line1.py + t * line1.dy];
         }
 
-        // Rebuild polygons from shifted edges using half-plane clipping
-        // This gives us edge-based physics with robust polygon construction
+        // Rebuild display polygons using Power Diagram (weighted Voronoi)
+        // Power diagrams maintain vertex consistency even with different weights
         function updateDisplayPolygons() {
             const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
             const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
             const buffer = config.bleedBuffer;
             const gap = config.gap;
 
-            // Compute shifted edges based on cell scales
-            const shiftedEdges = voronoiEdges.map(edge => {
-                const scaleA = cells[edge.cellA].scale;
-                const scaleB = cells[edge.cellB].scale;
-                const weightDiff = scaleA - scaleB;
-
-                // Positive weightDiff means A is bigger, so edge should move AWAY from A (toward B)
-                // Since normal points from B toward A, we need NEGATIVE shift to push toward B
-                const pushFactor = config.maxExpansion * config.displaceRatio * 0.5;
-                let shift = -weightDiff * pushFactor;
-                const maxShift = edge.dist * 0.4;
-                shift = Math.max(-maxShift, Math.min(maxShift, shift));
-
-                return getShiftedEdge(edge, shift);
+            // Compute weights based on cell scales
+            // Weight affects the "power distance" - higher weight = larger cell
+            const weights = cells.map(cell => {
+                const scaleExtra = Math.max(0, cell.scale - 1.0);
+                return scaleExtra * config.maxExpansion * config.displaceRatio;
             });
 
-            // Build polygon for each cell by clipping against shifted edges
+            // Build power diagram polygon for each cell
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
+                const wi = weights[i];
 
                 // Start with large bounding box
                 let polygon = [
@@ -662,15 +654,32 @@
                     [-buffer, zoneBottom + buffer]
                 ];
 
-                // Clip against each shifted edge where this cell is on one side
-                for (const edgeInfo of cellEdgeMap[i]) {
-                    const shifted = shiftedEdges[edgeInfo.edgeIdx];
-                    // Normal points toward this cell (A side: use normal as-is, B side: flip)
-                    const sign = edgeInfo.side === 'A' ? 1 : -1;
-                    const nx = shifted.nx * sign;
-                    const ny = shifted.ny * sign;
+                // Clip against weighted bisector with each other cell
+                for (let j = 0; j < cells.length; j++) {
+                    if (i === j) continue;
 
-                    polygon = clipPolygon(polygon, shifted.px, shifted.py, nx, ny);
+                    const other = cells[j];
+                    const wj = weights[j];
+
+                    const dx = other.baseX - cell.baseX;
+                    const dy = other.baseY - cell.baseY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 0.001) continue;
+
+                    // Power diagram bisector offset: (wj - wi) / (2 * dist)
+                    // Positive offset moves bisector toward cell i (making i smaller)
+                    // We want higher weight = larger cell, so use (wi - wj)
+                    const offset = (wi - wj) / (2 * dist) * dist; // Simplified: (wi - wj) / 2
+
+                    // Midpoint shifted by offset along the line from i to j
+                    const mx = (cell.baseX + other.baseX) / 2 + (dx / dist) * offset;
+                    const my = (cell.baseY + other.baseY) / 2 + (dy / dist) * offset;
+
+                    // Normal points toward cell i (keep i's side)
+                    const nx = -dx / dist;
+                    const ny = -dy / dist;
+
+                    polygon = clipPolygon(polygon, mx, my, nx, ny);
                     if (polygon.length < 3) break;
                 }
 
@@ -680,14 +689,14 @@
                     continue;
                 }
 
-                // Store the physics polygon
+                // Store polygon for hit detection
                 cell.polygon = polygon;
                 cell.baseCentroid = getPolygonCentroid(polygon);
 
                 // Apply gap inset
                 const inset = insetPolygon(polygon, gap / 2);
 
-                // Clip to expanded bounds for hovered cells
+                // Clip to display bounds (hovered cells extend into buffer)
                 const scaleExtra = Math.max(0, cell.scale - 1.0);
                 const bufferFraction = scaleExtra / (config.maxExpansion / 300);
                 const smoothBuffer = buffer * Math.min(1, bufferFraction);
