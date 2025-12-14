@@ -248,6 +248,13 @@
                 </div>
             </div>
             <div class="control-group">
+                <label>Speed</label>
+                <div class="control-row">
+                    <input type="range" id="expansionSpeed" min="0" max="100" value="63">
+                    <span class="control-value" id="expansionSpeedVal">0.12</span>
+                </div>
+            </div>
+            <div class="control-group">
                 <label>Dim Others</label>
                 <div class="control-row">
                     <input type="range" id="nonHoveredOpacity" min="0" max="100" value="60">
@@ -312,6 +319,7 @@
 
             // Inflation system
             maxExpansion: 150,           // How much the hovered cell inflates (px in weighted Voronoi)
+            expansionSpeed: 0.12,        // How fast cells inflate/deflate (0.01 = very slow, 0.3 = fast)
 
             // Visual transitions
             nonHoverImageZoom: 1.7,      // Non-hover image zoom level
@@ -397,9 +405,9 @@
             }
 
             update(dt, isHovered) {
-                // Smooth inflation transition
-                const inflationSpeed = isHovered ? 0.15 : 0.05; // Fast inflate, slow deflate
-                this.inflation += (this.targetInflation - this.inflation) * inflationSpeed;
+                // Smooth inflation transition - ALL cells react at same speed to prevent overlap
+                // Neighbors must shrink as fast as hovered cell expands
+                this.inflation += (this.targetInflation - this.inflation) * config.expansionSpeed;
 
                 // Smooth zoom and opacity transitions
                 this.zoom += (this.targetZoom - this.zoom) * config.imageZoomSpeed;
@@ -494,7 +502,7 @@
                 const bounds = isHovered ? bufferBounds : softBounds;
 
                 // Compute raw Voronoi polygon
-                cell.polygon = computeCellPolygon(i, bounds);
+                cell.polygon = computeCellPolygon(i, bounds, isHovered);
 
                 // Apply gap and simplify
                 const gapped = applyGap(cell.polygon, config.gap);
@@ -502,15 +510,21 @@
 
                 // Smooth polygon transitions so neighbors don't panic
                 if (cell.displayPolygon && cell.displayPolygon.length === newDisplayPolygon.length) {
-                    const speed = isHovered ? 0.25 : 0.08; // Neighbors transition even more slowly
+                    // Hovered cell transitions faster, neighbors much slower to prevent rotation chaos
+                    const speed = isHovered ? 0.3 : 0.04;
 
                     for (let v = 0; v < newDisplayPolygon.length; v++) {
                         cell.displayPolygon[v][0] += (newDisplayPolygon[v][0] - cell.displayPolygon[v][0]) * speed;
                         cell.displayPolygon[v][1] += (newDisplayPolygon[v][1] - cell.displayPolygon[v][1]) * speed;
                     }
                 } else {
-                    // Topology change - just assign
-                    cell.displayPolygon = newDisplayPolygon;
+                    // Topology change - blend in slowly for non-hovered to avoid sudden jumps
+                    if (isHovered || !cell.displayPolygon) {
+                        cell.displayPolygon = newDisplayPolygon;
+                    } else {
+                        // Non-hovered topology change: fade in by starting closer to old centroid
+                        cell.displayPolygon = newDisplayPolygon.map(p => [...p]);
+                    }
                 }
             }
 
@@ -519,7 +533,7 @@
             computeVoronoi.zoneBottom = zoneBottom;
         }
 
-        function computeCellPolygon(index, bounds) {
+        function computeCellPolygon(index, bounds, isHovered) {
             const cell = cells[index];
             let polygon = [...bounds];
 
@@ -534,10 +548,14 @@
                 const dy = other.y - cell.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
-                // Shift amount: reduced factor (0.3) to prevent chaotic rotation
-                // Also cap shift to prevent extreme distortion
-                const rawShift = dist > 0 ? inflationDiff / dist * 0.3 : 0;
-                const shift = Math.max(-0.4, Math.min(0.4, rawShift)); // Cap at 40% of distance
+                // Different shift factors for hovered vs non-hovered cells
+                // Hovered cell needs to push outward aggressively
+                // Non-hovered cells just need to yield - smaller shift prevents rotation chaos
+                const shiftFactor = isHovered ? 0.35 : 0.15;
+                const maxShift = isHovered ? 0.45 : 0.25; // Tighter cap for non-hovered
+
+                const rawShift = dist > 0 ? inflationDiff / dist * shiftFactor : 0;
+                const shift = Math.max(-maxShift, Math.min(maxShift, rawShift));
 
                 const midX = (cell.x + other.x) / 2 + dx * shift;
                 const midY = (cell.y + other.y) / 2 + dy * shift;
@@ -1076,6 +1094,18 @@
             maxExpansionEl.addEventListener('input', () => {
                 config.maxExpansion = +maxExpansionEl.value;
                 maxExpansionVal.textContent = config.maxExpansion;
+            });
+
+            // Expansion Speed - power curve for high fidelity at low end
+            // 0 = 0 (no expansion), 100 = 0.3 (very fast)
+            // Using quadratic: speed = (value/100)^2 * 0.3
+            const expansionSpeedEl = document.getElementById('expansionSpeed');
+            const expansionSpeedVal = document.getElementById('expansionSpeedVal');
+            expansionSpeedEl.addEventListener('input', () => {
+                const normalized = +expansionSpeedEl.value / 100;
+                // Quadratic curve: more control at low values
+                config.expansionSpeed = normalized * normalized * 0.3;
+                expansionSpeedVal.textContent = config.expansionSpeed.toFixed(2);
             });
 
             // Non-Hovered Opacity
