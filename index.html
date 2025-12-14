@@ -286,13 +286,6 @@
                     <span class="control-value" id="bleedBufferVal">80</span>
                 </div>
             </div>
-            <div class="control-group hide-tablet">
-                <label>Edge Margin</label>
-                <div class="control-row">
-                    <input type="range" id="boundaryStiffness" min="0" max="200" value="5">
-                    <span class="control-value" id="boundaryStiffnessVal">0.05</span>
-                </div>
-            </div>
 
             <div class="divider"></div>
 
@@ -334,9 +327,7 @@
             contentZoneEnabled: true,    // Enable/disable content zone
             contentZoneTop: 0.15,        // Top margin as fraction of height
             contentZoneBottom: 0.15,     // Bottom margin as fraction of height
-            bleedBuffer: 80,             // Pixel buffer beyond content zone
-            boundaryStiffness: 0.05,     // 0=yields easily, high=resists yielding
-            maxPlateDepth: 80            // Maximum depth boundary can yield
+            bleedBuffer: 80              // Pixel buffer beyond content zone (how far hovered cell can extend)
         };
 
         // ========== SAMPLE DATA ==========
@@ -382,9 +373,6 @@
         let tooltip;
         let animationId;
         let lastTime = 0;
-        // Smoothed boundary depths (persisted across frames for soft yielding)
-        let smoothedTopDepths = null;
-        let smoothedBottomDepths = null;
 
         // ========== CELL CLASS ==========
         class Cell {
@@ -465,104 +453,9 @@
         }
 
         // ========== VORONOI ==========
-        // Boundary system: yields completely to hovered cell, non-hovered cells stay contained
-
-        function buildSteppedBounds(zoneTop, zoneBottom) {
-            // Sample points along the width to detect where hovered cell protrudes
-            const sampleCount = 24;
-            const sampleWidth = width / (sampleCount - 1);
-
-            // Initialize depth arrays on first call
-            if (!smoothedTopDepths || smoothedTopDepths.length !== sampleCount) {
-                smoothedTopDepths = new Array(sampleCount).fill(0);
-            }
-            if (!smoothedBottomDepths || smoothedBottomDepths.length !== sampleCount) {
-                smoothedBottomDepths = new Array(sampleCount).fill(0);
-            }
-
-            // Target depths: how far the boundary should yield at each sample point
-            const targetTop = new Array(sampleCount).fill(0);
-            const targetBottom = new Array(sampleCount).fill(0);
-
-            // Only the hovered cell can push into buffer - measure its ACTUAL protrusion
-            // The boundary MUST yield to fully accommodate it (no clipping!)
-            if (hoveredCell >= 0) {
-                const cell = cells[hoveredCell];
-                const polygon = cell.displayPolygon;
-
-                if (polygon && polygon.length >= 3) {
-                    // Extra margin: soft strength adds padding beyond the cell edge
-                    // 0 = tight fit, higher = more breathing room
-                    const extraMargin = config.boundaryStiffness * 20;
-
-                    for (const vertex of polygon) {
-                        const vx = vertex[0];
-                        const vy = vertex[1];
-
-                        const sampleIdx = Math.round(vx / sampleWidth);
-                        if (sampleIdx < 0 || sampleIdx >= sampleCount) continue;
-
-                        // Top protrusion: yield by FULL amount + margin (no dampening!)
-                        if (vy < zoneTop) {
-                            const protrusion = zoneTop - vy;
-                            const yieldAmount = protrusion + extraMargin;
-
-                            // Spread to neighboring samples for smooth organic curve
-                            for (let offset = -4; offset <= 4; offset++) {
-                                const idx = sampleIdx + offset;
-                                if (idx >= 0 && idx < sampleCount) {
-                                    const falloff = Math.cos(offset * Math.PI / 8) * 0.5 + 0.5;
-                                    targetTop[idx] = Math.max(targetTop[idx], yieldAmount * falloff);
-                                }
-                            }
-                        }
-
-                        // Bottom protrusion
-                        if (vy > zoneBottom) {
-                            const protrusion = vy - zoneBottom;
-                            const yieldAmount = protrusion + extraMargin;
-
-                            for (let offset = -4; offset <= 4; offset++) {
-                                const idx = sampleIdx + offset;
-                                if (idx >= 0 && idx < sampleCount) {
-                                    const falloff = Math.cos(offset * Math.PI / 8) * 0.5 + 0.5;
-                                    targetBottom[idx] = Math.max(targetBottom[idx], yieldAmount * falloff);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Spatial smoothing - gentle blur for organic curves
-            function blur(arr) {
-                const result = new Array(arr.length);
-                for (let i = 0; i < arr.length; i++) {
-                    const prev = arr[Math.max(0, i - 1)];
-                    const curr = arr[i];
-                    const next = arr[Math.min(arr.length - 1, i + 1)];
-                    result[i] = prev * 0.2 + curr * 0.6 + next * 0.2;
-                }
-                return result;
-            }
-
-            const blurredTop = blur(blur(targetTop));
-            const blurredBottom = blur(blur(targetBottom));
-
-            // Temporal smoothing - FAST yield (responsive), slow return (graceful)
-            const yieldSpeed = 0.35;  // Quick response to hover
-            const returnSpeed = 0.06; // Gentle return when leaving
-
-            for (let s = 0; s < sampleCount; s++) {
-                const topDiff = blurredTop[s] - smoothedTopDepths[s];
-                smoothedTopDepths[s] += topDiff * (topDiff > 0 ? yieldSpeed : returnSpeed);
-                if (smoothedTopDepths[s] < 0.5) smoothedTopDepths[s] = 0;
-
-                const bottomDiff = blurredBottom[s] - smoothedBottomDepths[s];
-                smoothedBottomDepths[s] += bottomDiff * (bottomDiff > 0 ? yieldSpeed : returnSpeed);
-                if (smoothedBottomDepths[s] < 0.5) smoothedBottomDepths[s] = 0;
-            }
-        }
+        // No masks - cells themselves define the boundary
+        // Non-hovered cells: clipped to soft bounds (content zone)
+        // Hovered cell: clipped to buffer bounds (can extend into buffer)
 
         function computeVoronoi() {
             // Get baseline content zone
@@ -918,9 +811,6 @@
 
         function generateCells() {
             cells = [];
-            // Reset boundary yielding state
-            smoothedTopDepths = null;
-            smoothedBottomDepths = null;
             const margin = 80;
 
             // Calculate vertical bounds based on content zone
@@ -1239,13 +1129,6 @@
                 computeVoronoi();
             });
 
-            const boundaryStiffnessEl = document.getElementById('boundaryStiffness');
-            const boundaryStiffnessVal = document.getElementById('boundaryStiffnessVal');
-            boundaryStiffnessEl.addEventListener('input', () => {
-                config.boundaryStiffness = +boundaryStiffnessEl.value / 100;
-                boundaryStiffnessVal.textContent = config.boundaryStiffness.toFixed(2);
-            });
-
             // Buttons
             document.getElementById('regenerate').addEventListener('click', generateCells);
 
@@ -1408,82 +1291,9 @@
                 ctx.shadowBlur = 0;
             }
 
-            // Draw margins ON TOP of cells to mask overflow beyond soft container
-            if (config.contentZoneEnabled) {
-                const zoneTop = height * config.contentZoneTop;
-                const zoneBottom = height * (1 - config.contentZoneBottom);
-
-                // Body background is 135deg gradient from #1a1a2e to #16213e
-                // 135deg = top-left to bottom-right diagonal
-                const bgGradient = ctx.createLinearGradient(0, 0, width, height);
-                bgGradient.addColorStop(0, '#1a1a2e');
-                bgGradient.addColorStop(1, '#16213e');
-
-                const sampleCount = smoothedTopDepths ? smoothedTopDepths.length : 24;
-                const sampleWidth = width / (sampleCount - 1);
-
-                // Build edge paths for both margins
-                const topEdge = [];
-                const bottomEdge = [];
-                for (let s = 0; s < sampleCount; s++) {
-                    const topDepth = smoothedTopDepths ? smoothedTopDepths[s] : 0;
-                    const bottomDepth = smoothedBottomDepths ? smoothedBottomDepths[s] : 0;
-                    topEdge.push([s * sampleWidth, zoneTop - topDepth]);
-                    bottomEdge.push([s * sampleWidth, zoneBottom + bottomDepth]);
-                }
-
-                // Draw top margin with yielding edge
-                ctx.fillStyle = bgGradient;
-                ctx.beginPath();
-                ctx.moveTo(0, 0);
-                ctx.lineTo(width, 0);
-                ctx.lineTo(width, topEdge[sampleCount - 1][1]);
-                for (let s = sampleCount - 1; s >= 0; s--) {
-                    ctx.lineTo(topEdge[s][0], topEdge[s][1]);
-                }
-                ctx.closePath();
-                ctx.fill();
-
-                // Draw bottom margin with yielding edge
-                ctx.beginPath();
-                ctx.moveTo(0, height);
-                ctx.lineTo(width, height);
-                ctx.lineTo(width, bottomEdge[sampleCount - 1][1]);
-                for (let s = sampleCount - 1; s >= 0; s--) {
-                    ctx.lineTo(bottomEdge[s][0], bottomEdge[s][1]);
-                }
-                ctx.closePath();
-                ctx.fill();
-
-                // Draw subtle glow at yielding edge (visual feedback)
-                const hasTopYield = smoothedTopDepths && smoothedTopDepths.some(d => d > 2);
-                const hasBottomYield = smoothedBottomDepths && smoothedBottomDepths.some(d => d > 2);
-
-                if (hasTopYield || hasBottomYield) {
-                    ctx.strokeStyle = 'rgba(100, 150, 255, 0.3)';
-                    ctx.lineWidth = 3;
-                    ctx.lineCap = 'round';
-                    ctx.lineJoin = 'round';
-
-                    if (hasTopYield) {
-                        ctx.beginPath();
-                        ctx.moveTo(topEdge[0][0], topEdge[0][1]);
-                        for (let s = 1; s < sampleCount; s++) {
-                            ctx.lineTo(topEdge[s][0], topEdge[s][1]);
-                        }
-                        ctx.stroke();
-                    }
-
-                    if (hasBottomYield) {
-                        ctx.beginPath();
-                        ctx.moveTo(bottomEdge[0][0], bottomEdge[0][1]);
-                        for (let s = 1; s < sampleCount; s++) {
-                            ctx.lineTo(bottomEdge[s][0], bottomEdge[s][1]);
-                        }
-                        ctx.stroke();
-                    }
-                }
-            }
+            // No mask - cells themselves define the boundary
+            // Non-hovered cells are clipped to soft bounds
+            // Hovered cell extends into buffer - what you see is what you get
 
             // Debug mode
             if (config.debugMode) {
