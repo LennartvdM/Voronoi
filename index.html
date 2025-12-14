@@ -394,19 +394,20 @@
         class Cell {
             constructor(x, y, index) {
                 this.index = index;
-                this.baseX = x;            // Original position (for return spring)
+                this.baseX = x;
                 this.baseY = y;
-                this.x = x;                // Current position (can be displaced)
+                this.x = x;
                 this.y = y;
-                this.vx = 0;               // Velocity for displacement
-                this.vy = 0;
-                this.inflation = 0;        // Current inflation amount
-                this.targetInflation = 0;  // Target inflation
-                this.basePolygon = null;   // Computed once at init
+
+                // Simple scale-based animation - no displacement physics
+                this.scale = 1.0;          // Current scale (1.0 = normal)
+                this.targetScale = 1.0;    // Target scale
+
+                this.basePolygon = null;   // Computed once at init - NEVER changes
                 this.baseCentroid = null;  // Center of base polygon
-                this.edges = null;         // Edge definitions for deformation
                 this.polygon = null;       // For hit testing
                 this.displayPolygon = null; // What gets rendered
+
                 this.zoom = config.nonHoverImageZoom;
                 this.targetZoom = config.nonHoverImageZoom;
                 this.opacity = config.nonHoveredOpacity;
@@ -420,19 +421,11 @@
             }
 
             update(dt, isHovered) {
-                // Smooth inflation transition
-                this.inflation += (this.targetInflation - this.inflation) * config.expansionSpeed;
-
-                // Apply velocity and damping for displacement
-                this.x += this.vx;
-                this.y += this.vy;
-                this.vx *= 0.85; // Damping
-                this.vy *= 0.85;
-
-                // Spring back to base position
-                const returnStrength = 0.03;
-                this.vx += (this.baseX - this.x) * returnStrength;
-                this.vy += (this.baseY - this.y) * returnStrength;
+                // Smooth scale transition - simple lerp
+                const speed = config.expansionSpeed;
+                if (speed > 0.0001) {
+                    this.scale += (this.targetScale - this.scale) * speed;
+                }
 
                 // Smooth zoom and opacity transitions
                 this.zoom += (this.targetZoom - this.zoom) * config.imageZoomSpeed;
@@ -485,109 +478,45 @@
             }
         }
 
-        // ========== STABLE VORONOI ENGINE ==========
-        // Deformation allowed, rotation/twist NOT allowed
-        // Edge directions are fixed (computed once), only edge positions shift
+        // ========== SIMPLE STABLE VORONOI ==========
+        // NO deformation - just scale + translate
+        // Shape is always exactly the base Voronoi, just bigger/smaller and moved
 
-        // Compute base Voronoi and store edge info for each cell
         function computeBaseVoronoi() {
             const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
             const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
             const buffer = config.bleedBuffer;
 
-            // Bounds edges (will be clipping planes)
-            const boundsEdges = [
-                { px: 0, py: 0, nx: 1, ny: 0, neighbor: -1 },           // left
-                { px: width, py: 0, nx: -1, ny: 0, neighbor: -1 },      // right
-                { px: 0, py: zoneTop - buffer, nx: 0, ny: 1, neighbor: -2 },  // top
-                { px: 0, py: zoneBottom + buffer, nx: 0, ny: -1, neighbor: -3 } // bottom
-            ];
-
-            for (let i = 0; i < cells.length; i++) {
-                const cell = cells[i];
-
-                // Build list of clipping edges (neighbors + bounds)
-                cell.edges = [];
-
-                // Add neighbor bisector edges
-                for (let j = 0; j < cells.length; j++) {
-                    if (i === j) continue;
-                    const other = cells[j];
-
-                    const dx = other.baseX - cell.baseX;
-                    const dy = other.baseY - cell.baseY;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-
-                    if (dist < 1) continue;
-
-                    // Normalized direction toward other cell
-                    const nx = dx / dist;
-                    const ny = dy / dist;
-
-                    // Base midpoint
-                    const midX = (cell.baseX + other.baseX) / 2;
-                    const midY = (cell.baseY + other.baseY) / 2;
-
-                    cell.edges.push({
-                        px: midX,           // Base point on edge
-                        py: midY,
-                        nx: -nx,            // Normal pointing toward this cell (fixed direction)
-                        ny: -ny,
-                        neighbor: j,        // Which cell this edge borders
-                        baseDist: dist      // Distance between cells
-                    });
-                }
-
-                // Add bounds edges
-                cell.edges.push(...boundsEdges.map(e => ({...e})));
-
-                // Compute initial polygon
-                cell.basePolygon = computePolygonFromEdges(cell, 0);
-                cell.baseCentroid = getPolygonCentroid(cell.basePolygon);
-            }
-        }
-
-        // Compute polygon by intersecting all half-planes (edges)
-        // inflation: how much to shift neighbor edges outward
-        function computePolygonFromEdges(cell, inflation) {
-            const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
-            const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
-            const buffer = config.bleedBuffer;
-
-            // Start with large bounding box
-            let polygon = [
+            // Bounds for clipping
+            const bounds = [
                 [-buffer, zoneTop - buffer],
                 [width + buffer, zoneTop - buffer],
                 [width + buffer, zoneBottom + buffer],
                 [-buffer, zoneBottom + buffer]
             ];
 
-            for (const edge of cell.edges) {
-                if (polygon.length < 3) break;
+            for (let i = 0; i < cells.length; i++) {
+                const cell = cells[i];
 
-                let px = edge.px;
-                let py = edge.py;
+                // Standard Voronoi - clip against all other cells
+                let polygon = bounds.map(p => [...p]);
 
-                // For neighbor edges, shift based on inflation difference
-                if (edge.neighbor >= 0) {
-                    const other = cells[edge.neighbor];
-                    const inflationDiff = inflation - (other ? other.inflation : 0);
+                for (let j = 0; j < cells.length; j++) {
+                    if (i === j) continue;
+                    const other = cells[j];
 
-                    // Shift edge along its FIXED normal direction
-                    // Positive inflation = edge moves outward (toward neighbor)
-                    const shiftAmount = inflationDiff * 0.35;
-                    const maxShift = (edge.baseDist - config.gap * 2) / 2;
-                    const clampedShift = Math.max(-maxShift, Math.min(maxShift, shiftAmount));
+                    const midX = (cell.baseX + other.baseX) / 2;
+                    const midY = (cell.baseY + other.baseY) / 2;
+                    const nx = cell.baseX - other.baseX;
+                    const ny = cell.baseY - other.baseY;
 
-                    // Move point along the direction TO the neighbor (opposite of normal)
-                    px -= edge.nx * clampedShift;
-                    py -= edge.ny * clampedShift;
+                    polygon = clipPolygon(polygon, midX, midY, nx, ny);
+                    if (polygon.length < 3) break;
                 }
 
-                polygon = clipPolygon(polygon, px, py, edge.nx, edge.ny);
+                cell.basePolygon = polygon.length >= 3 ? polygon : null;
+                cell.baseCentroid = getPolygonCentroid(cell.basePolygon);
             }
-
-            return polygon.length >= 3 ? polygon : null;
         }
 
         function clipPolygon(polygon, px, py, nx, ny) {
@@ -633,65 +562,45 @@
             return { x: cx / polygon.length, y: cy / polygon.length };
         }
 
-        // Update display polygons with edge-based deformation
+        // Update polygons: pure uniform scale from centroid
+        // Shape is ALWAYS the base Voronoi polygon, just scaled
+        // This guarantees NO rotation or twist
         function updateDisplayPolygons() {
             const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
             const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
+            const gap = config.gap;
 
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
-                if (!cell.edges) continue;
+                if (!cell.basePolygon || !cell.baseCentroid) continue;
 
-                // Compute deformed polygon based on current inflation
-                const deformed = computePolygonFromEdges(cell, cell.inflation);
-                if (!deformed) continue;
+                const cx = cell.baseCentroid.x;
+                const cy = cell.baseCentroid.y;
+                const scale = cell.scale;
 
-                // Apply displacement (translate whole polygon)
-                const dispX = cell.x - cell.baseX;
-                const dispY = cell.y - cell.baseY;
+                // Scale polygon uniformly from centroid (apply gap shrink first)
+                const scaled = cell.basePolygon.map(p => {
+                    const dx = p[0] - cx;
+                    const dy = p[1] - cy;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
 
-                const displaced = deformed.map(p => [p[0] + dispX, p[1] + dispY]);
+                    // Shrink by gap, then apply scale
+                    const shrunkDist = Math.max(0, dist - gap);
+                    const ratio = dist > 0 ? (shrunkDist / dist) * scale : 0;
 
-                // Apply gap
-                const gapped = applyGap(displaced, config.gap);
+                    return [cx + dx * ratio, cy + dy * ratio];
+                });
 
-                // Clip to bounds
+                // Clip to bounds (hovered cell gets extra buffer)
                 const isHovered = (i === hoveredCell);
                 const clipTop = isHovered ? zoneTop - config.bleedBuffer : zoneTop;
                 const clipBottom = isHovered ? zoneBottom + config.bleedBuffer : zoneBottom;
-                const clipped = clipToRect(gapped, 0, clipTop, width, clipBottom);
+                const clipped = clipToRect(scaled, 0, clipTop, width, clipBottom);
 
-                // Smooth transition
-                if (cell.displayPolygon && cell.displayPolygon.length === clipped.length) {
-                    const speed = config.expansionSpeed;
-                    if (speed > 0.0001) {
-                        for (let v = 0; v < clipped.length; v++) {
-                            cell.displayPolygon[v][0] += (clipped[v][0] - cell.displayPolygon[v][0]) * speed;
-                            cell.displayPolygon[v][1] += (clipped[v][1] - cell.displayPolygon[v][1]) * speed;
-                        }
-                    }
-                } else {
-                    cell.displayPolygon = clipped;
-                }
-
-                cell.polygon = cell.displayPolygon;
+                // Direct assignment - scale is already smoothly interpolated in update()
+                cell.displayPolygon = clipped;
+                cell.polygon = clipped;
             }
-        }
-
-        // Apply gap by shrinking toward centroid
-        function applyGap(polygon, gap) {
-            if (!polygon || polygon.length < 3 || gap <= 0) return polygon;
-
-            const centroid = getPolygonCentroid(polygon);
-
-            return polygon.map(p => {
-                const dx = p[0] - centroid.x;
-                const dy = p[1] - centroid.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < gap) return [centroid.x, centroid.y];
-                const shrink = gap / dist;
-                return [p[0] - dx * shrink, p[1] - dy * shrink];
-            });
         }
 
         // Simple rect clipping
@@ -1159,7 +1068,7 @@
             gapEl.addEventListener('input', () => {
                 config.gap = +gapEl.value;
                 gapVal.textContent = config.gap;
-                computeVoronoi();
+                // Gap is applied in updateDisplayPolygons() every frame
             });
 
             // Corner radius
@@ -1244,7 +1153,8 @@
             bleedBufferEl.addEventListener('input', () => {
                 config.bleedBuffer = +bleedBufferEl.value;
                 bleedBufferVal.textContent = config.bleedBuffer;
-                computeVoronoi();
+                // Buffer affects base Voronoi bounds - need to recompute
+                computeBaseVoronoi();
             });
 
             // Buttons
@@ -1314,47 +1224,17 @@
 
         // ========== PHYSICS ==========
         function updatePhysics(dt) {
-            // Set target inflation for each cell
+            // Simple: hovered cell scales up, others stay at 1.0
+            // Scale factor: 1.0 = normal, 1.0 + maxExpansion/300 = expanded
+            const expandedScale = 1.0 + config.maxExpansion / 300;
+
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
-                if (i === hoveredCell) {
-                    cell.targetInflation = config.maxExpansion;
-                } else {
-                    cell.targetInflation = 0;
-                }
-            }
-
-            // Apply displacement forces from hovered cell to neighbors
-            if (hoveredCell >= 0 && config.displaceRatio > 0) {
-                const hovered = cells[hoveredCell];
-                const pushStrength = config.displaceRatio * config.expansionSpeed * 15;
-
-                for (let i = 0; i < cells.length; i++) {
-                    if (i === hoveredCell) continue;
-                    const cell = cells[i];
-
-                    const dx = cell.x - hovered.x;
-                    const dy = cell.y - hovered.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-
-                    if (dist < 1) continue;
-
-                    // Push force based on hovered cell's inflation
-                    const influence = Math.max(0, 1 - dist / 400);
-                    const force = hovered.inflation * pushStrength * influence / dist;
-
-                    cell.vx += dx * force;
-                    cell.vy += dy * force;
-                }
-            }
-
-            // Update all cells
-            for (let i = 0; i < cells.length; i++) {
-                const cell = cells[i];
+                cell.targetScale = (i === hoveredCell) ? expandedScale : 1.0;
                 cell.update(dt, i === hoveredCell);
             }
 
-            // Update display polygons (scaling, not recomputing Voronoi)
+            // Update display polygons (just scaling, no Voronoi recompute)
             updateDisplayPolygons();
         }
 
@@ -1482,9 +1362,9 @@
 
                 // Draw cell debug info
                 for (const cell of cells) {
-                    // Cell center (white dot, size indicates inflation)
-                    const dotSize = 4 + cell.inflation / 50;
-                    ctx.fillStyle = cell.inflation > 0 ? 'rgba(255,200,100,0.9)' : '#fff';
+                    // Cell center (white dot, size indicates scale)
+                    const dotSize = 4 + (cell.scale - 1) * 20;
+                    ctx.fillStyle = cell.scale > 1.01 ? 'rgba(255,200,100,0.9)' : '#fff';
                     ctx.beginPath();
                     ctx.arc(cell.x, cell.y, dotSize, 0, Math.PI * 2);
                     ctx.fill();
