@@ -286,13 +286,6 @@
                     <span class="control-value" id="bleedBufferVal">80</span>
                 </div>
             </div>
-            <div class="control-group hide-tablet">
-                <label>Soft Strength</label>
-                <div class="control-row">
-                    <input type="range" id="boundaryStiffness" min="0" max="200" value="5">
-                    <span class="control-value" id="boundaryStiffnessVal">0.05</span>
-                </div>
-            </div>
 
             <div class="divider"></div>
 
@@ -334,9 +327,7 @@
             contentZoneEnabled: true,    // Enable/disable content zone
             contentZoneTop: 0.15,        // Top margin as fraction of height
             contentZoneBottom: 0.15,     // Bottom margin as fraction of height
-            bleedBuffer: 80,             // Pixel buffer beyond content zone
-            boundaryStiffness: 0.05,     // 0=yields easily, high=resists yielding
-            maxPlateDepth: 80            // Maximum depth boundary can yield
+            bleedBuffer: 80              // Pixel buffer beyond content zone (how far hovered cell can extend)
         };
 
         // ========== SAMPLE DATA ==========
@@ -382,9 +373,6 @@
         let tooltip;
         let animationId;
         let lastTime = 0;
-        // Smoothed boundary depths (persisted across frames for soft yielding)
-        let smoothedTopDepths = null;
-        let smoothedBottomDepths = null;
 
         // ========== CELL CLASS ==========
         class Cell {
@@ -465,105 +453,9 @@
         }
 
         // ========== VORONOI ==========
-        // Boundary system: traces where cells actually are, yields to let them protrude
-
-        function buildSteppedBounds(zoneTop, zoneBottom) {
-            // Sample points along the width to detect where cells protrude
-            const sampleCount = 20;
-            const sampleWidth = width / (sampleCount - 1);
-
-            // Initialize depth arrays on first call
-            if (!smoothedTopDepths || smoothedTopDepths.length !== sampleCount) {
-                smoothedTopDepths = new Array(sampleCount).fill(0);
-            }
-            if (!smoothedBottomDepths || smoothedBottomDepths.length !== sampleCount) {
-                smoothedBottomDepths = new Array(sampleCount).fill(0);
-            }
-
-            // Detect actual polygon protrusion past soft boundaries
-            const targetTop = new Array(sampleCount).fill(0);
-            const targetBottom = new Array(sampleCount).fill(0);
-
-            // Soft strength: 0 = boundary yields fully, high = resists yielding
-            const resistance = 1 / (1 + config.boundaryStiffness * 2);
-
-            // Check each cell's polygon for protrusion
-            for (const cell of cells) {
-                const polygon = cell.displayPolygon;
-                if (!polygon || polygon.length < 3) continue;
-
-                // Check each vertex of the polygon
-                for (const vertex of polygon) {
-                    const vx = vertex[0];
-                    const vy = vertex[1];
-
-                    // Find which sample bin this vertex affects
-                    const sampleIdx = Math.round(vx / sampleWidth);
-                    if (sampleIdx < 0 || sampleIdx >= sampleCount) continue;
-
-                    // Top protrusion: how far above zoneTop?
-                    if (vy < zoneTop) {
-                        const protrusion = (zoneTop - vy) * resistance;
-                        const clamped = Math.min(protrusion, config.maxPlateDepth);
-
-                        // Spread to neighboring samples for smoother edge
-                        for (let offset = -2; offset <= 2; offset++) {
-                            const idx = sampleIdx + offset;
-                            if (idx >= 0 && idx < sampleCount) {
-                                const falloff = 1 - Math.abs(offset) * 0.3;
-                                targetTop[idx] = Math.max(targetTop[idx], clamped * falloff);
-                            }
-                        }
-                    }
-
-                    // Bottom protrusion: how far below zoneBottom?
-                    if (vy > zoneBottom) {
-                        const protrusion = (vy - zoneBottom) * resistance;
-                        const clamped = Math.min(protrusion, config.maxPlateDepth);
-
-                        // Spread to neighboring samples for smoother edge
-                        for (let offset = -2; offset <= 2; offset++) {
-                            const idx = sampleIdx + offset;
-                            if (idx >= 0 && idx < sampleCount) {
-                                const falloff = 1 - Math.abs(offset) * 0.3;
-                                targetBottom[idx] = Math.max(targetBottom[idx], clamped * falloff);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Spatial smoothing - blur for organic curves
-            function blur(arr) {
-                const result = new Array(arr.length);
-                for (let i = 0; i < arr.length; i++) {
-                    const prev = arr[Math.max(0, i - 1)];
-                    const curr = arr[i];
-                    const next = arr[Math.min(arr.length - 1, i + 1)];
-                    result[i] = prev * 0.25 + curr * 0.5 + next * 0.25;
-                }
-                return result;
-            }
-
-            const blurredTop = blur(blur(targetTop));
-            const blurredBottom = blur(blur(targetBottom));
-
-            // Temporal smoothing - fast yield, slow return
-            const yieldSpeed = 0.15;
-            const returnSpeed = 0.04;
-
-            for (let s = 0; s < sampleCount; s++) {
-                const topDiff = blurredTop[s] - smoothedTopDepths[s];
-                smoothedTopDepths[s] += topDiff * (topDiff > 0 ? yieldSpeed : returnSpeed);
-                if (smoothedTopDepths[s] < 1) smoothedTopDepths[s] = 0;
-
-                const bottomDiff = blurredBottom[s] - smoothedBottomDepths[s];
-                smoothedBottomDepths[s] += bottomDiff * (bottomDiff > 0 ? yieldSpeed : returnSpeed);
-                if (smoothedBottomDepths[s] < 1) smoothedBottomDepths[s] = 0;
-            }
-
-            return null; // Just updates smoothedTopDepths/smoothedBottomDepths for rendering
-        }
+        // No masks - cells themselves define the boundary
+        // Non-hovered cells: clipped to soft bounds (content zone)
+        // Hovered cell: clipped to buffer bounds (can extend into buffer)
 
         function computeVoronoi() {
             // Get baseline content zone
@@ -575,23 +467,34 @@
                 zoneBottom = height * (1 - config.contentZoneBottom);
             }
 
-            // Voronoi bounds must contain all possible cell positions (hard container)
-            // Cells are kept within soft container by physics, not by Voronoi clipping
+            // Buffer bounds for hovered cell (can extend into buffer)
             const buffer = config.bleedBuffer;
-            const simpleBounds = [
+            const bufferBounds = [
                 [0, zoneTop - buffer],
                 [width, zoneTop - buffer],
                 [width, zoneBottom + buffer],
                 [0, zoneBottom + buffer]
             ];
 
-            // Compute each cell's polygon with simple bounds (no complex clipping)
+            // Soft bounds for non-hovered cells (stay within content zone)
+            const softBounds = [
+                [0, zoneTop],
+                [width, zoneTop],
+                [width, zoneBottom],
+                [0, zoneBottom]
+            ];
+
+            // Compute each cell's polygon
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
                 const isHovered = (i === hoveredCell);
 
+                // Hovered cell uses buffer bounds (can extend into buffer)
+                // Non-hovered cells use soft bounds (stay within content zone)
+                const bounds = isHovered ? bufferBounds : softBounds;
+
                 // Compute raw Voronoi polygon
-                cell.polygon = computeCellPolygon(i, simpleBounds);
+                cell.polygon = computeCellPolygon(i, bounds);
 
                 // Apply gap and simplify
                 const gapped = applyGap(cell.polygon, config.gap);
@@ -599,7 +502,7 @@
 
                 // Smooth polygon transitions so neighbors don't panic
                 if (cell.displayPolygon && cell.displayPolygon.length === newDisplayPolygon.length) {
-                    const speed = isHovered ? 0.25 : 0.10; // Neighbors transition slowly
+                    const speed = isHovered ? 0.25 : 0.08; // Neighbors transition even more slowly
 
                     for (let v = 0; v < newDisplayPolygon.length; v++) {
                         cell.displayPolygon[v][0] += (newDisplayPolygon[v][0] - cell.displayPolygon[v][0]) * speed;
@@ -631,8 +534,10 @@
                 const dy = other.y - cell.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
-                // Shift amount: positive inflation pushes midpoint toward other cell
-                const shift = dist > 0 ? inflationDiff / dist * 0.5 : 0;
+                // Shift amount: reduced factor (0.3) to prevent chaotic rotation
+                // Also cap shift to prevent extreme distortion
+                const rawShift = dist > 0 ? inflationDiff / dist * 0.3 : 0;
+                const shift = Math.max(-0.4, Math.min(0.4, rawShift)); // Cap at 40% of distance
 
                 const midX = (cell.x + other.x) / 2 + dx * shift;
                 const midY = (cell.y + other.y) / 2 + dy * shift;
@@ -906,9 +811,6 @@
 
         function generateCells() {
             cells = [];
-            // Reset boundary yielding state
-            smoothedTopDepths = null;
-            smoothedBottomDepths = null;
             const margin = 80;
 
             // Calculate vertical bounds based on content zone
@@ -1227,13 +1129,6 @@
                 computeVoronoi();
             });
 
-            const boundaryStiffnessEl = document.getElementById('boundaryStiffness');
-            const boundaryStiffnessVal = document.getElementById('boundaryStiffnessVal');
-            boundaryStiffnessEl.addEventListener('input', () => {
-                config.boundaryStiffness = +boundaryStiffnessEl.value / 100;
-                boundaryStiffnessVal.textContent = config.boundaryStiffness.toFixed(2);
-            });
-
             // Buttons
             document.getElementById('regenerate').addEventListener('click', generateCells);
 
@@ -1396,39 +1291,9 @@
                 ctx.shadowBlur = 0;
             }
 
-            // Draw margins ON TOP of cells to mask overflow beyond soft container
-            if (config.contentZoneEnabled) {
-                const zoneTop = height * config.contentZoneTop;
-                const zoneBottom = height * (1 - config.contentZoneBottom);
-
-                ctx.fillStyle = 'rgba(26, 26, 46, 1)'; // Match body background
-
-                // Draw top margin with yielding edge
-                ctx.beginPath();
-                ctx.moveTo(0, 0);
-                ctx.lineTo(width, 0);
-                ctx.lineTo(width, zoneTop);
-                const sampleCount = smoothedTopDepths ? smoothedTopDepths.length : 20;
-                const sampleWidth = width / (sampleCount - 1);
-                for (let s = sampleCount - 1; s >= 0; s--) {
-                    const depth = smoothedTopDepths ? smoothedTopDepths[s] : 0;
-                    ctx.lineTo(s * sampleWidth, zoneTop - depth);
-                }
-                ctx.closePath();
-                ctx.fill();
-
-                // Draw bottom margin with yielding edge
-                ctx.beginPath();
-                ctx.moveTo(0, height);
-                ctx.lineTo(width, height);
-                ctx.lineTo(width, zoneBottom);
-                for (let s = sampleCount - 1; s >= 0; s--) {
-                    const depth = smoothedBottomDepths ? smoothedBottomDepths[s] : 0;
-                    ctx.lineTo(s * sampleWidth, zoneBottom + depth);
-                }
-                ctx.closePath();
-                ctx.fill();
-            }
+            // No mask - cells themselves define the boundary
+            // Non-hovered cells are clipped to soft bounds
+            // Hovered cell extends into buffer - what you see is what you get
 
             // Debug mode
             if (config.debugMode) {
@@ -1439,13 +1304,18 @@
                     const hardTop = zoneTop - buffer;
                     const hardBottom = zoneBottom + buffer;
 
-                    // Check if soft and hard container overlap (buffer = 0 or very small)
-                    const overlapping = buffer < 5;
-                    const hardColor = overlapping ? 'rgba(255, 100, 100, 0.9)' : 'rgba(255, 150, 50, 0.9)';
-                    const softColor = overlapping ? 'rgba(255, 100, 100, 0.6)' : 'rgba(100, 255, 100, 0.6)';
+                    // Fill the margin areas with visible debug color
+                    ctx.fillStyle = 'rgba(80, 40, 100, 0.5)'; // Purple tint for margin areas
+                    ctx.fillRect(0, 0, width, hardTop);
+                    ctx.fillRect(0, hardBottom, width, height - hardBottom);
+
+                    // Fill the buffer zone with different color
+                    ctx.fillStyle = 'rgba(100, 60, 40, 0.4)'; // Brown tint for buffer zone
+                    ctx.fillRect(0, hardTop, width, zoneTop - hardTop);
+                    ctx.fillRect(0, zoneBottom, width, hardBottom - zoneBottom);
 
                     // SOLID LINE = Hard container (buffer edge - absolute limit)
-                    ctx.strokeStyle = hardColor;
+                    ctx.strokeStyle = 'rgba(255, 150, 50, 1)';
                     ctx.lineWidth = 3;
                     ctx.setLineDash([]);
                     ctx.beginPath();
@@ -1456,7 +1326,7 @@
                     ctx.stroke();
 
                     // DASHED LINE = Soft container (content zone - where cells should stay)
-                    ctx.strokeStyle = softColor;
+                    ctx.strokeStyle = 'rgba(100, 255, 100, 1)';
                     ctx.lineWidth = 2;
                     ctx.setLineDash([8, 4]);
                     ctx.beginPath();
@@ -1468,16 +1338,13 @@
                     ctx.setLineDash([]);
 
                     // Label the zones
-                    ctx.font = '11px monospace';
-                    ctx.fillStyle = hardColor;
-                    ctx.fillText('HARD (buffer edge)', 10, hardTop - 5);
-                    ctx.fillStyle = softColor;
+                    ctx.font = '12px monospace';
+                    ctx.fillStyle = 'rgba(255, 150, 50, 1)';
+                    ctx.fillText('HARD (buffer edge)', 10, hardTop + 15);
+                    ctx.fillStyle = 'rgba(100, 255, 100, 1)';
                     ctx.fillText('SOFT (content zone)', 10, zoneTop + 15);
-
-                    if (overlapping) {
-                        ctx.fillStyle = 'rgba(255, 100, 100, 1)';
-                        ctx.fillText('⚠ OVERLAPPING - buffer too small!', 10, (zoneTop + hardTop) / 2);
-                    }
+                    ctx.fillStyle = 'rgba(180, 120, 80, 1)';
+                    ctx.fillText('BUFFER ZONE', 10, (hardTop + zoneTop) / 2 + 5);
                 }
 
                 // Draw cell debug info
