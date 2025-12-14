@@ -635,9 +635,13 @@
             const gap = config.gap;
 
             // Compute displaced seed positions based on hover state
-            const displacedSeeds = cells.map((cell, i) => {
+            for (let i = 0; i < cells.length; i++) {
+                const cell = cells[i];
+
                 if (hoveredCell < 0 || i === hoveredCell) {
-                    return { x: cell.baseX, y: cell.baseY };
+                    cell.displacedX = cell.baseX;
+                    cell.displacedY = cell.baseY;
+                    continue;
                 }
 
                 // Push this seed away from the hovered cell
@@ -646,22 +650,30 @@
                 const dy = cell.baseY - hovered.baseY;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
-                if (dist < 1) return { x: cell.baseX, y: cell.baseY };
+                if (dist < 1) {
+                    cell.displacedX = cell.baseX;
+                    cell.displacedY = cell.baseY;
+                    continue;
+                }
 
-                // Push strength based on hovered cell's scale and distance
-                const hoveredScale = hovered.scale;
-                const scaleExtra = Math.max(0, hoveredScale - 1.0);
-                const pushStrength = scaleExtra * config.maxExpansion * config.displaceRatio;
+                // Direct push: use the animated scale directly
+                // When scale is 1.5 (max), push neighbors significantly
+                const scaleExtra = Math.max(0, hovered.scale - 1.0);
 
-                // Push falls off with distance (inverse relationship)
-                const falloff = Math.max(0, 1 - dist / 400);
-                const pushAmount = pushStrength * falloff * 0.5;
+                // Push amount: stronger for closer neighbors
+                const maxPush = config.maxExpansion * config.displaceRatio;
+                const distanceFactor = Math.max(0, 1 - dist / 500);
+                const pushAmount = scaleExtra * maxPush * distanceFactor;
 
-                return {
-                    x: cell.baseX + (dx / dist) * pushAmount,
-                    y: cell.baseY + (dy / dist) * pushAmount
-                };
-            });
+                cell.displacedX = cell.baseX + (dx / dist) * pushAmount;
+                cell.displacedY = cell.baseY + (dy / dist) * pushAmount;
+            }
+
+            // Build array for Voronoi computation
+            const displacedSeeds = cells.map(cell => ({
+                x: cell.displacedX,
+                y: cell.displacedY
+            }));
 
             // Rebuild Voronoi polygons using displaced seeds
             for (let i = 0; i < cells.length; i++) {
@@ -1641,6 +1653,29 @@
                     const polygon = cell.displayPolygon;
                     const centroid = cell.baseCentroid || { x: cell.baseX, y: cell.baseY };
 
+                    // Draw seed displacement (line from base to displaced position)
+                    if (cell.displacedX !== undefined) {
+                        const dx = cell.displacedX - cell.baseX;
+                        const dy = cell.displacedY - cell.baseY;
+                        const displacement = Math.sqrt(dx * dx + dy * dy);
+
+                        if (displacement > 1) {
+                            // Draw line showing displacement
+                            ctx.strokeStyle = 'rgba(255, 100, 100, 0.9)';
+                            ctx.lineWidth = 2;
+                            ctx.beginPath();
+                            ctx.moveTo(cell.baseX, cell.baseY);
+                            ctx.lineTo(cell.displacedX, cell.displacedY);
+                            ctx.stroke();
+
+                            // Draw displaced position (red dot)
+                            ctx.fillStyle = 'rgba(255, 50, 50, 0.9)';
+                            ctx.beginPath();
+                            ctx.arc(cell.displacedX, cell.displacedY, 5, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+
                     // Draw lines from each corner to cell center
                     if (polygon && polygon.length >= 3) {
                         ctx.strokeStyle = 'rgba(255, 255, 0, 0.6)';
@@ -1663,9 +1698,15 @@
                         }
                     }
 
-                    // Cell center (white dot, size indicates scale)
+                    // Base seed position (white dot)
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(cell.baseX, cell.baseY, 4, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Centroid (shows where polygon center actually is)
                     const dotSize = 4 + (cell.scale - 1) * 20;
-                    ctx.fillStyle = cell.scale > 1.01 ? 'rgba(255,200,100,0.9)' : '#fff';
+                    ctx.fillStyle = cell.scale > 1.01 ? 'rgba(255,200,100,0.9)' : 'rgba(100,200,255,0.7)';
                     ctx.beginPath();
                     ctx.arc(centroid.x, centroid.y, dotSize, 0, Math.PI * 2);
                     ctx.fill();
