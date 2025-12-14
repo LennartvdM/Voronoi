@@ -402,9 +402,8 @@
                 this.vy = 0;
                 this.inflation = 0;        // Current inflation amount
                 this.targetInflation = 0;  // Target inflation
-                this.basePolygon = null;   // Computed once at init
+                this.basePolygon = null;   // Computed once at init - NEVER changes
                 this.baseCentroid = null;  // Center of base polygon
-                this.edges = null;         // Edge definitions for deformation
                 this.polygon = null;       // For hit testing
                 this.displayPolygon = null; // What gets rendered
                 this.zoom = config.nonHoverImageZoom;
@@ -485,109 +484,45 @@
             }
         }
 
-        // ========== STABLE VORONOI ENGINE ==========
-        // Deformation allowed, rotation/twist NOT allowed
-        // Edge directions are fixed (computed once), only edge positions shift
+        // ========== SIMPLE STABLE VORONOI ==========
+        // NO deformation - just scale + translate
+        // Shape is always exactly the base Voronoi, just bigger/smaller and moved
 
-        // Compute base Voronoi and store edge info for each cell
         function computeBaseVoronoi() {
             const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
             const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
             const buffer = config.bleedBuffer;
 
-            // Bounds edges (will be clipping planes)
-            const boundsEdges = [
-                { px: 0, py: 0, nx: 1, ny: 0, neighbor: -1 },           // left
-                { px: width, py: 0, nx: -1, ny: 0, neighbor: -1 },      // right
-                { px: 0, py: zoneTop - buffer, nx: 0, ny: 1, neighbor: -2 },  // top
-                { px: 0, py: zoneBottom + buffer, nx: 0, ny: -1, neighbor: -3 } // bottom
-            ];
-
-            for (let i = 0; i < cells.length; i++) {
-                const cell = cells[i];
-
-                // Build list of clipping edges (neighbors + bounds)
-                cell.edges = [];
-
-                // Add neighbor bisector edges
-                for (let j = 0; j < cells.length; j++) {
-                    if (i === j) continue;
-                    const other = cells[j];
-
-                    const dx = other.baseX - cell.baseX;
-                    const dy = other.baseY - cell.baseY;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-
-                    if (dist < 1) continue;
-
-                    // Normalized direction toward other cell
-                    const nx = dx / dist;
-                    const ny = dy / dist;
-
-                    // Base midpoint
-                    const midX = (cell.baseX + other.baseX) / 2;
-                    const midY = (cell.baseY + other.baseY) / 2;
-
-                    cell.edges.push({
-                        px: midX,           // Base point on edge
-                        py: midY,
-                        nx: -nx,            // Normal pointing toward this cell (fixed direction)
-                        ny: -ny,
-                        neighbor: j,        // Which cell this edge borders
-                        baseDist: dist      // Distance between cells
-                    });
-                }
-
-                // Add bounds edges
-                cell.edges.push(...boundsEdges.map(e => ({...e})));
-
-                // Compute initial polygon
-                cell.basePolygon = computePolygonFromEdges(cell, 0);
-                cell.baseCentroid = getPolygonCentroid(cell.basePolygon);
-            }
-        }
-
-        // Compute polygon by intersecting all half-planes (edges)
-        // inflation: how much to shift neighbor edges outward
-        function computePolygonFromEdges(cell, inflation) {
-            const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
-            const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
-            const buffer = config.bleedBuffer;
-
-            // Start with large bounding box
-            let polygon = [
+            // Bounds for clipping
+            const bounds = [
                 [-buffer, zoneTop - buffer],
                 [width + buffer, zoneTop - buffer],
                 [width + buffer, zoneBottom + buffer],
                 [-buffer, zoneBottom + buffer]
             ];
 
-            for (const edge of cell.edges) {
-                if (polygon.length < 3) break;
+            for (let i = 0; i < cells.length; i++) {
+                const cell = cells[i];
 
-                let px = edge.px;
-                let py = edge.py;
+                // Standard Voronoi - clip against all other cells
+                let polygon = bounds.map(p => [...p]);
 
-                // For neighbor edges, shift based on inflation difference
-                if (edge.neighbor >= 0) {
-                    const other = cells[edge.neighbor];
-                    const inflationDiff = inflation - (other ? other.inflation : 0);
+                for (let j = 0; j < cells.length; j++) {
+                    if (i === j) continue;
+                    const other = cells[j];
 
-                    // Shift edge along its FIXED normal direction
-                    // Positive inflation = edge moves outward (toward neighbor)
-                    const shiftAmount = inflationDiff * 0.35;
-                    const maxShift = (edge.baseDist - config.gap * 2) / 2;
-                    const clampedShift = Math.max(-maxShift, Math.min(maxShift, shiftAmount));
+                    const midX = (cell.baseX + other.baseX) / 2;
+                    const midY = (cell.baseY + other.baseY) / 2;
+                    const nx = cell.baseX - other.baseX;
+                    const ny = cell.baseY - other.baseY;
 
-                    // Move point along the direction TO the neighbor (opposite of normal)
-                    px -= edge.nx * clampedShift;
-                    py -= edge.ny * clampedShift;
+                    polygon = clipPolygon(polygon, midX, midY, nx, ny);
+                    if (polygon.length < 3) break;
                 }
 
-                polygon = clipPolygon(polygon, px, py, edge.nx, edge.ny);
+                cell.basePolygon = polygon.length >= 3 ? polygon : null;
+                cell.baseCentroid = getPolygonCentroid(cell.basePolygon);
             }
-
-            return polygon.length >= 3 ? polygon : null;
         }
 
         function clipPolygon(polygon, px, py, nx, ny) {
@@ -633,35 +568,48 @@
             return { x: cx / polygon.length, y: cy / polygon.length };
         }
 
-        // Update display polygons with edge-based deformation
+        // Update polygons: pure scale from centroid + translate
         function updateDisplayPolygons() {
             const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
             const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
 
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
-                if (!cell.edges) continue;
+                if (!cell.basePolygon) continue;
 
-                // Compute deformed polygon based on current inflation
-                const deformed = computePolygonFromEdges(cell, cell.inflation);
-                if (!deformed) continue;
+                // Current centroid position (base + displacement)
+                const cx = cell.baseCentroid.x + (cell.x - cell.baseX);
+                const cy = cell.baseCentroid.y + (cell.y - cell.baseY);
 
-                // Apply displacement (translate whole polygon)
-                const dispX = cell.x - cell.baseX;
-                const dispY = cell.y - cell.baseY;
+                // Scale factor from inflation
+                const scale = 1 + cell.inflation / 300;
 
-                const displaced = deformed.map(p => [p[0] + dispX, p[1] + dispY]);
+                // Apply gap before scaling (shrink base polygon)
+                const gap = config.gap;
 
-                // Apply gap
-                const gapped = applyGap(displaced, config.gap);
+                // Scale polygon uniformly from centroid
+                const scaled = cell.basePolygon.map(p => {
+                    const dx = p[0] - cell.baseCentroid.x;
+                    const dy = p[1] - cell.baseCentroid.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    // Shrink by gap amount
+                    const shrunkDist = Math.max(0, dist - gap);
+                    const shrinkRatio = dist > 0 ? shrunkDist / dist : 0;
+
+                    return [
+                        cx + dx * shrinkRatio * scale,
+                        cy + dy * shrinkRatio * scale
+                    ];
+                });
 
                 // Clip to bounds
                 const isHovered = (i === hoveredCell);
                 const clipTop = isHovered ? zoneTop - config.bleedBuffer : zoneTop;
                 const clipBottom = isHovered ? zoneBottom + config.bleedBuffer : zoneBottom;
-                const clipped = clipToRect(gapped, 0, clipTop, width, clipBottom);
+                const clipped = clipToRect(scaled, 0, clipTop, width, clipBottom);
 
-                // Smooth transition
+                // Smooth transition - only if vertex count matches
                 if (cell.displayPolygon && cell.displayPolygon.length === clipped.length) {
                     const speed = config.expansionSpeed;
                     if (speed > 0.0001) {
@@ -671,27 +619,11 @@
                         }
                     }
                 } else {
-                    cell.displayPolygon = clipped;
+                    cell.displayPolygon = clipped.map(p => [...p]);
                 }
 
                 cell.polygon = cell.displayPolygon;
             }
-        }
-
-        // Apply gap by shrinking toward centroid
-        function applyGap(polygon, gap) {
-            if (!polygon || polygon.length < 3 || gap <= 0) return polygon;
-
-            const centroid = getPolygonCentroid(polygon);
-
-            return polygon.map(p => {
-                const dx = p[0] - centroid.x;
-                const dy = p[1] - centroid.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < gap) return [centroid.x, centroid.y];
-                const shrink = gap / dist;
-                return [p[0] - dx * shrink, p[1] - dy * shrink];
-            });
         }
 
         // Simple rect clipping
