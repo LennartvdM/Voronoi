@@ -239,120 +239,32 @@
 
             <div class="divider"></div>
 
-            <!-- Physics Settings -->
-            <div class="control-group wide">
-                <label>Spring</label>
-                <div class="control-row">
-                    <input type="range" id="spring" min="5" max="80" value="30">
-                    <span class="control-value" id="springVal">0.30</span>
-                </div>
-            </div>
-            <div class="control-group hide-tablet">
-                <label>Damping</label>
-                <div class="control-row">
-                    <input type="range" id="damping" min="50" max="98" value="88">
-                    <span class="control-value" id="dampingVal">0.88</span>
-                </div>
-            </div>
-            <div class="control-group hide-mobile">
-                <label>Hover Force</label>
-                <div class="control-row">
-                    <input type="range" id="hoverForce" min="20" max="20000" value="60">
-                    <span class="control-value" id="hoverForceVal">60</span>
-                </div>
-            </div>
-            <div class="control-group hide-mobile">
-                <label>Repulsion</label>
-                <div class="control-row">
-                    <input type="range" id="repulsion" min="0" max="200" value="35">
-                    <span class="control-value" id="repulsionVal">35</span>
-                </div>
-            </div>
-            <div class="control-group wide">
-                <label>Center Pull</label>
-                <div class="control-row">
-                    <input type="range" id="centerRelevance" min="0" max="100" value="70">
-                    <span class="control-value" id="centerRelevanceVal">0.70</span>
-                </div>
-            </div>
-
-            <div class="divider"></div>
-
-            <!-- Hover Dynamics -->
+            <!-- Hover Effect -->
             <div class="control-group">
-                <label>Hover Speed</label>
+                <label>Inflation</label>
                 <div class="control-row">
-                    <input type="range" id="hoverSpeed" min="0" max="100" value="50">
-                    <span class="control-value" id="hoverSpeedVal">0.50</span>
-                </div>
-            </div>
-            <div class="control-group">
-                <label>Overshoot</label>
-                <div class="control-row">
-                    <input type="range" id="overshoot" min="0" max="100" value="30">
-                    <span class="control-value" id="overshootVal">0.30</span>
-                </div>
-            </div>
-            <div class="control-group hide-tablet">
-                <label>Decay Speed</label>
-                <div class="control-row">
-                    <input type="range" id="decaySpeed" min="0" max="100" value="50">
-                    <span class="control-value" id="decaySpeedVal">0.50</span>
-                </div>
-            </div>
-            <div class="control-group hide-mobile">
-                <label>Trigger Burst</label>
-                <div class="control-row">
-                    <input type="range" id="triggerBurst" min="0" max="200" value="100">
-                    <span class="control-value" id="triggerBurstVal">1.00</span>
-                </div>
-            </div>
-            <div class="control-group hide-mobile">
-                <label>Sustain Growth</label>
-                <div class="control-row">
-                    <input type="range" id="sustainGrowth" min="0" max="100" value="30">
-                    <span class="control-value" id="sustainGrowthVal">0.30</span>
-                </div>
-            </div>
-            <div class="control-group hide-tablet">
-                <label>Max Expansion</label>
-                <div class="control-row">
-                    <input type="range" id="maxExpansion" min="50" max="10000" value="150">
+                    <input type="range" id="maxExpansion" min="0" max="400" value="150">
                     <span class="control-value" id="maxExpansionVal">150</span>
                 </div>
             </div>
             <div class="control-group">
-                <label>Non-Hover Opacity</label>
+                <label>Dim Others</label>
                 <div class="control-row">
                     <input type="range" id="nonHoveredOpacity" min="0" max="100" value="60">
                     <span class="control-value" id="nonHoveredOpacityVal">0.60</span>
                 </div>
             </div>
             <div class="control-group hide-mobile">
-                <label>Opacity Speed</label>
-                <div class="control-row">
-                    <input type="range" id="opacityTransitionSpeed" min="1" max="100" value="15">
-                    <span class="control-value" id="opacityTransitionSpeedVal">0.15</span>
-                </div>
-            </div>
-            <div class="control-group">
                 <label>Image Zoom</label>
                 <div class="control-row">
                     <input type="range" id="nonHoverImageZoom" min="10" max="80" value="17" step="1">
                     <span class="control-value" id="nonHoverImageZoomVal">1.7</span>
                 </div>
             </div>
-            <div class="control-group hide-mobile">
-                <label>Zoom Speed</label>
-                <div class="control-row">
-                    <input type="range" id="imageZoomSpeed" min="1" max="50" value="12">
-                    <span class="control-value" id="imageZoomSpeedVal">0.12</span>
-                </div>
-            </div>
 
             <div class="divider"></div>
 
-            <!-- Content Zone / Layout -->
+            <!-- Content Zone -->
             <div class="control-group">
                 <label>Zone Top</label>
                 <div class="control-row">
@@ -381,20 +293,12 @@
                     <span class="control-value" id="boundaryStiffnessVal">0.05</span>
                 </div>
             </div>
-            <div class="control-group hide-mobile">
-                <label>Hover Privilege</label>
-                <div class="control-row">
-                    <input type="range" id="hoverBleedPrivilege" min="0" max="100" value="70">
-                    <span class="control-value" id="hoverBleedPrivilegeVal">0.70</span>
-                </div>
-            </div>
 
             <div class="divider"></div>
 
             <!-- Buttons -->
             <div class="btn-group">
                 <button class="btn btn-secondary" id="toggleContentZone">Zone</button>
-                <button class="btn btn-secondary" id="togglePhysics">Pause</button>
                 <button class="btn btn-secondary" id="toggleDebug">Debug</button>
                 <button class="btn btn-secondary" id="loadUnsplash">Unsplash</button>
                 <button class="btn btn-primary" id="regenerate">Regenerate</button>
@@ -408,45 +312,31 @@
 
         // ========== CONFIGURATION ==========
         const config = {
+            // Grid settings
             cellCount: 12,
             gap: 4,
             cornerRadius: 12,
-            spring: 0.35,          // Taut spring for snappy return
-            damping: 0.92,         // High damping = decisive movement, no wobble
-            hoverForce: 70,        // Slightly stronger to overcome taut physics
-            repulsion: 40,
-            centerRelevance: 0.70, // 0 = expand uniformly, 1 = direction matters
-            zoomScale: 1.15,
-            nonHoverImageZoom: 1.7, // Non-hover image zoom level (1.0-8.0)
-            imageZoomSpeed: 0.12,   // 0.01-0.5: how fast image zoom transitions happen
+
+            // Inflation system
+            maxExpansion: 150,           // How much the hovered cell inflates (px in weighted Voronoi)
+
+            // Visual transitions
+            nonHoverImageZoom: 1.7,      // Non-hover image zoom level
+            imageZoomSpeed: 0.12,        // How fast image zoom transitions
+            nonHoveredOpacity: 0.6,      // Opacity for non-hovered cells
+            opacityTransitionSpeed: 0.15, // How fast opacity transitions
+
+            // Toggles
             physicsEnabled: true,
             debugMode: false,
-            // New hover dynamics
-            hoverSpeed: 0.6,       // 0-1: how fast cells respond to hover
-            overshoot: 0.15,       // Low overshoot = minimal bounce, taut feel
-            decaySpeed: 0.6,       // 0-1: how fast cells return to rest
-            triggerBurst: 1.0,     // Initial burst when entering cell
-            sustainGrowth: 0.3,    // Continuous growth while hovering
-            maxExpansion: 150,     // Max pixels a cell can move from rest
-            // Opacity controls
-            nonHoveredOpacity: 0.6,      // 0-1: opacity for non-hovered cells
-            opacityTransitionSpeed: 0.15, // 0-1: how fast opacity transitions happen
-            // Soft boundary / content zone controls
-            contentZoneEnabled: true,    // Enable/disable content zone constraint
-            contentZoneTop: 0.15,        // 0-0.5: top margin as fraction of height
-            contentZoneBottom: 0.15,     // 0-0.5: bottom margin as fraction of height
-            bleedBuffer: 80,             // Fixed pixel buffer beyond content zone where cells can bleed
-            boundaryStiffness: 0.05,     // 0-2: soft container strength (how strongly cells are pushed back)
-            boundaryDamping: 0.82,       // 0-1: damping applied to cells in buffer zone
-            hoverBleedPrivilege: 0.7,    // 0-1: how much more the hovered cell can bleed (increased default)
-            // Stepped plate system
-            steppedBoundsEnabled: true,  // Enable stepped boundary that yields to pressure
-            plateThreshold: 12,          // Minimum pressure to start forming a plate
-            plateDepthStep: 16,          // Step size for plate depth quantization
-            maxPlateDepth: 80,           // Maximum depth a plate can yield
-            // Buffer resolution
-            bufferResolutionDelay: 0.3,  // Seconds before cells start returning from buffer
-            bufferResolutionForce: 0.02  // How strongly cells are pushed back to container
+
+            // Content zone / soft boundary
+            contentZoneEnabled: true,    // Enable/disable content zone
+            contentZoneTop: 0.15,        // Top margin as fraction of height
+            contentZoneBottom: 0.15,     // Bottom margin as fraction of height
+            bleedBuffer: 80,             // Pixel buffer beyond content zone
+            boundaryStiffness: 0.05,     // 0=yields easily, high=resists yielding
+            maxPlateDepth: 80            // Maximum depth boundary can yield
         };
 
         // ========== SAMPLE DATA ==========
@@ -488,17 +378,11 @@
         let width, height;
         let cells = [];
         let hoveredCell = -1;
-        let prevHoveredCell = -1;
-        let hoverStartTime = 0;
         let mouseX = -9999, mouseY = -9999;
         let tooltip;
         let animationId;
         let lastTime = 0;
-        // Smooth bounds for organic bleed
-        let currentBoundsTop = 0;
-        let currentBoundsBottom = 0;
-        let boundsInitialized = false;
-        // Smoothed plate depth maps (persisted across frames)
+        // Smoothed boundary depths (persisted across frames for soft yielding)
         let smoothedTopDepths = null;
         let smoothedBottomDepths = null;
 
@@ -506,12 +390,10 @@
         class Cell {
             constructor(x, y, index) {
                 this.index = index;
-                this.x = x;
+                this.x = x;                // Cell center position (fixed)
                 this.y = y;
-                this.restX = x;
-                this.restY = y;
-                this.vx = 0;
-                this.vy = 0;
+                this.inflation = 0;        // Current inflation (makes polygon bigger)
+                this.targetInflation = 0;  // Target inflation (smoothly interpolated)
                 this.polygon = null;
                 this.displayPolygon = null; // With gap applied
                 this.zoom = config.nonHoverImageZoom;
@@ -527,74 +409,13 @@
             }
 
             update(dt, isHovered) {
-                if (!config.physicsEnabled) {
-                    this.zoom += (this.targetZoom - this.zoom) * config.imageZoomSpeed;
-                    this.opacity += (this.targetOpacity - this.opacity) * config.opacityTransitionSpeed;
-                    return;
-                }
-
-                // Spring force to rest position
-                const dx = this.restX - this.x;
-                const dy = this.restY - this.y;
-
-                const effectiveSpring = isHovered
-                    ? config.spring * (1 - config.hoverSpeed * 0.8)
-                    : config.spring * (0.5 + config.decaySpeed * 0.5);
-
-                this.vx += dx * effectiveSpring * dt;
-                this.vy += dy * effectiveSpring * dt;
-
-                // Damping
-                const effectiveDamping = config.damping - (config.overshoot * 0.15);
-                this.vx *= effectiveDamping;
-                this.vy *= effectiveDamping;
-
-                // Update position
-                this.x += this.vx;
-                this.y += this.vy;
-
-                // Soft max expansion limit - gradual resistance instead of hard clamp
-                const newDx = this.x - this.restX;
-                const newDy = this.y - this.restY;
-                const newDist = Math.sqrt(newDx * newDx + newDy * newDy);
-
-                if (newDist > 0) {
-                    // Tension starts building at 40% of max - feels like stretching a balloon
-                    const tensionStart = config.maxExpansion * 0.4;
-                    const hardLimit = config.maxExpansion * 1.1;
-
-                    if (newDist > tensionStart) {
-                        // Quadratic tension - builds more immediately than cubic
-                        const stretch = (newDist - tensionStart) / (hardLimit - tensionStart);
-                        const tension = Math.min(1, stretch * stretch);
-
-                        // Pull-back force proportional to tension (like rubber band)
-                        const pullBack = tension * 0.25;
-                        this.vx -= (newDx / newDist) * pullBack * newDist * dt;
-                        this.vy -= (newDy / newDist) * pullBack * newDist * dt;
-
-                        // Hard clamp at limit
-                        if (newDist > hardLimit) {
-                            const scale = hardLimit / newDist;
-                            this.x = this.restX + newDx * scale;
-                            this.y = this.restY + newDy * scale;
-                        }
-                    }
-                }
-
-                // Keep in bounds (hard limit at canvas edge)
-                const margin = 30;
-                this.x = Math.max(margin, Math.min(width - margin, this.x));
-                this.y = Math.max(margin, Math.min(height - margin, this.y));
+                // Smooth inflation transition
+                const inflationSpeed = isHovered ? 0.15 : 0.05; // Fast inflate, slow deflate
+                this.inflation += (this.targetInflation - this.inflation) * inflationSpeed;
 
                 // Smooth zoom and opacity transitions
                 this.zoom += (this.targetZoom - this.zoom) * config.imageZoomSpeed;
                 this.opacity += (this.targetOpacity - this.opacity) * config.opacityTransitionSpeed;
-            }
-
-            applyForce(fx, fy) {
-                this.vx += fx;
-                this.vy += fy;
             }
 
             createPattern() {
@@ -647,11 +468,7 @@
         // Boundary system: traces where cells actually are, yields to let them protrude
 
         function buildSteppedBounds(zoneTop, zoneBottom) {
-            if (!config.steppedBoundsEnabled) {
-                return [[0, zoneTop], [width, zoneTop], [width, zoneBottom], [0, zoneBottom]];
-            }
-
-            // Fewer samples = smoother boundary with fewer vertices for cells to clip to
+            // Sample points along the width to detect where cells protrude
             const sampleCount = 20;
             const sampleWidth = width / (sampleCount - 1);
 
@@ -663,64 +480,60 @@
                 smoothedBottomDepths = new Array(sampleCount).fill(0);
             }
 
-            // Calculate boundary pressure from hovered cell's displacement
-            // Soft strength controls resistance: 0 = yields easily, high = resists
+            // Detect actual polygon protrusion past soft boundaries
             const targetTop = new Array(sampleCount).fill(0);
             const targetBottom = new Array(sampleCount).fill(0);
 
-            if (hoveredCell >= 0) {
-                const cell = cells[hoveredCell];
-                const zoneTop = height * config.contentZoneTop;
-                const zoneBottom = height * (1 - config.contentZoneBottom);
+            // Soft strength: 0 = boundary yields fully, high = resists yielding
+            const resistance = 1 / (1 + config.boundaryStiffness * 2);
 
-                // How much is the cell displaced toward each boundary?
-                // Displacement from rest position, clamped to movement toward boundary
-                const topDisplacement = Math.max(0, cell.restY - cell.y); // Moving up
-                const bottomDisplacement = Math.max(0, cell.y - cell.restY); // Moving down
+            // Check each cell's polygon for protrusion
+            for (const cell of cells) {
+                const polygon = cell.displayPolygon;
+                if (!polygon || polygon.length < 3) continue;
 
-                // Soft strength resistance: at 0, full pressure; at 2, heavily dampened
-                const resistance = 1 / (1 + config.boundaryStiffness * 2);
-                const pressureScale = 1.5 * resistance;
+                // Check each vertex of the polygon
+                for (const vertex of polygon) {
+                    const vx = vertex[0];
+                    const vy = vertex[1];
 
-                // How close is the cell to the boundary? Closer = more pressure
-                const topProximity = Math.max(0, 1 - (cell.y - zoneTop) / 150);
-                const bottomProximity = Math.max(0, 1 - (zoneBottom - cell.y) / 150);
+                    // Find which sample bin this vertex affects
+                    const sampleIdx = Math.round(vx / sampleWidth);
+                    if (sampleIdx < 0 || sampleIdx >= sampleCount) continue;
 
-                const topPush = topDisplacement * pressureScale * (0.5 + topProximity);
-                const bottomPush = bottomDisplacement * pressureScale * (0.5 + bottomProximity);
+                    // Top protrusion: how far above zoneTop?
+                    if (vy < zoneTop) {
+                        const protrusion = (zoneTop - vy) * resistance;
+                        const clamped = Math.min(protrusion, config.maxPlateDepth);
 
-                if (topPush > 0) {
-                    const clampedInfluence = Math.min(topPush, config.maxPlateDepth);
-
-                    for (let s = 0; s < sampleCount; s++) {
-                        const sampleX = s * sampleWidth;
-                        const dist = Math.abs(sampleX - cell.x);
-                        const spreadRadius = 250;
-                        if (dist < spreadRadius) {
-                            const falloff = 1 - (dist / spreadRadius);
-                            const contribution = clampedInfluence * falloff * falloff;
-                            targetTop[s] = Math.max(targetTop[s], contribution);
+                        // Spread to neighboring samples for smoother edge
+                        for (let offset = -2; offset <= 2; offset++) {
+                            const idx = sampleIdx + offset;
+                            if (idx >= 0 && idx < sampleCount) {
+                                const falloff = 1 - Math.abs(offset) * 0.3;
+                                targetTop[idx] = Math.max(targetTop[idx], clamped * falloff);
+                            }
                         }
                     }
-                }
 
-                if (bottomPush > 0) {
-                    const clampedInfluence = Math.min(bottomPush, config.maxPlateDepth);
+                    // Bottom protrusion: how far below zoneBottom?
+                    if (vy > zoneBottom) {
+                        const protrusion = (vy - zoneBottom) * resistance;
+                        const clamped = Math.min(protrusion, config.maxPlateDepth);
 
-                    for (let s = 0; s < sampleCount; s++) {
-                        const sampleX = s * sampleWidth;
-                        const dist = Math.abs(sampleX - cell.x);
-                        const spreadRadius = 250;
-                        if (dist < spreadRadius) {
-                            const falloff = 1 - (dist / spreadRadius);
-                            const contribution = clampedInfluence * falloff * falloff;
-                            targetBottom[s] = Math.max(targetBottom[s], contribution);
+                        // Spread to neighboring samples for smoother edge
+                        for (let offset = -2; offset <= 2; offset++) {
+                            const idx = sampleIdx + offset;
+                            if (idx >= 0 && idx < sampleCount) {
+                                const falloff = 1 - Math.abs(offset) * 0.3;
+                                targetBottom[idx] = Math.max(targetBottom[idx], clamped * falloff);
+                            }
                         }
                     }
                 }
             }
 
-            // Spatial smoothing - blur the targets so boundary is smooth, not jagged
+            // Spatial smoothing - blur for organic curves
             function blur(arr) {
                 const result = new Array(arr.length);
                 for (let i = 0; i < arr.length; i++) {
@@ -732,13 +545,12 @@
                 return result;
             }
 
-            // Apply blur twice for smoother curves
             const blurredTop = blur(blur(targetTop));
             const blurredBottom = blur(blur(targetBottom));
 
             // Temporal smoothing - fast yield, slow return
-            const yieldSpeed = 0.12;
-            const returnSpeed = 0.03;
+            const yieldSpeed = 0.15;
+            const returnSpeed = 0.04;
 
             for (let s = 0; s < sampleCount; s++) {
                 const topDiff = blurredTop[s] - smoothedTopDepths[s];
@@ -750,19 +562,7 @@
                 if (smoothedBottomDepths[s] < 1) smoothedBottomDepths[s] = 0;
             }
 
-            // Build the boundary polygon
-            const bounds = [];
-
-            for (let s = 0; s < sampleCount; s++) {
-                bounds.push([s * sampleWidth, zoneTop - smoothedTopDepths[s]]);
-            }
-            bounds.push([width, zoneBottom + smoothedBottomDepths[sampleCount - 1]]);
-            for (let s = sampleCount - 1; s >= 0; s--) {
-                bounds.push([s * sampleWidth, zoneBottom + smoothedBottomDepths[s]]);
-            }
-            bounds.push([0, zoneTop - smoothedTopDepths[0]]);
-
-            return bounds;
+            return null; // Just updates smoothedTopDepths/smoothedBottomDepths for rendering
         }
 
         function computeVoronoi() {
@@ -824,8 +624,18 @@
                 if (index === j) continue;
                 const other = cells[j];
 
-                const midX = (cell.x + other.x) / 2;
-                const midY = (cell.y + other.y) / 2;
+                // Weighted Voronoi: shift midpoint based on inflation difference
+                // If cell is inflated, midpoint shifts toward the other cell (making cell's polygon bigger)
+                const inflationDiff = cell.inflation - other.inflation;
+                const dx = other.x - cell.x;
+                const dy = other.y - cell.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                // Shift amount: positive inflation pushes midpoint toward other cell
+                const shift = dist > 0 ? inflationDiff / dist * 0.5 : 0;
+
+                const midX = (cell.x + other.x) / 2 + dx * shift;
+                const midY = (cell.y + other.y) / 2 + dy * shift;
                 const nx = cell.x - other.x;
                 const ny = cell.y - other.y;
 
@@ -1096,7 +906,9 @@
 
         function generateCells() {
             cells = [];
-            boundsInitialized = false; // Reset smooth bounds
+            // Reset boundary yielding state
+            smoothedTopDepths = null;
+            smoothedBottomDepths = null;
             const margin = 80;
 
             // Calculate vertical bounds based on content zone
@@ -1356,87 +1168,7 @@
                 cornerVal.textContent = config.cornerRadius;
             });
 
-            // Spring
-            const springEl = document.getElementById('spring');
-            const springVal = document.getElementById('springVal');
-            springEl.addEventListener('input', () => {
-                config.spring = +springEl.value / 100;
-                springVal.textContent = config.spring.toFixed(2);
-            });
-
-            // Damping
-            const dampingEl = document.getElementById('damping');
-            const dampingVal = document.getElementById('dampingVal');
-            dampingEl.addEventListener('input', () => {
-                config.damping = +dampingEl.value / 100;
-                dampingVal.textContent = config.damping.toFixed(2);
-            });
-
-            // Hover force
-            const hoverForceEl = document.getElementById('hoverForce');
-            const hoverForceVal = document.getElementById('hoverForceVal');
-            hoverForceEl.addEventListener('input', () => {
-                config.hoverForce = +hoverForceEl.value;
-                hoverForceVal.textContent = config.hoverForce;
-            });
-
-            // Repulsion
-            const repulsionEl = document.getElementById('repulsion');
-            const repulsionVal = document.getElementById('repulsionVal');
-            repulsionEl.addEventListener('input', () => {
-                config.repulsion = +repulsionEl.value;
-                repulsionVal.textContent = config.repulsion;
-            });
-
-            // Center relevance
-            const centerEl = document.getElementById('centerRelevance');
-            const centerVal = document.getElementById('centerRelevanceVal');
-            centerEl.addEventListener('input', () => {
-                config.centerRelevance = +centerEl.value / 100;
-                centerVal.textContent = config.centerRelevance.toFixed(2);
-            });
-
-            // Hover Speed
-            const hoverSpeedEl = document.getElementById('hoverSpeed');
-            const hoverSpeedVal = document.getElementById('hoverSpeedVal');
-            hoverSpeedEl.addEventListener('input', () => {
-                config.hoverSpeed = +hoverSpeedEl.value / 100;
-                hoverSpeedVal.textContent = config.hoverSpeed.toFixed(2);
-            });
-
-            // Overshoot
-            const overshootEl = document.getElementById('overshoot');
-            const overshootVal = document.getElementById('overshootVal');
-            overshootEl.addEventListener('input', () => {
-                config.overshoot = +overshootEl.value / 100;
-                overshootVal.textContent = config.overshoot.toFixed(2);
-            });
-
-            // Decay Speed
-            const decaySpeedEl = document.getElementById('decaySpeed');
-            const decaySpeedVal = document.getElementById('decaySpeedVal');
-            decaySpeedEl.addEventListener('input', () => {
-                config.decaySpeed = +decaySpeedEl.value / 100;
-                decaySpeedVal.textContent = config.decaySpeed.toFixed(2);
-            });
-
-            // Trigger Burst
-            const triggerBurstEl = document.getElementById('triggerBurst');
-            const triggerBurstVal = document.getElementById('triggerBurstVal');
-            triggerBurstEl.addEventListener('input', () => {
-                config.triggerBurst = +triggerBurstEl.value / 100;
-                triggerBurstVal.textContent = config.triggerBurst.toFixed(2);
-            });
-
-            // Sustain Growth
-            const sustainGrowthEl = document.getElementById('sustainGrowth');
-            const sustainGrowthVal = document.getElementById('sustainGrowthVal');
-            sustainGrowthEl.addEventListener('input', () => {
-                config.sustainGrowth = +sustainGrowthEl.value / 100;
-                sustainGrowthVal.textContent = config.sustainGrowth.toFixed(2);
-            });
-
-            // Max Expansion
+            // Max Expansion (inflation)
             const maxExpansionEl = document.getElementById('maxExpansion');
             const maxExpansionVal = document.getElementById('maxExpansionVal');
             maxExpansionEl.addEventListener('input', () => {
@@ -1450,20 +1182,11 @@
             nonHoveredOpacityEl.addEventListener('input', () => {
                 config.nonHoveredOpacity = +nonHoveredOpacityEl.value / 100;
                 nonHoveredOpacityVal.textContent = config.nonHoveredOpacity.toFixed(2);
-                // Update all non-hovered cells
                 cells.forEach((c, i) => {
                     if (i !== hoveredCell) {
                         c.targetOpacity = config.nonHoveredOpacity;
                     }
                 });
-            });
-
-            // Opacity Transition Speed
-            const opacityTransitionSpeedEl = document.getElementById('opacityTransitionSpeed');
-            const opacityTransitionSpeedVal = document.getElementById('opacityTransitionSpeedVal');
-            opacityTransitionSpeedEl.addEventListener('input', () => {
-                config.opacityTransitionSpeed = +opacityTransitionSpeedEl.value / 100;
-                opacityTransitionSpeedVal.textContent = config.opacityTransitionSpeed.toFixed(2);
             });
 
             // Non-Hover Image Zoom
@@ -1472,20 +1195,11 @@
             nonHoverImageZoomEl.addEventListener('input', () => {
                 config.nonHoverImageZoom = +nonHoverImageZoomEl.value / 10;
                 nonHoverImageZoomVal.textContent = config.nonHoverImageZoom.toFixed(1);
-                // Update all non-hovered cells
                 cells.forEach((c, i) => {
                     if (i !== hoveredCell) {
                         c.targetZoom = config.nonHoverImageZoom;
                     }
                 });
-            });
-
-            // Image Zoom Speed
-            const imageZoomSpeedEl = document.getElementById('imageZoomSpeed');
-            const imageZoomSpeedVal = document.getElementById('imageZoomSpeedVal');
-            imageZoomSpeedEl.addEventListener('input', () => {
-                config.imageZoomSpeed = +imageZoomSpeedEl.value / 100;
-                imageZoomSpeedVal.textContent = config.imageZoomSpeed.toFixed(2);
             });
 
             // Content Zone Controls
@@ -1510,7 +1224,7 @@
             bleedBufferEl.addEventListener('input', () => {
                 config.bleedBuffer = +bleedBufferEl.value;
                 bleedBufferVal.textContent = config.bleedBuffer;
-                computeVoronoi(); // Recompute with new buffer
+                computeVoronoi();
             });
 
             const boundaryStiffnessEl = document.getElementById('boundaryStiffness');
@@ -1518,13 +1232,6 @@
             boundaryStiffnessEl.addEventListener('input', () => {
                 config.boundaryStiffness = +boundaryStiffnessEl.value / 100;
                 boundaryStiffnessVal.textContent = config.boundaryStiffness.toFixed(2);
-            });
-
-            const hoverBleedPrivilegeEl = document.getElementById('hoverBleedPrivilege');
-            const hoverBleedPrivilegeVal = document.getElementById('hoverBleedPrivilegeVal');
-            hoverBleedPrivilegeEl.addEventListener('input', () => {
-                config.hoverBleedPrivilege = +hoverBleedPrivilegeEl.value / 100;
-                hoverBleedPrivilegeVal.textContent = config.hoverBleedPrivilege.toFixed(2);
             });
 
             // Buttons
@@ -1536,13 +1243,6 @@
                 config.contentZoneEnabled = !config.contentZoneEnabled;
                 toggleContentZone.classList.toggle('active', config.contentZoneEnabled);
                 generateCells();
-            });
-
-            const togglePhysics = document.getElementById('togglePhysics');
-            togglePhysics.addEventListener('click', () => {
-                config.physicsEnabled = !config.physicsEnabled;
-                togglePhysics.textContent = config.physicsEnabled ? 'Pause' : 'Play';
-                togglePhysics.classList.toggle('active', !config.physicsEnabled);
             });
 
             const toggleDebug = document.getElementById('toggleDebug');
@@ -1601,121 +1301,20 @@
 
         // ========== PHYSICS ==========
         function updatePhysics(dt) {
-            const currentTime = performance.now();
-
-            // Track hover state changes for two-phase system
-            if (hoveredCell !== prevHoveredCell) {
-                if (hoveredCell >= 0) {
-                    hoverStartTime = currentTime;
-                }
-                prevHoveredCell = hoveredCell;
-            }
-
-            if (hoveredCell >= 0 && config.physicsEnabled) {
-                const hovered = cells[hoveredCell];
-                const hoverDuration = (currentTime - hoverStartTime) / 1000; // seconds
-
-                // Two-phase hover system:
-                // Phase 1 (trigger): Strong initial burst that decays over ~0.3s
-                // Phase 2 (sustain): Continuous growth while hovering
-                const triggerPhase = Math.exp(-hoverDuration * 5) * config.triggerBurst;
-                const sustainPhase = config.sustainGrowth * Math.min(1, hoverDuration * 2);
-                const phaseMultiplier = triggerPhase + sustainPhase;
-
-                // Direction from cursor to cell center
-                const dx = hovered.x - mouseX;
-                const dy = hovered.y - mouseY;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                if (dist > 1) {
-                    // Hover speed affects force application rate
-                    const speedMultiplier = 0.3 + config.hoverSpeed * 0.7;
-
-                    // Force scales with hoverForce directly, distance just affects direction weight
-                    // Closer to center = stronger push, but minimum 20% force even at edge
-                    const distanceFactor = Math.max(0.2, 1 - dist / 200);
-                    const directedForce = config.hoverForce * 0.01 * distanceFactor * speedMultiplier * phaseMultiplier;
-                    const uniformForce = config.hoverForce * 0.005 * speedMultiplier * phaseMultiplier;
-
-                    const cr = config.centerRelevance;
-
-                    // Directed component (pushes hovered cell away from cursor)
-                    const dirX = dx / dist * directedForce * cr;
-                    const dirY = dy / dist * directedForce * cr;
-                    hovered.applyForce(dirX, dirY);
-
-                    // Push neighbors away from hovered cell
-                    for (let i = 0; i < cells.length; i++) {
-                        if (i === hoveredCell) continue;
-                        const other = cells[i];
-
-                        const odx = other.x - hovered.x;
-                        const ody = other.y - hovered.y;
-                        const odist = Math.sqrt(odx * odx + ody * ody);
-                        const threshold = config.repulsion * 6;
-
-                        if (odist > 1 && odist < threshold) {
-                            const falloff = (threshold - odist) / threshold;
-
-                            // Directed repulsion (from hovered cell)
-                            const directedRepulsion = falloff * config.repulsion * 0.025 * cr * phaseMultiplier;
-
-                            // Uniform repulsion (equal in all directions, creates expansion)
-                            const uniformRepulsion = uniformForce * (1 - cr) * falloff;
-
-                            const totalForce = directedRepulsion + uniformRepulsion;
-                            other.applyForce(odx / odist * totalForce, ody / odist * totalForce);
-                        }
-                    }
+            // Simple inflation system: hovered cell inflates, others don't
+            // The weighted Voronoi handles the rest - neighbors naturally shrink
+            for (let i = 0; i < cells.length; i++) {
+                const cell = cells[i];
+                if (i === hoveredCell) {
+                    // Hovered cell inflates based on maxExpansion
+                    cell.targetInflation = config.maxExpansion;
+                } else {
+                    // Non-hovered cells deflate back to normal
+                    cell.targetInflation = 0;
                 }
             }
 
-            // Buffer management: cells can temporarily spill into buffer, but are pushed back
-            if (config.contentZoneEnabled) {
-                const zoneTop = height * config.contentZoneTop;
-                const zoneBottom = height * (1 - config.contentZoneBottom);
-                const buffer = config.bleedBuffer;
-                const hardTop = zoneTop - buffer;
-                const hardBottom = zoneBottom + buffer;
-
-                for (let i = 0; i < cells.length; i++) {
-                    const cell = cells[i];
-                    const isHovered = (i === hoveredCell);
-
-                    // Hard clamp at buffer edge for ALL cells (even hovered)
-                    if (cell.y < hardTop) {
-                        cell.y = hardTop;
-                        cell.vy = Math.max(0, cell.vy); // Stop upward momentum
-                    }
-                    if (cell.y > hardBottom) {
-                        cell.y = hardBottom;
-                        cell.vy = Math.min(0, cell.vy); // Stop downward momentum
-                    }
-
-                    // Resolution force: push non-hovered cells back to container
-                    // Hovered cell gets to stay in buffer while hovered
-                    if (!isHovered) {
-                        // Strong quadratic force - scales with penetration squared
-                        const stiffness = config.boundaryStiffness;
-
-                        if (cell.y < zoneTop) {
-                            const penetration = zoneTop - cell.y;
-                            const normalizedPen = penetration / buffer; // 0-1 range
-                            // Quadratic: gentle near edge, strong deep in buffer
-                            const force = stiffness * normalizedPen * normalizedPen * buffer;
-                            cell.applyForce(0, force);
-                        }
-
-                        if (cell.y > zoneBottom) {
-                            const penetration = cell.y - zoneBottom;
-                            const normalizedPen = penetration / buffer;
-                            const force = stiffness * normalizedPen * normalizedPen * buffer;
-                            cell.applyForce(0, -force);
-                        }
-                    }
-                }
-            }
-
+            // Update cells (just smooth transitions, no forced movement)
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
                 cell.update(dt, i === hoveredCell);
@@ -1883,24 +1482,12 @@
 
                 // Draw cell debug info
                 for (const cell of cells) {
-                    // Current position (white dot)
-                    ctx.fillStyle = '#fff';
+                    // Cell center (white dot, size indicates inflation)
+                    const dotSize = 4 + cell.inflation / 50;
+                    ctx.fillStyle = cell.inflation > 0 ? 'rgba(255,200,100,0.9)' : '#fff';
                     ctx.beginPath();
-                    ctx.arc(cell.x, cell.y, 4, 0, Math.PI * 2);
+                    ctx.arc(cell.x, cell.y, dotSize, 0, Math.PI * 2);
                     ctx.fill();
-
-                    // Rest position (yellow circle)
-                    ctx.strokeStyle = 'rgba(255,255,0,0.6)';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.arc(cell.restX, cell.restY, 8, 0, Math.PI * 2);
-                    ctx.stroke();
-
-                    // Line from rest to current
-                    ctx.beginPath();
-                    ctx.moveTo(cell.restX, cell.restY);
-                    ctx.lineTo(cell.x, cell.y);
-                    ctx.stroke();
                 }
             }
         }
