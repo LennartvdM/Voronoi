@@ -629,8 +629,103 @@
             return { x: cx / polygon.length, y: cy / polygon.length };
         }
 
+        // Proper polygon inset - offset each edge inward by amount, then find new vertices
+        // This creates uniform gaps between adjacent cells
+        function insetPolygon(polygon, amount) {
+            if (!polygon || polygon.length < 3 || amount <= 0) return polygon;
+
+            const n = polygon.length;
+
+            // Compute signed area to determine winding direction
+            let signedArea = 0;
+            for (let i = 0; i < n; i++) {
+                const j = (i + 1) % n;
+                signedArea += polygon[i][0] * polygon[j][1];
+                signedArea -= polygon[j][0] * polygon[i][1];
+            }
+            // signedArea > 0 means CCW, < 0 means CW (in screen coords where Y increases downward)
+            const windingSign = signedArea > 0 ? 1 : -1;
+
+            const insetEdges = [];
+
+            // For each edge, compute the inward-offset line
+            for (let i = 0; i < n; i++) {
+                const p1 = polygon[i];
+                const p2 = polygon[(i + 1) % n];
+
+                // Edge direction
+                const edx = p2[0] - p1[0];
+                const edy = p2[1] - p1[1];
+                const len = Math.sqrt(edx * edx + edy * edy);
+
+                if (len < 0.001) continue;
+
+                // Inward normal - perpendicular to edge, direction depends on winding
+                // For CCW: inward is to the right of edge direction (dy, -dx)
+                // For CW: inward is to the left of edge direction (-dy, dx)
+                const nx = windingSign * edy / len;
+                const ny = windingSign * -edx / len;
+
+                // Offset the edge inward
+                const offsetP1 = [p1[0] + nx * amount, p1[1] + ny * amount];
+                const offsetP2 = [p2[0] + nx * amount, p2[1] + ny * amount];
+
+                insetEdges.push({ p1: offsetP1, p2: offsetP2, nx, ny });
+            }
+
+            if (insetEdges.length < 3) return polygon;
+
+            // Compute new vertices as intersections of consecutive offset edges
+            const result = [];
+            for (let i = 0; i < insetEdges.length; i++) {
+                const e1 = insetEdges[i];
+                const e2 = insetEdges[(i + 1) % insetEdges.length];
+
+                // Find intersection of two lines
+                const intersection = lineLineIntersect(e1.p1, e1.p2, e2.p1, e2.p2);
+                if (intersection) {
+                    result.push(intersection);
+                }
+            }
+
+            // Validate result - check if polygon collapsed or inverted
+            if (result.length < 3) return polygon;
+
+            // Check that result area is smaller than original (sanity check)
+            let resultArea = 0;
+            for (let i = 0; i < result.length; i++) {
+                const j = (i + 1) % result.length;
+                resultArea += result[i][0] * result[j][1];
+                resultArea -= result[j][0] * result[i][1];
+            }
+            resultArea = Math.abs(resultArea);
+            const origArea = Math.abs(signedArea);
+
+            // If result is larger than original, something went wrong
+            if (resultArea > origArea || resultArea < 100) return polygon;
+
+            return result;
+        }
+
+        // Line-line intersection helper
+        function lineLineIntersect(p1, p2, p3, p4) {
+            const x1 = p1[0], y1 = p1[1];
+            const x2 = p2[0], y2 = p2[1];
+            const x3 = p3[0], y3 = p3[1];
+            const x4 = p4[0], y4 = p4[1];
+
+            const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+            if (Math.abs(denom) < 0.0001) {
+                // Lines are parallel, return midpoint of shared region
+                return [(p2[0] + p3[0]) / 2, (p2[1] + p3[1]) / 2];
+            }
+
+            const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
+            return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
+        }
+
         // Update polygons: recompute dynamic Voronoi with current weights
-        // Then apply gap shrinking for visual spacing
+        // Then apply gap inset for visual spacing
         function updateDisplayPolygons() {
             const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
             const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
@@ -643,21 +738,9 @@
                 const cell = cells[i];
                 if (!cell.polygon || !cell.baseCentroid) continue;
 
-                const cx = cell.baseCentroid.x;
-                const cy = cell.baseCentroid.y;
-
-                // Apply gap shrinking (inward from edges)
-                const shrunk = cell.polygon.map(p => {
-                    const dx = p[0] - cx;
-                    const dy = p[1] - cy;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-
-                    // Shrink by gap amount
-                    const shrunkDist = Math.max(0, dist - gap);
-                    const ratio = dist > 0 ? shrunkDist / dist : 0;
-
-                    return [cx + dx * ratio, cy + dy * ratio];
-                });
+                // Apply proper edge-based inset for uniform gaps
+                // Each cell insets by gap/2, so adjacent cells have gap total between them
+                const inset = insetPolygon(cell.polygon, gap / 2);
 
                 // Clip to bounds - smoothly expand based on animated scale
                 // Scale of 1.0 = no extra buffer, higher scale = proportionally more buffer
@@ -666,7 +749,7 @@
                 const smoothBuffer = config.bleedBuffer * Math.min(1, bufferFraction);
                 const clipTop = zoneTop - smoothBuffer;
                 const clipBottom = zoneBottom + smoothBuffer;
-                const clipped = clipToRect(shrunk, 0, clipTop, width, clipBottom);
+                const clipped = clipToRect(inset, 0, clipTop, width, clipBottom);
 
                 cell.displayPolygon = clipped;
                 cell.polygon = clipped;  // Also update for hit testing
