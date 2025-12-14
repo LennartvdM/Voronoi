@@ -554,12 +554,12 @@
                 const ny = dy / dist;
 
                 // Calculate shift based on inflation, respecting the gap
-                // The shift should never cause cells to overlap after gap is applied
-                // Maximum shift towards other cell is limited by (dist - gap) / 2
+                // Maximum shift limited to maintain gap between cells
                 const maxAllowedShift = Math.max(0, (dist - config.gap * 2) / 2);
 
-                // Different shift factors for hovered vs non-hovered cells
-                const shiftFactor = isHovered ? 0.4 : 0.2;
+                // SAME shift factor for all cells - Voronoi bisector must be symmetric
+                // Both cells see the same bisector position
+                const shiftFactor = 0.35;
                 const rawShift = inflationDiff * shiftFactor;
 
                 // Clamp shift to prevent overlap
