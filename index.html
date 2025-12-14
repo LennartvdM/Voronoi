@@ -325,9 +325,9 @@
             cornerRadius: 12,
 
             // Inflation system
-            maxExpansion: 150,           // How much the hovered cell inflates (px in weighted Voronoi)
+            maxExpansion: 150,           // How much the hovered cell inflates (affects neighbor push)
             expansionSpeed: 0.025,       // How fast cells inflate/deflate (0 = inert, 0.05 = fast)
-            displaceRatio: 0.5,          // 0 = pure shrink, 1 = pure displace, 0.5 = both
+            displaceRatio: 0.5,          // 0 = no neighbor push, 1 = max neighbor push
 
             // Visual transitions
             nonHoverImageZoom: 1.7,      // Non-hover image zoom level
@@ -478,11 +478,18 @@
             }
         }
 
-        // ========== SIMPLE STABLE VORONOI ==========
-        // NO deformation - just scale + translate
-        // Shape is always exactly the base Voronoi, just bigger/smaller and moved
+        // ========== DYNAMIC WEIGHTED VORONOI ==========
+        // Cells expand by pushing neighbors - uses weighted/power Voronoi
+        // The perpendicular bisector shifts based on relative weights
 
         function computeBaseVoronoi() {
+            // Compute initial Voronoi with all weights = 1
+            computeDynamicVoronoi();
+        }
+
+        // Compute Voronoi with current cell weights (scales)
+        // Uses power diagram: bisector shifts based on weight difference
+        function computeDynamicVoronoi() {
             const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
             const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
             const buffer = config.bleedBuffer;
@@ -498,15 +505,46 @@
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
 
-                // Standard Voronoi - clip against all other cells
+                // Weighted Voronoi (power diagram)
+                // For standard Voronoi: boundary is equidistant from both points
+                // For weighted: boundary shifts toward the cell with smaller weight
                 let polygon = bounds.map(p => [...p]);
 
                 for (let j = 0; j < cells.length; j++) {
                     if (i === j) continue;
                     const other = cells[j];
 
-                    const midX = (cell.baseX + other.baseX) / 2;
-                    const midY = (cell.baseY + other.baseY) / 2;
+                    // Get weights (scale values) - higher scale = more territory
+                    const wi = cell.scale;
+                    const wj = other.scale;
+
+                    // Distance between cell centers
+                    const dx = other.baseX - cell.baseX;
+                    const dy = other.baseY - cell.baseY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 0.001) continue;
+
+                    // Power diagram: bisector shifts based on weight difference
+                    // When wi > wj, cell i gains territory (bisector moves toward j)
+                    // Formula: offset = (wi² - wj²) * factor / dist
+                    const weightDiff = wi * wi - wj * wj;
+
+                    // Scale the effect: maxExpansion controls magnitude, displaceRatio controls blend
+                    // At displaceRatio=1, a fully expanded cell pushes neighbors significantly
+                    const pushStrength = config.maxExpansion * config.displaceRatio * 0.3;
+                    const offset = weightDiff * pushStrength / dist;
+
+                    // Clamp to prevent extreme shifts (max 45% of distance)
+                    const maxShift = dist * 0.45;
+                    const clampedOffset = Math.max(-maxShift, Math.min(maxShift, offset));
+
+                    // Shifted midpoint (t > 0.5 means bisector moved toward 'other')
+                    const t = 0.5 + clampedOffset / dist;
+                    const midX = cell.baseX + dx * t;
+                    const midY = cell.baseY + dy * t;
+
+                    // Normal points from other toward cell (keeps cell's side)
                     const nx = cell.baseX - other.baseX;
                     const ny = cell.baseY - other.baseY;
 
@@ -514,8 +552,13 @@
                     if (polygon.length < 3) break;
                 }
 
-                cell.basePolygon = polygon.length >= 3 ? polygon : null;
-                cell.baseCentroid = getPolygonCentroid(cell.basePolygon);
+                cell.polygon = polygon.length >= 3 ? polygon : null;
+                cell.baseCentroid = getPolygonCentroid(cell.polygon);
+
+                // Also store as basePolygon for compatibility
+                if (cell.scale === 1.0) {
+                    cell.basePolygon = cell.polygon;
+                }
             }
         }
 
@@ -562,31 +605,32 @@
             return { x: cx / polygon.length, y: cy / polygon.length };
         }
 
-        // Update polygons: pure uniform scale from centroid
-        // Shape is ALWAYS the base Voronoi polygon, just scaled
-        // This guarantees NO rotation or twist
+        // Update polygons: recompute dynamic Voronoi with current weights
+        // Then apply gap shrinking for visual spacing
         function updateDisplayPolygons() {
             const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
             const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
             const gap = config.gap;
 
+            // Recompute Voronoi with current cell weights (scales)
+            computeDynamicVoronoi();
+
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
-                if (!cell.basePolygon || !cell.baseCentroid) continue;
+                if (!cell.polygon || !cell.baseCentroid) continue;
 
                 const cx = cell.baseCentroid.x;
                 const cy = cell.baseCentroid.y;
-                const scale = cell.scale;
 
-                // Scale polygon uniformly from centroid (apply gap shrink first)
-                const scaled = cell.basePolygon.map(p => {
+                // Apply gap shrinking (inward from edges)
+                const shrunk = cell.polygon.map(p => {
                     const dx = p[0] - cx;
                     const dy = p[1] - cy;
                     const dist = Math.sqrt(dx * dx + dy * dy);
 
-                    // Shrink by gap, then apply scale
+                    // Shrink by gap amount
                     const shrunkDist = Math.max(0, dist - gap);
-                    const ratio = dist > 0 ? (shrunkDist / dist) * scale : 0;
+                    const ratio = dist > 0 ? shrunkDist / dist : 0;
 
                     return [cx + dx * ratio, cy + dy * ratio];
                 });
@@ -595,11 +639,10 @@
                 const isHovered = (i === hoveredCell);
                 const clipTop = isHovered ? zoneTop - config.bleedBuffer : zoneTop;
                 const clipBottom = isHovered ? zoneBottom + config.bleedBuffer : zoneBottom;
-                const clipped = clipToRect(scaled, 0, clipTop, width, clipBottom);
+                const clipped = clipToRect(shrunk, 0, clipTop, width, clipBottom);
 
-                // Direct assignment - scale is already smoothly interpolated in update()
                 cell.displayPolygon = clipped;
-                cell.polygon = clipped;
+                cell.polygon = clipped;  // Also update for hit testing
             }
         }
 
