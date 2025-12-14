@@ -508,22 +508,27 @@
                 const gapped = applyGap(cell.polygon, config.gap);
                 const newDisplayPolygon = simplifyPolygon(gapped);
 
-                // Smooth polygon transitions so neighbors don't panic
+                // Smooth polygon transitions - speed tied to expansionSpeed
+                // When expansionSpeed is 0, no transition happens (inert)
                 if (cell.displayPolygon && cell.displayPolygon.length === newDisplayPolygon.length) {
-                    // Hovered cell transitions faster, neighbors much slower to prevent rotation chaos
-                    const speed = isHovered ? 0.3 : 0.04;
+                    // Base speed scales with expansionSpeed, hovered is faster than neighbors
+                    const baseSpeed = config.expansionSpeed * 2; // Scale up for visible response
+                    const speed = isHovered ? Math.max(baseSpeed, 0.01) : baseSpeed * 0.3;
 
-                    for (let v = 0; v < newDisplayPolygon.length; v++) {
-                        cell.displayPolygon[v][0] += (newDisplayPolygon[v][0] - cell.displayPolygon[v][0]) * speed;
-                        cell.displayPolygon[v][1] += (newDisplayPolygon[v][1] - cell.displayPolygon[v][1]) * speed;
+                    if (speed > 0.001) {
+                        for (let v = 0; v < newDisplayPolygon.length; v++) {
+                            cell.displayPolygon[v][0] += (newDisplayPolygon[v][0] - cell.displayPolygon[v][0]) * speed;
+                            cell.displayPolygon[v][1] += (newDisplayPolygon[v][1] - cell.displayPolygon[v][1]) * speed;
+                        }
                     }
+                    // If speed ≈ 0, don't update displayPolygon - stays frozen
                 } else {
-                    // Topology change - blend in slowly for non-hovered to avoid sudden jumps
-                    if (isHovered || !cell.displayPolygon) {
+                    // Topology change - only apply if there's actual expansion happening
+                    if (config.expansionSpeed > 0.001) {
                         cell.displayPolygon = newDisplayPolygon;
-                    } else {
-                        // Non-hovered topology change: fade in by starting closer to old centroid
-                        cell.displayPolygon = newDisplayPolygon.map(p => [...p]);
+                    } else if (!cell.displayPolygon) {
+                        // Initial assignment
+                        cell.displayPolygon = newDisplayPolygon;
                     }
                 }
             }
@@ -542,27 +547,38 @@
                 const other = cells[j];
 
                 // Weighted Voronoi: shift midpoint based on inflation difference
-                // If cell is inflated, midpoint shifts toward the other cell (making cell's polygon bigger)
                 const inflationDiff = cell.inflation - other.inflation;
                 const dx = other.x - cell.x;
                 const dy = other.y - cell.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
+                if (dist < 1) continue; // Skip if cells are at same position
+
+                // Normalize direction
+                const nx = dx / dist;
+                const ny = dy / dist;
+
+                // Calculate shift based on inflation, respecting the gap
+                // The shift should never cause cells to overlap after gap is applied
+                // Maximum shift towards other cell is limited by (dist - gap) / 2
+                const maxAllowedShift = Math.max(0, (dist - config.gap * 2) / 2);
+
                 // Different shift factors for hovered vs non-hovered cells
-                // Hovered cell needs to push outward aggressively
-                // Non-hovered cells just need to yield - smaller shift prevents rotation chaos
-                const shiftFactor = isHovered ? 0.35 : 0.15;
-                const maxShift = isHovered ? 0.45 : 0.25; // Tighter cap for non-hovered
+                const shiftFactor = isHovered ? 0.4 : 0.2;
+                const rawShift = inflationDiff * shiftFactor;
 
-                const rawShift = dist > 0 ? inflationDiff / dist * shiftFactor : 0;
-                const shift = Math.max(-maxShift, Math.min(maxShift, rawShift));
+                // Clamp shift to prevent overlap
+                const shift = Math.max(-maxAllowedShift, Math.min(maxAllowedShift, rawShift));
 
-                const midX = (cell.x + other.x) / 2 + dx * shift;
-                const midY = (cell.y + other.y) / 2 + dy * shift;
-                const nx = cell.x - other.x;
-                const ny = cell.y - other.y;
+                // Midpoint shifted along the line between cells
+                const midX = (cell.x + other.x) / 2 + nx * shift;
+                const midY = (cell.y + other.y) / 2 + ny * shift;
 
-                polygon = clipPolygon(polygon, midX, midY, nx, ny);
+                // Normal points toward this cell (away from other)
+                const clipNx = cell.x - other.x;
+                const clipNy = cell.y - other.y;
+
+                polygon = clipPolygon(polygon, midX, midY, clipNx, clipNy);
                 if (polygon.length < 3) break;
             }
 
