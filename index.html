@@ -343,7 +343,10 @@
             contentZoneEnabled: true,    // Enable/disable content zone
             contentZoneTop: 0.15,        // Top margin as fraction of height
             contentZoneBottom: 0.15,     // Bottom margin as fraction of height
-            bleedBuffer: 80              // Pixel buffer beyond content zone (how far hovered cell can extend)
+            bleedBuffer: 80,             // Pixel buffer beyond content zone (how far hovered cell can extend)
+
+            // Hitbox settings
+            hitboxRadius: 60             // Radius around cell center for hover detection (prevents edge fighting)
         };
 
         // ========== SAMPLE DATA ==========
@@ -1203,11 +1206,33 @@
 
         function updateHover() {
             let found = -1;
+            let closestDist = Infinity;
 
+            // Find the closest cell center within hitbox radius
             for (let i = 0; i < cells.length; i++) {
-                if (cells[i].polygon && pointInPolygon(mouseX, mouseY, cells[i].polygon)) {
-                    found = i;
-                    break;
+                const cell = cells[i];
+                const centroid = cell.baseCentroid || { x: cell.baseX, y: cell.baseY };
+                const dx = mouseX - centroid.x;
+                const dy = mouseY - centroid.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                // Must be within hitbox radius AND closer than any other cell
+                if (dist < config.hitboxRadius && dist < closestDist) {
+                    // Also verify mouse is within the cell's polygon (for edge cases)
+                    if (cells[i].polygon && pointInPolygon(mouseX, mouseY, cells[i].polygon)) {
+                        closestDist = dist;
+                        found = i;
+                    }
+                }
+            }
+
+            // If no cell found within hitbox radius, fall back to polygon hit test
+            if (found === -1) {
+                for (let i = 0; i < cells.length; i++) {
+                    if (cells[i].polygon && pointInPolygon(mouseX, mouseY, cells[i].polygon)) {
+                        found = i;
+                        break;
+                    }
                 }
             }
 
@@ -1611,6 +1636,16 @@
                     const polygon = cell.displayPolygon;
                     const centroid = cell.baseCentroid || { x: cell.baseX, y: cell.baseY };
 
+                    // Draw hitbox circle around center
+                    const isHovered = cell.index === hoveredCell;
+                    ctx.beginPath();
+                    ctx.arc(centroid.x, centroid.y, config.hitboxRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = isHovered ? 'rgba(100, 200, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)';
+                    ctx.fill();
+                    ctx.strokeStyle = isHovered ? 'rgba(100, 200, 255, 0.8)' : 'rgba(255, 255, 255, 0.3)';
+                    ctx.lineWidth = isHovered ? 2 : 1;
+                    ctx.stroke();
+
                     // Draw lines from each corner to cell center
                     if (polygon && polygon.length >= 3) {
                         ctx.strokeStyle = 'rgba(255, 255, 0, 0.6)';
@@ -1640,6 +1675,11 @@
                     ctx.arc(centroid.x, centroid.y, dotSize, 0, Math.PI * 2);
                     ctx.fill();
                 }
+
+                // Label hitbox
+                ctx.font = '12px monospace';
+                ctx.fillStyle = 'rgba(100, 200, 255, 1)';
+                ctx.fillText(`HITBOX RADIUS: ${config.hitboxRadius}px`, 10, height - 10);
             }
         }
 
