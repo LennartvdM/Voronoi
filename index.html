@@ -255,6 +255,13 @@
                 </div>
             </div>
             <div class="control-group">
+                <label>Displace</label>
+                <div class="control-row">
+                    <input type="range" id="displaceRatio" min="0" max="100" value="50">
+                    <span class="control-value" id="displaceRatioVal">0.50</span>
+                </div>
+            </div>
+            <div class="control-group">
                 <label>Dim Others</label>
                 <div class="control-row">
                     <input type="range" id="nonHoveredOpacity" min="0" max="100" value="60">
@@ -320,6 +327,7 @@
             // Inflation system
             maxExpansion: 150,           // How much the hovered cell inflates (px in weighted Voronoi)
             expansionSpeed: 0.025,       // How fast cells inflate/deflate (0 = inert, 0.05 = fast)
+            displaceRatio: 0.5,          // 0 = pure shrink, 1 = pure displace, 0.5 = both
 
             // Visual transitions
             nonHoverImageZoom: 1.7,      // Non-hover image zoom level
@@ -386,8 +394,12 @@
         class Cell {
             constructor(x, y, index) {
                 this.index = index;
-                this.x = x;                // Cell center position (fixed)
+                this.baseX = x;            // Original position (for return spring)
+                this.baseY = y;
+                this.x = x;                // Current position (can be displaced)
                 this.y = y;
+                this.vx = 0;               // Velocity for displacement
+                this.vy = 0;
                 this.inflation = 0;        // Current inflation (makes polygon bigger)
                 this.targetInflation = 0;  // Target inflation (smoothly interpolated)
                 this.polygon = null;
@@ -406,8 +418,18 @@
 
             update(dt, isHovered) {
                 // Smooth inflation transition - ALL cells react at same speed to prevent overlap
-                // Neighbors must shrink as fast as hovered cell expands
                 this.inflation += (this.targetInflation - this.inflation) * config.expansionSpeed;
+
+                // Apply velocity and damping for displacement
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vx *= 0.85; // Damping
+                this.vy *= 0.85;
+
+                // Spring back to base position
+                const returnStrength = 0.03;
+                this.vx += (this.baseX - this.x) * returnStrength;
+                this.vy += (this.baseY - this.y) * returnStrength;
 
                 // Smooth zoom and opacity transitions
                 this.zoom += (this.targetZoom - this.zoom) * config.imageZoomSpeed;
@@ -1117,6 +1139,14 @@
                 expansionSpeedVal.textContent = config.expansionSpeed.toFixed(3);
             });
 
+            // Displace Ratio - 0 = pure shrink, 1 = pure displace
+            const displaceRatioEl = document.getElementById('displaceRatio');
+            const displaceRatioVal = document.getElementById('displaceRatioVal');
+            displaceRatioEl.addEventListener('input', () => {
+                config.displaceRatio = +displaceRatioEl.value / 100;
+                displaceRatioVal.textContent = config.displaceRatio.toFixed(2);
+            });
+
             // Non-Hovered Opacity
             const nonHoveredOpacityEl = document.getElementById('nonHoveredOpacity');
             const nonHoveredOpacityVal = document.getElementById('nonHoveredOpacityVal');
@@ -1235,20 +1265,42 @@
 
         // ========== PHYSICS ==========
         function updatePhysics(dt) {
-            // Simple inflation system: hovered cell inflates, others don't
-            // The weighted Voronoi handles the rest - neighbors naturally shrink
+            // Set target inflation
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
                 if (i === hoveredCell) {
-                    // Hovered cell inflates based on maxExpansion
                     cell.targetInflation = config.maxExpansion;
                 } else {
-                    // Non-hovered cells deflate back to normal
                     cell.targetInflation = 0;
                 }
             }
 
-            // Update cells (just smooth transitions, no forced movement)
+            // Apply displacement forces from hovered cell to neighbors
+            if (hoveredCell >= 0 && config.displaceRatio > 0) {
+                const hovered = cells[hoveredCell];
+                const pushStrength = config.displaceRatio * config.expansionSpeed * 15;
+
+                for (let i = 0; i < cells.length; i++) {
+                    if (i === hoveredCell) continue;
+                    const cell = cells[i];
+
+                    const dx = cell.x - hovered.x;
+                    const dy = cell.y - hovered.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 1) continue;
+
+                    // Push force based on hovered cell's inflation
+                    // Stronger when closer, proportional to inflation
+                    const influence = Math.max(0, 1 - dist / 400); // Falloff over 400px
+                    const force = hovered.inflation * pushStrength * influence / dist;
+
+                    cell.vx += dx * force;
+                    cell.vy += dy * force;
+                }
+            }
+
+            // Update all cells
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
                 cell.update(dt, i === hoveredCell);
