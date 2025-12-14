@@ -501,23 +501,16 @@
             }
         }
 
-        // ========== DYNAMIC WEIGHTED VORONOI ==========
-        // Cells expand by pushing neighbors - uses weighted/power Voronoi
-        // The perpendicular bisector shifts based on relative weights
+        // ========== FIXED VORONOI WITH VISUAL EXPANSION ==========
+        // Base Voronoi is computed ONCE and never changes
+        // Hover effect is purely visual: scale the cell from its center, draw on top
 
         function computeBaseVoronoi() {
-            // Compute initial Voronoi with all weights = 1
-            computeDynamicVoronoi();
-        }
-
-        // Compute Voronoi with current cell weights (scales)
-        // Uses weighted bisector shifting for smooth neighbor displacement
-        function computeDynamicVoronoi() {
             const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
             const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
             const buffer = config.bleedBuffer;
 
-            // Bounds for clipping
+            // Bounds for clipping - include buffer for edge cells
             const bounds = [
                 [-buffer, zoneTop - buffer],
                 [width + buffer, zoneTop - buffer],
@@ -525,50 +518,25 @@
                 [-buffer, zoneBottom + buffer]
             ];
 
+            // Standard Voronoi: all weights = 1, bisectors at midpoints
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
-
-                // Weighted Voronoi: boundary shifts toward the cell with smaller weight
                 let polygon = bounds.map(p => [...p]);
 
                 for (let j = 0; j < cells.length; j++) {
                     if (i === j) continue;
                     const other = cells[j];
 
-                    // Get weights (scale values) - higher scale = more territory
-                    const wi = cell.scale;
-                    const wj = other.scale;
-
-                    // Distance between cell centers
                     const dx = other.baseX - cell.baseX;
                     const dy = other.baseY - cell.baseY;
                     const dist = Math.sqrt(dx * dx + dy * dy);
-
                     if (dist < 0.001) continue;
 
-                    // Linear weight difference for more pronounced effect
-                    // When wi > wj, cell i gains territory (bisector moves toward j)
-                    const weightDiff = wi - wj;
+                    // Standard Voronoi: bisector at exact midpoint
+                    const midX = (cell.baseX + other.baseX) / 2;
+                    const midY = (cell.baseY + other.baseY) / 2;
 
-                    // Push strength: how much the bisector shifts per unit of weight difference
-                    // At displaceRatio=1 and maxExpansion=150, a fully expanded cell (scale ~1.5)
-                    // can push the bisector by up to ~40% of the distance to neighbors
-                    const pushFactor = config.maxExpansion * config.displaceRatio * 0.5;
-
-                    // Shift in pixels - proportional to weight difference
-                    const pixelShift = weightDiff * pushFactor;
-
-                    // Clamp to prevent extreme shifts (max 45% of distance)
-                    const maxShift = dist * 0.45;
-                    const clampedShift = Math.max(-maxShift, Math.min(maxShift, pixelShift));
-
-                    // Convert to parameter t: how far along the line from cell to other
-                    // t = 0.5 is midpoint, t > 0.5 means shifted toward 'other'
-                    const t = 0.5 + clampedShift / dist;
-                    const midX = cell.baseX + dx * t;
-                    const midY = cell.baseY + dy * t;
-
-                    // Normal points from other toward cell (keeps cell's side)
+                    // Normal points from other toward cell
                     const nx = cell.baseX - other.baseX;
                     const ny = cell.baseY - other.baseY;
 
@@ -576,14 +544,13 @@
                     if (polygon.length < 3) break;
                 }
 
-                cell.polygon = polygon.length >= 3 ? polygon : null;
-                cell.baseCentroid = getPolygonCentroid(cell.polygon);
-
-                // Also store as basePolygon for compatibility
-                if (Math.abs(cell.scale - 1.0) < 0.001) {
-                    cell.basePolygon = cell.polygon;
-                }
+                // Store as permanent base polygon
+                cell.basePolygon = polygon.length >= 3 ? polygon : null;
+                cell.baseCentroid = getPolygonCentroid(cell.basePolygon);
             }
+
+            // Initial display polygons
+            updateDisplayPolygons();
         }
 
         function clipPolygon(polygon, px, py, nx, ny) {
@@ -724,35 +691,48 @@
             return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
         }
 
-        // Update polygons: recompute dynamic Voronoi with current weights
-        // Then apply gap inset for visual spacing
+        // Update display polygons with visual scaling
+        // Base Voronoi never changes - only apply visual transformations
         function updateDisplayPolygons() {
             const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
             const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
             const gap = config.gap;
 
-            // Recompute Voronoi with current cell weights (scales)
-            computeDynamicVoronoi();
-
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
-                if (!cell.polygon || !cell.baseCentroid) continue;
+                if (!cell.basePolygon || !cell.baseCentroid) continue;
 
-                // Apply proper edge-based inset for uniform gaps
-                // Each cell insets by gap/2, so adjacent cells have gap total between them
-                const inset = insetPolygon(cell.polygon, gap / 2);
+                const cx = cell.baseCentroid.x;
+                const cy = cell.baseCentroid.y;
 
-                // Clip to bounds - smoothly expand based on animated scale
-                // Scale of 1.0 = no extra buffer, higher scale = proportionally more buffer
-                const scaleExtra = Math.max(0, cell.scale - 1.0);  // 0 when scale=1, positive when expanding
-                const bufferFraction = scaleExtra / (config.maxExpansion / 300);  // Normalize to 0-1
+                // Apply gap inset to base polygon
+                const inset = insetPolygon(cell.basePolygon, gap / 2);
+
+                // Visual scaling: expand polygon from centroid based on animated scale
+                // scale = 1.0 means no change, > 1.0 means visually larger
+                let scaled;
+                if (cell.scale > 1.001) {
+                    // Scale polygon vertices outward from centroid
+                    scaled = inset.map(p => {
+                        const dx = p[0] - cx;
+                        const dy = p[1] - cy;
+                        return [cx + dx * cell.scale, cy + dy * cell.scale];
+                    });
+                } else {
+                    scaled = inset;
+                }
+
+                // Clip to bounds - hovered cells can extend into buffer zone
+                const scaleExtra = Math.max(0, cell.scale - 1.0);
+                const bufferFraction = scaleExtra / (config.maxExpansion / 300);
                 const smoothBuffer = config.bleedBuffer * Math.min(1, bufferFraction);
                 const clipTop = zoneTop - smoothBuffer;
                 const clipBottom = zoneBottom + smoothBuffer;
-                const clipped = clipToRect(inset, 0, clipTop, width, clipBottom);
+                const clipped = clipToRect(scaled, 0, clipTop, width, clipBottom);
 
                 cell.displayPolygon = clipped;
-                cell.polygon = clipped;  // Also update for hit testing
+                // Keep base polygon for hit testing (not scaled polygon)
+                cell.polygon = insetPolygon(cell.basePolygon, gap / 2);
             }
         }
 
@@ -1395,12 +1375,12 @@
         function render() {
             ctx.clearRect(0, 0, width, height);
 
-            // Draw cells
-            for (let i = 0; i < cells.length; i++) {
+            // Helper to draw a single cell
+            function drawCell(i) {
                 const cell = cells[i];
                 const polygon = cell.displayPolygon;
 
-                if (!polygon || polygon.length < 3) continue;
+                if (!polygon || polygon.length < 3) return;
 
                 ctx.save();
 
@@ -1455,6 +1435,18 @@
                 }
                 ctx.stroke();
                 ctx.shadowBlur = 0;
+            }
+
+            // Draw non-hovered cells first
+            for (let i = 0; i < cells.length; i++) {
+                if (i !== hoveredCell) {
+                    drawCell(i);
+                }
+            }
+
+            // Draw hovered cell LAST (on top) so it can overlap neighbors
+            if (hoveredCell >= 0 && hoveredCell < cells.length) {
+                drawCell(hoveredCell);
             }
 
             // No mask - cells themselves define the boundary
