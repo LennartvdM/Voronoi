@@ -501,34 +501,22 @@
             }
         }
 
-        // ========== EDGE-BASED VORONOI PHYSICS ==========
-        // Edges are the fundamental unit - they're shared between cells
-        // When one cell expands, it pushes shared edges toward neighbors
-        // Polygons are reconstructed from edge intersections
+        // ========== TRUE EDGE-BASED VORONOI ==========
+        // Edges are LINES between cells (not clipped surfaces)
+        // Vertices are computed as intersections of edges
+        // This ensures consistent topology and shared boundaries
 
-        let voronoiEdges = [];  // Array of edges between cells
-
-        // Edge structure: { cellA, cellB, midX, midY, nx, ny, dist }
-        // cellA, cellB: indices of adjacent cells (-1 for boundary)
-        // midX, midY: base midpoint of the edge
-        // nx, ny: unit normal pointing from cellB toward cellA
-        // dist: distance between cell centers
+        let voronoiEdges = [];      // Edges between cell pairs
+        let cellEdgeMap = [];       // For each cell, list of edge indices + neighbor info
 
         function computeBaseVoronoi() {
             const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
             const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
             const buffer = config.bleedBuffer;
 
-            // First, compute standard Voronoi to get base polygons and find adjacencies
-            const bounds = [
-                [-buffer, zoneTop - buffer],
-                [width + buffer, zoneTop - buffer],
-                [width + buffer, zoneBottom + buffer],
-                [-buffer, zoneBottom + buffer]
-            ];
-
             // Build edges between all cell pairs
             voronoiEdges = [];
+            cellEdgeMap = cells.map(() => []);
 
             for (let i = 0; i < cells.length; i++) {
                 for (let j = i + 1; j < cells.length; j++) {
@@ -538,14 +526,19 @@
                     const dx = cellB.baseX - cellA.baseX;
                     const dy = cellB.baseY - cellA.baseY;
                     const dist = Math.sqrt(dx * dx + dy * dy);
-
                     if (dist < 0.001) continue;
 
-                    // Edge midpoint and normal
+                    const edgeIdx = voronoiEdges.length;
+
+                    // Edge as a LINE: point on line (midpoint) + direction (perpendicular to cell-cell line)
                     const midX = (cellA.baseX + cellB.baseX) / 2;
                     const midY = (cellA.baseY + cellB.baseY) / 2;
 
-                    // Normal points from B toward A (so positive shift benefits A)
+                    // Edge direction (along the edge, perpendicular to cell-cell)
+                    const edgeDirX = -dy / dist;
+                    const edgeDirY = dx / dist;
+
+                    // Normal pointing from B toward A
                     const nx = -dx / dist;
                     const ny = -dy / dist;
 
@@ -553,13 +546,34 @@
                         cellA: i,
                         cellB: j,
                         midX, midY,
+                        dirX: edgeDirX,
+                        dirY: edgeDirY,
                         nx, ny,
                         dist
                     });
+
+                    // Map edges to cells with angle for sorting
+                    const angleFromA = Math.atan2(cellB.baseY - cellA.baseY, cellB.baseX - cellA.baseX);
+                    const angleFromB = Math.atan2(cellA.baseY - cellB.baseY, cellA.baseX - cellB.baseX);
+
+                    cellEdgeMap[i].push({ edgeIdx, neighborIdx: j, angle: angleFromA, side: 'A' });
+                    cellEdgeMap[j].push({ edgeIdx, neighborIdx: i, angle: angleFromB, side: 'B' });
                 }
             }
 
-            // Compute base polygons using standard Voronoi
+            // Sort each cell's edges by angle (counter-clockwise order)
+            for (let i = 0; i < cells.length; i++) {
+                cellEdgeMap[i].sort((a, b) => a.angle - b.angle);
+            }
+
+            // Compute base polygons for centroid reference
+            const bounds = [
+                [-buffer, zoneTop - buffer],
+                [width + buffer, zoneTop - buffer],
+                [width + buffer, zoneBottom + buffer],
+                [-buffer, zoneBottom + buffer]
+            ];
+
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
                 let polygon = bounds.map(p => [...p]);
@@ -567,7 +581,6 @@
                 for (let j = 0; j < cells.length; j++) {
                     if (i === j) continue;
                     const other = cells[j];
-
                     const dx = other.baseX - cell.baseX;
                     const dy = other.baseY - cell.baseY;
                     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -589,97 +602,136 @@
             updateDisplayPolygons();
         }
 
-        // Rebuild polygons based on current edge positions (affected by cell scales)
+        // Compute shifted edge as a LINE (point + direction)
+        function getShiftedEdge(edge, shift) {
+            return {
+                // Point on the shifted line
+                px: edge.midX + edge.nx * shift,
+                py: edge.midY + edge.ny * shift,
+                // Direction along the edge (unchanged)
+                dx: edge.dirX,
+                dy: edge.dirY,
+                // Normal (unchanged)
+                nx: edge.nx,
+                ny: edge.ny
+            };
+        }
+
+        // Intersect two lines, each defined by point (px,py) and direction (dx,dy)
+        function intersectLines(line1, line2) {
+            const denom = line1.dx * line2.dy - line1.dy * line2.dx;
+            if (Math.abs(denom) < 0.0001) return null; // Parallel
+
+            const t = ((line2.px - line1.px) * line2.dy - (line2.py - line1.py) * line2.dx) / denom;
+            return [line1.px + t * line1.dx, line1.py + t * line1.dy];
+        }
+
+        // Rebuild polygons from edges (true edge-based)
         function updateDisplayPolygons() {
             const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
             const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
             const buffer = config.bleedBuffer;
             const gap = config.gap;
 
-            // Compute edge shifts based on cell scales
-            // displaceRatio controls how much edges move vs visual-only scaling
-            const edgeShifts = voronoiEdges.map(edge => {
+            // Boundary lines (container edges)
+            const boundaryLines = [
+                { px: -buffer, py: 0, dx: 0, dy: 1, nx: 1, ny: 0 },           // Left
+                { px: width + buffer, py: 0, dx: 0, dy: 1, nx: -1, ny: 0 },   // Right
+                { px: 0, py: zoneTop - buffer, dx: 1, dy: 0, nx: 0, ny: 1 },  // Top
+                { px: 0, py: zoneBottom + buffer, dx: 1, dy: 0, nx: 0, ny: -1 } // Bottom
+            ];
+
+            // Compute shifted edges
+            const shiftedEdges = voronoiEdges.map(edge => {
                 const scaleA = cells[edge.cellA].scale;
                 const scaleB = cells[edge.cellB].scale;
-
-                // Weight difference determines edge shift
-                // Positive = edge moves toward B (A gains territory)
                 const weightDiff = scaleA - scaleB;
 
-                // Push strength based on config
                 const pushFactor = config.maxExpansion * config.displaceRatio * 0.5;
                 let shift = weightDiff * pushFactor;
-
-                // Clamp shift to prevent edges crossing cell centers
                 const maxShift = edge.dist * 0.4;
                 shift = Math.max(-maxShift, Math.min(maxShift, shift));
 
-                return {
-                    ...edge,
-                    // Shifted edge position
-                    shiftedMidX: edge.midX + edge.nx * shift,
-                    shiftedMidY: edge.midY + edge.ny * shift,
-                    shift
-                };
+                return getShiftedEdge(edge, shift);
             });
 
-            // Bounds for clipping
-            const bounds = [
-                [-buffer, zoneTop - buffer],
-                [width + buffer, zoneTop - buffer],
-                [width + buffer, zoneBottom + buffer],
-                [-buffer, zoneBottom + buffer]
-            ];
-
-            // Rebuild each cell's polygon using shifted edges
+            // Build polygon for each cell
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
-                let polygon = bounds.map(p => [...p]);
+                const cellCenter = { x: cell.baseX, y: cell.baseY };
 
-                // Clip against all shifted edges involving this cell
-                for (const edge of edgeShifts) {
-                    let isMyEdge = false;
-                    let normalSign = 1;
+                // Collect all lines bounding this cell (cell edges + boundaries)
+                const boundingLines = [];
 
-                    if (edge.cellA === i) {
-                        isMyEdge = true;
-                        normalSign = 1;  // Normal points toward us
-                    } else if (edge.cellB === i) {
-                        isMyEdge = true;
-                        normalSign = -1;  // Normal points away, flip it
-                    }
-
-                    if (!isMyEdge) continue;
-
-                    // Clip polygon against this edge
-                    const nx = edge.nx * normalSign;
-                    const ny = edge.ny * normalSign;
-
-                    polygon = clipPolygon(polygon, edge.shiftedMidX, edge.shiftedMidY, nx, ny);
-                    if (polygon.length < 3) break;
+                // Add cell-cell edges
+                for (const edgeInfo of cellEdgeMap[i]) {
+                    const shifted = shiftedEdges[edgeInfo.edgeIdx];
+                    // Flip normal if we're on the B side
+                    const sign = edgeInfo.side === 'A' ? 1 : -1;
+                    boundingLines.push({
+                        px: shifted.px,
+                        py: shifted.py,
+                        dx: shifted.dx,
+                        dy: shifted.dy,
+                        nx: shifted.nx * sign,
+                        ny: shifted.ny * sign,
+                        angle: edgeInfo.angle,
+                        isBoundary: false
+                    });
                 }
 
-                if (polygon.length < 3) {
+                // Add boundary lines with angles from cell center
+                for (const bl of boundaryLines) {
+                    // Check if this boundary is relevant (cell center is on the inside)
+                    const dot = (cellCenter.x - bl.px) * bl.nx + (cellCenter.y - bl.py) * bl.ny;
+                    if (dot > 0) {
+                        // Compute angle from cell center to boundary
+                        const toBoundaryX = bl.px - cellCenter.x;
+                        const toBoundaryY = bl.py - cellCenter.y;
+                        const angle = Math.atan2(toBoundaryY, toBoundaryX);
+                        boundingLines.push({
+                            ...bl,
+                            angle,
+                            isBoundary: true
+                        });
+                    }
+                }
+
+                // Sort all lines by angle
+                boundingLines.sort((a, b) => a.angle - b.angle);
+
+                // Compute vertices as intersections of consecutive lines
+                const vertices = [];
+                const n = boundingLines.length;
+
+                for (let j = 0; j < n; j++) {
+                    const line1 = boundingLines[j];
+                    const line2 = boundingLines[(j + 1) % n];
+
+                    const vertex = intersectLines(line1, line2);
+                    if (vertex) {
+                        vertices.push(vertex);
+                    }
+                }
+
+                if (vertices.length < 3) {
                     cell.polygon = cell.basePolygon;
                     cell.displayPolygon = cell.basePolygon;
                     continue;
                 }
 
-                // Store the physics polygon (for hit testing)
-                cell.polygon = polygon;
-                cell.baseCentroid = getPolygonCentroid(polygon);
+                // Store the physics polygon
+                cell.polygon = vertices;
+                cell.baseCentroid = getPolygonCentroid(vertices);
 
-                // Apply gap inset for display
-                const inset = insetPolygon(polygon, gap / 2);
+                // Apply gap inset
+                const inset = insetPolygon(vertices, gap / 2);
 
-                // For expanding cells: extend into buffer zone by expanding clip bounds
-                // NO centroid-based scaling - this keeps edge angles clean (no muffin top)
-                // The cell's edges at the boundary naturally extend as bounds expand
+                // Clip to expanded bounds for hovered cells
                 const scaleExtra = Math.max(0, cell.scale - 1.0);
                 const bufferFraction = scaleExtra / (config.maxExpansion / 300);
                 const smoothBuffer = buffer * Math.min(1, bufferFraction);
 
-                // Expanded bounds for hovered cell
                 const clipTop = zoneTop - smoothBuffer;
                 const clipBottom = zoneBottom + smoothBuffer;
                 const clipLeft = -smoothBuffer;
