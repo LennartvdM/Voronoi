@@ -855,8 +855,8 @@
             resultArea = Math.abs(resultArea);
             const origArea = Math.abs(signedArea);
 
-            // If result is larger than original, something went wrong
-            if (resultArea > origArea || resultArea < 100) return polygon;
+            // If result is larger than original or collapsed to nothing, return original
+            if (resultArea > origArea * 1.1 || resultArea < 1) return polygon;
 
             return result;
         }
