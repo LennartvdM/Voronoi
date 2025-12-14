@@ -250,8 +250,8 @@
             <div class="control-group">
                 <label>Speed</label>
                 <div class="control-row">
-                    <input type="range" id="expansionSpeed" min="0" max="100" value="63">
-                    <span class="control-value" id="expansionSpeedVal">0.12</span>
+                    <input type="range" id="expansionSpeed" min="0" max="100" value="50">
+                    <span class="control-value" id="expansionSpeedVal">0.025</span>
                 </div>
             </div>
             <div class="control-group">
@@ -319,7 +319,7 @@
 
             // Inflation system
             maxExpansion: 150,           // How much the hovered cell inflates (px in weighted Voronoi)
-            expansionSpeed: 0.12,        // How fast cells inflate/deflate (0.01 = very slow, 0.3 = fast)
+            expansionSpeed: 0.025,       // How fast cells inflate/deflate (0 = inert, 0.05 = fast)
 
             // Visual transitions
             nonHoverImageZoom: 1.7,      // Non-hover image zoom level
@@ -508,26 +508,21 @@
                 const gapped = applyGap(cell.polygon, config.gap);
                 const newDisplayPolygon = simplifyPolygon(gapped);
 
-                // Smooth polygon transitions - speed tied to expansionSpeed
+                // Smooth polygon transitions - ALL cells at SAME speed to prevent overlap
                 // When expansionSpeed is 0, no transition happens (inert)
-                if (cell.displayPolygon && cell.displayPolygon.length === newDisplayPolygon.length) {
-                    // Base speed scales with expansionSpeed, hovered is faster than neighbors
-                    const baseSpeed = config.expansionSpeed * 2; // Scale up for visible response
-                    const speed = isHovered ? Math.max(baseSpeed, 0.01) : baseSpeed * 0.3;
+                const speed = config.expansionSpeed;
 
-                    if (speed > 0.001) {
+                if (cell.displayPolygon && cell.displayPolygon.length === newDisplayPolygon.length) {
+                    if (speed > 0.0001) {
                         for (let v = 0; v < newDisplayPolygon.length; v++) {
                             cell.displayPolygon[v][0] += (newDisplayPolygon[v][0] - cell.displayPolygon[v][0]) * speed;
                             cell.displayPolygon[v][1] += (newDisplayPolygon[v][1] - cell.displayPolygon[v][1]) * speed;
                         }
                     }
-                    // If speed ≈ 0, don't update displayPolygon - stays frozen
+                    // If speed ≈ 0, displayPolygon stays frozen
                 } else {
-                    // Topology change - only apply if there's actual expansion happening
-                    if (config.expansionSpeed > 0.001) {
-                        cell.displayPolygon = newDisplayPolygon;
-                    } else if (!cell.displayPolygon) {
-                        // Initial assignment
+                    // Topology change - only apply if speed > 0
+                    if (speed > 0.0001 || !cell.displayPolygon) {
                         cell.displayPolygon = newDisplayPolygon;
                     }
                 }
@@ -1112,16 +1107,14 @@
                 maxExpansionVal.textContent = config.maxExpansion;
             });
 
-            // Expansion Speed - power curve for high fidelity at low end
-            // 0 = 0 (no expansion), 100 = 0.3 (very fast)
-            // Using quadratic: speed = (value/100)^2 * 0.3
+            // Expansion Speed - linear with much smaller range for fine control
+            // 0 = 0 (inert), 100 = 0.05 (fast but not instant)
             const expansionSpeedEl = document.getElementById('expansionSpeed');
             const expansionSpeedVal = document.getElementById('expansionSpeedVal');
             expansionSpeedEl.addEventListener('input', () => {
-                const normalized = +expansionSpeedEl.value / 100;
-                // Quadratic curve: more control at low values
-                config.expansionSpeed = normalized * normalized * 0.3;
-                expansionSpeedVal.textContent = config.expansionSpeed.toFixed(2);
+                // Linear: 0-100 maps to 0-0.05
+                config.expansionSpeed = +expansionSpeedEl.value / 2000;
+                expansionSpeedVal.textContent = config.expansionSpeed.toFixed(3);
             });
 
             // Non-Hovered Opacity
