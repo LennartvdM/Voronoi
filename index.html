@@ -310,7 +310,7 @@
             <div class="control-group">
                 <label>Zone Angle</label>
                 <div class="control-row">
-                    <input type="range" id="contentZoneRotation" min="0" max="360" value="0" step="5">
+                    <input type="range" id="contentZoneRotation" min="0" max="315" value="0" step="45">
                     <span class="control-value" id="contentZoneRotationVal">0°</span>
                 </div>
             </div>
@@ -562,34 +562,48 @@
         let cellEdgeMap = [];       // For each cell, list of edge indices + neighbor info
 
         // Helper to compute rotated zone bounds
-        // The zone is a "band" that can rotate 360°
-        // - Length: auto-calculated to cover screen diagonal (corner to corner)
-        // - Thickness: controlled by margin parameter
+        // The zone is a "band" that can rotate in 45° increments
+        // Uses 8 discrete rulesets for reliable clipping at each angle
         // Returns { bounds: [[x,y],...], clipPlanes: [{px,py,nx,ny},...], cellBounds: {xMin,xMax,yMin,yMax} }
         function getZoneBounds(includeBuffer = false) {
             const margin = config.contentZoneEnabled ? config.contentZoneMargin : 0;
-            const rotation = config.contentZoneRotation * Math.PI / 180;
             const buffer = includeBuffer ? config.bleedBuffer : 0;
 
             const cx = width / 2;
             const cy = height / 2;
 
+            // Snap to nearest 45° for discrete rulesets
+            const rawAngle = config.contentZoneRotation;
+            const snappedAngle = Math.round(rawAngle / 45) * 45 % 360;
+            const rotation = snappedAngle * Math.PI / 180;
+
             const cos = Math.cos(rotation);
             const sin = Math.sin(rotation);
 
-            // Band length: must cover screen diagonal so band always fills screen
+            // Band length: screen diagonal ensures full coverage at any angle
             const diagonal = Math.sqrt(width * width + height * height);
             const halfLength = diagonal / 2 + buffer;
 
-            // Band thickness: based on the dimension perpendicular to the band
-            // At 0° (horizontal band): thickness based on height
-            // At 90° (vertical band): thickness based on width
-            // At 45°: blend of both
-            const effectiveSize = Math.abs(cos) * height + Math.abs(sin) * width;
+            // Band thickness depends on angle sector
+            // 0°/180°: use height, 90°/270°: use width, 45°/135°/225°/315°: use diagonal blend
+            let effectiveSize;
+            const normalizedAngle = ((snappedAngle % 180) + 180) % 180; // 0-179
+
+            if (normalizedAngle === 0) {
+                // Horizontal band
+                effectiveSize = height;
+            } else if (normalizedAngle === 90) {
+                // Vertical band
+                effectiveSize = width;
+            } else {
+                // Diagonal bands (45°, 135°)
+                // For diagonals, use the smaller dimension to maintain reasonable thickness
+                effectiveSize = Math.min(width, height) * 1.2;
+            }
+
             const halfThickness = (effectiveSize / 2) * (1 - margin) + buffer;
 
             // Create band rectangle in local coords (length along X, thickness along Y)
-            // Then rotate around center
             const localCorners = [
                 [-halfLength, -halfThickness],
                 [halfLength, -halfThickness],
@@ -603,9 +617,13 @@
                 cy + lx * sin + ly * cos
             ]);
 
-            // Clip planes with inward-facing normals
-            // For a CCW wound polygon, inward normal is perpendicular to edge, pointing right
+            // Build clip planes with correct inward normals for each edge
+            // Edge order: top, right, bottom, left (in rotated space)
+            // Normals must point INTO the rectangle
             const clipPlanes = [];
+
+            // For each edge, compute the inward-pointing normal
+            // The rectangle winds CW in screen coords, so inward is to the LEFT of edge direction
             for (let i = 0; i < 4; i++) {
                 const p1 = corners[i];
                 const p2 = corners[(i + 1) % 4];
@@ -614,18 +632,29 @@
                 const len = Math.sqrt(ex * ex + ey * ey);
                 if (len < 0.001) continue;
 
-                // Inward normal (perpendicular, pointing into polygon)
-                // For CCW winding, this is (-ey, ex) normalized
-                clipPlanes.push({
-                    px: (p1[0] + p2[0]) / 2,
-                    py: (p1[1] + p2[1]) / 2,
-                    nx: -ey / len,
-                    ny: ex / len
-                });
+                // For CW winding, inward normal is (ey, -ex) / len
+                // For CCW winding, inward normal is (-ey, ex) / len
+                // Our corners are defined CCW in local space, but screen Y is inverted...
+                // Let's verify by checking if center is on positive side
+                const midX = (p1[0] + p2[0]) / 2;
+                const midY = (p1[1] + p2[1]) / 2;
+
+                // Try one normal direction
+                let nx = -ey / len;
+                let ny = ex / len;
+
+                // Check if center is on positive side (inside)
+                const centerDist = (cx - midX) * nx + (cy - midY) * ny;
+                if (centerDist < 0) {
+                    // Wrong direction, flip it
+                    nx = -nx;
+                    ny = -ny;
+                }
+
+                clipPlanes.push({ px: midX, py: midY, nx, ny });
             }
 
-            // Cell generation bounds: axis-aligned bounding box of the zone, shrunk inward
-            // Find min/max of corners
+            // Cell generation bounds - shrink from zone for seed placement
             let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
             for (const [x, y] of corners) {
                 minX = Math.min(minX, x);
@@ -634,15 +663,14 @@
                 maxY = Math.max(maxY, y);
             }
 
-            // Constrain to screen and add inner margin for cell placement
             const cellBounds = {
-                xMin: Math.max(40, minX + 40),
-                xMax: Math.min(width - 40, maxX - 40),
-                yMin: Math.max(40, minY + 40),
-                yMax: Math.min(height - 40, maxY - 40)
+                xMin: Math.max(40, minX + 60),
+                xMax: Math.min(width - 40, maxX - 60),
+                yMin: Math.max(40, minY + 60),
+                yMax: Math.min(height - 40, maxY - 60)
             };
 
-            return { bounds: corners, clipPlanes, cellBounds };
+            return { bounds: corners, clipPlanes, cellBounds, snappedAngle };
         }
 
         function computeBaseVoronoi() {
@@ -1823,7 +1851,7 @@
                     ctx.fillStyle = 'rgba(255, 150, 50, 1)';
                     ctx.fillText('BUFFER EDGE (orange)', 10, 20);
                     ctx.fillStyle = 'rgba(100, 255, 100, 1)';
-                    ctx.fillText('CONTENT ZONE (green) - Angle: ' + config.contentZoneRotation + '°', 10, 40);
+                    ctx.fillText('CONTENT ZONE (green) - Angle: ' + zone.snappedAngle + '° (snapped from ' + config.contentZoneRotation + '°)', 10, 40);
                 }
 
                 // Draw cell debug info
