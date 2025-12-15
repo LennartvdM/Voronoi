@@ -301,17 +301,17 @@
 
             <!-- Content Zone -->
             <div class="control-group">
-                <label>Zone Top</label>
+                <label>Zone Margin</label>
                 <div class="control-row">
-                    <input type="range" id="contentZoneTop" min="0" max="40" value="15">
-                    <span class="control-value" id="contentZoneTopVal">15%</span>
+                    <input type="range" id="contentZoneMargin" min="0" max="40" value="15">
+                    <span class="control-value" id="contentZoneMarginVal">15%</span>
                 </div>
             </div>
             <div class="control-group">
-                <label>Zone Bottom</label>
+                <label>Zone Angle</label>
                 <div class="control-row">
-                    <input type="range" id="contentZoneBottom" min="0" max="40" value="15">
-                    <span class="control-value" id="contentZoneBottomVal">15%</span>
+                    <input type="range" id="contentZoneRotation" min="0" max="90" value="0" step="15">
+                    <span class="control-value" id="contentZoneRotationVal">0°</span>
                 </div>
             </div>
             <div class="control-group hide-tablet">
@@ -364,8 +364,8 @@
 
             // Content zone / soft boundary
             contentZoneEnabled: true,    // Enable/disable content zone
-            contentZoneTop: 0.15,        // Top margin as fraction of height
-            contentZoneBottom: 0.15,     // Bottom margin as fraction of height
+            contentZoneMargin: 0.15,     // Margin as fraction of zone dimension
+            contentZoneRotation: 0,      // Rotation in degrees (0 = horizontal, 90 = vertical)
             bleedBuffer: 158             // Pixel buffer beyond content zone (how far hovered cell can extend)
         };
 
@@ -561,9 +561,74 @@
         let voronoiEdges = [];      // Edges between cell pairs
         let cellEdgeMap = [];       // For each cell, list of edge indices + neighbor info
 
+        // Helper to compute rotated zone bounds
+        // Returns { bounds: [[x,y],...], clipPlanes: [{px,py,nx,ny},...], cellBounds: {xMin,xMax,yMin,yMax} }
+        function getZoneBounds(includeBuffer = false) {
+            const margin = config.contentZoneEnabled ? config.contentZoneMargin : 0;
+            const rotation = config.contentZoneRotation * Math.PI / 180;
+            const buffer = includeBuffer ? config.bleedBuffer : 0;
+
+            const cx = width / 2;
+            const cy = height / 2;
+
+            // Calculate zone dimensions based on rotation
+            // At 0°: margins on top/bottom
+            // At 90°: margins on left/right
+            // In between: interpolate
+            const cos = Math.cos(rotation);
+            const sin = Math.sin(rotation);
+
+            // The "margin axis" rotates with the angle
+            // margin applies perpendicular to the main axis
+            const marginH = margin * height * Math.abs(cos) + margin * width * Math.abs(sin);
+            const marginW = margin * width * Math.abs(sin) + margin * height * Math.abs(cos);
+
+            // For cell generation bounds (axis-aligned approximation)
+            const cellBounds = {
+                xMin: marginW + 40,
+                xMax: width - marginW - 40,
+                yMin: marginH + 40,
+                yMax: height - marginH - 40
+            };
+
+            // Create rotated rectangle for clipping
+            // Half-dimensions of the zone
+            const hw = (width / 2) - margin * width * Math.abs(sin) + buffer;
+            const hh = (height / 2) - margin * height * Math.abs(cos) + buffer;
+
+            // Four corners of rotated rectangle
+            const corners = [
+                [-hw, -hh],
+                [hw, -hh],
+                [hw, hh],
+                [-hw, hh]
+            ].map(([x, y]) => [
+                cx + x * cos - y * sin,
+                cy + x * sin + y * cos
+            ]);
+
+            // Clip planes (inward-facing normals)
+            const clipPlanes = [];
+            for (let i = 0; i < 4; i++) {
+                const p1 = corners[i];
+                const p2 = corners[(i + 1) % 4];
+                const ex = p2[0] - p1[0];
+                const ey = p2[1] - p1[1];
+                const len = Math.sqrt(ex * ex + ey * ey);
+                // Inward normal (right-hand rule for CCW)
+                clipPlanes.push({
+                    px: (p1[0] + p2[0]) / 2,
+                    py: (p1[1] + p2[1]) / 2,
+                    nx: -ey / len,
+                    ny: ex / len
+                });
+            }
+
+            return { bounds: corners, clipPlanes, cellBounds };
+        }
+
         function computeBaseVoronoi() {
-            const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
-            const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
+            const zone = getZoneBounds(true);
             const buffer = config.bleedBuffer;
 
             // Build edges between all cell pairs
@@ -619,16 +684,10 @@
             }
 
             // Compute base polygons for centroid reference
-            const bounds = [
-                [-buffer, zoneTop - buffer],
-                [width + buffer, zoneTop - buffer],
-                [width + buffer, zoneBottom + buffer],
-                [-buffer, zoneBottom + buffer]
-            ];
-
+            // Use rotated zone bounds
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
-                let polygon = bounds.map(p => [...p]);
+                let polygon = zone.bounds.map(p => [...p]);
 
                 for (let j = 0; j < cells.length; j++) {
                     if (i === j) continue;
@@ -681,9 +740,8 @@
         // Display polygons with neighbor displacement via seed movement
         // Moving seeds recomputes Voronoi naturally while maintaining perfect tessellation
         function updateDisplayPolygons() {
-            const zoneTop = config.contentZoneEnabled ? height * config.contentZoneTop : 0;
-            const zoneBottom = config.contentZoneEnabled ? height * (1 - config.contentZoneBottom) : height;
-            const buffer = config.bleedBuffer;
+            const zone = getZoneBounds(false);
+            const zoneWithBuffer = getZoneBounds(true);
             const gap = config.gap;
 
             // Compute TARGET displaced positions based on hovered cell
@@ -731,13 +789,8 @@
                 const cell = cells[i];
                 const seed = displacedSeeds[i];
 
-                // Start with bounding box
-                let polygon = [
-                    [-buffer, zoneTop - buffer],
-                    [width + buffer, zoneTop - buffer],
-                    [width + buffer, zoneBottom + buffer],
-                    [-buffer, zoneBottom + buffer]
-                ];
+                // Start with rotated zone bounds (with buffer)
+                let polygon = zoneWithBuffer.bounds.map(p => [...p]);
 
                 // Clip against bisector with each other cell (using displaced seeds)
                 for (let j = 0; j < cells.length; j++) {
@@ -811,20 +864,20 @@
                 // This prevents hover fighting when polygons shift
                 cell.polygon = cell.basePolygon;
 
-                // Clip to display bounds (any cell with scale > 1 extends into buffer)
+                // Clip to display bounds using rotated zone clip planes
+                // Expanding cells get extra buffer
                 const scaleExtra = Math.max(0, cell.scale - 1.0);
-                const bufferFraction = scaleExtra / (config.maxExpansion / 300);
-                const smoothBuffer = scaleExtra > 0.01 ? buffer * Math.min(1, bufferFraction) : 0;
+                const useBuffer = scaleExtra > 0.01;
+                const clipZone = useBuffer ? zoneWithBuffer : zone;
 
-                const clipTop = zoneTop - smoothBuffer;
-                const clipBottom = zoneBottom + smoothBuffer;
-                const clipLeft = -smoothBuffer;
-                const clipRight = width + smoothBuffer;
-
-                const clipped = clipToRect(polygon, clipLeft, clipTop, clipRight, clipBottom);
+                let clipped = polygon;
+                for (const plane of clipZone.clipPlanes) {
+                    clipped = clipPolygon(clipped, plane.px, plane.py, plane.nx, plane.ny);
+                    if (clipped.length < 3) break;
+                }
 
                 // Apply uniform gap inset
-                cell.displayPolygon = gap > 0 ? insetPolygon(clipped, gap / 2) : clipped;
+                cell.displayPolygon = gap > 0 && clipped.length >= 3 ? insetPolygon(clipped, gap / 2) : clipped;
             }
         }
 
@@ -1183,36 +1236,43 @@
 
         function generateCells() {
             cells = [];
-            const margin = 80;
 
-            // Calculate vertical bounds based on content zone
-            let yMin, yMax;
-            const zoneTop = height * config.contentZoneTop;
-            const zoneBottom = height * (1 - config.contentZoneBottom);
+            // Get zone bounds for cell placement
+            const zone = getZoneBounds(false);
+            const bounds = zone.cellBounds;
 
-            if (config.contentZoneEnabled) {
-                yMin = zoneTop + margin / 2;
-                yMax = zoneBottom - margin / 2;
-                // Ensure valid range
-                if (yMax <= yMin) {
-                    yMin = margin;
-                    yMax = height - margin;
-                }
-            } else {
-                yMin = margin;
-                yMax = height - margin;
-            }
+            // Ensure valid bounds
+            const xMin = Math.max(40, bounds.xMin);
+            const xMax = Math.min(width - 40, bounds.xMax);
+            const yMin = Math.max(40, bounds.yMin);
+            const yMax = Math.min(height - 40, bounds.yMax);
 
-            const contentHeight = yMax - yMin;
-            const minDist = Math.sqrt((width * contentHeight) / config.cellCount) * 0.6;
+            const contentWidth = Math.max(100, xMax - xMin);
+            const contentHeight = Math.max(100, yMax - yMin);
+            const minDist = Math.sqrt((contentWidth * contentHeight) / config.cellCount) * 0.6;
 
             const points = [];
             let attempts = 0;
 
-            // Generate visible cell positions
+            // Generate cell positions within rotated zone
             while (points.length < config.cellCount && attempts < 2000) {
-                const x = margin + Math.random() * (width - 2 * margin);
-                const y = yMin + Math.random() * (yMax - yMin);
+                const x = xMin + Math.random() * contentWidth;
+                const y = yMin + Math.random() * contentHeight;
+
+                // Check if point is inside the rotated zone
+                let insideZone = true;
+                for (const plane of zone.clipPlanes) {
+                    const dist = (x - plane.px) * plane.nx + (y - plane.py) * plane.ny;
+                    if (dist < -20) { // 20px margin from edge
+                        insideZone = false;
+                        break;
+                    }
+                }
+
+                if (!insideZone) {
+                    attempts++;
+                    continue;
+                }
 
                 let valid = true;
                 for (const p of points) {
@@ -1227,11 +1287,11 @@
                 attempts++;
             }
 
+            // Fill remaining with random positions if needed
             while (points.length < config.cellCount) {
-                points.push([
-                    margin + Math.random() * (width - 2 * margin),
-                    yMin + Math.random() * (yMax - yMin)
-                ]);
+                const x = xMin + Math.random() * contentWidth;
+                const y = yMin + Math.random() * contentHeight;
+                points.push([x, y]);
             }
 
             // Create visible cells
@@ -1520,21 +1580,23 @@
             });
 
             // Content Zone Controls
-            const contentZoneTopEl = document.getElementById('contentZoneTop');
-            const contentZoneTopVal = document.getElementById('contentZoneTopVal');
-            contentZoneTopEl.addEventListener('input', () => {
-                config.contentZoneTop = +contentZoneTopEl.value / 100;
-                contentZoneTopVal.textContent = contentZoneTopEl.value + '%';
+            // Zone Margin
+            const contentZoneMarginEl = document.getElementById('contentZoneMargin');
+            const contentZoneMarginVal = document.getElementById('contentZoneMarginVal');
+            contentZoneMarginEl.addEventListener('input', () => {
+                config.contentZoneMargin = +contentZoneMarginEl.value / 100;
+                contentZoneMarginVal.textContent = contentZoneMarginEl.value + '%';
             });
-            contentZoneTopEl.addEventListener('change', generateCells);
+            contentZoneMarginEl.addEventListener('change', generateCells);
 
-            const contentZoneBottomEl = document.getElementById('contentZoneBottom');
-            const contentZoneBottomVal = document.getElementById('contentZoneBottomVal');
-            contentZoneBottomEl.addEventListener('input', () => {
-                config.contentZoneBottom = +contentZoneBottomEl.value / 100;
-                contentZoneBottomVal.textContent = contentZoneBottomEl.value + '%';
+            // Zone Rotation
+            const contentZoneRotationEl = document.getElementById('contentZoneRotation');
+            const contentZoneRotationVal = document.getElementById('contentZoneRotationVal');
+            contentZoneRotationEl.addEventListener('input', () => {
+                config.contentZoneRotation = +contentZoneRotationEl.value;
+                contentZoneRotationVal.textContent = config.contentZoneRotation + '°';
             });
-            contentZoneBottomEl.addEventListener('change', generateCells);
+            contentZoneRotationEl.addEventListener('change', generateCells);
 
             const bleedBufferEl = document.getElementById('bleedBuffer');
             const bleedBufferVal = document.getElementById('bleedBufferVal');
@@ -1710,53 +1772,40 @@
             // Debug mode
             if (config.debugMode) {
                 if (config.contentZoneEnabled) {
-                    const zoneTop = height * config.contentZoneTop;
-                    const zoneBottom = height * (1 - config.contentZoneBottom);
-                    const buffer = config.bleedBuffer;
-                    const hardTop = zoneTop - buffer;
-                    const hardBottom = zoneBottom + buffer;
+                    const zone = getZoneBounds(false);
+                    const zoneWithBuffer = getZoneBounds(true);
 
-                    // Fill the margin areas with visible debug color
-                    ctx.fillStyle = 'rgba(80, 40, 100, 0.5)'; // Purple tint for margin areas
-                    ctx.fillRect(0, 0, width, hardTop);
-                    ctx.fillRect(0, hardBottom, width, height - hardBottom);
-
-                    // Fill the buffer zone with different color
-                    ctx.fillStyle = 'rgba(100, 60, 40, 0.4)'; // Brown tint for buffer zone
-                    ctx.fillRect(0, hardTop, width, zoneTop - hardTop);
-                    ctx.fillRect(0, zoneBottom, width, hardBottom - zoneBottom);
-
-                    // SOLID LINE = Hard container (buffer edge - absolute limit)
+                    // Draw buffer zone (outer boundary)
                     ctx.strokeStyle = 'rgba(255, 150, 50, 1)';
                     ctx.lineWidth = 3;
                     ctx.setLineDash([]);
                     ctx.beginPath();
-                    ctx.moveTo(0, hardTop);
-                    ctx.lineTo(width, hardTop);
-                    ctx.moveTo(0, hardBottom);
-                    ctx.lineTo(width, hardBottom);
+                    ctx.moveTo(zoneWithBuffer.bounds[0][0], zoneWithBuffer.bounds[0][1]);
+                    for (let i = 1; i < zoneWithBuffer.bounds.length; i++) {
+                        ctx.lineTo(zoneWithBuffer.bounds[i][0], zoneWithBuffer.bounds[i][1]);
+                    }
+                    ctx.closePath();
                     ctx.stroke();
 
-                    // DASHED LINE = Soft container (content zone - where cells should stay)
+                    // Draw content zone (inner boundary)
                     ctx.strokeStyle = 'rgba(100, 255, 100, 1)';
                     ctx.lineWidth = 2;
                     ctx.setLineDash([8, 4]);
                     ctx.beginPath();
-                    ctx.moveTo(0, zoneTop);
-                    ctx.lineTo(width, zoneTop);
-                    ctx.moveTo(0, zoneBottom);
-                    ctx.lineTo(width, zoneBottom);
+                    ctx.moveTo(zone.bounds[0][0], zone.bounds[0][1]);
+                    for (let i = 1; i < zone.bounds.length; i++) {
+                        ctx.lineTo(zone.bounds[i][0], zone.bounds[i][1]);
+                    }
+                    ctx.closePath();
                     ctx.stroke();
                     ctx.setLineDash([]);
 
-                    // Label the zones
+                    // Label
                     ctx.font = '12px monospace';
                     ctx.fillStyle = 'rgba(255, 150, 50, 1)';
-                    ctx.fillText('HARD (buffer edge)', 10, hardTop + 15);
+                    ctx.fillText('BUFFER EDGE (orange)', 10, 20);
                     ctx.fillStyle = 'rgba(100, 255, 100, 1)';
-                    ctx.fillText('SOFT (content zone)', 10, zoneTop + 15);
-                    ctx.fillStyle = 'rgba(180, 120, 80, 1)';
-                    ctx.fillText('BUFFER ZONE', 10, (hardTop + zoneTop) / 2 + 5);
+                    ctx.fillText('CONTENT ZONE (green) - Angle: ' + config.contentZoneRotation + '°', 10, 40);
                 }
 
                 // Draw cell debug info
