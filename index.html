@@ -809,8 +809,10 @@
                 signedArea += polygon[i][0] * polygon[j][1];
                 signedArea -= polygon[j][0] * polygon[i][1];
             }
-            // signedArea > 0 means CCW, < 0 means CW (in screen coords where Y increases downward)
-            const windingSign = signedArea > 0 ? 1 : -1;
+            // In screen coords (Y down): signedArea > 0 means CW, < 0 means CCW
+            // For CW polygon, interior is on RIGHT of edge direction
+            // For CCW polygon, interior is on LEFT of edge direction
+            const windingSign = signedArea > 0 ? -1 : 1;
 
             const insetEdges = [];
 
