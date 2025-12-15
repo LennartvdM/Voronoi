@@ -401,7 +401,6 @@
         let width, height;
         let cells = [];
         let hoveredCell = -1;
-        let expandingCell = -1;  // Track which cell is expanding (persists after hover ends)
         let mouseX = -9999, mouseY = -9999;
         let tooltip;
         let animationId;
@@ -416,9 +415,15 @@
                 this.x = x;
                 this.y = y;
 
-                // Simple scale-based animation - no displacement physics
+                // Scale-based animation
                 this.scale = 1.0;          // Current scale (1.0 = normal)
                 this.targetScale = 1.0;    // Target scale
+
+                // Displacement animation (for smooth retraction)
+                this.displacedX = x;       // Current displaced position
+                this.displacedY = y;
+                this.targetDisplacedX = x; // Target displaced position
+                this.targetDisplacedY = y;
 
                 this.basePolygon = null;   // Computed once at init - NEVER changes
                 this.baseCentroid = null;  // Center of base polygon
@@ -453,6 +458,26 @@
                     // Frame-rate independent smoothing
                     const factor = 1 - Math.exp(-speed * dt * 5);
                     this.scale += diff * factor;
+                }
+
+                // Smooth displacement transition (uses Out Speed for returning to base)
+                const dxDisplace = this.targetDisplacedX - this.displacedX;
+                const dyDisplace = this.targetDisplacedY - this.displacedY;
+                const displaceDist = Math.sqrt(dxDisplace * dxDisplace + dyDisplace * dyDisplace);
+
+                if (displaceDist < 0.5) {
+                    this.displacedX = this.targetDisplacedX;
+                    this.displacedY = this.targetDisplacedY;
+                } else {
+                    // Use In Speed when being pushed away, Out Speed when returning
+                    const isReturning = (
+                        Math.abs(this.targetDisplacedX - this.baseX) < Math.abs(this.displacedX - this.baseX) ||
+                        Math.abs(this.targetDisplacedY - this.baseY) < Math.abs(this.displacedY - this.baseY)
+                    );
+                    const displaceSpeed = (isReturning ? config.retractionSpeed : config.expansionSpeed) * 0.002;
+                    const displaceFactor = 1 - Math.exp(-displaceSpeed * dt * 5);
+                    this.displacedX += dxDisplace * displaceFactor;
+                    this.displacedY += dyDisplace * displaceFactor;
                 }
 
                 // Smooth zoom and opacity transitions (also frame-rate independent)
@@ -653,39 +678,38 @@
             const buffer = config.bleedBuffer;
             const gap = config.gap;
 
-            // Compute displaced seed positions based on expanding cell
-            // Use expandingCell (not hoveredCell) so displacement animates smoothly on retraction
+            // Compute TARGET displaced positions based on hovered cell
+            // The actual displacement is animated in Cell.update()
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
 
-                if (expandingCell < 0 || i === expandingCell) {
-                    cell.displacedX = cell.baseX;
-                    cell.displacedY = cell.baseY;
+                // Default: return to base position
+                cell.targetDisplacedX = cell.baseX;
+                cell.targetDisplacedY = cell.baseY;
+
+                // If no cell is hovered, all targets are base position
+                if (hoveredCell < 0 || i === hoveredCell) {
                     continue;
                 }
 
-                // Push this seed away from the expanding cell
-                const expanding = cells[expandingCell];
-                const dx = cell.baseX - expanding.baseX;
-                const dy = cell.baseY - expanding.baseY;
+                // Push this seed away from the hovered cell
+                const hovered = cells[hoveredCell];
+                const dx = cell.baseX - hovered.baseX;
+                const dy = cell.baseY - hovered.baseY;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
-                if (dist < 1) {
-                    cell.displacedX = cell.baseX;
-                    cell.displacedY = cell.baseY;
-                    continue;
-                }
+                if (dist < 1) continue;
 
-                // Use the animated scale for smooth transitions
-                const scaleExtra = Math.max(0, expanding.scale - 1.0);
+                // Use the HOVERED cell's current animated scale for smooth push
+                const scaleExtra = Math.max(0, hovered.scale - 1.0);
 
                 // Push amount: configurable falloff distance
                 const maxPush = config.maxExpansion * config.displaceRatio;
                 const distanceFactor = Math.max(0, 1 - dist / config.displaceFalloff);
                 const pushAmount = scaleExtra * maxPush * distanceFactor;
 
-                cell.displacedX = cell.baseX + (dx / dist) * pushAmount;
-                cell.displacedY = cell.baseY + (dy / dist) * pushAmount;
+                cell.targetDisplacedX = cell.baseX + (dx / dist) * pushAmount;
+                cell.targetDisplacedY = cell.baseY + (dy / dist) * pushAmount;
             }
 
             // Build array for Voronoi computation
@@ -742,11 +766,10 @@
                 // This prevents hover fighting when polygons shift
                 cell.polygon = cell.basePolygon;
 
-                // Clip to display bounds (expanding cell extends into buffer)
-                const isExpanding = (i === expandingCell);
+                // Clip to display bounds (any cell with scale > 1 extends into buffer)
                 const scaleExtra = Math.max(0, cell.scale - 1.0);
                 const bufferFraction = scaleExtra / (config.maxExpansion / 300);
-                const smoothBuffer = isExpanding ? buffer * Math.min(1, bufferFraction) : 0;
+                const smoothBuffer = scaleExtra > 0.01 ? buffer * Math.min(1, bufferFraction) : 0;
 
                 const clipTop = zoneTop - smoothBuffer;
                 const clipBottom = zoneBottom + smoothBuffer;
@@ -1539,23 +1562,13 @@
             // Scale factor: 1.0 = normal, 1.0 + maxExpansion/300 = expanded
             const expandedScale = 1.0 + config.maxExpansion / 300;
 
-            // Track which cell is expanding (persists after hover ends for smooth retraction)
-            if (hoveredCell >= 0) {
-                expandingCell = hoveredCell;
-            } else if (expandingCell >= 0) {
-                // Check if the expanding cell has fully retracted
-                if (Math.abs(cells[expandingCell].scale - 1.0) < 0.01) {
-                    expandingCell = -1;
-                }
-            }
-
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
                 cell.targetScale = (i === hoveredCell) ? expandedScale : 1.0;
                 cell.update(dt, i === hoveredCell);
             }
 
-            // Update display polygons (just scaling, no Voronoi recompute)
+            // Update display polygons - uses animated displacedX/Y from each cell
             updateDisplayPolygons();
         }
 
