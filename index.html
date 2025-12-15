@@ -413,6 +413,40 @@
         let animationId;
         let lastTime = 0;
 
+        // ========== EASING UTILITIES ==========
+        // Attempt to compute the t value for a given x on cubic bezier curve
+        // Returns x directly since we use symmetric ease curves
+        function cubicBezierEase(t, p1, p2) {
+            // Attempt to compute cubic bezier with control points (0,0), (p1,p1), (p2,p2), (1,1)
+            // For ease-in-out this gives smooth acceleration and deceleration
+            // Using approximate formula for common easing curves
+            const t2 = t * t;
+            const t3 = t2 * t;
+            const mt = 1 - t;
+            const mt2 = mt * mt;
+            const mt3 = mt2 * mt;
+
+            // Cubic bezier: B(t) = (1-t)³P0 + 3(1-t)²tP1 + 3(1-t)t²P2 + t³P3
+            // With P0=0, P1=p1, P2=p2, P3=1
+            return 3 * mt2 * t * p1 + 3 * mt * t2 * p2 + t3;
+        }
+
+        // Ease-out: starts fast, slows down at end (good for arriving at target)
+        function easeOut(t) {
+            return cubicBezierEase(t, 0.0, 0.58);
+        }
+
+        // Ease-in-out: slow start, fast middle, slow end (good for smooth transitions)
+        function easeInOut(t) {
+            return cubicBezierEase(t, 0.42, 0.58);
+        }
+
+        // Smooth ease-out with slight overshoot feel (Material Design style)
+        function easeOutSmooth(t) {
+            // Deceleration curve - fast start, gentle landing
+            return 1 - Math.pow(1 - t, 3);
+        }
+
         // ========== CELL CLASS ==========
         class Cell {
             constructor(x, y, index) {
@@ -422,25 +456,42 @@
                 this.x = x;
                 this.y = y;
 
-                // Scale-based animation
-                this.scale = 1.0;          // Current scale (1.0 = normal)
-                this.targetScale = 1.0;    // Target scale
+                // Scale animation (progress-based with bezier easing)
+                this.scale = 1.0;              // Current scale
+                this.targetScale = 1.0;        // Target scale
+                this.scaleStart = 1.0;         // Start value for current animation
+                this.scaleProgress = 1.0;      // Animation progress 0-1 (1 = complete)
+                this.lastTargetScale = 1.0;    // To detect target changes
 
-                // Displacement animation (for smooth retraction)
-                this.displacedX = x;       // Current displaced position
+                // Displacement animation (progress-based)
+                this.displacedX = x;           // Current displaced position
                 this.displacedY = y;
-                this.targetDisplacedX = x; // Target displaced position
+                this.targetDisplacedX = x;     // Target displaced position
                 this.targetDisplacedY = y;
+                this.displaceStartX = x;       // Start position for current animation
+                this.displaceStartY = y;
+                this.displaceProgress = 1.0;   // Animation progress 0-1
+                this.lastTargetDisplacedX = x; // To detect target changes
+                this.lastTargetDisplacedY = y;
 
                 this.basePolygon = null;   // Computed once at init - NEVER changes
                 this.baseCentroid = null;  // Center of base polygon
                 this.polygon = null;       // For hit testing
                 this.displayPolygon = null; // What gets rendered
 
+                // Zoom animation (progress-based)
                 this.zoom = config.nonHoverImageZoom;
                 this.targetZoom = config.nonHoverImageZoom;
+                this.zoomStart = config.nonHoverImageZoom;
+                this.zoomProgress = 1.0;
+                this.lastTargetZoom = config.nonHoverImageZoom;
+
+                // Opacity animation (progress-based)
                 this.opacity = config.nonHoveredOpacity;
                 this.targetOpacity = config.nonHoveredOpacity;
+                this.opacityStart = config.nonHoveredOpacity;
+                this.opacityProgress = 1.0;
+                this.lastTargetOpacity = config.nonHoveredOpacity;
 
                 const data = cellData[index % cellData.length];
                 this.title = data.title;
@@ -450,60 +501,104 @@
             }
 
             update(dt, isHovered) {
-                // Smooth scale transition - frame-rate independent lerp
-                // Speed is 1-100 scale, convert to useful decay rate
-                const diff = this.targetScale - this.scale;
+                // Progress-based animation with bezier easing
+                // Speed 1-100 maps to animation duration: higher speed = shorter duration
+                // At speed 1, animation takes ~2 seconds; at speed 100, nearly instant
 
-                // Use different speeds for expansion vs retraction
-                // Convert 1-100 to exponential decay rate (1 = very slow, 100 = nearly instant)
-                const rawSpeed = diff > 0 ? config.expansionSpeed : config.retractionSpeed;
-                const speed = rawSpeed * 0.002; // 1-100 → 0.002-0.2
-
-                if (Math.abs(diff) < 0.001) {
-                    this.scale = this.targetScale;
-                } else {
-                    // Frame-rate independent smoothing
-                    const factor = 1 - Math.exp(-speed * dt * 5);
-                    this.scale += diff * factor;
+                // === SCALE ANIMATION ===
+                // Detect target change - start new animation from current position
+                if (this.targetScale !== this.lastTargetScale) {
+                    this.scaleStart = this.scale;
+                    this.scaleProgress = 0;
+                    this.lastTargetScale = this.targetScale;
                 }
 
-                // Smooth displacement transition (uses Out Speed for returning to base)
-                const dxDisplace = this.targetDisplacedX - this.displacedX;
-                const dyDisplace = this.targetDisplacedY - this.displacedY;
-                const displaceDist = Math.sqrt(dxDisplace * dxDisplace + dyDisplace * dyDisplace);
+                if (this.scaleProgress < 1) {
+                    // Determine animation speed based on direction
+                    const expanding = this.targetScale > this.scaleStart;
+                    const rawSpeed = expanding ? config.expansionSpeed : config.retractionSpeed;
+                    // Convert 1-100 to progress rate: speed 1 = 0.5/sec, speed 100 = 50/sec
+                    const progressRate = rawSpeed * 0.5;
+                    this.scaleProgress = Math.min(1, this.scaleProgress + progressRate * dt / 1000);
 
-                if (displaceDist < 0.5) {
+                    // Apply bezier easing to progress
+                    const easedProgress = easeOutSmooth(this.scaleProgress);
+
+                    // Interpolate between start and target
+                    this.scale = this.scaleStart + (this.targetScale - this.scaleStart) * easedProgress;
+                } else {
+                    this.scale = this.targetScale;
+                }
+
+                // === DISPLACEMENT ANIMATION ===
+                // Detect target change
+                const targetDisplaceChanged =
+                    Math.abs(this.targetDisplacedX - this.lastTargetDisplacedX) > 0.5 ||
+                    Math.abs(this.targetDisplacedY - this.lastTargetDisplacedY) > 0.5;
+
+                if (targetDisplaceChanged) {
+                    this.displaceStartX = this.displacedX;
+                    this.displaceStartY = this.displacedY;
+                    this.displaceProgress = 0;
+                    this.lastTargetDisplacedX = this.targetDisplacedX;
+                    this.lastTargetDisplacedY = this.targetDisplacedY;
+                }
+
+                if (this.displaceProgress < 1) {
+                    // Determine if returning to base (use Out Speed) or being pushed (use In Speed)
+                    const targetDistFromBase = Math.sqrt(
+                        Math.pow(this.targetDisplacedX - this.baseX, 2) +
+                        Math.pow(this.targetDisplacedY - this.baseY, 2)
+                    );
+                    const startDistFromBase = Math.sqrt(
+                        Math.pow(this.displaceStartX - this.baseX, 2) +
+                        Math.pow(this.displaceStartY - this.baseY, 2)
+                    );
+                    const isReturning = targetDistFromBase < startDistFromBase;
+                    const rawSpeed = isReturning ? config.retractionSpeed : config.expansionSpeed;
+                    const progressRate = rawSpeed * 0.5;
+                    this.displaceProgress = Math.min(1, this.displaceProgress + progressRate * dt / 1000);
+
+                    const easedProgress = easeOutSmooth(this.displaceProgress);
+
+                    this.displacedX = this.displaceStartX + (this.targetDisplacedX - this.displaceStartX) * easedProgress;
+                    this.displacedY = this.displaceStartY + (this.targetDisplacedY - this.displaceStartY) * easedProgress;
+                } else {
                     this.displacedX = this.targetDisplacedX;
                     this.displacedY = this.targetDisplacedY;
-                } else {
-                    // Use In Speed when being pushed away, Out Speed when returning
-                    const isReturning = (
-                        Math.abs(this.targetDisplacedX - this.baseX) < Math.abs(this.displacedX - this.baseX) ||
-                        Math.abs(this.targetDisplacedY - this.baseY) < Math.abs(this.displacedY - this.baseY)
-                    );
-                    const displaceSpeed = (isReturning ? config.retractionSpeed : config.expansionSpeed) * 0.002;
-                    const displaceFactor = 1 - Math.exp(-displaceSpeed * dt * 5);
-                    this.displacedX += dxDisplace * displaceFactor;
-                    this.displacedY += dyDisplace * displaceFactor;
                 }
 
-                // Smooth zoom and opacity transitions (also frame-rate independent)
-                const zoomSpeed = config.imageZoomSpeed * 0.003; // 1-100 → 0.003-0.3
-                const zoomFactor = 1 - Math.exp(-zoomSpeed * dt * 5);
-                const opacityFactor = 1 - Math.exp(-config.opacityTransitionSpeed * dt * 3);
+                // === ZOOM ANIMATION ===
+                if (this.targetZoom !== this.lastTargetZoom) {
+                    this.zoomStart = this.zoom;
+                    this.zoomProgress = 0;
+                    this.lastTargetZoom = this.targetZoom;
+                }
 
-                const zoomDiff = this.targetZoom - this.zoom;
-                if (Math.abs(zoomDiff) < 0.01) {
+                if (this.zoomProgress < 1) {
+                    const progressRate = config.imageZoomSpeed * 0.5;
+                    this.zoomProgress = Math.min(1, this.zoomProgress + progressRate * dt / 1000);
+                    const easedProgress = easeOutSmooth(this.zoomProgress);
+                    this.zoom = this.zoomStart + (this.targetZoom - this.zoomStart) * easedProgress;
+                } else {
                     this.zoom = this.targetZoom;
-                } else {
-                    this.zoom += zoomDiff * zoomFactor;
                 }
 
-                const opacityDiff = this.targetOpacity - this.opacity;
-                if (Math.abs(opacityDiff) < 0.01) {
-                    this.opacity = this.targetOpacity;
+                // === OPACITY ANIMATION ===
+                if (this.targetOpacity !== this.lastTargetOpacity) {
+                    this.opacityStart = this.opacity;
+                    this.opacityProgress = 0;
+                    this.lastTargetOpacity = this.targetOpacity;
+                }
+
+                if (this.opacityProgress < 1) {
+                    // Opacity uses a fixed moderate speed
+                    const progressRate = 8 * 0.5; // Equivalent to speed ~8
+                    this.opacityProgress = Math.min(1, this.opacityProgress + progressRate * dt / 1000);
+                    const easedProgress = easeOutSmooth(this.opacityProgress);
+                    this.opacity = this.opacityStart + (this.targetOpacity - this.opacityStart) * easedProgress;
                 } else {
-                    this.opacity += opacityDiff * opacityFactor;
+                    this.opacity = this.targetOpacity;
                 }
             }
 
