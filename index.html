@@ -310,7 +310,7 @@
             <div class="control-group">
                 <label>Zone Angle</label>
                 <div class="control-row">
-                    <input type="range" id="contentZoneRotation" min="0" max="90" value="0" step="15">
+                    <input type="range" id="contentZoneRotation" min="0" max="360" value="0" step="5">
                     <span class="control-value" id="contentZoneRotationVal">0°</span>
                 </div>
             </div>
@@ -562,6 +562,9 @@
         let cellEdgeMap = [];       // For each cell, list of edge indices + neighbor info
 
         // Helper to compute rotated zone bounds
+        // The zone is a "band" that can rotate 360°
+        // - Length: auto-calculated to cover screen diagonal (corner to corner)
+        // - Thickness: controlled by margin parameter
         // Returns { bounds: [[x,y],...], clipPlanes: [{px,py,nx,ny},...], cellBounds: {xMin,xMax,yMin,yMax} }
         function getZoneBounds(includeBuffer = false) {
             const margin = config.contentZoneEnabled ? config.contentZoneMargin : 0;
@@ -571,43 +574,37 @@
             const cx = width / 2;
             const cy = height / 2;
 
-            // Calculate zone dimensions based on rotation
-            // At 0°: margins on top/bottom
-            // At 90°: margins on left/right
-            // In between: interpolate
             const cos = Math.cos(rotation);
             const sin = Math.sin(rotation);
 
-            // The "margin axis" rotates with the angle
-            // margin applies perpendicular to the main axis
-            const marginH = margin * height * Math.abs(cos) + margin * width * Math.abs(sin);
-            const marginW = margin * width * Math.abs(sin) + margin * height * Math.abs(cos);
+            // Band length: must cover screen diagonal so band always fills screen
+            const diagonal = Math.sqrt(width * width + height * height);
+            const halfLength = diagonal / 2 + buffer;
 
-            // For cell generation bounds (axis-aligned approximation)
-            const cellBounds = {
-                xMin: marginW + 40,
-                xMax: width - marginW - 40,
-                yMin: marginH + 40,
-                yMax: height - marginH - 40
-            };
+            // Band thickness: based on the dimension perpendicular to the band
+            // At 0° (horizontal band): thickness based on height
+            // At 90° (vertical band): thickness based on width
+            // At 45°: blend of both
+            const effectiveSize = Math.abs(cos) * height + Math.abs(sin) * width;
+            const halfThickness = (effectiveSize / 2) * (1 - margin) + buffer;
 
-            // Create rotated rectangle for clipping
-            // Half-dimensions of the zone
-            const hw = (width / 2) - margin * width * Math.abs(sin) + buffer;
-            const hh = (height / 2) - margin * height * Math.abs(cos) + buffer;
+            // Create band rectangle in local coords (length along X, thickness along Y)
+            // Then rotate around center
+            const localCorners = [
+                [-halfLength, -halfThickness],
+                [halfLength, -halfThickness],
+                [halfLength, halfThickness],
+                [-halfLength, halfThickness]
+            ];
 
-            // Four corners of rotated rectangle
-            const corners = [
-                [-hw, -hh],
-                [hw, -hh],
-                [hw, hh],
-                [-hw, hh]
-            ].map(([x, y]) => [
-                cx + x * cos - y * sin,
-                cy + x * sin + y * cos
+            // Rotate and translate to screen center
+            const corners = localCorners.map(([lx, ly]) => [
+                cx + lx * cos - ly * sin,
+                cy + lx * sin + ly * cos
             ]);
 
-            // Clip planes (inward-facing normals)
+            // Clip planes with inward-facing normals
+            // For a CCW wound polygon, inward normal is perpendicular to edge, pointing right
             const clipPlanes = [];
             for (let i = 0; i < 4; i++) {
                 const p1 = corners[i];
@@ -615,7 +612,10 @@
                 const ex = p2[0] - p1[0];
                 const ey = p2[1] - p1[1];
                 const len = Math.sqrt(ex * ex + ey * ey);
-                // Inward normal (right-hand rule for CCW)
+                if (len < 0.001) continue;
+
+                // Inward normal (perpendicular, pointing into polygon)
+                // For CCW winding, this is (-ey, ex) normalized
                 clipPlanes.push({
                     px: (p1[0] + p2[0]) / 2,
                     py: (p1[1] + p2[1]) / 2,
@@ -623,6 +623,24 @@
                     ny: ex / len
                 });
             }
+
+            // Cell generation bounds: axis-aligned bounding box of the zone, shrunk inward
+            // Find min/max of corners
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            for (const [x, y] of corners) {
+                minX = Math.min(minX, x);
+                maxX = Math.max(maxX, x);
+                minY = Math.min(minY, y);
+                maxY = Math.max(maxY, y);
+            }
+
+            // Constrain to screen and add inner margin for cell placement
+            const cellBounds = {
+                xMin: Math.max(40, minX + 40),
+                xMax: Math.min(width - 40, maxX - 40),
+                yMin: Math.max(40, minY + 40),
+                yMax: Math.min(height - 40, maxY - 40)
+            };
 
             return { bounds: corners, clipPlanes, cellBounds };
         }
