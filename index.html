@@ -759,8 +759,45 @@
                     continue;
                 }
 
-                // Update centroid based on new polygon
-                cell.baseCentroid = getPolygonCentroid(polygon);
+                // Compute centroid and validate polygon integrity
+                const centroid = getPolygonCentroid(polygon);
+
+                // Check polygon area - if it's too small or negative, cell is over-deformed
+                let polygonArea = 0;
+                for (let k = 0; k < polygon.length; k++) {
+                    const k1 = (k + 1) % polygon.length;
+                    polygonArea += polygon[k][0] * polygon[k1][1];
+                    polygonArea -= polygon[k1][0] * polygon[k][1];
+                }
+                polygonArea = polygonArea / 2;
+
+                // Get base polygon area for comparison
+                let baseArea = 0;
+                if (cell.basePolygon) {
+                    for (let k = 0; k < cell.basePolygon.length; k++) {
+                        const k1 = (k + 1) % cell.basePolygon.length;
+                        baseArea += cell.basePolygon[k][0] * cell.basePolygon[k1][1];
+                        baseArea -= cell.basePolygon[k1][0] * cell.basePolygon[k][1];
+                    }
+                    baseArea = Math.abs(baseArea / 2);
+                }
+
+                // CRITICAL: If centroid is outside polygon OR area collapsed too much,
+                // the cell has flipped inside-out or been over-squeezed
+                const minAreaRatio = 0.1; // Don't let cell shrink below 10% of original
+                const isInverted = polygonArea < 0;
+                const isTooSmall = baseArea > 0 && Math.abs(polygonArea) < baseArea * minAreaRatio;
+                const centroidEscaped = !pointInPolygon(centroid.x, centroid.y, polygon);
+
+                if (isInverted || isTooSmall || centroidEscaped) {
+                    // Deformation limit reached - use base polygon
+                    cell.baseCentroid = getPolygonCentroid(cell.basePolygon);
+                    cell.polygon = cell.basePolygon;
+                    cell.displayPolygon = cell.basePolygon;
+                    continue;
+                }
+
+                cell.baseCentroid = centroid;
 
                 // Hit detection uses BASE polygon (stable, doesn't change with animation)
                 // This prevents hover fighting when polygons shift
