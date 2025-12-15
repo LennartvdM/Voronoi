@@ -919,12 +919,92 @@
                 cell.targetDisplacedY = cell.baseY + (dy / dist) * pushAmount;
             }
 
-            // Build displaced seeds from animated positions
-            // The polygon validation (cleanPolygon) handles any rendering issues
-            const displacedSeeds = cells.map(cell => ({
+            // CRITICAL: Check for Delaunay edge crossings in TARGET positions
+            // Constrain targets to prevent topology-breaking deformations
+            // This ensures animations converge to valid configurations
+            const targetSeeds = cells.map(cell => ({
+                x: cell.targetDisplacedX,
+                y: cell.targetDisplacedY
+            }));
+
+            const targetCrossings = findDelaunayCrossings(targetSeeds);
+
+            if (targetCrossings.length > 0) {
+                // Binary search for the maximum safe displacement scale
+                let lowScale = 0;
+                let highScale = 1;
+                let safeScale = 0;
+
+                for (let iter = 0; iter < 10; iter++) {
+                    const midScale = (lowScale + highScale) / 2;
+
+                    // Test target displacement at this scale
+                    const testSeeds = cells.map(cell => ({
+                        x: cell.baseX + (cell.targetDisplacedX - cell.baseX) * midScale,
+                        y: cell.baseY + (cell.targetDisplacedY - cell.baseY) * midScale
+                    }));
+
+                    const testCrossings = findDelaunayCrossings(testSeeds);
+
+                    if (testCrossings.length === 0) {
+                        // This scale is safe, try higher
+                        safeScale = midScale;
+                        lowScale = midScale;
+                    } else {
+                        // Still crossing, reduce scale
+                        highScale = midScale;
+                    }
+                }
+
+                // Apply the safe scale to TARGET positions
+                // Animations will smoothly converge to valid configurations
+                for (let i = 0; i < cells.length; i++) {
+                    const cell = cells[i];
+                    cell.targetDisplacedX = cell.baseX + (cell.targetDisplacedX - cell.baseX) * safeScale;
+                    cell.targetDisplacedY = cell.baseY + (cell.targetDisplacedY - cell.baseY) * safeScale;
+                }
+            }
+
+            // Also check current animated positions and constrain if needed
+            // IMPORTANT: Don't modify cell state - just compute safe positions for rendering
+            let displacedSeeds = cells.map(cell => ({
                 x: cell.displacedX,
                 y: cell.displacedY
             }));
+
+            const currentCrossings = findDelaunayCrossings(displacedSeeds);
+
+            if (currentCrossings.length > 0) {
+                // Binary search for safe current displacement
+                let lowScale = 0;
+                let highScale = 1;
+                let safeScale = 0;
+
+                for (let iter = 0; iter < 10; iter++) {
+                    const midScale = (lowScale + highScale) / 2;
+
+                    const testSeeds = cells.map(cell => ({
+                        x: cell.baseX + (cell.displacedX - cell.baseX) * midScale,
+                        y: cell.baseY + (cell.displacedY - cell.baseY) * midScale
+                    }));
+
+                    const testCrossings = findDelaunayCrossings(testSeeds);
+
+                    if (testCrossings.length === 0) {
+                        safeScale = midScale;
+                        lowScale = midScale;
+                    } else {
+                        highScale = midScale;
+                    }
+                }
+
+                // Compute safe positions for rendering only - DON'T modify cell state!
+                // This allows animation to continue smoothly while preventing visual glitches
+                displacedSeeds = cells.map(cell => ({
+                    x: cell.baseX + (cell.displacedX - cell.baseX) * safeScale,
+                    y: cell.baseY + (cell.displacedY - cell.baseY) * safeScale
+                }));
+            }
 
             // Rebuild Voronoi polygons using displaced seeds
             for (let i = 0; i < cells.length; i++) {
