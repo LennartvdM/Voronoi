@@ -241,24 +241,24 @@
 
             <!-- Hover Effect -->
             <div class="control-group">
-                <label>Inflation</label>
+                <label>Hover Size</label>
                 <div class="control-row">
                     <input type="range" id="maxExpansion" min="0" max="400" value="150">
                     <span class="control-value" id="maxExpansionVal">150</span>
                 </div>
             </div>
             <div class="control-group">
-                <label>Expand</label>
+                <label>In Speed</label>
                 <div class="control-row">
                     <input type="range" id="expansionSpeed" min="0" max="100" value="50">
-                    <span class="control-value" id="expansionSpeedVal">0.025</span>
+                    <span class="control-value" id="expansionSpeedVal">50</span>
                 </div>
             </div>
             <div class="control-group">
-                <label>Retract</label>
+                <label>Out Speed</label>
                 <div class="control-row">
                     <input type="range" id="retractionSpeed" min="0" max="100" value="30">
-                    <span class="control-value" id="retractionSpeedVal">0.015</span>
+                    <span class="control-value" id="retractionSpeedVal">30</span>
                 </div>
             </div>
             <div class="control-group">
@@ -333,8 +333,8 @@
 
             // Inflation system
             maxExpansion: 150,           // How much the hovered cell inflates (affects neighbor push)
-            expansionSpeed: 0.025,       // How fast cells inflate (0 = inert, 0.05 = fast)
-            retractionSpeed: 0.015,      // How fast cells retract after hover ends (separate from expansion)
+            expansionSpeed: 50,          // How fast cells inflate (1-100 scale, higher = faster)
+            retractionSpeed: 30,         // How fast cells retract after hover ends (1-100 scale)
             displaceRatio: 0.5,          // 0 = no neighbor push, 1 = max neighbor push
 
             // Visual transitions
@@ -430,21 +430,20 @@
 
             update(dt, isHovered) {
                 // Smooth scale transition - frame-rate independent lerp
-                // Using exponential decay: value += (target - value) * (1 - e^(-speed * dt))
+                // Speed is 1-100 scale, convert to useful decay rate
                 const diff = this.targetScale - this.scale;
 
                 // Use different speeds for expansion vs retraction
-                const speed = diff > 0 ? config.expansionSpeed : config.retractionSpeed;
+                // Convert 1-100 to exponential decay rate (1 = very slow, 100 = nearly instant)
+                const rawSpeed = diff > 0 ? config.expansionSpeed : config.retractionSpeed;
+                const speed = rawSpeed * 0.002; // 1-100 → 0.002-0.2
 
-                if (speed > 0.0001) {
-                    // Snap to target when very close (reduces jitter)
-                    if (Math.abs(diff) < 0.001) {
-                        this.scale = this.targetScale;
-                    } else {
-                        // Frame-rate independent smoothing
-                        const factor = 1 - Math.exp(-speed * dt * 3);
-                        this.scale += diff * factor;
-                    }
+                if (Math.abs(diff) < 0.001) {
+                    this.scale = this.targetScale;
+                } else {
+                    // Frame-rate independent smoothing
+                    const factor = 1 - Math.exp(-speed * dt * 5);
+                    this.scale += diff * factor;
                 }
 
                 // Smooth zoom and opacity transitions (also frame-rate independent)
@@ -1377,23 +1376,20 @@
                 maxExpansionVal.textContent = config.maxExpansion;
             });
 
-            // Expansion Speed - linear with much smaller range for fine control
-            // 0 = 0 (inert), 100 = 0.05 (fast but not instant)
+            // In Speed - how fast cells expand on hover (1-100 scale)
             const expansionSpeedEl = document.getElementById('expansionSpeed');
             const expansionSpeedVal = document.getElementById('expansionSpeedVal');
             expansionSpeedEl.addEventListener('input', () => {
-                // Linear: 0-100 maps to 0-0.05
-                config.expansionSpeed = +expansionSpeedEl.value / 2000;
-                expansionSpeedVal.textContent = config.expansionSpeed.toFixed(3);
+                config.expansionSpeed = +expansionSpeedEl.value;
+                expansionSpeedVal.textContent = config.expansionSpeed;
             });
 
-            // Retraction Speed - how fast cells shrink back after hover ends
+            // Out Speed - how fast cells shrink back after hover ends (1-100 scale)
             const retractionSpeedEl = document.getElementById('retractionSpeed');
             const retractionSpeedVal = document.getElementById('retractionSpeedVal');
             retractionSpeedEl.addEventListener('input', () => {
-                // Linear: 0-100 maps to 0-0.05
-                config.retractionSpeed = +retractionSpeedEl.value / 2000;
-                retractionSpeedVal.textContent = config.retractionSpeed.toFixed(3);
+                config.retractionSpeed = +retractionSpeedEl.value;
+                retractionSpeedVal.textContent = config.retractionSpeed;
             });
 
             // Displace Ratio - 0 = pure shrink, 1 = pure displace
