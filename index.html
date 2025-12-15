@@ -269,6 +269,13 @@
                 </div>
             </div>
             <div class="control-group">
+                <label>Falloff</label>
+                <div class="control-row">
+                    <input type="range" id="displaceFalloff" min="100" max="800" value="300">
+                    <span class="control-value" id="displaceFalloffVal">300</span>
+                </div>
+            </div>
+            <div class="control-group">
                 <label>Dim Others</label>
                 <div class="control-row">
                     <input type="range" id="nonHoveredOpacity" min="0" max="100" value="60">
@@ -336,6 +343,7 @@
             expansionSpeed: 50,          // How fast cells inflate (1-100 scale, higher = faster)
             retractionSpeed: 30,         // How fast cells retract after hover ends (1-100 scale)
             displaceRatio: 0.5,          // 0 = no neighbor push, 1 = max neighbor push
+            displaceFalloff: 300,        // How far displacement reaches (px) - lower = more local, higher = affects distant cells
 
             // Visual transitions
             nonHoverImageZoom: 1.7,      // Non-hover image zoom level
@@ -393,6 +401,7 @@
         let width, height;
         let cells = [];
         let hoveredCell = -1;
+        let expandingCell = -1;  // Track which cell is expanding (persists after hover ends)
         let mouseX = -9999, mouseY = -9999;
         let tooltip;
         let animationId;
@@ -644,20 +653,21 @@
             const buffer = config.bleedBuffer;
             const gap = config.gap;
 
-            // Compute displaced seed positions based on hover state
+            // Compute displaced seed positions based on expanding cell
+            // Use expandingCell (not hoveredCell) so displacement animates smoothly on retraction
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
 
-                if (hoveredCell < 0 || i === hoveredCell) {
+                if (expandingCell < 0 || i === expandingCell) {
                     cell.displacedX = cell.baseX;
                     cell.displacedY = cell.baseY;
                     continue;
                 }
 
-                // Push this seed away from the hovered cell
-                const hovered = cells[hoveredCell];
-                const dx = cell.baseX - hovered.baseX;
-                const dy = cell.baseY - hovered.baseY;
+                // Push this seed away from the expanding cell
+                const expanding = cells[expandingCell];
+                const dx = cell.baseX - expanding.baseX;
+                const dy = cell.baseY - expanding.baseY;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
                 if (dist < 1) {
@@ -666,13 +676,12 @@
                     continue;
                 }
 
-                // Direct push: use the animated scale directly
-                // When scale is 1.5 (max), push neighbors significantly
-                const scaleExtra = Math.max(0, hovered.scale - 1.0);
+                // Use the animated scale for smooth transitions
+                const scaleExtra = Math.max(0, expanding.scale - 1.0);
 
-                // Push amount: stronger for closer neighbors
+                // Push amount: configurable falloff distance
                 const maxPush = config.maxExpansion * config.displaceRatio;
-                const distanceFactor = Math.max(0, 1 - dist / 500);
+                const distanceFactor = Math.max(0, 1 - dist / config.displaceFalloff);
                 const pushAmount = scaleExtra * maxPush * distanceFactor;
 
                 cell.displacedX = cell.baseX + (dx / dist) * pushAmount;
@@ -733,11 +742,11 @@
                 // This prevents hover fighting when polygons shift
                 cell.polygon = cell.basePolygon;
 
-                // Clip to display bounds (hovered cell extends into buffer)
-                const isHovered = (i === hoveredCell);
+                // Clip to display bounds (expanding cell extends into buffer)
+                const isExpanding = (i === expandingCell);
                 const scaleExtra = Math.max(0, cell.scale - 1.0);
                 const bufferFraction = scaleExtra / (config.maxExpansion / 300);
-                const smoothBuffer = isHovered ? buffer * Math.min(1, bufferFraction) : 0;
+                const smoothBuffer = isExpanding ? buffer * Math.min(1, bufferFraction) : 0;
 
                 const clipTop = zoneTop - smoothBuffer;
                 const clipBottom = zoneBottom + smoothBuffer;
@@ -1392,12 +1401,20 @@
                 retractionSpeedVal.textContent = config.retractionSpeed;
             });
 
-            // Displace Ratio - 0 = pure shrink, 1 = pure displace
+            // Displace Ratio - 0 = no neighbor push, 1 = max neighbor push
             const displaceRatioEl = document.getElementById('displaceRatio');
             const displaceRatioVal = document.getElementById('displaceRatioVal');
             displaceRatioEl.addEventListener('input', () => {
                 config.displaceRatio = +displaceRatioEl.value / 100;
                 displaceRatioVal.textContent = config.displaceRatio.toFixed(2);
+            });
+
+            // Displacement Falloff - how far displacement reaches (lower = local, higher = global)
+            const displaceFalloffEl = document.getElementById('displaceFalloff');
+            const displaceFalloffVal = document.getElementById('displaceFalloffVal');
+            displaceFalloffEl.addEventListener('input', () => {
+                config.displaceFalloff = +displaceFalloffEl.value;
+                displaceFalloffVal.textContent = config.displaceFalloff;
             });
 
             // Non-Hovered Opacity
@@ -1519,9 +1536,18 @@
 
         // ========== PHYSICS ==========
         function updatePhysics(dt) {
-            // Simple: hovered cell scales up, others stay at 1.0
             // Scale factor: 1.0 = normal, 1.0 + maxExpansion/300 = expanded
             const expandedScale = 1.0 + config.maxExpansion / 300;
+
+            // Track which cell is expanding (persists after hover ends for smooth retraction)
+            if (hoveredCell >= 0) {
+                expandingCell = hoveredCell;
+            } else if (expandingCell >= 0) {
+                // Check if the expanding cell has fully retracted
+                if (Math.abs(cells[expandingCell].scale - 1.0) < 0.01) {
+                    expandingCell = -1;
+                }
+            }
 
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
