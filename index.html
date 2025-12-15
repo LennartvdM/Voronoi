@@ -966,7 +966,7 @@
             }
 
             // Also check current animated positions and constrain if needed
-            // IMPORTANT: Don't modify cell state - just compute safe positions for rendering
+            // This handles cases where animation is in flight toward a now-invalid position
             let displacedSeeds = cells.map(cell => ({
                 x: cell.displacedX,
                 y: cell.displacedY
@@ -998,11 +998,17 @@
                     }
                 }
 
-                // Compute safe positions for rendering only - DON'T modify cell state!
-                // This allows animation to continue smoothly while preventing visual glitches
+                // Apply safe scale to current positions
+                for (let i = 0; i < cells.length; i++) {
+                    const cell = cells[i];
+                    cell.displacedX = cell.baseX + (cell.displacedX - cell.baseX) * safeScale;
+                    cell.displacedY = cell.baseY + (cell.displacedY - cell.baseY) * safeScale;
+                }
+
+                // Rebuild displaced seeds
                 displacedSeeds = cells.map(cell => ({
-                    x: cell.baseX + (cell.displacedX - cell.baseX) * safeScale,
-                    y: cell.baseY + (cell.displacedY - cell.baseY) * safeScale
+                    x: cell.displacedX,
+                    y: cell.displacedY
                 }));
             }
 
