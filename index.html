@@ -719,8 +719,9 @@
                 // Update centroid based on new polygon
                 cell.baseCentroid = getPolygonCentroid(polygon);
 
-                // Hit detection uses the displaced polygon
-                cell.polygon = polygon;
+                // Hit detection uses BASE polygon (stable, doesn't change with animation)
+                // This prevents hover fighting when polygons shift
+                cell.polygon = cell.basePolygon;
 
                 // Clip to display bounds (hovered cell extends into buffer)
                 const isHovered = (i === hoveredCell);
