@@ -289,6 +289,13 @@
                     <span class="control-value" id="nonHoverImageZoomVal">1.7</span>
                 </div>
             </div>
+            <div class="control-group hide-mobile">
+                <label>Zoom Speed</label>
+                <div class="control-row">
+                    <input type="range" id="imageZoomSpeed" min="1" max="100" value="40">
+                    <span class="control-value" id="imageZoomSpeedVal">40</span>
+                </div>
+            </div>
 
             <div class="divider"></div>
 
@@ -347,7 +354,7 @@
 
             // Visual transitions
             nonHoverImageZoom: 1.7,      // Non-hover image zoom level
-            imageZoomSpeed: 0.12,        // How fast image zoom transitions
+            imageZoomSpeed: 40,          // How fast image zoom transitions (1-100 scale)
             nonHoveredOpacity: 0.6,      // Opacity for non-hovered cells
             opacityTransitionSpeed: 0.15, // How fast opacity transitions
 
@@ -481,7 +488,8 @@
                 }
 
                 // Smooth zoom and opacity transitions (also frame-rate independent)
-                const zoomFactor = 1 - Math.exp(-config.imageZoomSpeed * dt * 3);
+                const zoomSpeed = config.imageZoomSpeed * 0.003; // 1-100 → 0.003-0.3
+                const zoomFactor = 1 - Math.exp(-zoomSpeed * dt * 5);
                 const opacityFactor = 1 - Math.exp(-config.opacityTransitionSpeed * dt * 3);
 
                 const zoomDiff = this.targetZoom - this.zoom;
@@ -1501,6 +1509,14 @@
                         c.targetZoom = config.nonHoverImageZoom;
                     }
                 });
+            });
+
+            // Image Zoom Speed
+            const imageZoomSpeedEl = document.getElementById('imageZoomSpeed');
+            const imageZoomSpeedVal = document.getElementById('imageZoomSpeedVal');
+            imageZoomSpeedEl.addEventListener('input', () => {
+                config.imageZoomSpeed = +imageZoomSpeedEl.value;
+                imageZoomSpeedVal.textContent = config.imageZoomSpeed;
             });
 
             // Content Zone Controls
