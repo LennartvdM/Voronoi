@@ -879,101 +879,99 @@
         }
 
         // ============================================================================
-        // CLIP-BASED EXPANSION - STABLE TOPOLOGY
+        // STABLE TOPOLOGY PHYSICS - EDGE SHIFTING
         // ============================================================================
-        // Instead of moving seeds and recomputing Voronoi (which causes topology
-        // changes and flickering), we keep base polygons fixed and use clipping:
+        // Uses ORIGINAL neighbor relationships (from cellEdgeMap) but shifts bisectors.
+        // This prevents topology changes that cause flickering.
         //
-        // 1. Hovered cell: scale basePolygon from centroid
-        // 2. Neighbors: clip basePolygon against shifted bisector with hovered cell
-        // 3. This preserves vertex count and topology - just adds/removes clip vertices
-        //
-        // The result is "carving" rather than "pushing" - neighbors shrink where
-        // the hovered cell expands, without Delaunay instability.
+        // HOW IT WORKS:
+        // 1. Each cell clips against its ORIGINAL neighbors (fixed topology)
+        // 2. Bisectors are shifted based on hovered cell's expansion
+        // 3. Both hovered cell and neighbors see the same shifted bisector → tessellation preserved
         // ============================================================================
         function updateDisplayPolygons() {
             const zone = getZoneBounds(false);
             const zoneWithBuffer = getZoneBounds(true);
             const gap = config.gap;
 
-            // Get hovered cell info for neighbor clipping
+            // Get expansion info
             const hovered = hoveredCell >= 0 ? cells[hoveredCell] : null;
             const scaleExtra = hovered ? Math.max(0, hovered.scale - 1.0) : 0;
+            const expansionAmount = scaleExtra * config.maxExpansion * 0.5;
 
+            // Build polygons using ORIGINAL neighbors with shifted bisectors
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
 
-                if (!cell.basePolygon || cell.basePolygon.length < 3) {
+                // Start with rotated zone bounds (with buffer for hovered cell)
+                let polygon = zoneWithBuffer.bounds.map(p => [...p]);
+
+                // Clip against each ORIGINAL neighbor (from cellEdgeMap)
+                // This preserves topology - we always clip against the same neighbors
+                const neighbors = cellEdgeMap[i] || [];
+
+                for (const neighborInfo of neighbors) {
+                    const j = neighborInfo.neighborIdx;
+                    const other = cells[j];
+
+                    // Compute bisector between this cell and neighbor
+                    const dx = other.baseX - cell.baseX;
+                    const dy = other.baseY - cell.baseY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 0.001) continue;
+
+                    // Base midpoint
+                    let mx = (cell.baseX + other.baseX) / 2;
+                    let my = (cell.baseY + other.baseY) / 2;
+
+                    // Shift bisector if one of us is the hovered cell
+                    if (hovered && expansionAmount > 0) {
+                        if (i === hoveredCell) {
+                            // I'm hovered: push bisector TOWARD neighbor (I claim more space)
+                            mx += (dx / dist) * expansionAmount;
+                            my += (dy / dist) * expansionAmount;
+                        } else if (j === hoveredCell) {
+                            // Neighbor is hovered: push bisector TOWARD me (they claim more space)
+                            mx -= (dx / dist) * expansionAmount;
+                            my -= (dy / dist) * expansionAmount;
+                        }
+                    }
+
+                    // Normal pointing toward this cell
+                    const nx = -dx / dist;
+                    const ny = -dy / dist;
+
+                    polygon = clipPolygon(polygon, mx, my, nx, ny);
+                    if (polygon.length < 3) break;
+                }
+
+                if (polygon.length < 3) {
                     cell.polygon = cell.basePolygon;
                     cell.displayPolygon = cell.basePolygon;
                     continue;
                 }
 
-                // Hit detection always uses base polygon
+                // Compute centroid
+                const centroid = getPolygonCentroid(polygon);
+                cell.baseCentroid = centroid;
+
+                // Hit detection uses BASE polygon (stable, doesn't change with animation)
+                // This prevents hover fighting when polygons shift
                 cell.polygon = cell.basePolygon;
 
-                let polygon;
+                // Clip to display bounds using rotated zone clip planes
+                // Interpolate buffer based on scale for smooth protrusion animation
+                const scaleExtra = Math.max(0, cell.scale - 1.0);
+                const maxScaleExtra = config.maxExpansion / 300; // Same as expandedScale calculation
+                const bufferFraction = maxScaleExtra > 0 ? Math.min(1, scaleExtra / maxScaleExtra) : 0;
 
-                if (i === hoveredCell) {
-                    // HOVERED CELL: Scale from centroid
-                    const centroid = cell.baseCentroid || getPolygonCentroid(cell.basePolygon);
-                    polygon = cell.basePolygon.map(p => [
-                        centroid.x + (p[0] - centroid.x) * cell.scale,
-                        centroid.y + (p[1] - centroid.y) * cell.scale
-                    ]);
-                } else {
-                    // OTHER CELLS: Start with base polygon
-                    polygon = cell.basePolygon.map(p => [...p]);
-
-                    // If there's a hovered cell, clip against its expansion
-                    if (hovered && scaleExtra > 0.001) {
-                        // Check if this cell is a neighbor of hovered cell
-                        const isNeighbor = cellEdgeMap[i]?.some(e => e.neighborIdx === hoveredCell);
-
-                        if (isNeighbor) {
-                            // Compute shifted bisector - hovered cell "claims" more territory
-                            const dx = cell.baseX - hovered.baseX;
-                            const dy = cell.baseY - hovered.baseY;
-                            const dist = Math.sqrt(dx * dx + dy * dy);
-
-                            if (dist > 1) {
-                                // Original midpoint
-                                const mx = (cell.baseX + hovered.baseX) / 2;
-                                const my = (cell.baseY + hovered.baseY) / 2;
-
-                                // Shift midpoint toward this cell (away from hovered)
-                                // based on expansion amount
-                                const shiftAmount = scaleExtra * config.maxExpansion * 0.5;
-                                const shiftedMx = mx + (dx / dist) * shiftAmount;
-                                const shiftedMy = my + (dy / dist) * shiftAmount;
-
-                                // Normal pointing toward this cell (away from hovered)
-                                const nx = dx / dist;
-                                const ny = dy / dist;
-
-                                // Clip this cell's polygon against the shifted bisector
-                                polygon = clipPolygon(polygon, shiftedMx, shiftedMy, nx, ny);
-                            }
-                        }
-                    }
-                }
-
-                if (!polygon || polygon.length < 3) {
-                    cell.displayPolygon = cell.basePolygon;
-                    continue;
-                }
-
-                // Clip to container bounds
-                const maxScaleExtra = config.maxExpansion / 300;
-                const bufferFraction = (i === hoveredCell && maxScaleExtra > 0)
-                    ? Math.min(1, scaleExtra / maxScaleExtra)
-                    : 0;
-
+                // Interpolate clip planes between zone and zoneWithBuffer
                 let clipped = polygon;
                 for (let p = 0; p < zone.clipPlanes.length; p++) {
                     const inner = zone.clipPlanes[p];
                     const outer = zoneWithBuffer.clipPlanes[p];
 
+                    // Interpolate plane position along normal
                     const px = inner.px + (outer.px - inner.px) * bufferFraction;
                     const py = inner.py + (outer.py - inner.py) * bufferFraction;
 
@@ -981,10 +979,11 @@
                     if (clipped.length < 3) break;
                 }
 
-                // Apply gap inset
+                // Apply uniform gap inset
                 let displayPoly = gap > 0 && clipped.length >= 3 ? insetPolygon(clipped, gap / 2) : clipped;
 
-                // Validate convexity
+                // DOWNSTREAM FIX: Validate polygon is convex before rendering
+                // If deformation created a concave/self-intersecting polygon, use base
                 if (displayPoly && displayPoly.length >= 3 && !isConvex(displayPoly)) {
                     const baseInset = gap > 0 && cell.basePolygon ? insetPolygon(cell.basePolygon, gap / 2) : cell.basePolygon;
                     displayPoly = baseInset || cell.basePolygon;
