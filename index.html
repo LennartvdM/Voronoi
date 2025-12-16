@@ -879,13 +879,17 @@
         }
 
         // ============================================================================
-        // EDGE-BASED DEFORMATION - BOTH CELLS SEE SAME EDGE
+        // SEED DISPLACEMENT + FIXED TOPOLOGY
         // ============================================================================
-        // CRITICAL: Both cells sharing an edge must clip against the SAME shifted
-        // edge position. Previous bug: computed shift per-cell with different normals.
+        // Combines the best of both approaches:
+        // - Seed displacement: gives cascade effect AND true deformation
+        //   (because bisector orientation changes when seeds move differently)
+        // - Fixed topology: prevents glitches from Voronoi reorganization
         //
-        // Fix: Pre-compute all shifted edge positions in WORLD coordinates,
-        // then both cells use that exact same position.
+        // All seeds move away from hovered cell (uniform, no falloff).
+        // We clip against ORIGINAL neighbors (cellEdgeMap), not recomputed Voronoi.
+        // Bisector = midpoint of displaced seeds, normal = perpendicular to seed-seed line.
+        // This means corner angles CHANGE because the seed-seed line direction changes.
         // ============================================================================
         function updateDisplayPolygons() {
             const zone = getZoneBounds(false);
@@ -895,31 +899,28 @@
             // Get expansion info
             const hovered = hoveredCell >= 0 ? cells[hoveredCell] : null;
             const scaleExtra = hovered ? Math.max(0, hovered.scale - 1.0) : 0;
-            const shiftAmount = scaleExtra * config.maxExpansion * 0.5;
+            const pushAmount = scaleExtra * config.maxExpansion * config.displaceRatio;
 
-            // Pre-compute shifted edge positions in WORLD coordinates
-            // Edge normal (nx,ny) points from cellB toward cellA
-            // To make cellA bigger: shift edge toward cellB (subtract from midpoint)
-            // To make cellB bigger: shift edge toward cellA (add to midpoint)
-            const shiftedEdgeMidpoints = voronoiEdges.map(edge => {
-                let mx = edge.midX;
-                let my = edge.midY;
-
-                if (hovered && shiftAmount > 0) {
-                    if (edge.cellA === hoveredCell) {
-                        // cellA is hovered, wants to expand
-                        // Shift edge toward cellB (along -normal direction)
-                        mx -= edge.nx * shiftAmount;
-                        my -= edge.ny * shiftAmount;
-                    } else if (edge.cellB === hoveredCell) {
-                        // cellB is hovered, wants to expand
-                        // Shift edge toward cellA (along +normal direction)
-                        mx += edge.nx * shiftAmount;
-                        my += edge.ny * shiftAmount;
-                    }
+            // Compute displaced seed positions
+            // ALL cells pushed away from hovered (uniform, no falloff = cascade works)
+            const displacedSeeds = cells.map((cell, i) => {
+                if (!hovered || i === hoveredCell) {
+                    return { x: cell.baseX, y: cell.baseY };
                 }
 
-                return { mx, my };
+                const dx = cell.baseX - hovered.baseX;
+                const dy = cell.baseY - hovered.baseY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < 1) {
+                    return { x: cell.baseX, y: cell.baseY };
+                }
+
+                // Uniform push - all cells move same amount (preserves volume, enables cascade)
+                return {
+                    x: cell.baseX + (dx / dist) * pushAmount,
+                    y: cell.baseY + (dy / dist) * pushAmount
+                };
             });
 
             for (let i = 0; i < cells.length; i++) {
@@ -931,30 +932,36 @@
                     continue;
                 }
 
-                // Hit detection uses base polygon
                 cell.polygon = cell.basePolygon;
 
-                // Start with zone bounds, then clip against edges
+                // Start with zone bounds
                 let polygon = zoneWithBuffer.bounds.map(p => [...p]);
 
+                // Clip against ORIGINAL neighbors (fixed topology!)
+                // But compute bisector from DISPLACED seeds (gives deformation)
                 const edges = cellEdgeMap[i] || [];
+                const mySeed = displacedSeeds[i];
 
                 for (const edgeInfo of edges) {
-                    const edge = voronoiEdges[edgeInfo.edgeIdx];
-                    const shifted = shiftedEdgeMidpoints[edgeInfo.edgeIdx];
+                    const neighborSeed = displacedSeeds[edgeInfo.neighborIdx];
 
-                    // Normal pointing toward THIS cell (flip if we're cellB)
-                    let nx, ny;
-                    if (edgeInfo.side === 'A') {
-                        nx = edge.nx;
-                        ny = edge.ny;
-                    } else {
-                        nx = -edge.nx;
-                        ny = -edge.ny;
-                    }
+                    // Vector from my seed to neighbor seed (displaced positions)
+                    const dx = neighborSeed.x - mySeed.x;
+                    const dy = neighborSeed.y - mySeed.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
 
-                    // Use the PRE-COMPUTED shifted midpoint (same for both cells)
-                    polygon = clipPolygon(polygon, shifted.mx, shifted.my, nx, ny);
+                    if (dist < 0.001) continue;
+
+                    // Bisector midpoint (between displaced seeds)
+                    const mx = (mySeed.x + neighborSeed.x) / 2;
+                    const my = (mySeed.y + neighborSeed.y) / 2;
+
+                    // Normal pointing toward ME (perpendicular to seed-seed line)
+                    // This is the KEY: normal direction CHANGES based on relative seed movement
+                    const nx = -dx / dist;
+                    const ny = -dy / dist;
+
+                    polygon = clipPolygon(polygon, mx, my, nx, ny);
                     if (polygon.length < 3) break;
                 }
 
