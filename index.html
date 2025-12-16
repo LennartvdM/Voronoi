@@ -1111,6 +1111,7 @@
                 }
 
                 // Pass B: Enforce minimum bisector distance on current positions
+                // CRITICAL: Use DYNAMIC bisectors (from displaced positions) not static base bisectors
                 for (let i = 0; i < cells.length; i++) {
                     if (hoveredCell < 0 || i === hoveredCell) continue;
 
@@ -1121,14 +1122,25 @@
                         const neighborIdx = edgeInfo.neighborIdx;
                         if (neighborIdx === hoveredCell) continue;
 
-                        const edge = voronoiEdges[edgeInfo.edgeIdx];
-                        const isA = edge.cellA === i;
-                        const normalTowardUs = isA ? 1 : -1;
-                        const nx = edge.nx * normalTowardUs;
-                        const ny = edge.ny * normalTowardUs;
+                        // Compute DYNAMIC bisector from current displaced positions
+                        const neighborSeed = displacedSeeds[neighborIdx];
+                        const mySeed = displacedSeeds[i];
 
-                        const distToBisector = (displacedSeeds[i].x - edge.midX) * nx +
-                                               (displacedSeeds[i].y - edge.midY) * ny;
+                        const dx = neighborSeed.x - mySeed.x;
+                        const dy = neighborSeed.y - mySeed.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist < 0.001) continue; // Seeds coincident
+
+                        // Dynamic bisector midpoint and normal
+                        const dynamicMidX = (mySeed.x + neighborSeed.x) / 2;
+                        const dynamicMidY = (mySeed.y + neighborSeed.y) / 2;
+                        // Normal pointing toward us (cell i)
+                        const nx = -dx / dist;
+                        const ny = -dy / dist;
+
+                        // Distance from our seed to the dynamic bisector
+                        const distToBisector = (mySeed.x - dynamicMidX) * nx + (mySeed.y - dynamicMidY) * ny;
 
                         if (distToBisector < minBisectorDist) {
                             // Hard clamp when dangerously close
@@ -1256,9 +1268,44 @@
 
                 let bufferFraction;
                 if (i === hoveredCell) {
-                    // Hovered cell gets full buffer based on its expansion and hover blend
+                    // Hovered cell protrusion must be limited by neighbor displacement
+                    // If neighbors can't move, hover shouldn't protrude - equal friction
                     const expansionFraction = maxScaleExtra > 0 ? Math.min(1, scaleExtra / maxScaleExtra) : 0;
-                    bufferFraction = Math.max(cell.hoverMix, expansionFraction * 0.9);
+
+                    // Calculate how much direct neighbors have actually displaced
+                    // vs how much they would need to for full protrusion
+                    let neighborDisplacementFraction = 1.0;
+                    const edges = cellEdgeMap[i];
+                    if (edges && edges.length > 0 && scaleExtra > 0) {
+                        let totalAchieved = 0;
+                        let totalNeeded = 0;
+
+                        for (const edgeInfo of edges) {
+                            const neighbor = cells[edgeInfo.neighborIdx];
+                            const dx = neighbor.baseX - cell.baseX;
+                            const dy = neighbor.baseY - cell.baseY;
+                            const baseDist = Math.sqrt(dx * dx + dy * dy);
+
+                            // How much did this neighbor actually move?
+                            const dispX = neighbor.displacedX - neighbor.baseX;
+                            const dispY = neighbor.displacedY - neighbor.baseY;
+                            const actualDisp = Math.sqrt(dispX * dispX + dispY * dispY);
+
+                            // How much SHOULD it move for current expansion?
+                            const falloff = Math.exp(-(baseDist * baseDist) / (2 * config.displaceFalloff * config.displaceFalloff));
+                            const idealPush = scaleExtra * config.maxExpansion * config.displaceRatio * falloff;
+
+                            if (idealPush > 1) {
+                                totalNeeded += idealPush;
+                                totalAchieved += Math.min(actualDisp, idealPush);
+                            }
+                        }
+
+                        neighborDisplacementFraction = totalNeeded > 0 ? totalAchieved / totalNeeded : 1.0;
+                    }
+
+                    // Protrusion is limited by neighbor displacement - equal friction
+                    bufferFraction = Math.max(cell.hoverMix, expansionFraction * neighborDisplacementFraction * 0.9);
                 } else {
                     // Non-hovered cells get partial buffer based on displacement "stress"
                     // This gives them breathing room when pushed to extremes
