@@ -916,10 +916,9 @@
 
                 if (dist < 1) continue;
 
-                // Use the HOVERED cell's TARGET scale so neighbors get their final
-                // destination immediately and animate in sync with the hover expansion
-                const targetScaleExtra = Math.max(0, hovered.targetScale - 1.0);
-                const scaleExtra = targetScaleExtra;
+                // Use the HOVERED cell's CURRENT scale so neighbors move in sync
+                // with the actual visual expansion, not the final destination
+                const scaleExtra = Math.max(0, hovered.scale - 1.0);
 
                 // Distance-based falloff to keep far cells calmer/supple
                 const falloff = Math.exp(-(dist * dist) / (2 * config.displaceFalloff * config.displaceFalloff));
@@ -1061,11 +1060,89 @@
                 }
             }
 
-            // Build array for Voronoi computation
+            // Build array for Voronoi computation - start with current animated positions
             const displacedSeeds = cells.map(cell => ({
                 x: cell.displacedX,
                 y: cell.displacedY
             }));
+
+            // CRITICAL: Apply constraints to CURRENT animated positions before Voronoi
+            // This prevents mid-animation concaves that occur when seeds pass through
+            // problematic geometry on their way to safe target positions
+            for (let iteration = 0; iteration < 2; iteration++) {
+                // Pass A: Enforce minimum seed separation on current positions
+                for (let i = 0; i < cells.length; i++) {
+                    if (hoveredCell < 0 || i === hoveredCell) continue;
+
+                    const cell = cells[i];
+                    const edges = cellEdgeMap[i];
+
+                    for (const edgeInfo of edges) {
+                        const neighborIdx = edgeInfo.neighborIdx;
+                        if (neighborIdx === hoveredCell) continue;
+
+                        const toNeighborX = displacedSeeds[neighborIdx].x - displacedSeeds[i].x;
+                        const toNeighborY = displacedSeeds[neighborIdx].y - displacedSeeds[i].y;
+                        const distToNeighbor = Math.sqrt(toNeighborX * toNeighborX + toNeighborY * toNeighborY);
+
+                        if (distToNeighbor < minSeedSeparation && distToNeighbor > 0) {
+                            const needToSeparate = minSeedSeparation - distToNeighbor;
+                            const dispX = displacedSeeds[i].x - cell.baseX;
+                            const dispY = displacedSeeds[i].y - cell.baseY;
+                            const dispMag = Math.sqrt(dispX * dispX + dispY * dispY);
+
+                            if (dispMag > 0) {
+                                const pullBack = needToSeparate / 2;
+                                const newDispMag = Math.max(0, dispMag - pullBack);
+                                const scale = newDispMag / dispMag;
+                                displacedSeeds[i].x = cell.baseX + dispX * scale;
+                                displacedSeeds[i].y = cell.baseY + dispY * scale;
+                            }
+                        }
+                    }
+                }
+
+                // Pass B: Enforce minimum bisector distance on current positions
+                for (let i = 0; i < cells.length; i++) {
+                    if (hoveredCell < 0 || i === hoveredCell) continue;
+
+                    const cell = cells[i];
+                    const edges = cellEdgeMap[i];
+
+                    for (const edgeInfo of edges) {
+                        const neighborIdx = edgeInfo.neighborIdx;
+                        if (neighborIdx === hoveredCell) continue;
+
+                        const edge = voronoiEdges[edgeInfo.edgeIdx];
+                        const isA = edge.cellA === i;
+                        const normalTowardUs = isA ? 1 : -1;
+                        const nx = edge.nx * normalTowardUs;
+                        const ny = edge.ny * normalTowardUs;
+
+                        const distToBisector = (displacedSeeds[i].x - edge.midX) * nx +
+                                               (displacedSeeds[i].y - edge.midY) * ny;
+
+                        if (distToBisector < minBisectorDist) {
+                            // Hard clamp when dangerously close
+                            if (distToBisector < minBisectorDist * 0.5) {
+                                const dispX = displacedSeeds[i].x - cell.baseX;
+                                const dispY = displacedSeeds[i].y - cell.baseY;
+                                const dispMag = Math.sqrt(dispX * dispX + dispY * dispY);
+
+                                if (dispMag > 0) {
+                                    const safeScale = 0.5;
+                                    displacedSeeds[i].x = cell.baseX + dispX * safeScale;
+                                    displacedSeeds[i].y = cell.baseY + dispY * safeScale;
+                                }
+                            } else {
+                                const pushBack = minBisectorDist - distToBisector;
+                                displacedSeeds[i].x += nx * pushBack;
+                                displacedSeeds[i].y += ny * pushBack;
+                            }
+                        }
+                    }
+                }
+            }
 
             // Rebuild Voronoi polygons using displaced seeds
             for (let i = 0; i < cells.length; i++) {
@@ -1129,6 +1206,7 @@
                 // CRITICAL: If centroid is outside polygon OR area collapsed too much,
                 // the cell has flipped inside-out or been over-squeezed
                 const minAreaRatio = 0.1; // Don't let cell shrink below 10% of original
+                const warnAreaRatio = 0.3; // Start blending toward base below 30%
                 const isInverted = polygonArea < 0;
                 const isTooSmall = baseArea > 0 && Math.abs(polygonArea) < baseArea * minAreaRatio;
                 const centroidEscaped = !pointInPolygon(centroid.x, centroid.y, polygon);
@@ -1139,6 +1217,21 @@
                     cell.polygon = cell.basePolygon;
                     cell.displayPolygon = cell.basePolygon;
                     continue;
+                }
+
+                // Smooth recovery: blend toward base when area is getting small
+                // This prevents jarring snaps by gradually returning to safe shape
+                const areaRatio = baseArea > 0 ? Math.abs(polygonArea) / baseArea : 1;
+                if (areaRatio < warnAreaRatio && cell.basePolygon && polygon.length === cell.basePolygon.length) {
+                    // Blend factor: 0 at warnAreaRatio, 1 at minAreaRatio
+                    const blendRange = warnAreaRatio - minAreaRatio;
+                    const blendFactor = Math.min(1, (warnAreaRatio - areaRatio) / blendRange);
+
+                    // Interpolate each vertex toward base polygon
+                    for (let v = 0; v < polygon.length; v++) {
+                        polygon[v][0] = polygon[v][0] * (1 - blendFactor) + cell.basePolygon[v][0] * blendFactor;
+                        polygon[v][1] = polygon[v][1] * (1 - blendFactor) + cell.basePolygon[v][1] * blendFactor;
+                    }
                 }
 
                 cell.baseCentroid = centroid;
