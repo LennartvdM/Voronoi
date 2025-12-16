@@ -1025,14 +1025,22 @@
                 cell.polygon = cell.basePolygon;
 
                 // Clip to display bounds using rotated zone clip planes
-                // Expanding cells get extra buffer
+                // Interpolate buffer based on scale for smooth protrusion animation
                 const scaleExtra = Math.max(0, cell.scale - 1.0);
-                const useBuffer = scaleExtra > 0.01;
-                const clipZone = useBuffer ? zoneWithBuffer : zone;
+                const maxScaleExtra = config.maxExpansion / 300; // Same as expandedScale calculation
+                const bufferFraction = maxScaleExtra > 0 ? Math.min(1, scaleExtra / maxScaleExtra) : 0;
 
+                // Interpolate clip planes between zone and zoneWithBuffer
                 let clipped = polygon;
-                for (const plane of clipZone.clipPlanes) {
-                    clipped = clipPolygon(clipped, plane.px, plane.py, plane.nx, plane.ny);
+                for (let p = 0; p < zone.clipPlanes.length; p++) {
+                    const inner = zone.clipPlanes[p];
+                    const outer = zoneWithBuffer.clipPlanes[p];
+
+                    // Interpolate plane position along normal
+                    const px = inner.px + (outer.px - inner.px) * bufferFraction;
+                    const py = inner.py + (outer.py - inner.py) * bufferFraction;
+
+                    clipped = clipPolygon(clipped, px, py, inner.nx, inner.ny);
                     if (clipped.length < 3) break;
                 }
 
