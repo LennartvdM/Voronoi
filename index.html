@@ -988,6 +988,27 @@
                 // Compute centroid and validate polygon integrity
                 const centroid = getPolygonCentroid(polygon);
 
+                // Check minimum distance from centroid to any edge
+                // Must be larger than corner radius to prevent corner collisions
+                const minCentroidToEdge = config.cornerRadius * 2 + 10; // Comfortable margin
+                let worstEdgeDist = Infinity;
+
+                for (let k = 0; k < polygon.length; k++) {
+                    const k1 = (k + 1) % polygon.length;
+                    const ex = polygon[k1][0] - polygon[k][0];
+                    const ey = polygon[k1][1] - polygon[k][1];
+                    const edgeLen = Math.sqrt(ex * ex + ey * ey);
+                    if (edgeLen < 0.001) continue;
+
+                    // Normal pointing inward (toward centroid)
+                    const nx = -ey / edgeLen;
+                    const ny = ex / edgeLen;
+
+                    // Distance from centroid to this edge line
+                    const dist = (centroid.x - polygon[k][0]) * nx + (centroid.y - polygon[k][1]) * ny;
+                    worstEdgeDist = Math.min(worstEdgeDist, Math.abs(dist));
+                }
+
                 // Check polygon area - if it's too small or negative, cell is over-deformed
                 let polygonArea = 0;
                 for (let k = 0; k < polygon.length; k++) {
@@ -1008,15 +1029,16 @@
                     baseArea = Math.abs(baseArea / 2);
                 }
 
-                // CRITICAL: If centroid is outside polygon OR area collapsed too much,
-                // the cell has flipped inside-out or been over-squeezed
+                // CRITICAL: If centroid is outside polygon, area collapsed, or too flat
                 const minAreaRatio = 0.1; // Don't let cell shrink below 10% of original
                 const warnAreaRatio = 0.3; // Start blending toward base below 30%
+                const warnEdgeDist = minCentroidToEdge * 2; // Start blending when getting flat
                 const isInverted = polygonArea < 0;
                 const isTooSmall = baseArea > 0 && Math.abs(polygonArea) < baseArea * minAreaRatio;
+                const isTooFlat = worstEdgeDist < minCentroidToEdge;
                 const centroidEscaped = !pointInPolygon(centroid.x, centroid.y, polygon);
 
-                if (isInverted || isTooSmall || centroidEscaped) {
+                if (isInverted || isTooSmall || isTooFlat || centroidEscaped) {
                     // Deformation limit reached - use base polygon
                     cell.baseCentroid = getPolygonCentroid(cell.basePolygon);
                     cell.polygon = cell.basePolygon;
@@ -1024,13 +1046,24 @@
                     continue;
                 }
 
-                // Smooth recovery: blend toward base when area is getting small
-                // This prevents jarring snaps by gradually returning to safe shape
+                // Smooth recovery: blend toward base when getting small or flat
                 const areaRatio = baseArea > 0 ? Math.abs(polygonArea) / baseArea : 1;
-                if (areaRatio < warnAreaRatio && cell.basePolygon && polygon.length === cell.basePolygon.length) {
-                    // Blend factor: 0 at warnAreaRatio, 1 at minAreaRatio
+                const edgeDistRatio = worstEdgeDist / warnEdgeDist;
+                const needsBlend = (areaRatio < warnAreaRatio || edgeDistRatio < 1) &&
+                                   cell.basePolygon && polygon.length === cell.basePolygon.length;
+
+                if (needsBlend) {
+                    // Blend factor from area
                     const blendRange = warnAreaRatio - minAreaRatio;
-                    const blendFactor = Math.min(1, (warnAreaRatio - areaRatio) / blendRange);
+                    const areaBlend = areaRatio < warnAreaRatio ?
+                        Math.min(1, (warnAreaRatio - areaRatio) / blendRange) : 0;
+
+                    // Blend factor from edge distance
+                    const edgeBlend = edgeDistRatio < 1 ?
+                        Math.min(1, 1 - edgeDistRatio) : 0;
+
+                    // Use the stronger blend factor
+                    const blendFactor = Math.max(areaBlend, edgeBlend);
 
                     // Interpolate each vertex toward base polygon
                     for (let v = 0; v < polygon.length; v++) {
