@@ -918,6 +918,89 @@
                 cell.targetDisplacedY = cell.baseY + (dy / dist) * pushAmount;
             }
 
+            // UPSTREAM PREVENTION: Limit displacement to prevent median crossings
+            // Ensure no two non-hovered seeds get too close, which would cause topology violations
+            // This uses DYNAMIC checking - accounting for where neighbors are also moving
+            const minSeedSeparation = 30; // Minimum pixels between any two seeds
+
+            for (let i = 0; i < cells.length; i++) {
+                if (hoveredCell < 0 || i === hoveredCell) continue;
+
+                const cell = cells[i];
+
+                // Check against each neighbor from the edge map (cells that share an edge)
+                const edges = cellEdgeMap[i];
+                for (const edgeInfo of edges) {
+                    const neighborIdx = edgeInfo.neighborIdx;
+                    if (neighborIdx === hoveredCell) continue; // Can get as close as needed to hovered
+
+                    const neighbor = cells[neighborIdx];
+
+                    // Direction from this cell to neighbor
+                    const toNeighborX = neighbor.targetDisplacedX - cell.targetDisplacedX;
+                    const toNeighborY = neighbor.targetDisplacedY - cell.targetDisplacedY;
+                    const distToNeighbor = Math.sqrt(toNeighborX * toNeighborX + toNeighborY * toNeighborY);
+
+                    // If seeds would be too close, scale back this cell's displacement
+                    if (distToNeighbor < minSeedSeparation && distToNeighbor > 0) {
+                        // How much do we need to separate?
+                        const needToSeparate = minSeedSeparation - distToNeighbor;
+
+                        // Move this cell back along its displacement direction
+                        const dispX = cell.targetDisplacedX - cell.baseX;
+                        const dispY = cell.targetDisplacedY - cell.baseY;
+                        const dispMag = Math.sqrt(dispX * dispX + dispY * dispY);
+
+                        if (dispMag > 0) {
+                            // Scale back displacement to maintain separation
+                            // Split the needed separation between both cells
+                            const pullBack = needToSeparate / 2;
+                            const newDispMag = Math.max(0, dispMag - pullBack);
+                            const scale = newDispMag / dispMag;
+
+                            cell.targetDisplacedX = cell.baseX + dispX * scale;
+                            cell.targetDisplacedY = cell.baseY + dispY * scale;
+                        }
+                    }
+                }
+            }
+
+            // Second pass: ensure cells don't cross the base bisector line
+            // This prevents cells from "jumping" to wrong side during extreme deformation
+            for (let i = 0; i < cells.length; i++) {
+                if (hoveredCell < 0 || i === hoveredCell) continue;
+
+                const cell = cells[i];
+                const edges = cellEdgeMap[i];
+
+                for (const edgeInfo of edges) {
+                    const neighborIdx = edgeInfo.neighborIdx;
+                    if (neighborIdx === hoveredCell) continue;
+
+                    const edge = voronoiEdges[edgeInfo.edgeIdx];
+
+                    // Determine which side this cell should be on
+                    const isA = edge.cellA === i;
+                    const normalTowardUs = isA ? 1 : -1;
+                    const nx = edge.nx * normalTowardUs;
+                    const ny = edge.ny * normalTowardUs;
+
+                    // Check distance from target position to base bisector
+                    const distToBisector = (cell.targetDisplacedX - edge.midX) * nx + (cell.targetDisplacedY - edge.midY) * ny;
+
+                    // Must stay on positive side (our side) of the bisector
+                    // Allow getting close but not crossing
+                    const minDist = 5; // Minimum distance from bisector line
+
+                    if (distToBisector < minDist) {
+                        // Project back to safe distance from bisector
+                        const pushBack = minDist - distToBisector;
+                        cell.targetDisplacedX += nx * pushBack;
+                        cell.targetDisplacedY += ny * pushBack;
+                    }
+                }
+            }
+
             // Build array for Voronoi computation
             const displacedSeeds = cells.map(cell => ({
                 x: cell.displacedX,
@@ -1023,39 +1106,8 @@
                 }
 
                 // Apply uniform gap inset
-                let displayPoly = gap > 0 && clipped.length >= 3 ? insetPolygon(clipped, gap / 2) : clipped;
-
-                // Check for concave (median crossing) - fall back to base if detected
-                if (displayPoly && displayPoly.length >= 3 && !isConvex(displayPoly)) {
-                    displayPoly = gap > 0 && cell.basePolygon ? insetPolygon(cell.basePolygon, gap / 2) : cell.basePolygon;
-                }
-
-                cell.displayPolygon = displayPoly;
+                cell.displayPolygon = gap > 0 && clipped.length >= 3 ? insetPolygon(clipped, gap / 2) : clipped;
             }
-        }
-
-        // Check if polygon is convex (all cross products same sign)
-        function isConvex(polygon) {
-            if (!polygon || polygon.length < 3) return false;
-            const n = polygon.length;
-            let sign = 0;
-
-            for (let i = 0; i < n; i++) {
-                const p0 = polygon[i];
-                const p1 = polygon[(i + 1) % n];
-                const p2 = polygon[(i + 2) % n];
-
-                const cross = (p1[0] - p0[0]) * (p2[1] - p1[1]) - (p1[1] - p0[1]) * (p2[0] - p1[0]);
-
-                if (Math.abs(cross) > 0.001) {
-                    if (sign === 0) {
-                        sign = cross > 0 ? 1 : -1;
-                    } else if ((cross > 0 ? 1 : -1) !== sign) {
-                        return false; // Concave detected
-                    }
-                }
-            }
-            return true;
         }
 
         function clipPolygon(polygon, px, py, nx, ny) {
