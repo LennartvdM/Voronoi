@@ -917,9 +917,9 @@
 
                 if (dist < 1) continue;
 
-                // Use the HOVERED cell's CURRENT scale so neighbors move in sync
-                // with the actual visual expansion, not the final destination
-                const scaleExtra = Math.max(0, hovered.scale - 1.0);
+                // Use the HOVERED cell's TARGET scale so neighbors get their final
+                // destination immediately and can animate in true sync with expansion
+                const scaleExtra = Math.max(0, hovered.targetScale - 1.0);
 
                 // Distance-based falloff to keep far cells calmer/supple
                 const falloff = Math.exp(-(dist * dist) / (2 * config.displaceFalloff * config.displaceFalloff));
