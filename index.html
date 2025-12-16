@@ -493,6 +493,9 @@
                 this.opacityProgress = 1.0;
                 this.lastTargetOpacity = config.nonHoveredOpacity;
 
+                // Interaction feel
+                this.hoverMix = 0; // Smoothed hover strength for outlines/bleed
+
                 const data = cellData[index % cellData.length];
                 this.title = data.title;
                 this.link = data.link;
@@ -504,6 +507,12 @@
                 // Progress-based animation with bezier easing
                 // Speed 1-100 maps to animation duration: higher speed = shorter duration
                 // At speed 1, animation takes ~2 seconds; at speed 100, nearly instant
+
+                // === HOVER STATE SMOOTHING ===
+                // Soften instant state flips (reduces shocky outline/opacity changes)
+                const targetHover = isHovered ? 1 : 0;
+                const hoverRate = 1 - Math.exp(-Math.max(0.001, dt) * 0.12); // damped lerp per frame
+                this.hoverMix += (targetHover - this.hoverMix) * hoverRate;
 
                 // === SCALE ANIMATION ===
                 // Detect target change - start new animation from current position
@@ -521,8 +530,8 @@
                     const progressRate = rawSpeed * 0.5;
                     this.scaleProgress = Math.min(1, this.scaleProgress + progressRate * dt / 1000);
 
-                    // Apply bezier easing to progress
-                    const easedProgress = easeOutSmooth(this.scaleProgress);
+                    // Apply smoother ease to avoid "shock" at start
+                    const easedProgress = easeInOut(this.scaleProgress);
 
                     // Interpolate between start and target
                     this.scale = this.scaleStart + (this.targetScale - this.scaleStart) * easedProgress;
@@ -559,7 +568,7 @@
                     const progressRate = rawSpeed * 0.5;
                     this.displaceProgress = Math.min(1, this.displaceProgress + progressRate * dt / 1000);
 
-                    const easedProgress = easeOutSmooth(this.displaceProgress);
+                    const easedProgress = easeInOut(this.displaceProgress);
 
                     this.displacedX = this.displaceStartX + (this.targetDisplacedX - this.displaceStartX) * easedProgress;
                     this.displacedY = this.displaceStartY + (this.targetDisplacedY - this.displaceStartY) * easedProgress;
@@ -578,7 +587,7 @@
                 if (this.zoomProgress < 1) {
                     const progressRate = config.imageZoomSpeed * 0.5;
                     this.zoomProgress = Math.min(1, this.zoomProgress + progressRate * dt / 1000);
-                    const easedProgress = easeOutSmooth(this.zoomProgress);
+                    const easedProgress = easeInOut(this.zoomProgress);
                     this.zoom = this.zoomStart + (this.targetZoom - this.zoomStart) * easedProgress;
                 } else {
                     this.zoom = this.targetZoom;
@@ -595,7 +604,7 @@
                     // Opacity uses a fixed moderate speed
                     const progressRate = 8 * 0.5; // Equivalent to speed ~8
                     this.opacityProgress = Math.min(1, this.opacityProgress + progressRate * dt / 1000);
-                    const easedProgress = easeOutSmooth(this.opacityProgress);
+                    const easedProgress = easeInOut(this.opacityProgress);
                     this.opacity = this.opacityStart + (this.targetOpacity - this.opacityStart) * easedProgress;
                 } else {
                     this.opacity = this.targetOpacity;
@@ -910,9 +919,14 @@
                 // Use the HOVERED cell's current animated scale for smooth push
                 const scaleExtra = Math.max(0, hovered.scale - 1.0);
 
-                // Uniform push - no falloff (cascade works, energy preserved)
-                const maxPush = config.maxExpansion * config.displaceRatio;
-                const pushAmount = scaleExtra * maxPush;
+                // Distance-based falloff to keep far cells calmer/supple
+                const falloff = Math.exp(-(dist * dist) / (2 * config.displaceFalloff * config.displaceFalloff));
+
+                // Push is limited by distance so medians don't cross
+                const maxPush = config.maxExpansion * config.displaceRatio * falloff;
+                const safetyBuffer = 22; // leave room so bisectors stay stable
+                const maxSafePush = Math.max(0, dist - safetyBuffer);
+                const pushAmount = Math.min(scaleExtra * maxPush, maxSafePush);
 
                 cell.targetDisplacedX = cell.baseX + (dx / dist) * pushAmount;
                 cell.targetDisplacedY = cell.baseY + (dy / dist) * pushAmount;
@@ -921,7 +935,7 @@
             // UPSTREAM PREVENTION: Limit displacement to prevent median crossings
             // Ensure no two non-hovered seeds get too close, which would cause topology violations
             // This uses DYNAMIC checking - accounting for where neighbors are also moving
-            const minSeedSeparation = 30; // Minimum pixels between any two seeds
+            const minSeedSeparation = 36; // Minimum pixels between any two seeds (slightly looser)
 
             for (let i = 0; i < cells.length; i++) {
                 if (hoveredCell < 0 || i === hoveredCell) continue;
@@ -1095,8 +1109,9 @@
 
                 let bufferFraction;
                 if (i === hoveredCell) {
-                    // Hovered cell gets full buffer based on its expansion
-                    bufferFraction = maxScaleExtra > 0 ? Math.min(1, scaleExtra / maxScaleExtra) : 0;
+                    // Hovered cell gets full buffer based on its expansion and hover blend
+                    const expansionFraction = maxScaleExtra > 0 ? Math.min(1, scaleExtra / maxScaleExtra) : 0;
+                    bufferFraction = Math.max(cell.hoverMix, expansionFraction * 0.9);
                 } else {
                     // Non-hovered cells get partial buffer based on displacement "stress"
                     // This gives them breathing room when pushed to extremes
@@ -1124,7 +1139,7 @@
 
                     // Give stressed cells up to 50% of full buffer (enough slack to avoid extremes)
                     const maxStressBuffer = 0.5;
-                    bufferFraction = stressFactor * maxStressBuffer;
+                    bufferFraction = Math.max(cell.hoverMix * 0.35, stressFactor * maxStressBuffer);
                 }
 
                 let clipped = polygon;
@@ -1411,7 +1426,22 @@
                 // Limit radius to 50% of the shorter edge - allows corners to meet at edge midpoints
                 // arcTo() handles overflow gracefully, so this is safe even for tight corners
                 const maxRadius = Math.min(dist1, dist2) * 0.5;
-                radii[i] = Math.max(0, Math.min(radius, maxRadius));
+
+                // Additional clamp based on interior angle to prevent concave "folds" when
+                // radius exceeds available corner wedge
+                const v1x = prev[0] - curr[0];
+                const v1y = prev[1] - curr[1];
+                const v2x = next[0] - curr[0];
+                const v2y = next[1] - curr[1];
+                const len1 = Math.sqrt(v1x * v1x + v1y * v1y) || 1;
+                const len2 = Math.sqrt(v2x * v2x + v2y * v2y) || 1;
+                const dot = (v1x * v2x + v1y * v2y) / (len1 * len2);
+                const clampedDot = Math.min(1, Math.max(-1, dot));
+                const interiorAngle = Math.acos(clampedDot);
+                const angleLimiter = Math.tan(interiorAngle / 2);
+                const maxByAngle = Math.min(dist1, dist2) * angleLimiter;
+
+                radii[i] = Math.max(0, Math.min(radius, maxRadius, maxByAngle));
             }
 
             ctx.beginPath();
@@ -2002,19 +2032,15 @@
 
                 // Draw border
                 drawRoundedPolygon(ctx, polygon, config.cornerRadius);
-
-                if (i === hoveredCell) {
-                    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-                    ctx.lineWidth = 2;
-                    ctx.shadowColor = 'rgba(255,255,255,0.5)';
-                    ctx.shadowBlur = 15;
-                } else {
-                    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-                    ctx.lineWidth = 1;
-                    ctx.shadowBlur = 0;
-                }
+                ctx.save();
+                const hoverGlow = cell.hoverMix;
+                const strokeAlpha = (i === hoveredCell ? 0.85 : 0.35) * Math.max(0.35, cell.opacity);
+                ctx.strokeStyle = `rgba(255,255,255,${strokeAlpha})`;
+                ctx.lineWidth = 1 + hoverGlow * 2;
+                ctx.shadowColor = `rgba(255,255,255,${0.4 * hoverGlow})`;
+                ctx.shadowBlur = 18 * hoverGlow;
                 ctx.stroke();
-                ctx.shadowBlur = 0;
+                ctx.restore();
             }
 
             // Draw non-hovered cells first
