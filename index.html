@@ -1028,9 +1028,7 @@
                     const dx = other.x - seed.x;
                     const dy = other.y - seed.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
-                    // Skip seeds that are too close - bisector becomes numerically unstable
-                    // Increased threshold for better numerical stability
-                    if (dist < 1.0) continue;
+                    if (dist < 0.001) continue;
 
                     // Midpoint between displaced seeds
                     const mx = (seed.x + other.x) / 2;
@@ -1049,17 +1047,6 @@
                     cell.displayPolygon = cell.basePolygon;
                     continue;
                 }
-
-                // Early validation: clean up and check Voronoi polygon before further processing
-                const cleanedVoronoi = cleanPolygon(polygon);
-                if (cleanedVoronoi === null) {
-                    // Voronoi polygon became invalid - fall back to base
-                    cell.polygon = cell.basePolygon;
-                    cell.displayPolygon = cell.basePolygon;
-                    cell.baseCentroid = getPolygonCentroid(cell.basePolygon);
-                    continue;
-                }
-                polygon = cleanedVoronoi;
 
                 // Compute centroid and validate polygon integrity
                 const centroid = getPolygonCentroid(polygon);
@@ -1118,18 +1105,7 @@
                 }
 
                 // Apply uniform gap inset
-                let displayPoly = gap > 0 && clipped.length >= 3 ? insetPolygon(clipped, gap / 2) : clipped;
-
-                // Validate and clean the display polygon
-                // If invalid (self-intersecting or non-convex), fall back to base
-                const cleanedPoly = cleanPolygon(displayPoly);
-                if (cleanedPoly === null) {
-                    // Polygon became invalid during deformation - use base polygon with inset
-                    const baseInset = gap > 0 && cell.basePolygon ? insetPolygon(cell.basePolygon, gap / 2) : cell.basePolygon;
-                    cell.displayPolygon = baseInset || cell.basePolygon;
-                } else {
-                    cell.displayPolygon = cleanedPoly;
-                }
+                cell.displayPolygon = gap > 0 && clipped.length >= 3 ? insetPolygon(clipped, gap / 2) : clipped;
             }
         }
 
@@ -1432,67 +1408,6 @@
             }
 
             return result.length >= 3 ? result : polygon;
-        }
-
-        // Clean up polygon: remove duplicates, ensure proper winding, validate convexity
-        function cleanPolygon(polygon, minDist = 1.0) {
-            if (!polygon || polygon.length < 3) return polygon;
-
-            // Step 1: Remove duplicate/near-duplicate consecutive vertices
-            const cleaned = [];
-            for (let i = 0; i < polygon.length; i++) {
-                const curr = polygon[i];
-                const next = polygon[(i + 1) % polygon.length];
-                const dx = next[0] - curr[0];
-                const dy = next[1] - curr[1];
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                if (dist >= minDist) {
-                    cleaned.push(curr);
-                }
-            }
-
-            if (cleaned.length < 3) return polygon;
-
-            // Step 2: Check for self-intersection (any non-adjacent edges crossing)
-            // This detects "bowtie" or figure-8 shapes
-            const n = cleaned.length;
-            for (let i = 0; i < n; i++) {
-                const a1 = cleaned[i];
-                const a2 = cleaned[(i + 1) % n];
-
-                for (let j = i + 2; j < n; j++) {
-                    // Skip adjacent edges (they share a vertex)
-                    if (j === (i + n - 1) % n) continue;
-
-                    const b1 = cleaned[j];
-                    const b2 = cleaned[(j + 1) % n];
-
-                    if (segmentsIntersect(a1[0], a1[1], a2[0], a2[1], b1[0], b1[1], b2[0], b2[1])) {
-                        // Self-intersection detected - polygon is invalid
-                        return null; // Signal to use fallback
-                    }
-                }
-            }
-
-            // Step 3: Check convexity (all cross products same sign)
-            let positive = 0, negative = 0;
-            for (let i = 0; i < n; i++) {
-                const p1 = cleaned[i];
-                const p2 = cleaned[(i + 1) % n];
-                const p3 = cleaned[(i + 2) % n];
-
-                const cross = (p2[0] - p1[0]) * (p3[1] - p2[1]) - (p2[1] - p1[1]) * (p3[0] - p2[0]);
-                if (cross > 0.001) positive++;
-                else if (cross < -0.001) negative++;
-            }
-
-            // If we have both positive and negative turns, polygon is non-convex
-            if (positive > 0 && negative > 0) {
-                return null; // Signal to use fallback
-            }
-
-            return cleaned;
         }
 
         // ========== ROUNDED CORNERS ==========
