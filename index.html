@@ -879,17 +879,13 @@
         }
 
         // ============================================================================
-        // EDGE-BASED DEFORMATION - STABLE TOPOLOGY
+        // EDGE-BASED DEFORMATION - BOTH CELLS SEE SAME EDGE
         // ============================================================================
-        // Instead of moving seeds (which changes Voronoi topology), we shift EDGES.
+        // CRITICAL: Both cells sharing an edge must clip against the SAME shifted
+        // edge position. Previous bug: computed shift per-cell with different normals.
         //
-        // When hovered cell expands:
-        // - Its edges push outward (along normal, away from centroid)
-        // - Neighbors' shared edges shrink inward (same edge, seen from other side)
-        // - Non-shared edges unchanged
-        // - Polygon vertices recomputed as edge intersections
-        //
-        // This gives true deformation without topology changes.
+        // Fix: Pre-compute all shifted edge positions in WORLD coordinates,
+        // then both cells use that exact same position.
         // ============================================================================
         function updateDisplayPolygons() {
             const zone = getZoneBounds(false);
@@ -900,6 +896,31 @@
             const hovered = hoveredCell >= 0 ? cells[hoveredCell] : null;
             const scaleExtra = hovered ? Math.max(0, hovered.scale - 1.0) : 0;
             const shiftAmount = scaleExtra * config.maxExpansion * 0.5;
+
+            // Pre-compute shifted edge positions in WORLD coordinates
+            // Edge normal (nx,ny) points from cellB toward cellA
+            // To make cellA bigger: shift edge toward cellB (subtract from midpoint)
+            // To make cellB bigger: shift edge toward cellA (add to midpoint)
+            const shiftedEdgeMidpoints = voronoiEdges.map(edge => {
+                let mx = edge.midX;
+                let my = edge.midY;
+
+                if (hovered && shiftAmount > 0) {
+                    if (edge.cellA === hoveredCell) {
+                        // cellA is hovered, wants to expand
+                        // Shift edge toward cellB (along -normal direction)
+                        mx -= edge.nx * shiftAmount;
+                        my -= edge.ny * shiftAmount;
+                    } else if (edge.cellB === hoveredCell) {
+                        // cellB is hovered, wants to expand
+                        // Shift edge toward cellA (along +normal direction)
+                        mx += edge.nx * shiftAmount;
+                        my += edge.ny * shiftAmount;
+                    }
+                }
+
+                return { mx, my };
+            });
 
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
@@ -913,23 +934,16 @@
                 // Hit detection uses base polygon
                 cell.polygon = cell.basePolygon;
 
-                // Start with zone bounds, then clip against shifted bisectors
+                // Start with zone bounds, then clip against edges
                 let polygon = zoneWithBuffer.bounds.map(p => [...p]);
 
-                // Get this cell's edges
                 const edges = cellEdgeMap[i] || [];
 
                 for (const edgeInfo of edges) {
                     const edge = voronoiEdges[edgeInfo.edgeIdx];
-                    const neighborIdx = edgeInfo.neighborIdx;
+                    const shifted = shiftedEdgeMidpoints[edgeInfo.edgeIdx];
 
-                    // Base bisector position
-                    let mx = edge.midX;
-                    let my = edge.midY;
-
-                    // Determine normal direction for THIS cell
-                    // If we're cellA, normal points toward us (from B to A)
-                    // If we're cellB, normal points away (we need to flip it)
+                    // Normal pointing toward THIS cell (flip if we're cellB)
                     let nx, ny;
                     if (edgeInfo.side === 'A') {
                         nx = edge.nx;
@@ -939,24 +953,8 @@
                         ny = -edge.ny;
                     }
 
-                    // Shift edge if this edge is between us and the hovered cell
-                    if (hovered && shiftAmount > 0) {
-                        if (i === hoveredCell) {
-                            // I'm hovered: push this edge OUTWARD (I expand)
-                            // Outward means along MY normal direction (toward neighbor)
-                            mx -= nx * shiftAmount;
-                            my -= ny * shiftAmount;
-                        } else if (neighborIdx === hoveredCell) {
-                            // This edge borders the hovered cell: it pushes INTO me
-                            // The edge shifts toward me (hovered cell expands)
-                            mx -= nx * shiftAmount;
-                            my -= ny * shiftAmount;
-                        }
-                        // Edges not involving hovered cell: no shift
-                    }
-
-                    // Clip polygon against this (possibly shifted) bisector
-                    polygon = clipPolygon(polygon, mx, my, nx, ny);
+                    // Use the PRE-COMPUTED shifted midpoint (same for both cells)
+                    polygon = clipPolygon(polygon, shifted.mx, shifted.my, nx, ny);
                     if (polygon.length < 3) break;
                 }
 
