@@ -927,131 +927,13 @@
                 // Distance-based falloff to keep far cells calmer/supple
                 const falloff = Math.exp(-(dist * dist) / (2 * config.displaceFalloff * config.displaceFalloff));
 
-                // Push is limited by distance so medians don't cross
-                const maxPush = config.maxExpansion * config.displaceRatio * falloff;
-                const maxSafePush = Math.max(0, dist - safetyBuffer);
-                const pushAmount = Math.min(scaleExtra * maxPush, maxSafePush);
+                // Neighbors move effortlessly - no artificial friction
+                const pushAmount = scaleExtra * config.maxExpansion * config.displaceRatio * falloff;
 
                 cell.targetDisplacedX = cell.baseX + (dx / dist) * pushAmount;
                 cell.targetDisplacedY = cell.baseY + (dy / dist) * pushAmount;
             }
-
-            // Iterative constraint solving to prevent median crossings
-            for (let iteration = 0; iteration < maxIterations; iteration++) {
-                let maxViolation = 0;
-
-                // Pass A: Ensure no two non-hovered seeds get too close
-                for (let i = 0; i < cells.length; i++) {
-                    if (hoveredCell < 0 || i === hoveredCell) continue;
-
-                    const cell = cells[i];
-                    const edges = cellEdgeMap[i];
-
-                    for (const edgeInfo of edges) {
-                        const neighborIdx = edgeInfo.neighborIdx;
-                        if (neighborIdx === hoveredCell) continue;
-
-                        const neighbor = cells[neighborIdx];
-
-                        const toNeighborX = neighbor.targetDisplacedX - cell.targetDisplacedX;
-                        const toNeighborY = neighbor.targetDisplacedY - cell.targetDisplacedY;
-                        const distToNeighbor = Math.sqrt(toNeighborX * toNeighborX + toNeighborY * toNeighborY);
-
-                        if (distToNeighbor < minSeedSeparation && distToNeighbor > 0) {
-                            const needToSeparate = minSeedSeparation - distToNeighbor;
-                            maxViolation = Math.max(maxViolation, needToSeparate);
-
-                            const dispX = cell.targetDisplacedX - cell.baseX;
-                            const dispY = cell.targetDisplacedY - cell.baseY;
-                            const dispMag = Math.sqrt(dispX * dispX + dispY * dispY);
-
-                            if (dispMag > 0) {
-                                const pullBack = needToSeparate / 2;
-                                const newDispMag = Math.max(0, dispMag - pullBack);
-                                const scale = newDispMag / dispMag;
-
-                                cell.targetDisplacedX = cell.baseX + dispX * scale;
-                                cell.targetDisplacedY = cell.baseY + dispY * scale;
-                            }
-                        }
-                    }
-                }
-
-                // Pass B: Ensure cells don't cross or get too close to the base bisector line
-                for (let i = 0; i < cells.length; i++) {
-                    if (hoveredCell < 0 || i === hoveredCell) continue;
-
-                    const cell = cells[i];
-                    const edges = cellEdgeMap[i];
-
-                    for (const edgeInfo of edges) {
-                        const neighborIdx = edgeInfo.neighborIdx;
-                        if (neighborIdx === hoveredCell) continue;
-
-                        const edge = voronoiEdges[edgeInfo.edgeIdx];
-
-                        const isA = edge.cellA === i;
-                        const normalTowardUs = isA ? 1 : -1;
-                        const nx = edge.nx * normalTowardUs;
-                        const ny = edge.ny * normalTowardUs;
-
-                        const distToBisector = (cell.targetDisplacedX - edge.midX) * nx + (cell.targetDisplacedY - edge.midY) * ny;
-
-                        if (distToBisector < minBisectorDist) {
-                            const violation = minBisectorDist - distToBisector;
-                            maxViolation = Math.max(maxViolation, violation);
-
-                            // Hard clamp when very close to or past the bisector
-                            if (distToBisector < minBisectorDist * 0.5) {
-                                const dispX = cell.targetDisplacedX - cell.baseX;
-                                const dispY = cell.targetDisplacedY - cell.baseY;
-                                const dispMag = Math.sqrt(dispX * dispX + dispY * dispY);
-
-                                if (dispMag > 0) {
-                                    const safeScale = 0.5;
-                                    cell.targetDisplacedX = cell.baseX + dispX * safeScale;
-                                    cell.targetDisplacedY = cell.baseY + dispY * safeScale;
-                                }
-                            } else {
-                                const pushBack = minBisectorDist - distToBisector;
-                                cell.targetDisplacedX += nx * pushBack;
-                                cell.targetDisplacedY += ny * pushBack;
-                            }
-                        }
-                    }
-                }
-
-                if (maxViolation < 1) break;
-            }
-
-            // Final safety pass: lerp toward base if still too close to bisector
-            for (let i = 0; i < cells.length; i++) {
-                if (hoveredCell < 0 || i === hoveredCell) continue;
-
-                const cell = cells[i];
-                const edges = cellEdgeMap[i];
-                let worstBisectorDist = Infinity;
-
-                for (const edgeInfo of edges) {
-                    const neighborIdx = edgeInfo.neighborIdx;
-                    if (neighborIdx === hoveredCell) continue;
-
-                    const edge = voronoiEdges[edgeInfo.edgeIdx];
-                    const isA = edge.cellA === i;
-                    const normalTowardUs = isA ? 1 : -1;
-                    const nx = edge.nx * normalTowardUs;
-                    const ny = edge.ny * normalTowardUs;
-
-                    const distToBisector = (cell.targetDisplacedX - edge.midX) * nx + (cell.targetDisplacedY - edge.midY) * ny;
-                    worstBisectorDist = Math.min(worstBisectorDist, distToBisector);
-                }
-
-                if (worstBisectorDist < minBisectorDist * 0.3) {
-                    const blendToBase = 1 - (worstBisectorDist / (minBisectorDist * 0.3));
-                    cell.targetDisplacedX = cell.targetDisplacedX * (1 - blendToBase) + cell.baseX * blendToBase;
-                    cell.targetDisplacedY = cell.targetDisplacedY * (1 - blendToBase) + cell.baseY * blendToBase;
-                }
-            }
+            // No artificial constraints - neighbors move effortlessly
         }
 
         // Display polygons with neighbor displacement via seed movement
@@ -1061,98 +943,13 @@
             const zoneWithBuffer = getZoneBounds(true);
             const gap = config.gap;
 
-            // NOTE: Target computation moved to computeDisplacementTargets() which runs
-            // BEFORE Cell.update() to ensure animation never chases invalid positions
-
-            // Shared constraint constants (must match computeDisplacementTargets)
-            const minSeedSeparation = 48;
-            const minBisectorDist = 15;
-
-            // Build array for Voronoi computation - start with current animated positions
+            // Build array for Voronoi computation from current animated positions
             const displacedSeeds = cells.map(cell => ({
                 x: cell.displacedX,
                 y: cell.displacedY
             }));
 
-            // CRITICAL: Apply constraints to CURRENT animated positions before Voronoi
-            // This prevents mid-animation concaves that occur when seeds pass through
-            // problematic geometry on their way to safe target positions
-            for (let iteration = 0; iteration < 2; iteration++) {
-                // Pass A: Enforce minimum seed separation on current positions
-                for (let i = 0; i < cells.length; i++) {
-                    if (hoveredCell < 0 || i === hoveredCell) continue;
-
-                    const cell = cells[i];
-                    const edges = cellEdgeMap[i];
-
-                    for (const edgeInfo of edges) {
-                        const neighborIdx = edgeInfo.neighborIdx;
-                        if (neighborIdx === hoveredCell) continue;
-
-                        const toNeighborX = displacedSeeds[neighborIdx].x - displacedSeeds[i].x;
-                        const toNeighborY = displacedSeeds[neighborIdx].y - displacedSeeds[i].y;
-                        const distToNeighbor = Math.sqrt(toNeighborX * toNeighborX + toNeighborY * toNeighborY);
-
-                        if (distToNeighbor < minSeedSeparation && distToNeighbor > 0) {
-                            const needToSeparate = minSeedSeparation - distToNeighbor;
-                            const dispX = displacedSeeds[i].x - cell.baseX;
-                            const dispY = displacedSeeds[i].y - cell.baseY;
-                            const dispMag = Math.sqrt(dispX * dispX + dispY * dispY);
-
-                            if (dispMag > 0) {
-                                const pullBack = needToSeparate / 2;
-                                const newDispMag = Math.max(0, dispMag - pullBack);
-                                const scale = newDispMag / dispMag;
-                                displacedSeeds[i].x = cell.baseX + dispX * scale;
-                                displacedSeeds[i].y = cell.baseY + dispY * scale;
-                            }
-                        }
-                    }
-                }
-
-                // Pass B: Enforce minimum bisector distance on current positions
-                for (let i = 0; i < cells.length; i++) {
-                    if (hoveredCell < 0 || i === hoveredCell) continue;
-
-                    const cell = cells[i];
-                    const edges = cellEdgeMap[i];
-
-                    for (const edgeInfo of edges) {
-                        const neighborIdx = edgeInfo.neighborIdx;
-                        if (neighborIdx === hoveredCell) continue;
-
-                        const edge = voronoiEdges[edgeInfo.edgeIdx];
-                        const isA = edge.cellA === i;
-                        const normalTowardUs = isA ? 1 : -1;
-                        const nx = edge.nx * normalTowardUs;
-                        const ny = edge.ny * normalTowardUs;
-
-                        const distToBisector = (displacedSeeds[i].x - edge.midX) * nx +
-                                               (displacedSeeds[i].y - edge.midY) * ny;
-
-                        if (distToBisector < minBisectorDist) {
-                            // Hard clamp when dangerously close
-                            if (distToBisector < minBisectorDist * 0.5) {
-                                const dispX = displacedSeeds[i].x - cell.baseX;
-                                const dispY = displacedSeeds[i].y - cell.baseY;
-                                const dispMag = Math.sqrt(dispX * dispX + dispY * dispY);
-
-                                if (dispMag > 0) {
-                                    const safeScale = 0.5;
-                                    displacedSeeds[i].x = cell.baseX + dispX * safeScale;
-                                    displacedSeeds[i].y = cell.baseY + dispY * safeScale;
-                                }
-                            } else {
-                                const pushBack = minBisectorDist - distToBisector;
-                                displacedSeeds[i].x += nx * pushBack;
-                                displacedSeeds[i].y += ny * pushBack;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Rebuild Voronoi polygons using displaced seeds
+            // Rebuild Voronoi polygons using displaced seeds - no constraints, effortless
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
                 const seed = displacedSeeds[i];
@@ -1256,7 +1053,7 @@
 
                 let bufferFraction;
                 if (i === hoveredCell) {
-                    // Hovered cell gets full buffer based on its expansion and hover blend
+                    // Hovered cell gets full protrusion based on its expansion
                     const expansionFraction = maxScaleExtra > 0 ? Math.min(1, scaleExtra / maxScaleExtra) : 0;
                     bufferFraction = Math.max(cell.hoverMix, expansionFraction * 0.9);
                 } else {
