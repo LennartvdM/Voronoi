@@ -916,8 +916,10 @@
 
                 if (dist < 1) continue;
 
-                // Use the HOVERED cell's current animated scale for smooth push
-                const scaleExtra = Math.max(0, hovered.scale - 1.0);
+                // Use the HOVERED cell's TARGET scale so neighbors get their final
+                // destination immediately and animate in sync with the hover expansion
+                const targetScaleExtra = Math.max(0, hovered.targetScale - 1.0);
+                const scaleExtra = targetScaleExtra;
 
                 // Distance-based falloff to keep far cells calmer/supple
                 const falloff = Math.exp(-(dist * dist) / (2 * config.displaceFalloff * config.displaceFalloff));
