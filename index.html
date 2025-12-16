@@ -1023,39 +1023,8 @@
                 }
 
                 // Apply uniform gap inset
-                let displayPoly = gap > 0 && clipped.length >= 3 ? insetPolygon(clipped, gap / 2) : clipped;
-
-                // Check for concave (median crossing) - fall back to base if detected
-                if (displayPoly && displayPoly.length >= 3 && !isConvex(displayPoly)) {
-                    displayPoly = gap > 0 && cell.basePolygon ? insetPolygon(cell.basePolygon, gap / 2) : cell.basePolygon;
-                }
-
-                cell.displayPolygon = displayPoly;
+                cell.displayPolygon = gap > 0 && clipped.length >= 3 ? insetPolygon(clipped, gap / 2) : clipped;
             }
-        }
-
-        // Check if polygon is convex (all cross products same sign)
-        function isConvex(polygon) {
-            if (!polygon || polygon.length < 3) return false;
-            const n = polygon.length;
-            let sign = 0;
-
-            for (let i = 0; i < n; i++) {
-                const p0 = polygon[i];
-                const p1 = polygon[(i + 1) % n];
-                const p2 = polygon[(i + 2) % n];
-
-                const cross = (p1[0] - p0[0]) * (p2[1] - p1[1]) - (p1[1] - p0[1]) * (p2[0] - p1[0]);
-
-                if (Math.abs(cross) > 0.001) {
-                    if (sign === 0) {
-                        sign = cross > 0 ? 1 : -1;
-                    } else if ((cross > 0 ? 1 : -1) !== sign) {
-                        return false; // Concave detected
-                    }
-                }
-            }
-            return true;
         }
 
         function clipPolygon(polygon, px, py, nx, ny) {
