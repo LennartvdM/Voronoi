@@ -887,15 +887,16 @@
             return [line1.px + t * line1.dx, line1.py + t * line1.dy];
         }
 
-        // Display polygons with neighbor displacement via seed movement
-        // Moving seeds recomputes Voronoi naturally while maintaining perfect tessellation
-        function updateDisplayPolygons() {
-            const zone = getZoneBounds(false);
-            const zoneWithBuffer = getZoneBounds(true);
-            const gap = config.gap;
+        // Compute and constrain displacement targets BEFORE Cell.update runs
+        // This ensures animation never chases invalid positions that would cause concaves
+        function computeDisplacementTargets() {
+            // Constraint constants
+            const minSeedSeparation = 48;
+            const minBisectorDist = 15;
+            const maxIterations = 3;
+            const safetyBuffer = 30;
 
             // Compute TARGET displaced positions based on hovered cell
-            // The actual displacement is animated in Cell.update()
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
 
@@ -925,7 +926,6 @@
 
                 // Push is limited by distance so medians don't cross
                 const maxPush = config.maxExpansion * config.displaceRatio * falloff;
-                const safetyBuffer = 30; // leave room so bisectors stay stable (increased from 22)
                 const maxSafePush = Math.max(0, dist - safetyBuffer);
                 const pushAmount = Math.min(scaleExtra * maxPush, maxSafePush);
 
@@ -933,12 +933,7 @@
                 cell.targetDisplacedY = cell.baseY + (dy / dist) * pushAmount;
             }
 
-            // UPSTREAM PREVENTION: Limit displacement to prevent median crossings
-            // Use iterative constraint solving to handle conflicting constraints
-            const minSeedSeparation = 48; // Minimum pixels between any two seeds (increased from 36)
-            const minBisectorDist = 15;   // Minimum distance from bisector line (increased from 5)
-            const maxIterations = 3;      // Run multiple passes until constraints converge
-
+            // Iterative constraint solving to prevent median crossings
             for (let iteration = 0; iteration < maxIterations; iteration++) {
                 let maxViolation = 0;
 
@@ -1003,21 +998,18 @@
                             const violation = minBisectorDist - distToBisector;
                             maxViolation = Math.max(maxViolation, violation);
 
-                            // Hard clamp: when very close to or past the bisector, aggressively scale back
+                            // Hard clamp when very close to or past the bisector
                             if (distToBisector < minBisectorDist * 0.5) {
-                                // Critical zone - scale back displacement toward base position
                                 const dispX = cell.targetDisplacedX - cell.baseX;
                                 const dispY = cell.targetDisplacedY - cell.baseY;
                                 const dispMag = Math.sqrt(dispX * dispX + dispY * dispY);
 
                                 if (dispMag > 0) {
-                                    // Scale back to 50% of current displacement
                                     const safeScale = 0.5;
                                     cell.targetDisplacedX = cell.baseX + dispX * safeScale;
                                     cell.targetDisplacedY = cell.baseY + dispY * safeScale;
                                 }
                             } else {
-                                // Soft projection: push back to safe distance
                                 const pushBack = minBisectorDist - distToBisector;
                                 cell.targetDisplacedX += nx * pushBack;
                                 cell.targetDisplacedY += ny * pushBack;
@@ -1026,11 +1018,10 @@
                     }
                 }
 
-                // Early exit if constraints are satisfied
                 if (maxViolation < 1) break;
             }
 
-            // Final safety pass: if any cell is still dangerously close to bisector, reset to base
+            // Final safety pass: lerp toward base if still too close to bisector
             for (let i = 0; i < cells.length; i++) {
                 if (hoveredCell < 0 || i === hoveredCell) continue;
 
@@ -1052,13 +1043,27 @@
                     worstBisectorDist = Math.min(worstBisectorDist, distToBisector);
                 }
 
-                // If still too close after iterations, lerp toward base position
                 if (worstBisectorDist < minBisectorDist * 0.3) {
                     const blendToBase = 1 - (worstBisectorDist / (minBisectorDist * 0.3));
                     cell.targetDisplacedX = cell.targetDisplacedX * (1 - blendToBase) + cell.baseX * blendToBase;
                     cell.targetDisplacedY = cell.targetDisplacedY * (1 - blendToBase) + cell.baseY * blendToBase;
                 }
             }
+        }
+
+        // Display polygons with neighbor displacement via seed movement
+        // Moving seeds recomputes Voronoi naturally while maintaining perfect tessellation
+        function updateDisplayPolygons() {
+            const zone = getZoneBounds(false);
+            const zoneWithBuffer = getZoneBounds(true);
+            const gap = config.gap;
+
+            // NOTE: Target computation moved to computeDisplacementTargets() which runs
+            // BEFORE Cell.update() to ensure animation never chases invalid positions
+
+            // Shared constraint constants (must match computeDisplacementTargets)
+            const minSeedSeparation = 48;
+            const minBisectorDist = 15;
 
             // Build array for Voronoi computation - start with current animated positions
             const displacedSeeds = cells.map(cell => ({
@@ -2110,10 +2115,18 @@
             // Scale factor: 1.0 = normal, 1.0 + maxExpansion/300 = expanded
             const expandedScale = 1.0 + config.maxExpansion / 300;
 
+            // Set target scales first
             for (let i = 0; i < cells.length; i++) {
-                const cell = cells[i];
-                cell.targetScale = (i === hoveredCell) ? expandedScale : 1.0;
-                cell.update(dt, i === hoveredCell);
+                cells[i].targetScale = (i === hoveredCell) ? expandedScale : 1.0;
+            }
+
+            // Compute and constrain displacement targets BEFORE animation runs
+            // This ensures Cell.update never chases invalid positions
+            computeDisplacementTargets();
+
+            // Now run animations with valid, constrained targets
+            for (let i = 0; i < cells.length; i++) {
+                cells[i].update(dt, i === hoveredCell);
             }
 
             // Update display polygons - uses animated displacedX/Y from each cell
