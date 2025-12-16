@@ -879,146 +879,93 @@
         }
 
         // ============================================================================
-        // WORKING PHYSICS BASELINE - PROTECTED CODE
+        // EDGE-BASED DEFORMATION - STABLE TOPOLOGY
         // ============================================================================
-        // This physics implementation works correctly. Previous attempts to add
-        // "improvements" (Delaunay edge crossing constraints, polygon validation)
-        // broke the physics - causing neighbors to freeze and instant protrusion.
+        // Instead of moving seeds (which changes Voronoi topology), we shift EDGES.
         //
-        // HOW IT WORKS:
-        // 1. Neighbor seeds are pushed away from hovered cell (targetDisplacedX/Y)
-        // 2. Cell.update() animates current position toward target (displacedX/Y)
-        // 3. Voronoi is recomputed with displaced seeds every frame
-        // 4. This naturally maintains perfect tessellation
+        // When hovered cell expands:
+        // - Its edges push outward (along normal, away from centroid)
+        // - Neighbors' shared edges shrink inward (same edge, seen from other side)
+        // - Non-shared edges unchanged
+        // - Polygon vertices recomputed as edge intersections
         //
-        // DO NOT ADD:
-        // - Delaunay edge crossing checks (breaks animation)
-        // - Direct modification of displacedX/Y in this function (breaks animation)
-        // - "Safe scale" constraints that zero out displacement
-        //
-        // If you need to prevent visual glitches, work DOWNSTREAM (in rendering)
-        // not UPSTREAM (in physics/displacement calculation).
+        // This gives true deformation without topology changes.
         // ============================================================================
         function updateDisplayPolygons() {
             const zone = getZoneBounds(false);
             const zoneWithBuffer = getZoneBounds(true);
             const gap = config.gap;
 
-            // Compute TARGET displaced positions based on hovered cell
-            // The actual displacement is animated in Cell.update()
+            // Get expansion info
+            const hovered = hoveredCell >= 0 ? cells[hoveredCell] : null;
+            const scaleExtra = hovered ? Math.max(0, hovered.scale - 1.0) : 0;
+            const shiftAmount = scaleExtra * config.maxExpansion * 0.5;
+
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
 
-                // Default: return to base position
-                cell.targetDisplacedX = cell.baseX;
-                cell.targetDisplacedY = cell.baseY;
-
-                // If no cell is hovered, all targets are base position
-                if (hoveredCell < 0 || i === hoveredCell) {
+                if (!cell.basePolygon || cell.basePolygon.length < 3) {
+                    cell.polygon = cell.basePolygon;
+                    cell.displayPolygon = cell.basePolygon;
                     continue;
                 }
 
-                // Push this seed away from the hovered cell
-                const hovered = cells[hoveredCell];
-                const dx = cell.baseX - hovered.baseX;
-                const dy = cell.baseY - hovered.baseY;
-                const dist = Math.sqrt(dx * dx + dy * dy);
+                // Hit detection uses base polygon
+                cell.polygon = cell.basePolygon;
 
-                if (dist < 1) continue;
-
-                // Use the HOVERED cell's current animated scale for smooth push
-                const scaleExtra = Math.max(0, hovered.scale - 1.0);
-
-                // Push amount: uniform for all cells (no falloff decay)
-                // This prevents topology conflicts from cells "running into" stationary neighbors
-                const maxPush = config.maxExpansion * config.displaceRatio;
-                const pushAmount = scaleExtra * maxPush;
-
-                cell.targetDisplacedX = cell.baseX + (dx / dist) * pushAmount;
-                cell.targetDisplacedY = cell.baseY + (dy / dist) * pushAmount;
-            }
-
-            // Build array for Voronoi computation
-            const displacedSeeds = cells.map(cell => ({
-                x: cell.displacedX,
-                y: cell.displacedY
-            }));
-
-            // Rebuild Voronoi polygons using displaced seeds
-            for (let i = 0; i < cells.length; i++) {
-                const cell = cells[i];
-                const seed = displacedSeeds[i];
-
-                // Start with rotated zone bounds (with buffer)
+                // Start with zone bounds, then clip against shifted bisectors
                 let polygon = zoneWithBuffer.bounds.map(p => [...p]);
 
-                // Clip against bisector with each other cell (using displaced seeds)
-                for (let j = 0; j < cells.length; j++) {
-                    if (i === j) continue;
+                // Get this cell's edges
+                const edges = cellEdgeMap[i] || [];
 
-                    const other = displacedSeeds[j];
-                    const dx = other.x - seed.x;
-                    const dy = other.y - seed.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < 0.001) continue;
+                for (const edgeInfo of edges) {
+                    const edge = voronoiEdges[edgeInfo.edgeIdx];
+                    const neighborIdx = edgeInfo.neighborIdx;
 
-                    // Midpoint between displaced seeds
-                    const mx = (seed.x + other.x) / 2;
-                    const my = (seed.y + other.y) / 2;
+                    // Base bisector position
+                    let mx = edge.midX;
+                    let my = edge.midY;
 
-                    // Normal pointing toward this cell
-                    const nx = -dx / dist;
-                    const ny = -dy / dist;
+                    // Determine normal direction for THIS cell
+                    // If we're cellA, normal points toward us (from B to A)
+                    // If we're cellB, normal points away (we need to flip it)
+                    let nx, ny;
+                    if (edgeInfo.side === 'A') {
+                        nx = edge.nx;
+                        ny = edge.ny;
+                    } else {
+                        nx = -edge.nx;
+                        ny = -edge.ny;
+                    }
 
+                    // Shift edge if this edge is between us and the hovered cell
+                    if (hovered && shiftAmount > 0) {
+                        if (i === hoveredCell) {
+                            // I'm hovered: push this edge OUTWARD (I expand)
+                            // Outward means along MY normal direction (toward neighbor)
+                            mx -= nx * shiftAmount;
+                            my -= ny * shiftAmount;
+                        } else if (neighborIdx === hoveredCell) {
+                            // This edge borders the hovered cell: it pushes INTO me
+                            // The edge shifts toward me (hovered cell expands)
+                            mx -= nx * shiftAmount;
+                            my -= ny * shiftAmount;
+                        }
+                        // Edges not involving hovered cell: no shift
+                    }
+
+                    // Clip polygon against this (possibly shifted) bisector
                     polygon = clipPolygon(polygon, mx, my, nx, ny);
                     if (polygon.length < 3) break;
                 }
 
                 if (polygon.length < 3) {
-                    cell.polygon = cell.basePolygon;
                     cell.displayPolygon = cell.basePolygon;
                     continue;
                 }
 
-                // Compute centroid and validate polygon integrity
-                const centroid = getPolygonCentroid(polygon);
-
-                // Check polygon area - if it's too small or negative, cell is over-deformed
-                let polygonArea = 0;
-                for (let k = 0; k < polygon.length; k++) {
-                    const k1 = (k + 1) % polygon.length;
-                    polygonArea += polygon[k][0] * polygon[k1][1];
-                    polygonArea -= polygon[k1][0] * polygon[k][1];
-                }
-                polygonArea = polygonArea / 2;
-
-                // Get base polygon area for comparison
-                let baseArea = 0;
-                if (cell.basePolygon) {
-                    for (let k = 0; k < cell.basePolygon.length; k++) {
-                        const k1 = (k + 1) % cell.basePolygon.length;
-                        baseArea += cell.basePolygon[k][0] * cell.basePolygon[k1][1];
-                        baseArea -= cell.basePolygon[k1][0] * cell.basePolygon[k][1];
-                    }
-                    baseArea = Math.abs(baseArea / 2);
-                }
-
-                // CRITICAL: If centroid is outside polygon OR area collapsed too much,
-                // the cell has flipped inside-out or been over-squeezed
-                const minAreaRatio = 0.1; // Don't let cell shrink below 10% of original
-                const isInverted = polygonArea < 0;
-                const isTooSmall = baseArea > 0 && Math.abs(polygonArea) < baseArea * minAreaRatio;
-                const centroidEscaped = !pointInPolygon(centroid.x, centroid.y, polygon);
-
-                if (isInverted || isTooSmall || centroidEscaped) {
-                    // Deformation limit reached - use base polygon
-                    cell.baseCentroid = getPolygonCentroid(cell.basePolygon);
-                    cell.polygon = cell.basePolygon;
-                    cell.displayPolygon = cell.basePolygon;
-                    continue;
-                }
-
-                cell.baseCentroid = centroid;
+                cell.baseCentroid = getPolygonCentroid(polygon);
 
                 // Hit detection uses BASE polygon (stable, doesn't change with animation)
                 // This prevents hover fighting when polygons shift
