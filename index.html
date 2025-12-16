@@ -1088,9 +1088,30 @@
                 cell.polygon = cell.basePolygon;
 
                 // Clip to display bounds - INTERPOLATE buffer for smooth protrusion
+                // Hovered cell: full protrusion based on scale
+                // Non-hovered cells: partial protrusion when "stressed" (displaced toward edges)
                 const scaleExtra = Math.max(0, cell.scale - 1.0);
                 const maxScaleExtra = config.maxExpansion / 300;
-                const bufferFraction = maxScaleExtra > 0 ? Math.min(1, scaleExtra / maxScaleExtra) : 0;
+
+                let bufferFraction;
+                if (i === hoveredCell) {
+                    // Hovered cell gets full buffer based on its expansion
+                    bufferFraction = maxScaleExtra > 0 ? Math.min(1, scaleExtra / maxScaleExtra) : 0;
+                } else {
+                    // Non-hovered cells get partial buffer based on displacement "stress"
+                    // This gives them breathing room when pushed to extremes
+                    const dispX = cell.displacedX - cell.baseX;
+                    const dispY = cell.displacedY - cell.baseY;
+                    const dispMag = Math.sqrt(dispX * dispX + dispY * dispY);
+
+                    // How much stress? Normalize by maxPush to get 0-1 range
+                    const maxPush = config.maxExpansion * config.displaceRatio;
+                    const stressFactor = maxPush > 0 ? Math.min(1, dispMag / maxPush) : 0;
+
+                    // Give stressed cells up to 30% of full buffer (enough slack to avoid extremes)
+                    const maxStressBuffer = 0.3;
+                    bufferFraction = stressFactor * maxStressBuffer;
+                }
 
                 let clipped = polygon;
                 for (let p = 0; p < zone.clipPlanes.length; p++) {
