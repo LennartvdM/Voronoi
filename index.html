@@ -878,8 +878,27 @@
             return [line1.px + t * line1.dx, line1.py + t * line1.dy];
         }
 
-        // Display polygons with neighbor displacement via seed movement
-        // Moving seeds recomputes Voronoi naturally while maintaining perfect tessellation
+        // ============================================================================
+        // WORKING PHYSICS BASELINE - PROTECTED CODE
+        // ============================================================================
+        // This physics implementation works correctly. Previous attempts to add
+        // "improvements" (Delaunay edge crossing constraints, polygon validation)
+        // broke the physics - causing neighbors to freeze and instant protrusion.
+        //
+        // HOW IT WORKS:
+        // 1. Neighbor seeds are pushed away from hovered cell (targetDisplacedX/Y)
+        // 2. Cell.update() animates current position toward target (displacedX/Y)
+        // 3. Voronoi is recomputed with displaced seeds every frame
+        // 4. This naturally maintains perfect tessellation
+        //
+        // DO NOT ADD:
+        // - Delaunay edge crossing checks (breaks animation)
+        // - Direct modification of displacedX/Y in this function (breaks animation)
+        // - "Safe scale" constraints that zero out displacement
+        //
+        // If you need to prevent visual glitches, work DOWNSTREAM (in rendering)
+        // not UPSTREAM (in physics/displacement calculation).
+        // ============================================================================
         function updateDisplayPolygons() {
             const zone = getZoneBounds(false);
             const zoneWithBuffer = getZoneBounds(true);
