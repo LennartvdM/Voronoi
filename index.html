@@ -879,17 +879,15 @@
         }
 
         // ============================================================================
-        // SEED DISPLACEMENT + FIXED TOPOLOGY
+        // HYBRID: SCALED HOVERED CELL + SEED DISPLACEMENT CASCADE
         // ============================================================================
-        // Combines the best of both approaches:
-        // - Seed displacement: gives cascade effect AND true deformation
-        //   (because bisector orientation changes when seeds move differently)
-        // - Fixed topology: prevents glitches from Voronoi reorganization
+        // Problem: Voronoi bisectors keep angles fixed (perpendicular to seed-seed line)
         //
-        // All seeds move away from hovered cell (uniform, no falloff).
-        // We clip against ORIGINAL neighbors (cellEdgeMap), not recomputed Voronoi.
-        // Bisector = midpoint of displaced seeds, normal = perpendicular to seed-seed line.
-        // This means corner angles CHANGE because the seed-seed line direction changes.
+        // Solution:
+        // - Hovered cell: SCALE from centroid (true expansion, angles preserved in IT)
+        // - Neighbors of hovered: clip against hovered's ACTUAL scaled edges
+        //   (this FORCES their angles to change - they deform to fit around it)
+        // - Other cells: seed displacement for cascade effect
         // ============================================================================
         function updateDisplayPolygons() {
             const zone = getZoneBounds(false);
@@ -901,22 +899,26 @@
             const scaleExtra = hovered ? Math.max(0, hovered.scale - 1.0) : 0;
             const pushAmount = scaleExtra * config.maxExpansion * config.displaceRatio;
 
-            // Compute displaced seed positions
-            // ALL cells pushed away from hovered (uniform, no falloff = cascade works)
+            // Pre-compute hovered cell's scaled polygon (for neighbor clipping)
+            let hoveredScaledPoly = null;
+            if (hovered && hovered.basePolygon && scaleExtra > 0) {
+                const centroid = hovered.baseCentroid || getPolygonCentroid(hovered.basePolygon);
+                hoveredScaledPoly = hovered.basePolygon.map(p => [
+                    centroid.x + (p[0] - centroid.x) * hovered.scale,
+                    centroid.y + (p[1] - centroid.y) * hovered.scale
+                ]);
+            }
+
+            // Compute displaced seeds for cascade (all cells except hovered)
             const displacedSeeds = cells.map((cell, i) => {
                 if (!hovered || i === hoveredCell) {
                     return { x: cell.baseX, y: cell.baseY };
                 }
-
                 const dx = cell.baseX - hovered.baseX;
                 const dy = cell.baseY - hovered.baseY;
                 const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 1) return { x: cell.baseX, y: cell.baseY };
 
-                if (dist < 1) {
-                    return { x: cell.baseX, y: cell.baseY };
-                }
-
-                // Uniform push - all cells move same amount (preserves volume, enables cascade)
                 return {
                     x: cell.baseX + (dx / dist) * pushAmount,
                     y: cell.baseY + (dy / dist) * pushAmount
@@ -933,39 +935,78 @@
                 }
 
                 cell.polygon = cell.basePolygon;
+                let polygon;
 
-                // Start with zone bounds
-                let polygon = zoneWithBuffer.bounds.map(p => [...p]);
+                if (i === hoveredCell && hoveredScaledPoly) {
+                    // HOVERED CELL: Use scaled polygon directly
+                    polygon = hoveredScaledPoly.map(p => [...p]);
+                } else {
+                    // OTHER CELLS: Start with zone, clip against neighbors
+                    polygon = zoneWithBuffer.bounds.map(p => [...p]);
 
-                // Clip against ORIGINAL neighbors (fixed topology!)
-                // But compute bisector from DISPLACED seeds (gives deformation)
-                const edges = cellEdgeMap[i] || [];
-                const mySeed = displacedSeeds[i];
+                    const edges = cellEdgeMap[i] || [];
+                    const mySeed = displacedSeeds[i];
 
-                for (const edgeInfo of edges) {
-                    const neighborSeed = displacedSeeds[edgeInfo.neighborIdx];
+                    for (const edgeInfo of edges) {
+                        const neighborIdx = edgeInfo.neighborIdx;
 
-                    // Vector from my seed to neighbor seed (displaced positions)
-                    const dx = neighborSeed.x - mySeed.x;
-                    const dy = neighborSeed.y - mySeed.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (neighborIdx === hoveredCell && hoveredScaledPoly) {
+                            // Neighbor of hovered: clip against hovered's ACTUAL scaled edges
+                            // Find the edge of hoveredScaledPoly that faces us
+                            const hoveredCentroid = hovered.baseCentroid || getPolygonCentroid(hovered.basePolygon);
+                            const toMe = {
+                                x: cell.baseX - hoveredCentroid.x,
+                                y: cell.baseY - hoveredCentroid.y
+                            };
 
-                    if (dist < 0.001) continue;
+                            // Find the edge of scaled polygon most facing toward this cell
+                            for (let e = 0; e < hoveredScaledPoly.length; e++) {
+                                const p1 = hoveredScaledPoly[e];
+                                const p2 = hoveredScaledPoly[(e + 1) % hoveredScaledPoly.length];
 
-                    // Bisector midpoint (between displaced seeds)
-                    const mx = (mySeed.x + neighborSeed.x) / 2;
-                    const my = (mySeed.y + neighborSeed.y) / 2;
+                                // Edge midpoint and outward normal
+                                const emx = (p1[0] + p2[0]) / 2;
+                                const emy = (p1[1] + p2[1]) / 2;
+                                const edx = p2[0] - p1[0];
+                                const edy = p2[1] - p1[1];
+                                const elen = Math.sqrt(edx * edx + edy * edy);
+                                if (elen < 0.001) continue;
 
-                    // Normal pointing toward ME (perpendicular to seed-seed line)
-                    // This is the KEY: normal direction CHANGES based on relative seed movement
-                    const nx = -dx / dist;
-                    const ny = -dy / dist;
+                                // Outward normal (perpendicular, pointing away from centroid)
+                                let enx = -edy / elen;
+                                let eny = edx / elen;
+                                const toCentroid = (hoveredCentroid.x - emx) * enx + (hoveredCentroid.y - emy) * eny;
+                                if (toCentroid > 0) { enx = -enx; eny = -eny; }
 
-                    polygon = clipPolygon(polygon, mx, my, nx, ny);
-                    if (polygon.length < 3) break;
+                                // Check if this edge faces toward this cell
+                                const dotToMe = toMe.x * enx + toMe.y * eny;
+                                if (dotToMe > 0) {
+                                    // This edge faces us - clip against it
+                                    // Normal pointing toward us (away from hovered)
+                                    polygon = clipPolygon(polygon, emx, emy, enx, eny);
+                                }
+                            }
+                        } else {
+                            // Regular neighbor: use displaced seed bisector
+                            const neighborSeed = displacedSeeds[neighborIdx];
+                            const dx = neighborSeed.x - mySeed.x;
+                            const dy = neighborSeed.y - mySeed.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            if (dist < 0.001) continue;
+
+                            const mx = (mySeed.x + neighborSeed.x) / 2;
+                            const my = (mySeed.y + neighborSeed.y) / 2;
+                            const nx = -dx / dist;
+                            const ny = -dy / dist;
+
+                            polygon = clipPolygon(polygon, mx, my, nx, ny);
+                        }
+
+                        if (polygon.length < 3) break;
+                    }
                 }
 
-                if (polygon.length < 3) {
+                if (!polygon || polygon.length < 3) {
                     cell.displayPolygon = cell.basePolygon;
                     continue;
                 }
