@@ -879,164 +879,101 @@
         }
 
         // ============================================================================
-        // WORKING PHYSICS BASELINE - PROTECTED CODE
+        // CLIP-BASED EXPANSION - STABLE TOPOLOGY
         // ============================================================================
-        // This physics implementation works correctly. Previous attempts to add
-        // "improvements" (Delaunay edge crossing constraints, polygon validation)
-        // broke the physics - causing neighbors to freeze and instant protrusion.
+        // Instead of moving seeds and recomputing Voronoi (which causes topology
+        // changes and flickering), we keep base polygons fixed and use clipping:
         //
-        // HOW IT WORKS:
-        // 1. Neighbor seeds are pushed away from hovered cell (targetDisplacedX/Y)
-        // 2. Cell.update() animates current position toward target (displacedX/Y)
-        // 3. Voronoi is recomputed with displaced seeds every frame
-        // 4. This naturally maintains perfect tessellation
+        // 1. Hovered cell: scale basePolygon from centroid
+        // 2. Neighbors: clip basePolygon against shifted bisector with hovered cell
+        // 3. This preserves vertex count and topology - just adds/removes clip vertices
         //
-        // DO NOT ADD:
-        // - Delaunay edge crossing checks (breaks animation)
-        // - Direct modification of displacedX/Y in this function (breaks animation)
-        // - "Safe scale" constraints that zero out displacement
-        //
-        // If you need to prevent visual glitches, work DOWNSTREAM (in rendering)
-        // not UPSTREAM (in physics/displacement calculation).
+        // The result is "carving" rather than "pushing" - neighbors shrink where
+        // the hovered cell expands, without Delaunay instability.
         // ============================================================================
         function updateDisplayPolygons() {
             const zone = getZoneBounds(false);
             const zoneWithBuffer = getZoneBounds(true);
             const gap = config.gap;
 
-            // Compute TARGET displaced positions based on hovered cell
-            // The actual displacement is animated in Cell.update()
+            // Get hovered cell info for neighbor clipping
+            const hovered = hoveredCell >= 0 ? cells[hoveredCell] : null;
+            const scaleExtra = hovered ? Math.max(0, hovered.scale - 1.0) : 0;
+
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
 
-                // Default: return to base position
-                cell.targetDisplacedX = cell.baseX;
-                cell.targetDisplacedY = cell.baseY;
-
-                // If no cell is hovered, all targets are base position
-                if (hoveredCell < 0 || i === hoveredCell) {
-                    continue;
-                }
-
-                // Push this seed away from the hovered cell
-                const hovered = cells[hoveredCell];
-                const dx = cell.baseX - hovered.baseX;
-                const dy = cell.baseY - hovered.baseY;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                if (dist < 1) continue;
-
-                // Use the HOVERED cell's current animated scale for smooth push
-                const scaleExtra = Math.max(0, hovered.scale - 1.0);
-
-                // Push amount: configurable falloff distance
-                const maxPush = config.maxExpansion * config.displaceRatio;
-                const distanceFactor = Math.max(0, 1 - dist / config.displaceFalloff);
-                const pushAmount = scaleExtra * maxPush * distanceFactor;
-
-                cell.targetDisplacedX = cell.baseX + (dx / dist) * pushAmount;
-                cell.targetDisplacedY = cell.baseY + (dy / dist) * pushAmount;
-            }
-
-            // Build array for Voronoi computation
-            const displacedSeeds = cells.map(cell => ({
-                x: cell.displacedX,
-                y: cell.displacedY
-            }));
-
-            // Rebuild Voronoi polygons using displaced seeds
-            for (let i = 0; i < cells.length; i++) {
-                const cell = cells[i];
-                const seed = displacedSeeds[i];
-
-                // Start with rotated zone bounds (with buffer)
-                let polygon = zoneWithBuffer.bounds.map(p => [...p]);
-
-                // Clip against bisector with each other cell (using displaced seeds)
-                for (let j = 0; j < cells.length; j++) {
-                    if (i === j) continue;
-
-                    const other = displacedSeeds[j];
-                    const dx = other.x - seed.x;
-                    const dy = other.y - seed.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < 0.001) continue;
-
-                    // Midpoint between displaced seeds
-                    const mx = (seed.x + other.x) / 2;
-                    const my = (seed.y + other.y) / 2;
-
-                    // Normal pointing toward this cell
-                    const nx = -dx / dist;
-                    const ny = -dy / dist;
-
-                    polygon = clipPolygon(polygon, mx, my, nx, ny);
-                    if (polygon.length < 3) break;
-                }
-
-                if (polygon.length < 3) {
+                if (!cell.basePolygon || cell.basePolygon.length < 3) {
                     cell.polygon = cell.basePolygon;
                     cell.displayPolygon = cell.basePolygon;
                     continue;
                 }
 
-                // Compute centroid and validate polygon integrity
-                const centroid = getPolygonCentroid(polygon);
-
-                // Check polygon area - if it's too small or negative, cell is over-deformed
-                let polygonArea = 0;
-                for (let k = 0; k < polygon.length; k++) {
-                    const k1 = (k + 1) % polygon.length;
-                    polygonArea += polygon[k][0] * polygon[k1][1];
-                    polygonArea -= polygon[k1][0] * polygon[k][1];
-                }
-                polygonArea = polygonArea / 2;
-
-                // Get base polygon area for comparison
-                let baseArea = 0;
-                if (cell.basePolygon) {
-                    for (let k = 0; k < cell.basePolygon.length; k++) {
-                        const k1 = (k + 1) % cell.basePolygon.length;
-                        baseArea += cell.basePolygon[k][0] * cell.basePolygon[k1][1];
-                        baseArea -= cell.basePolygon[k1][0] * cell.basePolygon[k][1];
-                    }
-                    baseArea = Math.abs(baseArea / 2);
-                }
-
-                // CRITICAL: If centroid is outside polygon OR area collapsed too much,
-                // the cell has flipped inside-out or been over-squeezed
-                const minAreaRatio = 0.1; // Don't let cell shrink below 10% of original
-                const isInverted = polygonArea < 0;
-                const isTooSmall = baseArea > 0 && Math.abs(polygonArea) < baseArea * minAreaRatio;
-                const centroidEscaped = !pointInPolygon(centroid.x, centroid.y, polygon);
-
-                if (isInverted || isTooSmall || centroidEscaped) {
-                    // Deformation limit reached - use base polygon
-                    cell.baseCentroid = getPolygonCentroid(cell.basePolygon);
-                    cell.polygon = cell.basePolygon;
-                    cell.displayPolygon = cell.basePolygon;
-                    continue;
-                }
-
-                cell.baseCentroid = centroid;
-
-                // Hit detection uses BASE polygon (stable, doesn't change with animation)
-                // This prevents hover fighting when polygons shift
+                // Hit detection always uses base polygon
                 cell.polygon = cell.basePolygon;
 
-                // Clip to display bounds using rotated zone clip planes
-                // Interpolate buffer based on scale for smooth protrusion animation
-                const scaleExtra = Math.max(0, cell.scale - 1.0);
-                const maxScaleExtra = config.maxExpansion / 300; // Same as expandedScale calculation
-                const bufferFraction = maxScaleExtra > 0 ? Math.min(1, scaleExtra / maxScaleExtra) : 0;
+                let polygon;
 
-                // Interpolate clip planes between zone and zoneWithBuffer
+                if (i === hoveredCell) {
+                    // HOVERED CELL: Scale from centroid
+                    const centroid = cell.baseCentroid || getPolygonCentroid(cell.basePolygon);
+                    polygon = cell.basePolygon.map(p => [
+                        centroid.x + (p[0] - centroid.x) * cell.scale,
+                        centroid.y + (p[1] - centroid.y) * cell.scale
+                    ]);
+                } else {
+                    // OTHER CELLS: Start with base polygon
+                    polygon = cell.basePolygon.map(p => [...p]);
+
+                    // If there's a hovered cell, clip against its expansion
+                    if (hovered && scaleExtra > 0.001) {
+                        // Check if this cell is a neighbor of hovered cell
+                        const isNeighbor = cellEdgeMap[i]?.some(e => e.neighborIdx === hoveredCell);
+
+                        if (isNeighbor) {
+                            // Compute shifted bisector - hovered cell "claims" more territory
+                            const dx = cell.baseX - hovered.baseX;
+                            const dy = cell.baseY - hovered.baseY;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+
+                            if (dist > 1) {
+                                // Original midpoint
+                                const mx = (cell.baseX + hovered.baseX) / 2;
+                                const my = (cell.baseY + hovered.baseY) / 2;
+
+                                // Shift midpoint toward this cell (away from hovered)
+                                // based on expansion amount
+                                const shiftAmount = scaleExtra * config.maxExpansion * 0.5;
+                                const shiftedMx = mx + (dx / dist) * shiftAmount;
+                                const shiftedMy = my + (dy / dist) * shiftAmount;
+
+                                // Normal pointing toward this cell (away from hovered)
+                                const nx = dx / dist;
+                                const ny = dy / dist;
+
+                                // Clip this cell's polygon against the shifted bisector
+                                polygon = clipPolygon(polygon, shiftedMx, shiftedMy, nx, ny);
+                            }
+                        }
+                    }
+                }
+
+                if (!polygon || polygon.length < 3) {
+                    cell.displayPolygon = cell.basePolygon;
+                    continue;
+                }
+
+                // Clip to container bounds
+                const maxScaleExtra = config.maxExpansion / 300;
+                const bufferFraction = (i === hoveredCell && maxScaleExtra > 0)
+                    ? Math.min(1, scaleExtra / maxScaleExtra)
+                    : 0;
+
                 let clipped = polygon;
                 for (let p = 0; p < zone.clipPlanes.length; p++) {
                     const inner = zone.clipPlanes[p];
                     const outer = zoneWithBuffer.clipPlanes[p];
 
-                    // Interpolate plane position along normal
                     const px = inner.px + (outer.px - inner.px) * bufferFraction;
                     const py = inner.py + (outer.py - inner.py) * bufferFraction;
 
@@ -1044,11 +981,10 @@
                     if (clipped.length < 3) break;
                 }
 
-                // Apply uniform gap inset
+                // Apply gap inset
                 let displayPoly = gap > 0 && clipped.length >= 3 ? insetPolygon(clipped, gap / 2) : clipped;
 
-                // DOWNSTREAM FIX: Validate polygon is convex before rendering
-                // If deformation created a concave/self-intersecting polygon, use base
+                // Validate convexity
                 if (displayPoly && displayPoly.length >= 3 && !isConvex(displayPoly)) {
                     const baseInset = gap > 0 && cell.basePolygon ? insetPolygon(cell.basePolygon, gap / 2) : cell.basePolygon;
                     displayPoly = baseInset || cell.basePolygon;
