@@ -919,98 +919,11 @@
                 cell.targetDisplacedY = cell.baseY + (dy / dist) * pushAmount;
             }
 
-            // CRITICAL: Check for Delaunay edge crossings in TARGET positions
-            // Constrain targets to prevent topology-breaking deformations
-            // This ensures animations converge to valid configurations
-            const targetSeeds = cells.map(cell => ({
-                x: cell.targetDisplacedX,
-                y: cell.targetDisplacedY
-            }));
-
-            const targetCrossings = findDelaunayCrossings(targetSeeds);
-
-            if (targetCrossings.length > 0) {
-                // Binary search for the maximum safe displacement scale
-                let lowScale = 0;
-                let highScale = 1;
-                let safeScale = 0;
-
-                for (let iter = 0; iter < 10; iter++) {
-                    const midScale = (lowScale + highScale) / 2;
-
-                    // Test target displacement at this scale
-                    const testSeeds = cells.map(cell => ({
-                        x: cell.baseX + (cell.targetDisplacedX - cell.baseX) * midScale,
-                        y: cell.baseY + (cell.targetDisplacedY - cell.baseY) * midScale
-                    }));
-
-                    const testCrossings = findDelaunayCrossings(testSeeds);
-
-                    if (testCrossings.length === 0) {
-                        // This scale is safe, try higher
-                        safeScale = midScale;
-                        lowScale = midScale;
-                    } else {
-                        // Still crossing, reduce scale
-                        highScale = midScale;
-                    }
-                }
-
-                // Apply the safe scale to TARGET positions
-                // Animations will smoothly converge to valid configurations
-                for (let i = 0; i < cells.length; i++) {
-                    const cell = cells[i];
-                    cell.targetDisplacedX = cell.baseX + (cell.targetDisplacedX - cell.baseX) * safeScale;
-                    cell.targetDisplacedY = cell.baseY + (cell.targetDisplacedY - cell.baseY) * safeScale;
-                }
-            }
-
-            // Also check current animated positions and constrain if needed
-            // This handles cases where animation is in flight toward a now-invalid position
-            let displacedSeeds = cells.map(cell => ({
+            // Build array for Voronoi computation
+            const displacedSeeds = cells.map(cell => ({
                 x: cell.displacedX,
                 y: cell.displacedY
             }));
-
-            const currentCrossings = findDelaunayCrossings(displacedSeeds);
-
-            if (currentCrossings.length > 0) {
-                // Binary search for safe current displacement
-                let lowScale = 0;
-                let highScale = 1;
-                let safeScale = 0;
-
-                for (let iter = 0; iter < 10; iter++) {
-                    const midScale = (lowScale + highScale) / 2;
-
-                    const testSeeds = cells.map(cell => ({
-                        x: cell.baseX + (cell.displacedX - cell.baseX) * midScale,
-                        y: cell.baseY + (cell.displacedY - cell.baseY) * midScale
-                    }));
-
-                    const testCrossings = findDelaunayCrossings(testSeeds);
-
-                    if (testCrossings.length === 0) {
-                        safeScale = midScale;
-                        lowScale = midScale;
-                    } else {
-                        highScale = midScale;
-                    }
-                }
-
-                // Apply safe scale to current positions
-                for (let i = 0; i < cells.length; i++) {
-                    const cell = cells[i];
-                    cell.displacedX = cell.baseX + (cell.displacedX - cell.baseX) * safeScale;
-                    cell.displacedY = cell.baseY + (cell.displacedY - cell.baseY) * safeScale;
-                }
-
-                // Rebuild displaced seeds
-                displacedSeeds = cells.map(cell => ({
-                    x: cell.displacedX,
-                    y: cell.displacedY
-                }));
-            }
 
             // Rebuild Voronoi polygons using displaced seeds
             for (let i = 0; i < cells.length; i++) {
@@ -1140,80 +1053,6 @@
             if (Math.abs(denom) < 0.0001) return [...a];
             const t = ((px - a[0]) * nx + (py - a[1]) * ny) / denom;
             return [a[0] + t * dx, a[1] + t * dy];
-        }
-
-        // Check if two line segments intersect (excluding endpoints touching)
-        // Returns true if segments (p1-p2) and (p3-p4) cross each other
-        function segmentsIntersect(p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y) {
-            const d1x = p2x - p1x;
-            const d1y = p2y - p1y;
-            const d2x = p4x - p3x;
-            const d2y = p4y - p3y;
-
-            const cross = d1x * d2y - d1y * d2x;
-            if (Math.abs(cross) < 0.0001) return false; // Parallel
-
-            const dx = p3x - p1x;
-            const dy = p3y - p1y;
-
-            const t = (dx * d2y - dy * d2x) / cross;
-            const u = (dx * d1y - dy * d1x) / cross;
-
-            // Intersection exists if both t and u are strictly between 0 and 1
-            // Use small epsilon to avoid detecting endpoint touches
-            const eps = 0.01;
-            return t > eps && t < (1 - eps) && u > eps && u < (1 - eps);
-        }
-
-        // Check if any Delaunay edges cross given displaced seed positions
-        // Returns list of crossing pairs or empty if none
-        function findDelaunayCrossings(seeds) {
-            const crossings = [];
-
-            // Build Delaunay edges from cellEdgeMap (each unique neighbor pair)
-            const delaunayEdges = [];
-            const edgeSet = new Set();
-
-            for (let i = 0; i < cells.length; i++) {
-                for (const edgeInfo of cellEdgeMap[i]) {
-                    const j = edgeInfo.neighborIdx;
-                    if (j > i) { // Only add each edge once
-                        const key = `${i}-${j}`;
-                        if (!edgeSet.has(key)) {
-                            edgeSet.add(key);
-                            delaunayEdges.push({ a: i, b: j });
-                        }
-                    }
-                }
-            }
-
-            // Check each pair of Delaunay edges for intersection
-            for (let i = 0; i < delaunayEdges.length; i++) {
-                const e1 = delaunayEdges[i];
-                const s1a = seeds[e1.a];
-                const s1b = seeds[e1.b];
-
-                for (let j = i + 1; j < delaunayEdges.length; j++) {
-                    const e2 = delaunayEdges[j];
-
-                    // Skip edges that share a vertex (they can't truly cross)
-                    if (e1.a === e2.a || e1.a === e2.b || e1.b === e2.a || e1.b === e2.b) {
-                        continue;
-                    }
-
-                    const s2a = seeds[e2.a];
-                    const s2b = seeds[e2.b];
-
-                    if (segmentsIntersect(
-                        s1a.x, s1a.y, s1b.x, s1b.y,
-                        s2a.x, s2a.y, s2b.x, s2b.y
-                    )) {
-                        crossings.push({ edge1: e1, edge2: e2 });
-                    }
-                }
-            }
-
-            return crossings;
         }
 
         function getPolygonCentroid(polygon) {
