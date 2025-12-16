@@ -1037,8 +1037,41 @@
                 }
 
                 // Apply uniform gap inset
-                cell.displayPolygon = gap > 0 && clipped.length >= 3 ? insetPolygon(clipped, gap / 2) : clipped;
+                let displayPoly = gap > 0 && clipped.length >= 3 ? insetPolygon(clipped, gap / 2) : clipped;
+
+                // DOWNSTREAM FIX: Validate polygon is convex before rendering
+                // If deformation created a concave/self-intersecting polygon, use base
+                if (displayPoly && displayPoly.length >= 3 && !isConvex(displayPoly)) {
+                    const baseInset = gap > 0 && cell.basePolygon ? insetPolygon(cell.basePolygon, gap / 2) : cell.basePolygon;
+                    displayPoly = baseInset || cell.basePolygon;
+                }
+
+                cell.displayPolygon = displayPoly;
             }
+        }
+
+        // Check if polygon is convex (all cross products same sign)
+        function isConvex(polygon) {
+            if (!polygon || polygon.length < 3) return false;
+            const n = polygon.length;
+            let sign = 0;
+
+            for (let i = 0; i < n; i++) {
+                const p0 = polygon[i];
+                const p1 = polygon[(i + 1) % n];
+                const p2 = polygon[(i + 2) % n];
+
+                const cross = (p1[0] - p0[0]) * (p2[1] - p1[1]) - (p1[1] - p0[1]) * (p2[0] - p1[0]);
+
+                if (Math.abs(cross) > 0.001) {
+                    if (sign === 0) {
+                        sign = cross > 0 ? 1 : -1;
+                    } else if ((cross > 0 ? 1 : -1) !== sign) {
+                        return false; // Direction changed = concave
+                    }
+                }
+            }
+            return true;
         }
 
         function clipPolygon(polygon, px, py, nx, ny) {
