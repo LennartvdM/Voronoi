@@ -1046,19 +1046,23 @@
                 cell.polygon = cell.basePolygon;
 
                 // Clip to display bounds - INTERPOLATE buffer for smooth protrusion
-                // Hovered cell: full protrusion based on scale
-                // Non-hovered cells: partial protrusion when "stressed" (displaced toward edges)
+                // Protrusion now follows scale animation speed (not hoverMix which is instant)
+                // This ensures protrusion, expansion, and displacement all animate at the same rate
                 const scaleExtra = Math.max(0, cell.scale - 1.0);
                 const maxScaleExtra = config.maxExpansion / 300;
 
+                // Calculate expansion fraction from actual scale (follows animation speed)
+                const expansionFraction = maxScaleExtra > 0 ? Math.min(1, scaleExtra / maxScaleExtra) : 0;
+
                 let bufferFraction;
                 if (i === hoveredCell) {
-                    // Hovered cell gets full protrusion based on its expansion
-                    const expansionFraction = maxScaleExtra > 0 ? Math.min(1, scaleExtra / maxScaleExtra) : 0;
-                    bufferFraction = Math.max(cell.hoverMix, expansionFraction * 0.9);
+                    // Hovered cell: protrusion follows scale animation directly
+                    // This ensures protrusion speed matches expansion/displacement speed
+                    bufferFraction = expansionFraction;
                 } else {
-                    // Non-hovered cells get partial buffer based on displacement "stress"
-                    // This gives them breathing room when pushed to extremes
+                    // Non-hovered cells get partial buffer based on:
+                    // 1. Own expansion (if still retracting from previous hover)
+                    // 2. Displacement "stress" from being pushed by hovered neighbor
                     const dispX = cell.displacedX - cell.baseX;
                     const dispY = cell.displacedY - cell.baseY;
                     const dispMag = Math.sqrt(dispX * dispX + dispY * dispY);
@@ -1075,15 +1079,16 @@
                         if (isDirectNeighbor) {
                             // Direct neighbors get boosted stress based on hovered cell's expansion
                             const hoveredScale = cells[hoveredCell].scale;
-                            const expansionFactor = Math.max(0, hoveredScale - 1.0) / maxScaleExtra;
+                            const hoveredExpansionFactor = Math.max(0, hoveredScale - 1.0) / maxScaleExtra;
                             // Blend: use max of displacement stress or expansion-based stress
-                            stressFactor = Math.max(stressFactor, expansionFactor * 0.8);
+                            stressFactor = Math.max(stressFactor, hoveredExpansionFactor * 0.8);
                         }
                     }
 
                     // Give stressed cells up to 50% of full buffer (enough slack to avoid extremes)
                     const maxStressBuffer = 0.5;
-                    bufferFraction = Math.max(cell.hoverMix * 0.35, stressFactor * maxStressBuffer);
+                    // Use max of own expansion (retracting cells) or stress-based buffer
+                    bufferFraction = Math.max(expansionFraction * 0.9, stressFactor * maxStressBuffer);
                 }
 
                 let clipped = polygon;
