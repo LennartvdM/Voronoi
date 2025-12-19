@@ -516,20 +516,25 @@
 
                 // === SCALE ANIMATION ===
                 // Detect target change - start new animation from current position
+                let scaleTargetJustChanged = false;
                 if (this.targetScale !== this.lastTargetScale) {
                     this.scaleStart = this.scale;
                     this.scaleProgress = 0;
                     this.lastTargetScale = this.targetScale;
+                    scaleTargetJustChanged = true;
                 }
 
-                if (this.scaleProgress < 1) {
+                // Don't increment progress on the frame target changed - prevents initial twitch
+                if (this.scaleProgress < 1 && !scaleTargetJustChanged) {
                     // Determine animation speed based on direction
                     const expanding = this.targetScale > this.scaleStart;
                     const rawSpeed = expanding ? config.expansionSpeed : config.retractionSpeed;
                     // Convert 1-100 to progress rate: speed 1 = 0.5/sec, speed 100 = 50/sec
                     const progressRate = rawSpeed * 0.5;
                     this.scaleProgress = Math.min(1, this.scaleProgress + progressRate * dt / 1000);
+                }
 
+                if (this.scaleProgress < 1) {
                     // Apply smoother ease to avoid "shock" at start
                     const easedProgress = easeInOut(this.scaleProgress);
 
@@ -541,6 +546,7 @@
 
                 // === DISPLACEMENT ANIMATION ===
                 // Detect target change
+                let displaceTargetJustChanged = false;
                 const targetDisplaceChanged =
                     Math.abs(this.targetDisplacedX - this.lastTargetDisplacedX) > 0.5 ||
                     Math.abs(this.targetDisplacedY - this.lastTargetDisplacedY) > 0.5;
@@ -551,9 +557,11 @@
                     this.displaceProgress = 0;
                     this.lastTargetDisplacedX = this.targetDisplacedX;
                     this.lastTargetDisplacedY = this.targetDisplacedY;
+                    displaceTargetJustChanged = true;
                 }
 
-                if (this.displaceProgress < 1) {
+                // Don't increment progress on the frame target changed - prevents initial twitch
+                if (this.displaceProgress < 1 && !displaceTargetJustChanged) {
                     // Determine if returning to base (use Out Speed) or being pushed (use In Speed)
                     const targetDistFromBase = Math.sqrt(
                         Math.pow(this.targetDisplacedX - this.baseX, 2) +
@@ -567,7 +575,9 @@
                     const rawSpeed = isReturning ? config.retractionSpeed : config.expansionSpeed;
                     const progressRate = rawSpeed * 0.5;
                     this.displaceProgress = Math.min(1, this.displaceProgress + progressRate * dt / 1000);
+                }
 
+                if (this.displaceProgress < 1) {
                     const easedProgress = easeInOut(this.displaceProgress);
 
                     this.displacedX = this.displaceStartX + (this.targetDisplacedX - this.displaceStartX) * easedProgress;
