@@ -1116,6 +1116,24 @@
 
                 // Apply uniform gap inset
                 cell.displayPolygon = gap > 0 && clipped.length >= 3 ? insetPolygon(clipped, gap / 2) : clipped;
+
+                // CRITICAL: Validate centroid against FINAL displayPolygon, not the pre-clipped polygon
+                // The displayPolygon can be much smaller after clipping to bounds and gap inset
+                if (cell.displayPolygon && cell.displayPolygon.length >= 3) {
+                    if (!pointInPolygon(cell.baseCentroid.x, cell.baseCentroid.y, cell.displayPolygon)) {
+                        // Centroid escaped the displayPolygon - use displayPolygon's centroid instead
+                        const displayCentroid = getPolygonCentroid(cell.displayPolygon);
+
+                        // Extra safety: if even displayPolygon's centroid is outside (concave polygon),
+                        // fall back to the displaced seed position which must be inside the Voronoi cell
+                        if (pointInPolygon(displayCentroid.x, displayCentroid.y, cell.displayPolygon)) {
+                            cell.baseCentroid = displayCentroid;
+                        } else {
+                            // Use displaced seed as ultimate fallback
+                            cell.baseCentroid = { x: cell.displacedX, y: cell.displacedY };
+                        }
+                    }
+                }
             }
         }
 
