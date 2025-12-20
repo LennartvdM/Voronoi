@@ -587,18 +587,15 @@
                 this.x = x;
                 this.y = y;
 
-                // Scale animation (spring-based with velocity preservation)
+                // Scale animation (exponential smoothing - no resets)
                 this.scale = 1.0;              // Current scale
                 this.targetScale = 1.0;        // Target scale
-                this.scaleVelocity = 0;        // Current velocity - preserved across target changes
 
-                // Displacement animation (spring-based with velocity preservation)
+                // Displacement animation (exponential smoothing - no resets)
                 this.displacedX = x;           // Current displaced position
                 this.displacedY = y;
                 this.targetDisplacedX = x;     // Target displaced position
                 this.targetDisplacedY = y;
-                this.displaceVelocityX = 0;    // Current velocity X - preserved across target changes
-                this.displaceVelocityY = 0;    // Current velocity Y - preserved across target changes
 
                 this.basePolygon = null;   // Computed once at init - NEVER changes
                 this.baseCentroid = null;  // Center of base polygon
@@ -630,61 +627,35 @@
             }
 
             update(dt, isHovered) {
-                // Spring-based animation with velocity preservation
-                // When switching between cells, momentum is preserved for smooth transitions
-                // Speed 1-100 maps to spring stiffness: higher = snappier response
+                // Exponential smoothing - smoothly chase targets without resets
+                // When switching cells, just changes target - no jarring restarts
 
                 // === HOVER STATE SMOOTHING ===
-                // Soften instant state flips (reduces shocky outline/opacity changes)
                 const targetHover = isHovered ? 1 : 0;
-                const hoverRate = 1 - Math.exp(-Math.max(0.001, dt) * 0.12); // damped lerp per frame
+                const hoverRate = 1 - Math.exp(-Math.max(0.001, dt) * 0.12);
                 this.hoverMix += (targetHover - this.hoverMix) * hoverRate;
 
-                // === SCALE ANIMATION (Spring Physics) ===
-                // Spring stiffness from speed setting (1-100 -> 0.08-0.4)
-                const scaleStiffness = 0.08 + (config.expansionSpeed / 100) * 0.32;
-                const scaleDamping = 0.75; // Velocity retention per frame
+                // === SCALE ANIMATION ===
+                // Smoothing factor from speed (1-100 -> 0.08-0.35)
+                const scaleLerp = 0.08 + (config.expansionSpeed / 100) * 0.27;
+                this.scale += (this.targetScale - this.scale) * scaleLerp;
 
-                // Spring force pulls toward target
-                const scaleForce = (this.targetScale - this.scale) * scaleStiffness;
-                this.scaleVelocity += scaleForce;
-                this.scaleVelocity *= scaleDamping;
-
-                // Apply velocity
-                this.scale += this.scaleVelocity;
-
-                // Snap to target when close enough (prevents endless micro-oscillation)
-                if (Math.abs(this.scale - this.targetScale) < 0.001 && Math.abs(this.scaleVelocity) < 0.001) {
+                // Snap when very close
+                if (Math.abs(this.scale - this.targetScale) < 0.001) {
                     this.scale = this.targetScale;
-                    this.scaleVelocity = 0;
                 }
 
-                // === DISPLACEMENT ANIMATION (Spring Physics) ===
-                // Spring stiffness from speed setting
-                const displaceStiffness = 0.08 + (config.expansionSpeed / 100) * 0.32;
-                const displaceDamping = 0.75;
+                // === DISPLACEMENT ANIMATION ===
+                const displaceLerp = 0.08 + (config.expansionSpeed / 100) * 0.27;
+                this.displacedX += (this.targetDisplacedX - this.displacedX) * displaceLerp;
+                this.displacedY += (this.targetDisplacedY - this.displacedY) * displaceLerp;
 
-                // Spring force pulls toward target
-                const displaceForceX = (this.targetDisplacedX - this.displacedX) * displaceStiffness;
-                const displaceForceY = (this.targetDisplacedY - this.displacedY) * displaceStiffness;
-                this.displaceVelocityX += displaceForceX;
-                this.displaceVelocityY += displaceForceY;
-                this.displaceVelocityX *= displaceDamping;
-                this.displaceVelocityY *= displaceDamping;
-
-                // Apply velocity
-                this.displacedX += this.displaceVelocityX;
-                this.displacedY += this.displaceVelocityY;
-
-                // Snap to target when close enough
-                const displaceDistSq = Math.pow(this.displacedX - this.targetDisplacedX, 2) +
-                                       Math.pow(this.displacedY - this.targetDisplacedY, 2);
-                const displaceVelSq = Math.pow(this.displaceVelocityX, 2) + Math.pow(this.displaceVelocityY, 2);
-                if (displaceDistSq < 0.25 && displaceVelSq < 0.25) {
+                // Snap when very close
+                const distSq = Math.pow(this.displacedX - this.targetDisplacedX, 2) +
+                               Math.pow(this.displacedY - this.targetDisplacedY, 2);
+                if (distSq < 0.25) {
                     this.displacedX = this.targetDisplacedX;
                     this.displacedY = this.targetDisplacedY;
-                    this.displaceVelocityX = 0;
-                    this.displaceVelocityY = 0;
                 }
 
                 // === ZOOM ANIMATION ===
