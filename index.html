@@ -1148,34 +1148,10 @@
                     neighborBufferFraction = hoveredExpansionFactor * 0.8 * 0.5; // 0.8 stress * 0.5 maxStressBuffer
                 }
 
-                let bufferFraction;
-                if (i === hoveredCell) {
-                    // Hovered cell: protrusion follows scale animation directly
-                    // This ensures protrusion speed matches expansion/displacement speed
-                    bufferFraction = expansionFraction;
-                } else {
-                    // Check if this is a direct neighbor
-                    const edges = cellEdgeMap[i];
-                    const isDirectNeighbor = hoveredCell >= 0 && edges.some(e => e.neighborIdx === hoveredCell);
-
-                    if (isDirectNeighbor) {
-                        // CRITICAL: All direct neighbors use the SAME buffer fraction
-                        // This prevents overlap by ensuring consistent zone clipping
-                        // so Voronoi boundaries between neighbors stay aligned
-                        bufferFraction = Math.max(expansionFraction * 0.9, neighborBufferFraction);
-                    } else {
-                        // Non-neighbor cells: use displacement-based stress
-                        const dispX = cell.displacedX - cell.baseX;
-                        const dispY = cell.displacedY - cell.baseY;
-                        const dispMag = Math.sqrt(dispX * dispX + dispY * dispY);
-
-                        const maxPush = config.maxExpansion * config.displaceRatio;
-                        const stressFactor = maxPush > 0 ? Math.min(1, dispMag / maxPush) : 0;
-
-                        const maxStressBuffer = 0.5;
-                        bufferFraction = Math.max(expansionFraction * 0.9, stressFactor * maxStressBuffer);
-                    }
-                }
+                // Buffer fraction based purely on animated scale - no special cases
+                // This ensures smooth transitions when hover state changes
+                // The 0.9 multiplier for non-hovered cells caused instant jumps
+                const bufferFraction = expansionFraction;
 
                 let clipped = polygon;
                 for (let p = 0; p < zone.clipPlanes.length; p++) {
