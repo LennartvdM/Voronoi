@@ -666,8 +666,11 @@
                 }
 
                 if (this.scaleProgress < 1) {
-                    // Apply smoother ease to avoid "shock" at start
-                    const easedProgress = easeInOut(this.scaleProgress);
+                    // Use different easing for expansion vs retraction
+                    // Expansion: easeOut for responsive feel
+                    // Retraction: easeOutSmooth for gentle landing without "sticking"
+                    const expanding = this.targetScale > this.scaleStart;
+                    const easedProgress = expanding ? easeOut(this.scaleProgress) : easeOutSmooth(this.scaleProgress);
 
                     // Interpolate between start and target
                     this.scale = this.scaleStart + (this.targetScale - this.scaleStart) * easedProgress;
@@ -691,25 +694,29 @@
                     displaceTargetJustChanged = true;
                 }
 
+                // Determine if returning to base (use Out Speed) or being pushed (use In Speed)
+                const targetDistFromBase = Math.sqrt(
+                    Math.pow(this.targetDisplacedX - this.baseX, 2) +
+                    Math.pow(this.targetDisplacedY - this.baseY, 2)
+                );
+                const startDistFromBase = Math.sqrt(
+                    Math.pow(this.displaceStartX - this.baseX, 2) +
+                    Math.pow(this.displaceStartY - this.baseY, 2)
+                );
+                const isReturning = targetDistFromBase < startDistFromBase;
+
                 // Don't increment progress on the frame target changed - prevents initial twitch
                 if (this.displaceProgress < 1 && !displaceTargetJustChanged) {
-                    // Determine if returning to base (use Out Speed) or being pushed (use In Speed)
-                    const targetDistFromBase = Math.sqrt(
-                        Math.pow(this.targetDisplacedX - this.baseX, 2) +
-                        Math.pow(this.targetDisplacedY - this.baseY, 2)
-                    );
-                    const startDistFromBase = Math.sqrt(
-                        Math.pow(this.displaceStartX - this.baseX, 2) +
-                        Math.pow(this.displaceStartY - this.baseY, 2)
-                    );
-                    const isReturning = targetDistFromBase < startDistFromBase;
                     const rawSpeed = isReturning ? config.retractionSpeed : config.expansionSpeed;
                     const progressRate = rawSpeed * 0.5;
                     this.displaceProgress = Math.min(1, this.displaceProgress + progressRate * dt / 1000);
                 }
 
                 if (this.displaceProgress < 1) {
-                    const easedProgress = easeInOut(this.displaceProgress);
+                    // Use different easing for push vs return
+                    // Push: easeOut for responsive feel
+                    // Return: easeOutSmooth for gentle landing without "sticking"
+                    const easedProgress = isReturning ? easeOutSmooth(this.displaceProgress) : easeOut(this.displaceProgress);
 
                     this.displacedX = this.displaceStartX + (this.targetDisplacedX - this.displaceStartX) * easedProgress;
                     this.displacedY = this.displaceStartY + (this.targetDisplacedY - this.displaceStartY) * easedProgress;
