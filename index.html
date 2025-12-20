@@ -587,23 +587,18 @@
                 this.x = x;
                 this.y = y;
 
-                // Scale animation (progress-based with bezier easing)
+                // Scale animation (spring-based with velocity preservation)
                 this.scale = 1.0;              // Current scale
                 this.targetScale = 1.0;        // Target scale
-                this.scaleStart = 1.0;         // Start value for current animation
-                this.scaleProgress = 1.0;      // Animation progress 0-1 (1 = complete)
-                this.lastTargetScale = 1.0;    // To detect target changes
+                this.scaleVelocity = 0;        // Current velocity - preserved across target changes
 
-                // Displacement animation (progress-based)
+                // Displacement animation (spring-based with velocity preservation)
                 this.displacedX = x;           // Current displaced position
                 this.displacedY = y;
                 this.targetDisplacedX = x;     // Target displaced position
                 this.targetDisplacedY = y;
-                this.displaceStartX = x;       // Start position for current animation
-                this.displaceStartY = y;
-                this.displaceProgress = 1.0;   // Animation progress 0-1
-                this.lastTargetDisplacedX = x; // To detect target changes
-                this.lastTargetDisplacedY = y;
+                this.displaceVelocityX = 0;    // Current velocity X - preserved across target changes
+                this.displaceVelocityY = 0;    // Current velocity Y - preserved across target changes
 
                 this.basePolygon = null;   // Computed once at init - NEVER changes
                 this.baseCentroid = null;  // Center of base polygon
@@ -635,9 +630,9 @@
             }
 
             update(dt, isHovered) {
-                // Progress-based animation with bezier easing
-                // Speed 1-100 maps to animation duration: higher speed = shorter duration
-                // At speed 1, animation takes ~2 seconds; at speed 100, nearly instant
+                // Spring-based animation with velocity preservation
+                // When switching between cells, momentum is preserved for smooth transitions
+                // Speed 1-100 maps to spring stiffness: higher = snappier response
 
                 // === HOVER STATE SMOOTHING ===
                 // Soften instant state flips (reduces shocky outline/opacity changes)
@@ -645,77 +640,51 @@
                 const hoverRate = 1 - Math.exp(-Math.max(0.001, dt) * 0.12); // damped lerp per frame
                 this.hoverMix += (targetHover - this.hoverMix) * hoverRate;
 
-                // === SCALE ANIMATION ===
-                // Detect target change - start new animation from current position
-                let scaleTargetJustChanged = false;
-                if (this.targetScale !== this.lastTargetScale) {
-                    this.scaleStart = this.scale;
-                    this.scaleProgress = 0;
-                    this.lastTargetScale = this.targetScale;
-                    scaleTargetJustChanged = true;
-                }
+                // === SCALE ANIMATION (Spring Physics) ===
+                // Spring stiffness from speed setting (1-100 -> 0.08-0.4)
+                const scaleStiffness = 0.08 + (config.expansionSpeed / 100) * 0.32;
+                const scaleDamping = 0.75; // Velocity retention per frame
 
-                // Don't increment progress on the frame target changed - prevents initial twitch
-                if (this.scaleProgress < 1 && !scaleTargetJustChanged) {
-                    // Determine animation speed based on direction
-                    const expanding = this.targetScale > this.scaleStart;
-                    const rawSpeed = expanding ? config.expansionSpeed : config.retractionSpeed;
-                    // Convert 1-100 to progress rate: speed 1 = 0.5/sec, speed 100 = 50/sec
-                    const progressRate = rawSpeed * 0.5;
-                    this.scaleProgress = Math.min(1, this.scaleProgress + progressRate * dt / 1000);
-                }
+                // Spring force pulls toward target
+                const scaleForce = (this.targetScale - this.scale) * scaleStiffness;
+                this.scaleVelocity += scaleForce;
+                this.scaleVelocity *= scaleDamping;
 
-                if (this.scaleProgress < 1) {
-                    // Apply smoother ease to avoid "shock" at start
-                    const easedProgress = easeInOut(this.scaleProgress);
+                // Apply velocity
+                this.scale += this.scaleVelocity;
 
-                    // Interpolate between start and target
-                    this.scale = this.scaleStart + (this.targetScale - this.scaleStart) * easedProgress;
-                } else {
+                // Snap to target when close enough (prevents endless micro-oscillation)
+                if (Math.abs(this.scale - this.targetScale) < 0.001 && Math.abs(this.scaleVelocity) < 0.001) {
                     this.scale = this.targetScale;
+                    this.scaleVelocity = 0;
                 }
 
-                // === DISPLACEMENT ANIMATION ===
-                // Detect target change
-                let displaceTargetJustChanged = false;
-                const targetDisplaceChanged =
-                    Math.abs(this.targetDisplacedX - this.lastTargetDisplacedX) > 0.5 ||
-                    Math.abs(this.targetDisplacedY - this.lastTargetDisplacedY) > 0.5;
+                // === DISPLACEMENT ANIMATION (Spring Physics) ===
+                // Spring stiffness from speed setting
+                const displaceStiffness = 0.08 + (config.expansionSpeed / 100) * 0.32;
+                const displaceDamping = 0.75;
 
-                if (targetDisplaceChanged) {
-                    this.displaceStartX = this.displacedX;
-                    this.displaceStartY = this.displacedY;
-                    this.displaceProgress = 0;
-                    this.lastTargetDisplacedX = this.targetDisplacedX;
-                    this.lastTargetDisplacedY = this.targetDisplacedY;
-                    displaceTargetJustChanged = true;
-                }
+                // Spring force pulls toward target
+                const displaceForceX = (this.targetDisplacedX - this.displacedX) * displaceStiffness;
+                const displaceForceY = (this.targetDisplacedY - this.displacedY) * displaceStiffness;
+                this.displaceVelocityX += displaceForceX;
+                this.displaceVelocityY += displaceForceY;
+                this.displaceVelocityX *= displaceDamping;
+                this.displaceVelocityY *= displaceDamping;
 
-                // Don't increment progress on the frame target changed - prevents initial twitch
-                if (this.displaceProgress < 1 && !displaceTargetJustChanged) {
-                    // Determine if returning to base (use Out Speed) or being pushed (use In Speed)
-                    const targetDistFromBase = Math.sqrt(
-                        Math.pow(this.targetDisplacedX - this.baseX, 2) +
-                        Math.pow(this.targetDisplacedY - this.baseY, 2)
-                    );
-                    const startDistFromBase = Math.sqrt(
-                        Math.pow(this.displaceStartX - this.baseX, 2) +
-                        Math.pow(this.displaceStartY - this.baseY, 2)
-                    );
-                    const isReturning = targetDistFromBase < startDistFromBase;
-                    const rawSpeed = isReturning ? config.retractionSpeed : config.expansionSpeed;
-                    const progressRate = rawSpeed * 0.5;
-                    this.displaceProgress = Math.min(1, this.displaceProgress + progressRate * dt / 1000);
-                }
+                // Apply velocity
+                this.displacedX += this.displaceVelocityX;
+                this.displacedY += this.displaceVelocityY;
 
-                if (this.displaceProgress < 1) {
-                    const easedProgress = easeInOut(this.displaceProgress);
-
-                    this.displacedX = this.displaceStartX + (this.targetDisplacedX - this.displaceStartX) * easedProgress;
-                    this.displacedY = this.displaceStartY + (this.targetDisplacedY - this.displaceStartY) * easedProgress;
-                } else {
+                // Snap to target when close enough
+                const displaceDistSq = Math.pow(this.displacedX - this.targetDisplacedX, 2) +
+                                       Math.pow(this.displacedY - this.targetDisplacedY, 2);
+                const displaceVelSq = Math.pow(this.displaceVelocityX, 2) + Math.pow(this.displaceVelocityY, 2);
+                if (displaceDistSq < 0.25 && displaceVelSq < 0.25) {
                     this.displacedX = this.targetDisplacedX;
                     this.displacedY = this.targetDisplacedY;
+                    this.displaceVelocityX = 0;
+                    this.displaceVelocityY = 0;
                 }
 
                 // === ZOOM ANIMATION ===
