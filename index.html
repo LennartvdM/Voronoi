@@ -636,8 +636,10 @@
                 this.hoverMix += (targetHover - this.hoverMix) * hoverRate;
 
                 // === SCALE ANIMATION ===
-                // Smoothing factor from speed (1-100 -> 0.08-0.35)
-                const scaleLerp = 0.08 + (config.expansionSpeed / 100) * 0.27;
+                // Squared curve gives more resolution at slow speeds where differences are perceptible
+                // Speed 1 = 0.01 (very slow), Speed 50 = 0.10, Speed 100 = 0.35 (fast)
+                const t = config.expansionSpeed / 100;
+                const scaleLerp = 0.01 + t * t * 0.34;
                 this.scale += (this.targetScale - this.scale) * scaleLerp;
 
                 // Snap when very close
@@ -646,7 +648,7 @@
                 }
 
                 // === DISPLACEMENT ANIMATION ===
-                const displaceLerp = 0.08 + (config.expansionSpeed / 100) * 0.27;
+                const displaceLerp = 0.01 + t * t * 0.34;
                 this.displacedX += (this.targetDisplacedX - this.displacedX) * displaceLerp;
                 this.displacedY += (this.targetDisplacedY - this.displacedY) * displaceLerp;
 
