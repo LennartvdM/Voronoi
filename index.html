@@ -1212,26 +1212,12 @@
                 // Apply uniform gap inset
                 cell.displayPolygon = gap > 0 && clipped.length >= 3 ? insetPolygon(clipped, gap / 2) : clipped;
 
-                // Final safety check: validate displayPolygon isn't deformed after inset
-                if (cell.displayPolygon && cell.displayPolygon.length >= 3) {
-                    // Check for self-intersection in final polygon
-                    let finalSelfIntersect = false;
-                    for (let a = 0; a < cell.displayPolygon.length && !finalSelfIntersect; a++) {
-                        const a1 = cell.displayPolygon[a];
-                        const a2 = cell.displayPolygon[(a + 1) % cell.displayPolygon.length];
-                        for (let b = a + 2; b < cell.displayPolygon.length; b++) {
-                            if (b === (a + cell.displayPolygon.length - 1) % cell.displayPolygon.length) continue;
-                            const b1 = cell.displayPolygon[b];
-                            const b2 = cell.displayPolygon[(b + 1) % cell.displayPolygon.length];
-                            if (edgesIntersect(a1, a2, b1, b2)) {
-                                finalSelfIntersect = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (finalSelfIntersect) {
-                        cell.displayPolygon = cell.basePolygon;
-                    }
+                // CRITICAL: Comprehensive validation of final displayPolygon
+                // This catches degenerate polygons created by clipping and inset operations
+                if (!isPolygonValid(cell.displayPolygon)) {
+                    // Fallback to base polygon (with gap inset applied)
+                    const fallback = gap > 0 ? insetPolygon(cell.basePolygon, gap / 2) : cell.basePolygon;
+                    cell.displayPolygon = isPolygonValid(fallback) ? fallback : cell.basePolygon;
                 }
 
                 // CRITICAL: Validate centroid against FINAL displayPolygon, not the pre-clipped polygon
@@ -1295,6 +1281,56 @@
                 cy += p[1];
             }
             return { x: cx / polygon.length, y: cy / polygon.length };
+        }
+
+        // Comprehensive polygon validation - returns true if polygon is valid for rendering
+        function isPolygonValid(polygon, minArea = 100, maxAspectRatio = 8, minEdgeLength = 8) {
+            if (!polygon || polygon.length < 3) return false;
+
+            // Check area
+            let area = 0;
+            for (let i = 0; i < polygon.length; i++) {
+                const j = (i + 1) % polygon.length;
+                area += polygon[i][0] * polygon[j][1];
+                area -= polygon[j][0] * polygon[i][1];
+            }
+            area = area / 2;
+            if (area < 0 || Math.abs(area) < minArea) return false; // Inverted or too small
+
+            // Check aspect ratio
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            for (let v = 0; v < polygon.length; v++) {
+                minX = Math.min(minX, polygon[v][0]);
+                maxX = Math.max(maxX, polygon[v][0]);
+                minY = Math.min(minY, polygon[v][1]);
+                maxY = Math.max(maxY, polygon[v][1]);
+            }
+            const width = maxX - minX;
+            const height = maxY - minY;
+            const aspectRatio = Math.max(width, height) / Math.max(1, Math.min(width, height));
+            if (aspectRatio > maxAspectRatio) return false;
+
+            // Check minimum edge length
+            for (let e = 0; e < polygon.length; e++) {
+                const p1 = polygon[e];
+                const p2 = polygon[(e + 1) % polygon.length];
+                const edgeLen = Math.sqrt((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2);
+                if (edgeLen < minEdgeLength) return false;
+            }
+
+            // Check for self-intersection
+            for (let a = 0; a < polygon.length; a++) {
+                const a1 = polygon[a];
+                const a2 = polygon[(a + 1) % polygon.length];
+                for (let b = a + 2; b < polygon.length; b++) {
+                    if (b === (a + polygon.length - 1) % polygon.length) continue;
+                    const b1 = polygon[b];
+                    const b2 = polygon[(b + 1) % polygon.length];
+                    if (edgesIntersect(a1, a2, b1, b2)) return false;
+                }
+            }
+
+            return true;
         }
 
         // Proper polygon inset - offset each edge inward by amount, then find new vertices
@@ -1511,9 +1547,36 @@
                 area += polygon[i][0] * polygon[j][1];
                 area -= polygon[j][0] * polygon[i][1];
             }
-            area = Math.abs(area) / 2;
+            const signedArea = area / 2;
+            area = Math.abs(signedArea);
 
-            // If polygon is too small, just draw it without rounding
+            // CRITICAL: Skip rendering entirely for invalid polygons
+            // Negative area = inverted polygon, very small = collapsed
+            if (signedArea < 0 || area < 50) return;
+
+            // Check aspect ratio - skip very thin polygons that cause arcTo issues
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            for (let v = 0; v < polygon.length; v++) {
+                minX = Math.min(minX, polygon[v][0]);
+                maxX = Math.max(maxX, polygon[v][0]);
+                minY = Math.min(minY, polygon[v][1]);
+                maxY = Math.max(maxY, polygon[v][1]);
+            }
+            const width = maxX - minX;
+            const height = maxY - minY;
+            if (width < 5 || height < 5) return; // Too small in one dimension
+            const aspectRatio = Math.max(width, height) / Math.max(1, Math.min(width, height));
+            if (aspectRatio > 10) return; // Too thin - would create extended lines
+
+            // Check for very short edges that indicate degenerate geometry
+            for (let e = 0; e < polygon.length; e++) {
+                const p1 = polygon[e];
+                const p2 = polygon[(e + 1) % polygon.length];
+                const edgeLen = Math.sqrt((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2);
+                if (edgeLen < 3) return; // Collapsed edge - skip entirely
+            }
+
+            // If polygon is small but valid, draw without rounding
             if (area < 100 || radius <= 0) {
                 ctx.beginPath();
                 ctx.moveTo(polygon[0][0], polygon[0][1]);
@@ -2114,6 +2177,39 @@
 
                 if (!polygon || polygon.length < 3) return;
 
+                // CRITICAL: Validate polygon before rendering to avoid degenerate paths
+                // This must match the checks in drawRoundedPolygon to ensure consistency
+                let area = 0;
+                for (let k = 0; k < polygon.length; k++) {
+                    const j = (k + 1) % polygon.length;
+                    area += polygon[k][0] * polygon[j][1];
+                    area -= polygon[j][0] * polygon[k][1];
+                }
+                const signedArea = area / 2;
+                if (signedArea < 0 || Math.abs(signedArea) < 50) return; // Inverted or too small
+
+                // Check dimensions
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                for (const p of polygon) {
+                    minX = Math.min(minX, p[0]);
+                    maxX = Math.max(maxX, p[0]);
+                    minY = Math.min(minY, p[1]);
+                    maxY = Math.max(maxY, p[1]);
+                }
+                const width = maxX - minX;
+                const height = maxY - minY;
+                if (width < 5 || height < 5) return;
+                const aspectRatio = Math.max(width, height) / Math.max(1, Math.min(width, height));
+                if (aspectRatio > 10) return;
+
+                // Check for collapsed edges
+                for (let e = 0; e < polygon.length; e++) {
+                    const p1 = polygon[e];
+                    const p2 = polygon[(e + 1) % polygon.length];
+                    const edgeLen = Math.sqrt((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2);
+                    if (edgeLen < 3) return;
+                }
+
                 ctx.save();
 
                 // Apply opacity
@@ -2123,17 +2219,9 @@
                 drawRoundedPolygon(ctx, polygon, config.cornerRadius);
                 ctx.clip();
 
-                // Calculate bounds
-                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                for (const p of polygon) {
-                    minX = Math.min(minX, p[0]);
-                    maxX = Math.max(maxX, p[0]);
-                    minY = Math.min(minY, p[1]);
-                    maxY = Math.max(maxY, p[1]);
-                }
-
-                const cellW = maxX - minX;
-                const cellH = maxY - minY;
+                // Use bounds already calculated during validation
+                const cellW = width;
+                const cellH = height;
                 const centerX = (minX + maxX) / 2;
                 const centerY = (minY + maxY) / 2;
 
