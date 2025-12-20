@@ -1064,41 +1064,44 @@
                 // Calculate expansion fraction from actual scale (follows animation speed)
                 const expansionFraction = maxScaleExtra > 0 ? Math.min(1, scaleExtra / maxScaleExtra) : 0;
 
+                // Compute consistent buffer fraction for direct neighbors to prevent overlap
+                // All direct neighbors must use the SAME buffer fraction so their zone clipping
+                // is consistent and Voronoi boundaries between them remain aligned
+                let neighborBufferFraction = 0;
+                if (hoveredCell >= 0) {
+                    const hoveredScale = cells[hoveredCell].scale;
+                    const hoveredExpansionFactor = maxScaleExtra > 0 ? Math.max(0, hoveredScale - 1.0) / maxScaleExtra : 0;
+                    // All direct neighbors get the same buffer based on hovered cell's expansion
+                    neighborBufferFraction = hoveredExpansionFactor * 0.8 * 0.5; // 0.8 stress * 0.5 maxStressBuffer
+                }
+
                 let bufferFraction;
                 if (i === hoveredCell) {
                     // Hovered cell: protrusion follows scale animation directly
                     // This ensures protrusion speed matches expansion/displacement speed
                     bufferFraction = expansionFraction;
                 } else {
-                    // Non-hovered cells get partial buffer based on:
-                    // 1. Own expansion (if still retracting from previous hover)
-                    // 2. Displacement "stress" from being pushed by hovered neighbor
-                    const dispX = cell.displacedX - cell.baseX;
-                    const dispY = cell.displacedY - cell.baseY;
-                    const dispMag = Math.sqrt(dispX * dispX + dispY * dispY);
+                    // Check if this is a direct neighbor
+                    const edges = cellEdgeMap[i];
+                    const isDirectNeighbor = hoveredCell >= 0 && edges.some(e => e.neighborIdx === hoveredCell);
 
-                    // How much stress? Normalize by maxPush to get 0-1 range
-                    const maxPush = config.maxExpansion * config.displaceRatio;
-                    let stressFactor = maxPush > 0 ? Math.min(1, dispMag / maxPush) : 0;
+                    if (isDirectNeighbor) {
+                        // CRITICAL: All direct neighbors use the SAME buffer fraction
+                        // This prevents overlap by ensuring consistent zone clipping
+                        // so Voronoi boundaries between neighbors stay aligned
+                        bufferFraction = Math.max(expansionFraction * 0.9, neighborBufferFraction);
+                    } else {
+                        // Non-neighbor cells: use displacement-based stress
+                        const dispX = cell.displacedX - cell.baseX;
+                        const dispY = cell.displacedY - cell.baseY;
+                        const dispMag = Math.sqrt(dispX * dispX + dispY * dispY);
 
-                    // BOOST: Direct neighbors of hovered cell are under most pressure
-                    // Check if this cell shares an edge with the hovered cell
-                    if (hoveredCell >= 0) {
-                        const edges = cellEdgeMap[i];
-                        const isDirectNeighbor = edges.some(e => e.neighborIdx === hoveredCell);
-                        if (isDirectNeighbor) {
-                            // Direct neighbors get boosted stress based on hovered cell's expansion
-                            const hoveredScale = cells[hoveredCell].scale;
-                            const hoveredExpansionFactor = Math.max(0, hoveredScale - 1.0) / maxScaleExtra;
-                            // Blend: use max of displacement stress or expansion-based stress
-                            stressFactor = Math.max(stressFactor, hoveredExpansionFactor * 0.8);
-                        }
+                        const maxPush = config.maxExpansion * config.displaceRatio;
+                        const stressFactor = maxPush > 0 ? Math.min(1, dispMag / maxPush) : 0;
+
+                        const maxStressBuffer = 0.5;
+                        bufferFraction = Math.max(expansionFraction * 0.9, stressFactor * maxStressBuffer);
                     }
-
-                    // Give stressed cells up to 50% of full buffer (enough slack to avoid extremes)
-                    const maxStressBuffer = 0.5;
-                    // Use max of own expansion (retracting cells) or stress-based buffer
-                    bufferFraction = Math.max(expansionFraction * 0.9, stressFactor * maxStressBuffer);
                 }
 
                 let clipped = polygon;
