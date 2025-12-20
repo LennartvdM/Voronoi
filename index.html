@@ -1093,13 +1093,56 @@
 
                 // CRITICAL: If centroid is outside polygon OR area collapsed too much,
                 // the cell has flipped inside-out or been over-squeezed
-                const minAreaRatio = 0.1; // Don't let cell shrink below 10% of original
-                const warnAreaRatio = 0.3; // Start blending toward base below 30%
+                const minAreaRatio = 0.15; // Don't let cell shrink below 15% of original
+                const warnAreaRatio = 0.35; // Start blending toward base below 35%
                 const isInverted = polygonArea < 0;
                 const isTooSmall = baseArea > 0 && Math.abs(polygonArea) < baseArea * minAreaRatio;
                 const centroidEscaped = !pointInPolygon(centroid.x, centroid.y, polygon);
 
-                if (isInverted || isTooSmall || centroidEscaped) {
+                // NEW: Check aspect ratio - detect overly thin cells that can twist
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                for (let v = 0; v < polygon.length; v++) {
+                    minX = Math.min(minX, polygon[v][0]);
+                    maxX = Math.max(maxX, polygon[v][0]);
+                    minY = Math.min(minY, polygon[v][1]);
+                    maxY = Math.max(maxY, polygon[v][1]);
+                }
+                const width = maxX - minX;
+                const height = maxY - minY;
+                const aspectRatio = Math.max(width, height) / Math.max(1, Math.min(width, height));
+                const maxAspectRatio = 12; // Cells shouldn't be more than 12:1 thin
+                const isTooThin = aspectRatio > maxAspectRatio;
+
+                // NEW: Check for self-intersection (edges crossing each other)
+                let isSelfIntersecting = false;
+                for (let a = 0; a < polygon.length && !isSelfIntersecting; a++) {
+                    const a1 = polygon[a];
+                    const a2 = polygon[(a + 1) % polygon.length];
+                    for (let b = a + 2; b < polygon.length; b++) {
+                        if (b === (a + polygon.length - 1) % polygon.length) continue; // Skip adjacent edges
+                        const b1 = polygon[b];
+                        const b2 = polygon[(b + 1) % polygon.length];
+                        if (edgesIntersect(a1, a2, b1, b2)) {
+                            isSelfIntersecting = true;
+                            break;
+                        }
+                    }
+                }
+
+                // NEW: Check minimum edge length - collapsed corners create tiny edges
+                let hasCollapsedEdge = false;
+                const minEdgeLength = 5; // Minimum 5 pixels
+                for (let e = 0; e < polygon.length; e++) {
+                    const p1 = polygon[e];
+                    const p2 = polygon[(e + 1) % polygon.length];
+                    const edgeLen = Math.sqrt((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2);
+                    if (edgeLen < minEdgeLength) {
+                        hasCollapsedEdge = true;
+                        break;
+                    }
+                }
+
+                if (isInverted || isTooSmall || centroidEscaped || isTooThin || isSelfIntersecting || hasCollapsedEdge) {
                     // Deformation limit reached - use base polygon
                     cell.baseCentroid = getPolygonCentroid(cell.basePolygon);
                     cell.polygon = cell.basePolygon;
@@ -1168,6 +1211,28 @@
 
                 // Apply uniform gap inset
                 cell.displayPolygon = gap > 0 && clipped.length >= 3 ? insetPolygon(clipped, gap / 2) : clipped;
+
+                // Final safety check: validate displayPolygon isn't deformed after inset
+                if (cell.displayPolygon && cell.displayPolygon.length >= 3) {
+                    // Check for self-intersection in final polygon
+                    let finalSelfIntersect = false;
+                    for (let a = 0; a < cell.displayPolygon.length && !finalSelfIntersect; a++) {
+                        const a1 = cell.displayPolygon[a];
+                        const a2 = cell.displayPolygon[(a + 1) % cell.displayPolygon.length];
+                        for (let b = a + 2; b < cell.displayPolygon.length; b++) {
+                            if (b === (a + cell.displayPolygon.length - 1) % cell.displayPolygon.length) continue;
+                            const b1 = cell.displayPolygon[b];
+                            const b2 = cell.displayPolygon[(b + 1) % cell.displayPolygon.length];
+                            if (edgesIntersect(a1, a2, b1, b2)) {
+                                finalSelfIntersect = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (finalSelfIntersect) {
+                        cell.displayPolygon = cell.basePolygon;
+                    }
+                }
 
                 // CRITICAL: Validate centroid against FINAL displayPolygon, not the pre-clipped polygon
                 // The displayPolygon can be much smaller after clipping to bounds and gap inset
@@ -1327,6 +1392,25 @@
 
             const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
             return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
+        }
+
+        // Check if two line segments intersect (not just infinite lines)
+        function edgesIntersect(a1, a2, b1, b2) {
+            // Cross product helper
+            const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+
+            const d1 = cross(b1, b2, a1);
+            const d2 = cross(b1, b2, a2);
+            const d3 = cross(a1, a2, b1);
+            const d4 = cross(a1, a2, b2);
+
+            // Check if segments straddle each other
+            if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+                ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
+                return true;
+            }
+
+            return false;
         }
 
         // Simple rect clipping
