@@ -61,6 +61,71 @@
             transform: translateY(0);
         }
 
+        /* FPS Counter Overlay */
+        .fps-overlay {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.85);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+            font-size: 12px;
+            z-index: 1000;
+            min-width: 140px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .fps-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .fps-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .fps-label {
+            color: rgba(255,255,255,0.5);
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+
+        .fps-value {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .fps-value.good { color: #4ade80; }
+        .fps-value.ok { color: #fbbf24; }
+        .fps-value.bad { color: #f87171; }
+
+        .fps-graph {
+            height: 40px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            align-items: flex-end;
+            gap: 1px;
+            padding: 2px;
+        }
+
+        .fps-bar {
+            flex: 1;
+            background: #4ade80;
+            min-width: 2px;
+            transition: height 0.05s;
+        }
+
+        .fps-bar.ok { background: #fbbf24; }
+        .fps-bar.bad { background: #f87171; }
+
         .controls {
             background: rgba(20, 20, 35, 0.95);
             backdrop-filter: blur(10px);
@@ -212,6 +277,19 @@
         <div class="canvas-container">
             <canvas id="voronoiCanvas"></canvas>
             <div class="tooltip" id="tooltip"></div>
+            <div class="fps-overlay" id="fpsOverlay">
+                <div class="fps-stats">
+                    <div class="fps-row">
+                        <span class="fps-label">FPS</span>
+                        <span class="fps-value good" id="fpsValue">60</span>
+                    </div>
+                    <div class="fps-row">
+                        <span class="fps-label">Frame</span>
+                        <span class="fps-value" id="frameTimeValue" style="color: #94a3b8;">0.0ms</span>
+                    </div>
+                </div>
+                <div class="fps-graph" id="fpsGraph"></div>
+            </div>
         </div>
         <div class="controls">
             <!-- Grid Settings -->
@@ -412,6 +490,59 @@
         let tooltip;
         let animationId;
         let lastTime = 0;
+
+        // ========== FPS TRACKING ==========
+        const fpsHistory = [];
+        const FPS_HISTORY_SIZE = 60;
+        let fpsUpdateCounter = 0;
+        const FPS_UPDATE_INTERVAL = 6; // Update display every N frames
+        let fpsElements = null;
+
+        function initFpsCounter() {
+            fpsElements = {
+                value: document.getElementById('fpsValue'),
+                frameTime: document.getElementById('frameTimeValue'),
+                graph: document.getElementById('fpsGraph')
+            };
+            // Initialize graph bars
+            for (let i = 0; i < FPS_HISTORY_SIZE; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'fps-bar';
+                bar.style.height = '100%';
+                fpsElements.graph.appendChild(bar);
+                fpsHistory.push(60);
+            }
+        }
+
+        function updateFpsCounter(deltaMs) {
+            const fps = Math.round(1000 / deltaMs);
+            const clampedFps = Math.min(fps, 120);
+
+            // Update history
+            fpsHistory.shift();
+            fpsHistory.push(clampedFps);
+
+            fpsUpdateCounter++;
+            if (fpsUpdateCounter < FPS_UPDATE_INTERVAL) return;
+            fpsUpdateCounter = 0;
+
+            // Calculate average FPS
+            const avgFps = Math.round(fpsHistory.reduce((a, b) => a + b, 0) / fpsHistory.length);
+
+            // Update text display
+            fpsElements.value.textContent = avgFps;
+            fpsElements.value.className = 'fps-value ' + (avgFps >= 55 ? 'good' : avgFps >= 30 ? 'ok' : 'bad');
+            fpsElements.frameTime.textContent = deltaMs.toFixed(1) + 'ms';
+
+            // Update graph bars
+            const bars = fpsElements.graph.children;
+            for (let i = 0; i < fpsHistory.length; i++) {
+                const fps = fpsHistory[i];
+                const height = Math.min(100, (fps / 60) * 100);
+                bars[i].style.height = height + '%';
+                bars[i].className = 'fps-bar ' + (fps >= 55 ? '' : fps >= 30 ? 'ok' : 'bad');
+            }
+        }
 
         // ========== EASING UTILITIES ==========
         // Attempt to compute the t value for a given x on cubic bezier curve
@@ -1485,6 +1616,7 @@
             resize();
             generateCells();
             setupEvents();
+            initFpsCounter();
             animate(0);
         }
 
@@ -2154,11 +2286,17 @@
 
         // ========== ANIMATION LOOP ==========
         function animate(time) {
-            const dt = Math.min((time - lastTime) / 16, 3);
+            const deltaMs = time - lastTime;
+            const dt = Math.min(deltaMs / 16, 3);
             lastTime = time;
 
             updatePhysics(dt);
             render();
+
+            // Update FPS counter (skip first frame where deltaMs would be huge)
+            if (deltaMs > 0 && deltaMs < 200) {
+                updateFpsCounter(deltaMs);
+            }
 
             animationId = requestAnimationFrame(animate);
         }
