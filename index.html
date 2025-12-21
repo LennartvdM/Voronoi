@@ -64,67 +64,138 @@
         /* FPS Counter Overlay */
         .fps-overlay {
             position: absolute;
-            top: 12px;
-            left: 12px;
-            background: rgba(0, 0, 0, 0.85);
-            border-radius: 8px;
-            padding: 10px 14px;
-            font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-            font-size: 12px;
-            z-index: 1000;
-            min-width: 140px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-            border: 1px solid rgba(255,255,255,0.1);
+            bottom: 16px;
+            left: 16px;
+            z-index: 2147483647;
+            user-select: none;
+            font-family: ui-monospace, 'SF Mono', 'Monaco', 'Consolas', monospace;
         }
 
-        .fps-stats {
+        .fps-container {
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(4px);
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            overflow: hidden;
+            min-width: 200px;
+        }
+
+        .fps-container.minimized {
+            min-width: auto;
+        }
+
+        .fps-header {
             display: flex;
-            flex-direction: column;
-            gap: 4px;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 12px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .fps-header:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .fps-header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .fps-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .fps-title {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .fps-header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .fps-current {
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .fps-toggle {
+            font-size: 10px;
+            color: rgba(255,255,255,0.4);
+        }
+
+        .fps-body {
+            padding: 4px 12px 12px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .fps-stats-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: rgba(255,255,255,0.4);
             margin-bottom: 8px;
         }
 
-        .fps-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .fps-stat-value {
+            color: white;
         }
 
-        .fps-label {
-            color: rgba(255,255,255,0.5);
+        .fps-stat-value.good { color: #22c55e; }
+        .fps-stat-value.bad { color: #ef4444; }
+
+        .fps-frame-info {
             font-size: 10px;
-            text-transform: uppercase;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 8px;
         }
 
-        .fps-value {
-            font-weight: 600;
-            font-size: 14px;
+        .fps-frame-value {
+            color: white;
         }
 
-        .fps-value.good { color: #4ade80; }
-        .fps-value.ok { color: #fbbf24; }
-        .fps-value.bad { color: #f87171; }
+        .fps-frame-target {
+            color: rgba(255,255,255,0.3);
+            margin-left: 8px;
+        }
 
-        .fps-graph {
-            height: 40px;
-            background: rgba(255,255,255,0.05);
+        .fps-graph-container {
+            position: relative;
+            background: rgba(0,0,0,0.5);
             border-radius: 4px;
             overflow: hidden;
-            display: flex;
-            align-items: flex-end;
-            gap: 1px;
-            padding: 2px;
         }
 
-        .fps-bar {
-            flex: 1;
-            background: #4ade80;
-            min-width: 2px;
-            transition: height 0.05s;
+        .fps-graph-svg {
+            display: block;
         }
 
-        .fps-bar.ok { background: #fbbf24; }
-        .fps-bar.bad { background: #f87171; }
+        .fps-graph-label {
+            position: absolute;
+            right: 4px;
+            font-size: 8px;
+            color: rgba(255,255,255,0.3);
+        }
+
+        .fps-graph-label.top { top: 0; }
+        .fps-graph-label.bottom { bottom: 0; }
+
+        .fps-good { color: #22c55e; }
+        .fps-ok { color: #eab308; }
+        .fps-bad { color: #ef4444; }
 
         .controls {
             background: rgba(20, 20, 35, 0.95);
@@ -315,17 +386,45 @@
             <canvas id="voronoiCanvas"></canvas>
             <div class="tooltip" id="tooltip"></div>
             <div class="fps-overlay" id="fpsOverlay">
-                <div class="fps-stats">
-                    <div class="fps-row">
-                        <span class="fps-label">FPS</span>
-                        <span class="fps-value good" id="fpsValue">60</span>
+                <div class="fps-container" id="fpsContainer">
+                    <div class="fps-header" id="fpsHeader">
+                        <div class="fps-header-left">
+                            <div class="fps-indicator" id="fpsIndicator"></div>
+                            <span class="fps-title">FPS</span>
+                        </div>
+                        <div class="fps-header-right">
+                            <span class="fps-current" id="fpsValue">60</span>
+                            <span class="fps-toggle" id="fpsToggle">▼</span>
+                        </div>
                     </div>
-                    <div class="fps-row">
-                        <span class="fps-label">Frame</span>
-                        <span class="fps-value" id="frameTimeValue" style="color: #94a3b8;">0.0ms</span>
+                    <div class="fps-body" id="fpsBody">
+                        <div class="fps-stats-row">
+                            <span>Avg: <span class="fps-stat-value" id="fpsAvg">60</span></span>
+                            <span>Min: <span class="fps-stat-value bad" id="fpsMin">-</span></span>
+                            <span>Max: <span class="fps-stat-value good" id="fpsMax">-</span></span>
+                        </div>
+                        <div class="fps-frame-info">
+                            Frame: <span class="fps-frame-value" id="frameTimeValue">0.0ms</span>
+                            <span class="fps-frame-target" id="fpsTarget">(16.7ms target)</span>
+                        </div>
+                        <div class="fps-graph-container">
+                            <svg id="fpsGraph" class="fps-graph-svg" width="180" height="40">
+                                <line x1="0" y1="20" x2="180" y2="20" stroke="#333" stroke-dasharray="2,2" />
+                                <line id="fps60Line" x1="0" y1="20" x2="180" y2="20" stroke="#22c55e" stroke-dasharray="4,2" opacity="0.5" />
+                                <path id="fpsAreaPath" fill="url(#fpsGradient)" opacity="0.3" />
+                                <path id="fpsLinePath" fill="none" stroke="#22c55e" stroke-width="1.5" stroke-linejoin="round" />
+                                <defs>
+                                    <linearGradient id="fpsGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop id="fpsGradientStop" offset="0%" stop-color="#22c55e" />
+                                        <stop offset="100%" stop-color="transparent" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                            <div class="fps-graph-label top">120</div>
+                            <div class="fps-graph-label bottom">0</div>
+                        </div>
                     </div>
                 </div>
-                <div class="fps-graph" id="fpsGraph"></div>
             </div>
         </div>
         <div class="controls">
@@ -566,56 +665,134 @@
         let lastTime = 0;
 
         // ========== FPS TRACKING ==========
-        const fpsHistory = [];
         const FPS_HISTORY_SIZE = 60;
-        let fpsUpdateCounter = 0;
-        const FPS_UPDATE_INTERVAL = 6; // Update display every N frames
+        const FPS_UPDATE_INTERVAL = 100; // Update display every N milliseconds
+        const MAX_GRAPH_FPS = 120;
+        const GRAPH_WIDTH = 180;
+        const GRAPH_HEIGHT = 40;
+
         let fpsElements = null;
+        let fpsHistory = [];
+        let allFpsValues = [];
+        let fpsFrameHistory = [];
+        let lastFpsUpdateTime = 0;
+        let isMinimized = false;
+
+        function getFpsColor(fps) {
+            return fps >= 55 ? '#22c55e' : fps >= 30 ? '#eab308' : '#ef4444';
+        }
+
+        function getFpsClass(fps) {
+            return fps >= 55 ? 'fps-good' : fps >= 30 ? 'fps-ok' : 'fps-bad';
+        }
+
+        function generatePath(history) {
+            if (history.length < 2) return '';
+            return 'M ' + history.map((v, i) => {
+                const x = (i / (FPS_HISTORY_SIZE - 1)) * GRAPH_WIDTH;
+                const y = GRAPH_HEIGHT - (Math.min(v, MAX_GRAPH_FPS) / MAX_GRAPH_FPS) * GRAPH_HEIGHT;
+                return `${x},${y}`;
+            }).join(' L ');
+        }
+
+        function generateAreaPath(history) {
+            if (history.length < 2) return '';
+            const linePath = history.map((v, i) => {
+                const x = (i / (FPS_HISTORY_SIZE - 1)) * GRAPH_WIDTH;
+                const y = GRAPH_HEIGHT - (Math.min(v, MAX_GRAPH_FPS) / MAX_GRAPH_FPS) * GRAPH_HEIGHT;
+                return `${x},${y}`;
+            }).join(' L ');
+            return `M 0,${GRAPH_HEIGHT} L ${linePath} L ${GRAPH_WIDTH},${GRAPH_HEIGHT} Z`;
+        }
 
         function initFpsCounter() {
             fpsElements = {
+                container: document.getElementById('fpsContainer'),
+                header: document.getElementById('fpsHeader'),
+                body: document.getElementById('fpsBody'),
+                toggle: document.getElementById('fpsToggle'),
+                indicator: document.getElementById('fpsIndicator'),
                 value: document.getElementById('fpsValue'),
+                avg: document.getElementById('fpsAvg'),
+                min: document.getElementById('fpsMin'),
+                max: document.getElementById('fpsMax'),
                 frameTime: document.getElementById('frameTimeValue'),
-                graph: document.getElementById('fpsGraph')
+                target: document.getElementById('fpsTarget'),
+                linePath: document.getElementById('fpsLinePath'),
+                areaPath: document.getElementById('fpsAreaPath'),
+                gradientStop: document.getElementById('fpsGradientStop'),
+                fps60Line: document.getElementById('fps60Line')
             };
-            // Initialize graph bars
+
+            // Set 60 FPS line position
+            const y60 = GRAPH_HEIGHT - (60 / MAX_GRAPH_FPS) * GRAPH_HEIGHT;
+            fpsElements.fps60Line.setAttribute('y1', y60);
+            fpsElements.fps60Line.setAttribute('y2', y60);
+
+            // Toggle minimize/expand on header click
+            fpsElements.header.addEventListener('click', () => {
+                isMinimized = !isMinimized;
+                fpsElements.body.style.display = isMinimized ? 'none' : 'block';
+                fpsElements.toggle.textContent = isMinimized ? '▶' : '▼';
+                fpsElements.container.classList.toggle('minimized', isMinimized);
+            });
+
+            // Initialize history
             for (let i = 0; i < FPS_HISTORY_SIZE; i++) {
-                const bar = document.createElement('div');
-                bar.className = 'fps-bar';
-                bar.style.height = '100%';
-                fpsElements.graph.appendChild(bar);
                 fpsHistory.push(60);
             }
         }
 
         function updateFpsCounter(deltaMs) {
-            const fps = Math.round(1000 / deltaMs);
-            const clampedFps = Math.min(fps, 120);
+            const instantFps = 1000 / deltaMs;
 
-            // Update history
+            // Track frame-by-frame FPS for averaging
+            fpsFrameHistory.push(instantFps);
+            if (fpsFrameHistory.length > 60) fpsFrameHistory.shift();
+
+            const currentTime = performance.now();
+            if (currentTime - lastFpsUpdateTime < FPS_UPDATE_INTERVAL) return;
+            lastFpsUpdateTime = currentTime;
+
+            // Calculate current FPS from recent frames
+            const recentFps = fpsFrameHistory.slice(-10);
+            const currentFps = recentFps.length > 0
+                ? recentFps.reduce((a, b) => a + b, 0) / recentFps.length : 0;
+            const avgFps = fpsFrameHistory.length > 0
+                ? fpsFrameHistory.reduce((a, b) => a + b, 0) / fpsFrameHistory.length : 0;
+
+            // Track all FPS values for min/max
+            allFpsValues.push(currentFps);
+            if (allFpsValues.length > 600) allFpsValues.shift();
+            const validValues = allFpsValues.filter(v => v > 0 && v < 1000);
+
+            const fps = Math.round(currentFps);
+            const avg = Math.round(avgFps);
+            const min = validValues.length > 0 ? Math.round(Math.min(...validValues)) : 0;
+            const max = validValues.length > 0 ? Math.round(Math.max(...validValues)) : 0;
+
+            // Update history for graph
             fpsHistory.shift();
-            fpsHistory.push(clampedFps);
+            fpsHistory.push(fps);
 
-            fpsUpdateCounter++;
-            if (fpsUpdateCounter < FPS_UPDATE_INTERVAL) return;
-            fpsUpdateCounter = 0;
+            // Update display
+            const color = getFpsColor(fps);
+            fpsElements.value.textContent = fps;
+            fpsElements.value.style.color = color;
+            fpsElements.indicator.style.backgroundColor = color;
 
-            // Calculate average FPS
-            const avgFps = Math.round(fpsHistory.reduce((a, b) => a + b, 0) / fpsHistory.length);
+            fpsElements.avg.textContent = avg;
+            fpsElements.min.textContent = min || '-';
+            fpsElements.max.textContent = max || '-';
 
-            // Update text display
-            fpsElements.value.textContent = avgFps;
-            fpsElements.value.className = 'fps-value ' + (avgFps >= 55 ? 'good' : avgFps >= 30 ? 'ok' : 'bad');
-            fpsElements.frameTime.textContent = deltaMs.toFixed(1) + 'ms';
+            fpsElements.frameTime.textContent = deltaMs.toFixed(2) + 'ms';
+            fpsElements.target.textContent = `(${(1000 / fps || 0).toFixed(1)}ms target)`;
 
-            // Update graph bars
-            const bars = fpsElements.graph.children;
-            for (let i = 0; i < fpsHistory.length; i++) {
-                const fps = fpsHistory[i];
-                const height = Math.min(100, (fps / 60) * 100);
-                bars[i].style.height = height + '%';
-                bars[i].className = 'fps-bar ' + (fps >= 55 ? '' : fps >= 30 ? 'ok' : 'bad');
-            }
+            // Update SVG graph
+            fpsElements.linePath.setAttribute('d', generatePath(fpsHistory));
+            fpsElements.linePath.setAttribute('stroke', color);
+            fpsElements.areaPath.setAttribute('d', generateAreaPath(fpsHistory));
+            fpsElements.gradientStop.setAttribute('stop-color', color);
         }
 
         // ========== EASING UTILITIES ==========
