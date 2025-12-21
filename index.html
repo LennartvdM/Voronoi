@@ -882,7 +882,7 @@
                     maxRadius = Math.max(maxRadius, Math.sqrt(dx * dx + dy * dy));
                 });
 
-                // Create frozen shapes with movement properties
+                // SIMPLIFIED: Create frozen shapes - straight lines, no stagger, no collision
                 cells.forEach((cell, i) => {
                     const target = targetPositions[i];
 
@@ -891,69 +891,24 @@
                         cell.displayPolygon.map(p => [...p]) : null;
 
                     if (!frozenPolygon || frozenPolygon.length < 3) {
-                        console.log('Cell', i, 'has no displayPolygon:', cell.displayPolygon);
+                        console.log('Cell', i, 'has no displayPolygon');
                         return;
                     }
 
-                    // Use the cell's BASE position (seed point) - this is what we're transitioning
-                    // The polygon is frozen and will be translated relative to seed movement
-                    const seedX = cell.baseX;
-                    const seedY = cell.baseY;
+                    // Start position = current seed position
+                    const startX = cell.baseX;
+                    const startY = cell.baseY;
 
-                    // Position relative to group center (for departure order calculation)
-                    const toCellX = seedX - startCenterX;
-                    const toCellY = seedY - startCenterY;
-                    const radius = Math.sqrt(toCellX * toCellX + toCellY * toCellY);
-                    const radiusFactor = maxRadius > 0 ? radius / maxRadius : 0;
+                    // Target position = where seed should end up
+                    const targetX = target.x;
+                    const targetY = target.y;
 
-                    // Which side of the movement axis is this cell on?
-                    const sideValue = toCellX * perpX + toCellY * perpY;
-                    const normalizedSide = maxRadius > 0 ? sideValue / maxRadius : 0;
+                    // Control point = midpoint (straight line)
+                    const controlX = (startX + targetX) / 2;
+                    const controlY = (startY + targetY) / 2;
 
-                    // How far "in front" or "behind" the movement?
-                    const frontBack = toCellX * normDirX + toCellY * normDirY;
-                    const normalizedFrontBack = maxRadius > 0 ? frontBack / maxRadius : 0;
-
-                    // === DEPARTURE ORDER ===
-                    // Cells BEHIND the movement direction go first (they need to get out of the way)
-                    // Cells on the OUTER edges also get priority (they travel further)
-                    // Random jitter for organic feel
-                    const behindness = (-normalizedFrontBack + 1) / 2; // 0=front, 1=behind
-                    const outerness = radiusFactor;
-                    const jitter = Math.random() * 0.1;
-                    const departureOrder = behindness * 0.5 + outerness * 0.3 + jitter;
-
-                    // === ARC PATH ===
-                    // Cells on the sides curve outward, cells in front/back curve less
-                    const sideMagnitude = Math.abs(normalizedSide);
-                    const curveStrength = radiusFactor * (0.3 + sideMagnitude * 0.7);
-                    const curveDirection = normalizedSide >= 0 ? 1 : -1;
-
-                    // Path from current seed to target seed
-                    const pathDirX = target.x - seedX;
-                    const pathDirY = target.y - seedY;
-                    const pathLen = Math.sqrt(pathDirX * pathDirX + pathDirY * pathDirY);
-
-                    // Perpendicular to path for arc control point
-                    let pathPerpX = -normDirY, pathPerpY = normDirX;
-                    if (pathLen > 1) {
-                        pathPerpX = -pathDirY / pathLen;
-                        pathPerpY = pathDirX / pathLen;
-                    }
-
-                    // Arc control point - curves outward from group
-                    const arcAmount = curveStrength * Math.max(pathLen, 100) * 0.8;
-                    const midX = (seedX + target.x) / 2;
-                    const midY = (seedY + target.y) / 2;
-                    const controlX = midX + pathPerpX * arcAmount * curveDirection;
-                    const controlY = midY + pathPerpY * arcAmount * curveDirection;
-
-                    // Calculate approximate bounding radius for collision (from seed, not centroid)
-                    let boundingRadius = 0;
-                    frozenPolygon.forEach(p => {
-                        const d = Math.sqrt((p[0] - seedX) * (p[0] - seedX) + (p[1] - seedY) * (p[1] - seedY));
-                        boundingRadius = Math.max(boundingRadius, d);
-                    });
+                    console.log('Shape', i, ': start=', Math.round(startX), Math.round(startY),
+                                'target=', Math.round(targetX), Math.round(targetY));
 
                     this.shapes.push({
                         index: i,
@@ -962,39 +917,21 @@
                         color: cell.color,
                         opacity: 1.0,
 
-                        // Seed positions (what we're actually transitioning)
-                        startX: seedX,
-                        startY: seedY,
-                        currentX: seedX,
-                        currentY: seedY,
-                        targetX: target.x,
-                        targetY: target.y,
+                        startX, startY,
+                        currentX: startX,
+                        currentY: startY,
+                        targetX, targetY,
+                        controlX, controlY,
 
-                        // Arc path control point
-                        controlX: controlX,
-                        controlY: controlY,
-
-                        // Velocity for collision response
-                        velocityX: 0,
-                        velocityY: 0,
-
-                        // Timing
-                        departureOrder: departureOrder,
-                        departureDelay: departureOrder * 0.4, // 0 to 0.4 of total duration
+                        departureDelay: 0,  // No stagger
                         progress: 0,
                         arrived: false,
-
-                        // Collision
-                        boundingRadius: boundingRadius,
-
-                        // Original cell reference
+                        boundingRadius: 50,
                         cellIndex: cell.index
                     });
                 });
 
-                // Sort by departure order so we process in the right sequence
-                this.shapes.sort((a, b) => a.departureOrder - b.departureOrder);
-                console.log('FlockTransition created', this.shapes.length, 'shapes, active:', this.active);
+                console.log('FlockTransition created', this.shapes.length, 'shapes');
             }
 
             // Update the flock transition (called each frame)
@@ -1004,65 +941,42 @@
                 const elapsed = performance.now() - this.startTime;
                 const globalProgress = Math.min(1, elapsed / this.duration);
 
-                // Debug log every 30 frames or so
-                if (Math.random() < 0.03) {
-                    console.log('FlockTransition update - elapsed:', Math.round(elapsed), 'progress:', globalProgress.toFixed(2));
+                // Log first few frames
+                if (elapsed < 100) {
+                    console.log('Frame - elapsed:', Math.round(elapsed), 'ms, progress:', globalProgress.toFixed(3));
                 }
 
                 let allArrived = true;
 
-                // Update each shape
+                // Update each shape - simple linear interpolation for now
                 for (const shape of this.shapes) {
                     if (shape.arrived) continue;
 
-                    // Calculate this shape's individual progress
-                    // Subtract departure delay, then normalize to 0-1
-                    const availableTime = 1 - shape.departureDelay;
-                    const localTime = Math.max(0, globalProgress - shape.departureDelay);
-                    shape.progress = availableTime > 0 ? Math.min(1, localTime / availableTime) : 1;
+                    shape.progress = globalProgress;
 
                     if (shape.progress >= 1) {
-                        // Arrived at destination
                         shape.currentX = shape.targetX;
                         shape.currentY = shape.targetY;
                         shape.arrived = true;
-                        shape.velocityX = 0;
-                        shape.velocityY = 0;
                     } else {
                         allArrived = false;
 
-                        // Ease the progress for smooth movement
-                        const easedProgress = easeInOut(shape.progress);
-
-                        // Calculate position along quadratic Bezier arc
-                        const t = easedProgress;
-                        const oneMinusT = 1 - t;
-                        const a = oneMinusT * oneMinusT;
-                        const b = 2 * oneMinusT * t;
-                        const c = t * t;
-
-                        const idealX = a * shape.startX + b * shape.controlX + c * shape.targetX;
-                        const idealY = a * shape.startY + b * shape.controlY + c * shape.targetY;
-
-                        // Store velocity for collision response
-                        shape.velocityX = idealX - shape.currentX;
-                        shape.velocityY = idealY - shape.currentY;
-
-                        shape.currentX = idealX;
-                        shape.currentY = idealY;
+                        // Simple linear interpolation (not even easing for now)
+                        const t = shape.progress;
+                        shape.currentX = shape.startX + (shape.targetX - shape.startX) * t;
+                        shape.currentY = shape.startY + (shape.targetY - shape.startY) * t;
                     }
                 }
 
-                // Apply collision avoidance
-                this.resolveCollisions();
+                // NO collision avoidance for now
+                // this.resolveCollisions();
 
-                // Check if transition is complete
                 if (allArrived || globalProgress >= 1) {
                     this.complete();
                     return false;
                 }
 
-                return true; // Still active
+                return true;
             }
 
             // Resolve collisions between shapes
