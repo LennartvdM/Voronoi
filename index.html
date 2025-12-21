@@ -838,7 +838,7 @@
                 this.active = false;
                 this.shapes = [];           // Frozen shapes being animated
                 this.startTime = 0;
-                this.duration = 2000;       // Total transition duration in ms
+                this.duration = 3000;       // Total transition duration in ms (3 seconds)
                 this.onComplete = null;     // Callback when transition finishes
             }
 
@@ -895,15 +895,14 @@
                         return;
                     }
 
-                    // Calculate centroid of frozen polygon
-                    let cx = 0, cy = 0;
-                    frozenPolygon.forEach(p => { cx += p[0]; cy += p[1]; });
-                    cx /= frozenPolygon.length;
-                    cy /= frozenPolygon.length;
+                    // Use the cell's BASE position (seed point) - this is what we're transitioning
+                    // The polygon is frozen and will be translated relative to seed movement
+                    const seedX = cell.baseX;
+                    const seedY = cell.baseY;
 
-                    // Position relative to group center
-                    const toCellX = cell.baseX - startCenterX;
-                    const toCellY = cell.baseY - startCenterY;
+                    // Position relative to group center (for departure order calculation)
+                    const toCellX = seedX - startCenterX;
+                    const toCellY = seedY - startCenterY;
                     const radius = Math.sqrt(toCellX * toCellX + toCellY * toCellY);
                     const radiusFactor = maxRadius > 0 ? radius / maxRadius : 0;
 
@@ -930,9 +929,9 @@
                     const curveStrength = radiusFactor * (0.3 + sideMagnitude * 0.7);
                     const curveDirection = normalizedSide >= 0 ? 1 : -1;
 
-                    // Path from start to target
-                    const pathDirX = target.x - cx;
-                    const pathDirY = target.y - cy;
+                    // Path from current seed to target seed
+                    const pathDirX = target.x - seedX;
+                    const pathDirY = target.y - seedY;
                     const pathLen = Math.sqrt(pathDirX * pathDirX + pathDirY * pathDirY);
 
                     // Perpendicular to path for arc control point
@@ -944,15 +943,15 @@
 
                     // Arc control point - curves outward from group
                     const arcAmount = curveStrength * Math.max(pathLen, 100) * 0.8;
-                    const midX = (cx + target.x) / 2;
-                    const midY = (cy + target.y) / 2;
+                    const midX = (seedX + target.x) / 2;
+                    const midY = (seedY + target.y) / 2;
                     const controlX = midX + pathPerpX * arcAmount * curveDirection;
                     const controlY = midY + pathPerpY * arcAmount * curveDirection;
 
-                    // Calculate approximate bounding radius for collision
+                    // Calculate approximate bounding radius for collision (from seed, not centroid)
                     let boundingRadius = 0;
                     frozenPolygon.forEach(p => {
-                        const d = Math.sqrt((p[0] - cx) * (p[0] - cx) + (p[1] - cy) * (p[1] - cy));
+                        const d = Math.sqrt((p[0] - seedX) * (p[0] - seedX) + (p[1] - seedY) * (p[1] - seedY));
                         boundingRadius = Math.max(boundingRadius, d);
                     });
 
@@ -963,11 +962,11 @@
                         color: cell.color,
                         opacity: 1.0,
 
-                        // Positions
-                        startX: cx,
-                        startY: cy,
-                        currentX: cx,
-                        currentY: cy,
+                        // Seed positions (what we're actually transitioning)
+                        startX: seedX,
+                        startY: seedY,
+                        currentX: seedX,
+                        currentY: seedY,
                         targetX: target.x,
                         targetY: target.y,
 
@@ -1004,6 +1003,11 @@
 
                 const elapsed = performance.now() - this.startTime;
                 const globalProgress = Math.min(1, elapsed / this.duration);
+
+                // Debug log every 30 frames or so
+                if (Math.random() < 0.03) {
+                    console.log('FlockTransition update - elapsed:', Math.round(elapsed), 'progress:', globalProgress.toFixed(2));
+                }
 
                 let allArrived = true;
 
