@@ -924,14 +924,16 @@
 
                 // Get target zone bounds (config is already set to target values)
                 const targetZone = getZoneBounds(true);
+                const gap = config.gap; // Gap for inset
 
                 // Calculate group centers for direction
+                // Use DISPLACED positions for start (matches displayPolygon)
                 let startCenterX = 0, startCenterY = 0;
                 let targetCenterX = 0, targetCenterY = 0;
 
                 cells.forEach((cell, i) => {
-                    startCenterX += cell.baseX;
-                    startCenterY += cell.baseY;
+                    startCenterX += cell.displacedX;
+                    startCenterY += cell.displacedY;
                     targetCenterX += targetPositions[i].x;
                     targetCenterY += targetPositions[i].y;
                 });
@@ -949,11 +951,11 @@
                 const perpX = -normDirY;
                 const perpY = normDirX;
 
-                // Find max radius for normalization
+                // Find max radius for normalization (use displaced positions)
                 let maxRadius = 0;
                 cells.forEach(cell => {
-                    const dx = cell.baseX - startCenterX;
-                    const dy = cell.baseY - startCenterY;
+                    const dx = cell.displacedX - startCenterX;
+                    const dy = cell.displacedY - startCenterY;
                     maxRadius = Math.max(maxRadius, Math.sqrt(dx * dx + dy * dy));
                 });
 
@@ -961,7 +963,7 @@
                 cells.forEach((cell, i) => {
                     const target = targetPositions[i];
 
-                    // START polygon: current display polygon
+                    // START polygon: current display polygon (already has gap inset)
                     const startPolygonRaw = cell.displayPolygon ?
                         cell.displayPolygon.map(p => [...p]) : null;
 
@@ -971,15 +973,25 @@
                     }
 
                     // END polygon: compute what it will look like at target position
-                    const endPolygonRaw = this.computeCellPolygon(i, targetPositions, targetZone.bounds);
+                    let endPolygonRaw = this.computeCellPolygon(i, targetPositions, targetZone.bounds);
 
                     if (!endPolygonRaw || endPolygonRaw.length < 3) {
                         console.log('Cell', i, 'has no target polygon');
                         return;
                     }
 
-                    const startX = cell.baseX;
-                    const startY = cell.baseY;
+                    // Apply gap inset to target polygon (same as displayPolygon gets)
+                    if (gap > 0) {
+                        endPolygonRaw = insetPolygon(endPolygonRaw, gap / 2);
+                        if (!endPolygonRaw || endPolygonRaw.length < 3) {
+                            console.log('Cell', i, 'target polygon collapsed after inset');
+                            return;
+                        }
+                    }
+
+                    // Use DISPLACED position as start (matches displayPolygon)
+                    const startX = cell.displacedX;
+                    const startY = cell.displacedY;
                     const targetX = target.x;
                     const targetY = target.y;
 
