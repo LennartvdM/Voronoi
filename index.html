@@ -829,6 +829,367 @@
             return 1 - Math.pow(1 - t, 3);
         }
 
+        // ========== FLOCK TRANSITION SYSTEM ==========
+        // Completely separate animation system for bar transitions
+        // Freezes shapes and moves them as rigid bodies with collision avoidance
+
+        class FlockTransition {
+            constructor() {
+                this.active = false;
+                this.shapes = [];           // Frozen shapes being animated
+                this.startTime = 0;
+                this.duration = 2000;       // Total transition duration in ms
+                this.onComplete = null;     // Callback when transition finishes
+            }
+
+            // Start a flock transition
+            start(cells, targetPositions, onComplete) {
+                console.log('FlockTransition.start() called with', cells.length, 'cells');
+                this.active = true;
+                this.startTime = performance.now();
+                this.onComplete = onComplete;
+                this.shapes = [];
+
+                // Calculate group centers for direction
+                let startCenterX = 0, startCenterY = 0;
+                let targetCenterX = 0, targetCenterY = 0;
+
+                cells.forEach((cell, i) => {
+                    startCenterX += cell.baseX;
+                    startCenterY += cell.baseY;
+                    targetCenterX += targetPositions[i].x;
+                    targetCenterY += targetPositions[i].y;
+                });
+                startCenterX /= cells.length;
+                startCenterY /= cells.length;
+                targetCenterX /= cells.length;
+                targetCenterY /= cells.length;
+
+                // Overall transition direction
+                const dirX = targetCenterX - startCenterX;
+                const dirY = targetCenterY - startCenterY;
+                const dirLen = Math.sqrt(dirX * dirX + dirY * dirY);
+                const normDirX = dirLen > 1 ? dirX / dirLen : 0;
+                const normDirY = dirLen > 1 ? dirY / dirLen : 1;
+                const perpX = -normDirY;
+                const perpY = normDirX;
+
+                // Find max radius for normalization
+                let maxRadius = 0;
+                cells.forEach(cell => {
+                    const dx = cell.baseX - startCenterX;
+                    const dy = cell.baseY - startCenterY;
+                    maxRadius = Math.max(maxRadius, Math.sqrt(dx * dx + dy * dy));
+                });
+
+                // Create frozen shapes with movement properties
+                cells.forEach((cell, i) => {
+                    const target = targetPositions[i];
+
+                    // Freeze the polygon (deep copy)
+                    const frozenPolygon = cell.displayPolygon ?
+                        cell.displayPolygon.map(p => [...p]) : null;
+
+                    if (!frozenPolygon || frozenPolygon.length < 3) {
+                        console.log('Cell', i, 'has no displayPolygon:', cell.displayPolygon);
+                        return;
+                    }
+
+                    // Calculate centroid of frozen polygon
+                    let cx = 0, cy = 0;
+                    frozenPolygon.forEach(p => { cx += p[0]; cy += p[1]; });
+                    cx /= frozenPolygon.length;
+                    cy /= frozenPolygon.length;
+
+                    // Position relative to group center
+                    const toCellX = cell.baseX - startCenterX;
+                    const toCellY = cell.baseY - startCenterY;
+                    const radius = Math.sqrt(toCellX * toCellX + toCellY * toCellY);
+                    const radiusFactor = maxRadius > 0 ? radius / maxRadius : 0;
+
+                    // Which side of the movement axis is this cell on?
+                    const sideValue = toCellX * perpX + toCellY * perpY;
+                    const normalizedSide = maxRadius > 0 ? sideValue / maxRadius : 0;
+
+                    // How far "in front" or "behind" the movement?
+                    const frontBack = toCellX * normDirX + toCellY * normDirY;
+                    const normalizedFrontBack = maxRadius > 0 ? frontBack / maxRadius : 0;
+
+                    // === DEPARTURE ORDER ===
+                    // Cells BEHIND the movement direction go first (they need to get out of the way)
+                    // Cells on the OUTER edges also get priority (they travel further)
+                    // Random jitter for organic feel
+                    const behindness = (-normalizedFrontBack + 1) / 2; // 0=front, 1=behind
+                    const outerness = radiusFactor;
+                    const jitter = Math.random() * 0.1;
+                    const departureOrder = behindness * 0.5 + outerness * 0.3 + jitter;
+
+                    // === ARC PATH ===
+                    // Cells on the sides curve outward, cells in front/back curve less
+                    const sideMagnitude = Math.abs(normalizedSide);
+                    const curveStrength = radiusFactor * (0.3 + sideMagnitude * 0.7);
+                    const curveDirection = normalizedSide >= 0 ? 1 : -1;
+
+                    // Path from start to target
+                    const pathDirX = target.x - cx;
+                    const pathDirY = target.y - cy;
+                    const pathLen = Math.sqrt(pathDirX * pathDirX + pathDirY * pathDirY);
+
+                    // Perpendicular to path for arc control point
+                    let pathPerpX = -normDirY, pathPerpY = normDirX;
+                    if (pathLen > 1) {
+                        pathPerpX = -pathDirY / pathLen;
+                        pathPerpY = pathDirX / pathLen;
+                    }
+
+                    // Arc control point - curves outward from group
+                    const arcAmount = curveStrength * Math.max(pathLen, 100) * 0.8;
+                    const midX = (cx + target.x) / 2;
+                    const midY = (cy + target.y) / 2;
+                    const controlX = midX + pathPerpX * arcAmount * curveDirection;
+                    const controlY = midY + pathPerpY * arcAmount * curveDirection;
+
+                    // Calculate approximate bounding radius for collision
+                    let boundingRadius = 0;
+                    frozenPolygon.forEach(p => {
+                        const d = Math.sqrt((p[0] - cx) * (p[0] - cx) + (p[1] - cy) * (p[1] - cy));
+                        boundingRadius = Math.max(boundingRadius, d);
+                    });
+
+                    this.shapes.push({
+                        index: i,
+                        polygon: frozenPolygon,
+                        pattern: cell.pattern,
+                        color: cell.color,
+                        opacity: 1.0,
+
+                        // Positions
+                        startX: cx,
+                        startY: cy,
+                        currentX: cx,
+                        currentY: cy,
+                        targetX: target.x,
+                        targetY: target.y,
+
+                        // Arc path control point
+                        controlX: controlX,
+                        controlY: controlY,
+
+                        // Velocity for collision response
+                        velocityX: 0,
+                        velocityY: 0,
+
+                        // Timing
+                        departureOrder: departureOrder,
+                        departureDelay: departureOrder * 0.4, // 0 to 0.4 of total duration
+                        progress: 0,
+                        arrived: false,
+
+                        // Collision
+                        boundingRadius: boundingRadius,
+
+                        // Original cell reference
+                        cellIndex: cell.index
+                    });
+                });
+
+                // Sort by departure order so we process in the right sequence
+                this.shapes.sort((a, b) => a.departureOrder - b.departureOrder);
+                console.log('FlockTransition created', this.shapes.length, 'shapes, active:', this.active);
+            }
+
+            // Update the flock transition (called each frame)
+            update(dt) {
+                if (!this.active) return false;
+
+                const elapsed = performance.now() - this.startTime;
+                const globalProgress = Math.min(1, elapsed / this.duration);
+
+                let allArrived = true;
+
+                // Update each shape
+                for (const shape of this.shapes) {
+                    if (shape.arrived) continue;
+
+                    // Calculate this shape's individual progress
+                    // Subtract departure delay, then normalize to 0-1
+                    const availableTime = 1 - shape.departureDelay;
+                    const localTime = Math.max(0, globalProgress - shape.departureDelay);
+                    shape.progress = availableTime > 0 ? Math.min(1, localTime / availableTime) : 1;
+
+                    if (shape.progress >= 1) {
+                        // Arrived at destination
+                        shape.currentX = shape.targetX;
+                        shape.currentY = shape.targetY;
+                        shape.arrived = true;
+                        shape.velocityX = 0;
+                        shape.velocityY = 0;
+                    } else {
+                        allArrived = false;
+
+                        // Ease the progress for smooth movement
+                        const easedProgress = easeInOut(shape.progress);
+
+                        // Calculate position along quadratic Bezier arc
+                        const t = easedProgress;
+                        const oneMinusT = 1 - t;
+                        const a = oneMinusT * oneMinusT;
+                        const b = 2 * oneMinusT * t;
+                        const c = t * t;
+
+                        const idealX = a * shape.startX + b * shape.controlX + c * shape.targetX;
+                        const idealY = a * shape.startY + b * shape.controlY + c * shape.targetY;
+
+                        // Store velocity for collision response
+                        shape.velocityX = idealX - shape.currentX;
+                        shape.velocityY = idealY - shape.currentY;
+
+                        shape.currentX = idealX;
+                        shape.currentY = idealY;
+                    }
+                }
+
+                // Apply collision avoidance
+                this.resolveCollisions();
+
+                // Check if transition is complete
+                if (allArrived || globalProgress >= 1) {
+                    this.complete();
+                    return false;
+                }
+
+                return true; // Still active
+            }
+
+            // Resolve collisions between shapes
+            resolveCollisions() {
+                const minSeparation = 20; // Minimum gap between shapes
+                const iterations = 3;     // Multiple passes for stability
+
+                for (let iter = 0; iter < iterations; iter++) {
+                    for (let i = 0; i < this.shapes.length; i++) {
+                        const shapeA = this.shapes[i];
+                        if (shapeA.arrived) continue;
+
+                        for (let j = i + 1; j < this.shapes.length; j++) {
+                            const shapeB = this.shapes[j];
+                            if (shapeB.arrived) continue;
+
+                            // Quick bounding check
+                            const dx = shapeB.currentX - shapeA.currentX;
+                            const dy = shapeB.currentY - shapeA.currentY;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            const minDist = shapeA.boundingRadius + shapeB.boundingRadius + minSeparation;
+
+                            if (dist < minDist && dist > 0.1) {
+                                // Collision! Push shapes apart
+                                const overlap = minDist - dist;
+                                const pushX = (dx / dist) * overlap * 0.5;
+                                const pushY = (dy / dist) * overlap * 0.5;
+
+                                // Weight by progress - shapes further along yield less
+                                const weightA = 1 - shapeA.progress * 0.5;
+                                const weightB = 1 - shapeB.progress * 0.5;
+                                const totalWeight = weightA + weightB;
+
+                                if (totalWeight > 0) {
+                                    shapeA.currentX -= pushX * (weightA / totalWeight);
+                                    shapeA.currentY -= pushY * (weightA / totalWeight);
+                                    shapeB.currentX += pushX * (weightB / totalWeight);
+                                    shapeB.currentY += pushY * (weightB / totalWeight);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Complete the transition
+            complete() {
+                this.active = false;
+                if (this.onComplete) {
+                    // Pass final positions back
+                    const finalPositions = this.shapes.map(shape => ({
+                        index: shape.cellIndex,
+                        x: shape.currentX,
+                        y: shape.currentY
+                    }));
+                    this.onComplete(finalPositions);
+                }
+            }
+
+            // Get current polygon for a shape (translated to current position)
+            getTranslatedPolygon(shape) {
+                const dx = shape.currentX - shape.startX;
+                const dy = shape.currentY - shape.startY;
+                return shape.polygon.map(p => [p[0] + dx, p[1] + dy]);
+            }
+
+            // Render all shapes during transition
+            render(ctx, cornerRadius) {
+                if (!this.active) return;
+
+                console.log('FlockTransition.render() - shapes:', this.shapes.length);
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+                // Sort by Y position for proper overlap (shapes lower on screen drawn later)
+                const sortedShapes = [...this.shapes].sort((a, b) => a.currentY - b.currentY);
+
+                for (const shape of sortedShapes) {
+                    const polygon = this.getTranslatedPolygon(shape);
+                    if (!polygon || polygon.length < 3) continue;
+
+                    ctx.save();
+                    ctx.globalAlpha = shape.opacity;
+
+                    // Create rounded clipping path
+                    drawRoundedPolygon(ctx, polygon, cornerRadius);
+                    ctx.clip();
+
+                    // Calculate bounds
+                    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                    for (const p of polygon) {
+                        minX = Math.min(minX, p[0]);
+                        maxX = Math.max(maxX, p[0]);
+                        minY = Math.min(minY, p[1]);
+                        maxY = Math.max(maxY, p[1]);
+                    }
+
+                    const cellW = maxX - minX;
+                    const cellH = maxY - minY;
+                    const centerX = (minX + maxX) / 2;
+                    const centerY = (minY + maxY) / 2;
+
+                    // Draw pattern
+                    if (shape.pattern) {
+                        const size = Math.max(cellW, cellH) * 1.4;
+                        ctx.drawImage(
+                            shape.pattern,
+                            centerX - size / 2,
+                            centerY - size / 2,
+                            size,
+                            size
+                        );
+                    }
+
+                    ctx.restore();
+
+                    // Draw border
+                    ctx.save();
+                    drawRoundedPolygon(ctx, polygon, cornerRadius);
+                    ctx.clip();
+                    drawRoundedPolygon(ctx, polygon, cornerRadius);
+                    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+        }
+
+        // Global flock transition instance
+        let flockTransition = new FlockTransition();
+
         // ========== CELL CLASS ==========
         class Cell {
             constructor(x, y, index) {
@@ -839,23 +1200,8 @@
                 this.y = y;
 
                 // Parametric position along bar (0-1)
-                // Used for consistent cell identity during transitions
+                // Used for consistent cell ordering during transitions
                 this.parametricT = 0;
-
-                // Transition targets (for flock-like movement)
-                this.transitionTargetX = x;
-                this.transitionTargetY = y;
-                this.transitionProgress = 1.0;  // 1 = at target, 0 = at start
-                this.transitionStartX = x;
-                this.transitionStartY = y;
-
-                // Flock transition properties
-                this.transitionPolygon = null;    // Frozen polygon during transition
-                this.transitionCentroid = null;   // Frozen centroid
-                this.transitionControlX = x;      // Bezier control point for curved path
-                this.transitionControlY = y;
-                this.transitionDelay = 0;         // Stagger delay (0-1, higher = later start)
-                this.flockRadius = 0;             // Distance from group center (for arc width)
 
                 // Scale animation (exponential smoothing - no resets)
                 this.scale = 1.0;              // Current scale
@@ -899,38 +1245,7 @@
             update(dt, isHovered) {
                 // Exponential smoothing - smoothly chase targets without resets
                 // When switching cells, just changes target - no jarring restarts
-
-                // === FLOCK TRANSITION ANIMATION (Bezier curves) ===
-                if (this.transitionProgress < 1) {
-                    // Progress-based animation with easing
-                    const transitionLerp = config.transitionSpeed / 100;
-                    // Advance progress (can start negative for stagger delay)
-                    this.transitionProgress = Math.min(1, this.transitionProgress + transitionLerp * 0.5);
-
-                    // Clamp for easing calculation (negative progress = still at start)
-                    const clampedProgress = Math.max(0, this.transitionProgress);
-
-                    // Use ease-in-out for more natural flock movement
-                    // Slow start, fast middle, slow end
-                    const easedProgress = easeInOut(clampedProgress);
-
-                    // Quadratic Bezier curve: B(t) = (1-t)²·P0 + 2(1-t)t·P1 + t²·P2
-                    const t = easedProgress;
-                    const oneMinusT = 1 - t;
-                    const a = oneMinusT * oneMinusT;           // (1-t)²
-                    const b = 2 * oneMinusT * t;               // 2(1-t)t
-                    const c = t * t;                           // t²
-
-                    // Calculate position along Bezier curve
-                    this.baseX = a * this.transitionStartX + b * this.transitionControlX + c * this.transitionTargetX;
-                    this.baseY = a * this.transitionStartY + b * this.transitionControlY + c * this.transitionTargetY;
-
-                    // Also update displaced position to follow
-                    this.displacedX = this.baseX;
-                    this.displacedY = this.baseY;
-                    this.targetDisplacedX = this.baseX;
-                    this.targetDisplacedY = this.baseY;
-                }
+                // Note: Bar transitions are handled by FlockTransition, not here
 
                 // === HOVER STATE SMOOTHING ===
                 const targetHover = isHovered ? 1 : 0;
@@ -1350,46 +1665,12 @@
 
         // Display polygons with neighbor displacement via seed movement
         // Moving seeds recomputes Voronoi naturally while maintaining perfect tessellation
-        // During flock transitions, frozen polygons are translated to preserve shape
+        // Note: Bar transitions are handled by FlockTransition system with its own render
         function updateDisplayPolygons() {
             const zone = getZoneBounds(false);
             const zoneWithBuffer = getZoneBounds(true);
             const gap = config.gap;
 
-            // === FLOCK TRANSITION: Translate frozen polygons ===
-            if (config.isTransitioning) {
-                for (let i = 0; i < cells.length; i++) {
-                    const cell = cells[i];
-
-                    // If we have a frozen polygon, translate it
-                    if (cell.transitionPolygon && cell.transitionCentroid) {
-                        // Calculate movement delta from original position
-                        const deltaX = cell.baseX - cell.transitionStartX;
-                        const deltaY = cell.baseY - cell.transitionStartY;
-
-                        // Translate the frozen polygon (already has gap applied)
-                        const translated = cell.transitionPolygon.map(p => [
-                            p[0] + deltaX,
-                            p[1] + deltaY
-                        ]);
-
-                        // Use translated polygon directly (gap was already applied at freeze time)
-                        cell.displayPolygon = translated;
-
-                        // Update centroid for rendering
-                        cell.baseCentroid = {
-                            x: cell.transitionCentroid.x + deltaX,
-                            y: cell.transitionCentroid.y + deltaY
-                        };
-
-                        // Keep polygon for hit testing
-                        cell.polygon = translated;
-                    }
-                }
-                return; // Skip Voronoi recomputation during transition
-            }
-
-            // === NORMAL MODE: Recompute Voronoi ===
             // Build array for Voronoi computation from current animated positions
             const displacedSeeds = cells.map(cell => ({
                 x: cell.displacedX,
@@ -2032,36 +2313,22 @@
         }
 
         // Transition to a new preset with flock-like movement
+        // Uses the separate FlockTransition system for clean animation
         function transitionToPreset(presetName) {
-            if (config.currentPreset === presetName && !config.isTransitioning) return;
+            if (config.currentPreset === presetName && !flockTransition.active) return;
             if (!presets[presetName]) return;
+            if (flockTransition.active) return; // Don't interrupt ongoing transition
 
             const preset = presets[presetName];
             config.currentPreset = presetName;
             config.isTransitioning = true;
 
-            // === STEP 1: Freeze current state ===
-            // Store current positions and freeze polygons for shape preservation
-            let currentCenterX = 0, currentCenterY = 0;
-            cells.forEach(cell => {
-                cell.transitionStartX = cell.baseX;
-                cell.transitionStartY = cell.baseY;
-                // Freeze polygon and centroid for translation during transition
-                cell.transitionPolygon = cell.displayPolygon ?
-                    cell.displayPolygon.map(p => [...p]) : null;
-                cell.transitionCentroid = cell.baseCentroid ?
-                    { x: cell.baseCentroid.x, y: cell.baseCentroid.y } : { x: cell.baseX, y: cell.baseY };
-                currentCenterX += cell.baseX;
-                currentCenterY += cell.baseY;
-            });
-            currentCenterX /= cells.length;
-            currentCenterY /= cells.length;
-
-            // === STEP 2: Calculate target positions ===
+            // Update config to new preset values
             config.contentZoneRotation = preset.rotation;
             config.contentZonePosition = preset.position;
             config.contentZoneMargin = preset.margin;
 
+            // Calculate target positions for each cell
             const rotation = preset.rotation * Math.PI / 180;
             const cos = Math.cos(rotation);
             const sin = Math.sin(rotation);
@@ -2082,105 +2349,40 @@
             const targetCenterY = height / 2 + offsetY;
             const barLength = Math.sqrt(width * width + height * height) * 0.6;
 
-            // === STEP 3: Calculate transition direction ===
-            const transitionDirX = targetCenterX - currentCenterX;
-            const transitionDirY = targetCenterY - currentCenterY;
-            const transitionDist = Math.sqrt(transitionDirX * transitionDirX + transitionDirY * transitionDirY);
-            const normDirX = transitionDist > 1 ? transitionDirX / transitionDist : 0;
-            const normDirY = transitionDist > 1 ? transitionDirY / transitionDist : 1;
-            // Perpendicular direction (for curve control points)
-            const perpX = -normDirY;
-            const perpY = normDirX;
-
-            // === STEP 4: Calculate each cell's flock properties ===
-            // Find max distance from center for normalization
-            let maxRadius = 0;
-            cells.forEach(cell => {
-                const dx = cell.baseX - currentCenterX;
-                const dy = cell.baseY - currentCenterY;
-                cell.flockRadius = Math.sqrt(dx * dx + dy * dy);
-                maxRadius = Math.max(maxRadius, cell.flockRadius);
-            });
-
-            // Calculate target positions and curve control points
+            // Calculate target positions
             const goldenRatio = 0.618033988749;
-            cells.forEach((cell, index) => {
-                // Target position along bar
+            const targetPositions = cells.map((cell, index) => {
                 const t = cell.parametricT;
                 const barPos = (t - 0.5) * barLength;
                 const spreadAmount = 50;
                 const spreadPhase = ((index * goldenRatio) % 1) * 2 - 1;
                 const perpOffset = spreadPhase * spreadAmount;
 
-                cell.transitionTargetX = targetCenterX + barPos * cos - perpOffset * sin;
-                cell.transitionTargetY = targetCenterY + barPos * sin + perpOffset * cos;
+                return {
+                    x: targetCenterX + barPos * cos - perpOffset * sin,
+                    y: targetCenterY + barPos * sin + perpOffset * cos
+                };
+            });
 
-                // === Calculate cell's side relative to transition direction ===
-                // Vector from current center to cell's start position
-                const toCellX = cell.transitionStartX - currentCenterX;
-                const toCellY = cell.transitionStartY - currentCenterY;
+            // Start the flock transition with callback for completion
+            flockTransition.start(cells, targetPositions, (finalPositions) => {
+                // Transition complete - update cells to final positions
+                finalPositions.forEach(pos => {
+                    const cell = cells.find(c => c.index === pos.index);
+                    if (cell) {
+                        cell.baseX = pos.x;
+                        cell.baseY = pos.y;
+                        cell.displacedX = pos.x;
+                        cell.displacedY = pos.y;
+                        cell.targetDisplacedX = pos.x;
+                        cell.targetDisplacedY = pos.y;
+                    }
+                });
 
-                // Dot product with perpendicular gives "side" (-1 to 1)
-                const sideValue = (toCellX * perpX + toCellY * perpY);
-                const normalizedSide = maxRadius > 0 ? sideValue / maxRadius : 0;
-
-                // Dot product with direction gives "front/back" (-1 = back, 1 = front)
-                const frontBack = (toCellX * normDirX + toCellY * normDirY);
-                const normalizedFrontBack = maxRadius > 0 ? frontBack / maxRadius : 0;
-
-                // === Calculate curved path control point ===
-                // Cells on sides curve outward, cells in front/back curve less
-                const radiusFactor = maxRadius > 0 ? cell.flockRadius / maxRadius : 0;
-
-                // Curve magnitude - outer cells curve more, inner cells less
-                // Also, cells on the sides curve more than those in front/back
-                const sideMagnitude = Math.abs(normalizedSide);
-                const curveStrength = radiusFactor * (0.5 + sideMagnitude * 0.5);
-
-                // Control point offset - perpendicular to the straight path
-                // Direction based on which side the cell is on
-                const curveDirection = normalizedSide >= 0 ? 1 : -1;
-                const curveAmount = curveStrength * transitionDist * 0.6;
-
-                // Midpoint between start and target
-                const midX = (cell.transitionStartX + cell.transitionTargetX) / 2;
-                const midY = (cell.transitionStartY + cell.transitionTargetY) / 2;
-
-                // Vector from start to target
-                const pathDirX = cell.transitionTargetX - cell.transitionStartX;
-                const pathDirY = cell.transitionTargetY - cell.transitionStartY;
-                const pathLen = Math.sqrt(pathDirX * pathDirX + pathDirY * pathDirY);
-
-                // Perpendicular to path for curve control point
-                let pathPerpX = 0, pathPerpY = 1;
-                if (pathLen > 1) {
-                    pathPerpX = -pathDirY / pathLen;
-                    pathPerpY = pathDirX / pathLen;
-                }
-
-                // Control point is offset perpendicular to the path
-                cell.transitionControlX = midX + pathPerpX * curveAmount * curveDirection;
-                cell.transitionControlY = midY + pathPerpY * curveAmount * curveDirection;
-
-                // === Calculate stagger delay ===
-                // Cells that are BEHIND (opposite to direction) or on OUTER edges go first
-                // Cells in FRONT wait (they'd block others)
-                // This creates the natural flock behavior
-
-                // Base delay on position: cells in front (high frontBack) wait
-                // Cells behind (low frontBack) go first
-                const frontBackNorm = (normalizedFrontBack + 1) / 2; // 0 = back, 1 = front
-
-                // Outer cells also get priority (they need to travel further around)
-                const outerPriority = 1 - radiusFactor; // 0 = outer, 1 = inner
-
-                // Combine: cells that are behind AND outer go first
-                // Use random jitter for natural feel
-                const randomJitter = (Math.sin(index * 12.9898 + 78.233) * 0.5 + 0.5) * 0.15;
-                cell.transitionDelay = frontBackNorm * 0.4 + outerPriority * 0.2 + randomJitter;
-
-                // Start progress as negative delay (will count up to 0 before movement starts)
-                cell.transitionProgress = -cell.transitionDelay;
+                // Resume normal physics
+                config.isTransitioning = false;
+                computeBaseVoronoi();
+                assignParametricPositions();
             });
 
             // Update UI elements
@@ -2613,6 +2815,8 @@
         }
 
         // ========== PHYSICS ==========
+        // Normal physics for hover/displacement effects
+        // Note: Bar transitions are handled separately by FlockTransition system
         function updatePhysics(dt) {
             // Scale factor: 1.0 = normal, 1.0 + maxExpansion/300 = expanded
             const expandedScale = 1.0 + config.maxExpansion / 300;
@@ -2622,110 +2826,16 @@
                 cells[i].targetScale = (i === hoveredCell) ? expandedScale : 1.0;
             }
 
-            // Compute and constrain displacement targets BEFORE animation runs
-            // This ensures Cell.update never chases invalid positions
-            if (!config.isTransitioning) {
-                computeDisplacementTargets();
-            }
+            // Compute and constrain displacement targets
+            computeDisplacementTargets();
 
-            // Now run animations with valid, constrained targets
+            // Run cell animations
             for (let i = 0; i < cells.length; i++) {
                 cells[i].update(dt, i === hoveredCell);
             }
 
-            // === FLOCK COLLISION AVOIDANCE ===
-            // Apply separation forces during transitions to prevent overlapping
-            if (config.isTransitioning) {
-                applyFlockSeparation();
-            }
-
-            // Check if all transitions are complete
-            if (config.isTransitioning) {
-                let allComplete = true;
-                for (const cell of cells) {
-                    if (cell.transitionProgress < 1) {
-                        allComplete = false;
-                        break;
-                    }
-                }
-
-                if (allComplete) {
-                    config.isTransitioning = false;
-                    // Clear frozen polygons
-                    cells.forEach(cell => {
-                        cell.transitionPolygon = null;
-                        cell.transitionCentroid = null;
-                    });
-                    // Recompute base Voronoi with new final positions
-                    computeBaseVoronoi();
-                    // Reassign parametric positions for future transitions
-                    assignParametricPositions();
-                }
-            }
-
-            // Update display polygons - uses animated displacedX/Y from each cell
+            // Update display polygons
             updateDisplayPolygons();
-        }
-
-        // Apply separation forces during flock transitions
-        // Cells push away from each other to avoid overlapping
-        function applyFlockSeparation() {
-            const minSeparation = 80;  // Minimum distance between cell centers
-            const separationStrength = 0.3;  // How strongly cells push apart
-
-            // Calculate separation forces for each cell
-            const forces = cells.map(() => ({ x: 0, y: 0 }));
-
-            for (let i = 0; i < cells.length; i++) {
-                const cellA = cells[i];
-                // Only apply separation to cells that have started moving
-                if (cellA.transitionProgress <= 0) continue;
-
-                for (let j = i + 1; j < cells.length; j++) {
-                    const cellB = cells[j];
-                    // Only apply separation to cells that have started moving
-                    if (cellB.transitionProgress <= 0) continue;
-
-                    const dx = cellB.baseX - cellA.baseX;
-                    const dy = cellB.baseY - cellA.baseY;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-
-                    // If cells are too close, push them apart
-                    if (dist < minSeparation && dist > 0.1) {
-                        const overlap = minSeparation - dist;
-                        const pushX = (dx / dist) * overlap * separationStrength;
-                        const pushY = (dy / dist) * overlap * separationStrength;
-
-                        // Weight by how far each cell has progressed
-                        // Cells further along their path are more "committed"
-                        const progressA = Math.max(0, cellA.transitionProgress);
-                        const progressB = Math.max(0, cellB.transitionProgress);
-                        const totalProgress = progressA + progressB;
-
-                        if (totalProgress > 0) {
-                            // Cell with less progress yields more
-                            const weightA = progressB / totalProgress;
-                            const weightB = progressA / totalProgress;
-
-                            forces[i].x -= pushX * weightA;
-                            forces[i].y -= pushY * weightA;
-                            forces[j].x += pushX * weightB;
-                            forces[j].y += pushY * weightB;
-                        }
-                    }
-                }
-            }
-
-            // Apply separation forces
-            for (let i = 0; i < cells.length; i++) {
-                const cell = cells[i];
-                if (cell.transitionProgress > 0 && cell.transitionProgress < 1) {
-                    cell.baseX += forces[i].x;
-                    cell.baseY += forces[i].y;
-                    cell.displacedX = cell.baseX;
-                    cell.displacedY = cell.baseY;
-                }
-            }
         }
 
         // ========== RENDERING ==========
@@ -2933,8 +3043,16 @@
             const dt = Math.min(deltaMs / 16, 3);
             lastTime = time;
 
-            updatePhysics(dt);
-            render();
+            // Check if flock transition is active
+            if (flockTransition.active) {
+                // Run the flock transition system (completely separate from normal physics)
+                flockTransition.update(dt);
+                flockTransition.render(ctx, config.cornerRadius);
+            } else {
+                // Normal physics and rendering
+                updatePhysics(dt);
+                render();
+            }
 
             // Update FPS counter (skip first frame where deltaMs would be huge)
             if (deltaMs > 0 && deltaMs < 200) {
