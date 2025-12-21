@@ -668,7 +668,8 @@
                 }
 
                 if (this.zoomProgress < 1) {
-                    const progressRate = config.imageZoomSpeed * 0.5;
+                    // Faster zoom animation: speed 1-100 maps to ~500ms to ~50ms transition
+                    const progressRate = 2 + config.imageZoomSpeed * 0.15;
                     this.zoomProgress = Math.min(1, this.zoomProgress + progressRate * dt / 1000);
                     const easedProgress = easeInOut(this.zoomProgress);
                     this.zoom = this.zoomStart + (this.targetZoom - this.zoomStart) * easedProgress;
@@ -684,13 +685,19 @@
                 }
 
                 if (this.opacityProgress < 1) {
-                    // Opacity uses a fixed moderate speed
-                    const progressRate = 8 * 0.5; // Equivalent to speed ~8
+                    // Faster opacity animation for snappier hover response
+                    const progressRate = 12; // Fast transition (~80ms to complete)
                     this.opacityProgress = Math.min(1, this.opacityProgress + progressRate * dt / 1000);
                     const easedProgress = easeInOut(this.opacityProgress);
                     this.opacity = this.opacityStart + (this.targetOpacity - this.opacityStart) * easedProgress;
                 } else {
                     this.opacity = this.targetOpacity;
+                }
+
+                // Ensure hovered cells snap to full opacity quickly
+                if (isHovered && this.targetOpacity === 1.0 && this.opacity > 0.95) {
+                    this.opacity = 1.0;
+                    this.opacityProgress = 1.0;
                 }
             }
 
@@ -2068,15 +2075,31 @@
 
                 ctx.restore();
 
-                // Draw border
-                drawRoundedPolygon(ctx, polygon, config.cornerRadius);
+                // Draw border (inner stroke to avoid optical distortion)
                 ctx.save();
                 const hoverGlow = cell.hoverMix;
-                const strokeAlpha = (i === hoveredCell ? 0.85 : 0.35) * Math.max(0.35, cell.opacity);
+                const isHovered = i === hoveredCell;
+
+                // For hovered cell, use full opacity; for others, use cell opacity
+                const strokeAlpha = isHovered ? 1.0 : Math.max(0.35, cell.opacity) * 0.5;
+                const baseLineWidth = isHovered ? 2 : 1;
+                const lineWidth = baseLineWidth + hoverGlow * 2;
+
+                // Create clip path for inner stroke
+                drawRoundedPolygon(ctx, polygon, config.cornerRadius);
+                ctx.clip();
+
+                // Draw stroke with doubled width (half will be clipped outside)
+                drawRoundedPolygon(ctx, polygon, config.cornerRadius);
                 ctx.strokeStyle = `rgba(255,255,255,${strokeAlpha})`;
-                ctx.lineWidth = 1 + hoverGlow * 2;
-                ctx.shadowColor = `rgba(255,255,255,${0.4 * hoverGlow})`;
-                ctx.shadowBlur = 18 * hoverGlow;
+                ctx.lineWidth = lineWidth * 2; // Double width since half is clipped
+
+                // Only apply glow for hovered cells
+                if (isHovered) {
+                    ctx.shadowColor = `rgba(255,255,255,${0.5 * hoverGlow})`;
+                    ctx.shadowBlur = 12 * hoverGlow;
+                }
+
                 ctx.stroke();
                 ctx.restore();
             }
