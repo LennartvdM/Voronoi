@@ -1052,6 +1052,9 @@
             update(dt) {
                 if (!this.active) return false;
 
+                // DEBUG: Freeze transition to test if scattering is in setup vs animation
+                return true;  // ENABLED: Cells should appear exactly where they were
+
                 const speed = 200; // pixels per second (slower for visible curves)
                 const arrivalThreshold = 2;
                 const frameTime = Math.min(dt * 16, 50) / 1000; // seconds
