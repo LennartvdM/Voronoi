@@ -831,13 +831,86 @@
 
         // ========== FLOCK TRANSITION SYSTEM ==========
         // Completely separate animation system for bar transitions
-        // Freezes shapes and moves them as rigid bodies with collision avoidance
+        // Shapes morph from start to end shape while traveling curved paths
 
         class FlockTransition {
             constructor() {
                 this.active = false;
-                this.shapes = [];           // Frozen shapes being animated
+                this.shapes = [];           // Shapes being animated
                 this.onComplete = null;     // Callback when transition finishes
+            }
+
+            // Resample a polygon to N evenly-spaced points along its perimeter
+            resamplePolygon(polygon, numPoints = 32) {
+                if (!polygon || polygon.length < 3) return null;
+
+                // Calculate total perimeter length
+                let perimeter = 0;
+                const segmentLengths = [];
+                for (let i = 0; i < polygon.length; i++) {
+                    const curr = polygon[i];
+                    const next = polygon[(i + 1) % polygon.length];
+                    const len = Math.sqrt((next[0] - curr[0]) ** 2 + (next[1] - curr[1]) ** 2);
+                    segmentLengths.push(len);
+                    perimeter += len;
+                }
+
+                // Sample points evenly along perimeter
+                const result = [];
+                const stepLen = perimeter / numPoints;
+                let accumulated = 0;
+                let segIdx = 0;
+                let segProgress = 0;
+
+                for (let i = 0; i < numPoints; i++) {
+                    const targetDist = i * stepLen;
+
+                    // Advance to the right segment
+                    while (accumulated + segmentLengths[segIdx] < targetDist && segIdx < polygon.length - 1) {
+                        accumulated += segmentLengths[segIdx];
+                        segIdx++;
+                    }
+
+                    // Interpolate within segment
+                    const remainingDist = targetDist - accumulated;
+                    const segLen = segmentLengths[segIdx];
+                    const t = segLen > 0 ? remainingDist / segLen : 0;
+
+                    const curr = polygon[segIdx];
+                    const next = polygon[(segIdx + 1) % polygon.length];
+                    result.push([
+                        curr[0] + t * (next[0] - curr[0]),
+                        curr[1] + t * (next[1] - curr[1])
+                    ]);
+                }
+
+                return result;
+            }
+
+            // Compute Voronoi polygon for a single cell given all seed positions
+            computeCellPolygon(cellIdx, seedPositions, zoneBounds) {
+                const cell = seedPositions[cellIdx];
+                let polygon = zoneBounds.map(p => [...p]);
+
+                for (let j = 0; j < seedPositions.length; j++) {
+                    if (cellIdx === j) continue;
+                    const other = seedPositions[j];
+
+                    const dx = other.x - cell.x;
+                    const dy = other.y - cell.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 0.001) continue;
+
+                    const midX = (cell.x + other.x) / 2;
+                    const midY = (cell.y + other.y) / 2;
+                    const nx = cell.x - other.x;
+                    const ny = cell.y - other.y;
+
+                    polygon = clipPolygon(polygon, midX, midY, nx, ny);
+                    if (polygon.length < 3) break;
+                }
+
+                return polygon.length >= 3 ? polygon : null;
             }
 
             // Start a flock transition
@@ -846,6 +919,11 @@
                 this.active = true;
                 this.onComplete = onComplete;
                 this.shapes = [];
+
+                const RESAMPLE_POINTS = 32; // Number of points for polygon interpolation
+
+                // Get target zone bounds (config is already set to target values)
+                const targetZone = getZoneBounds(true);
 
                 // Calculate group centers for direction
                 let startCenterX = 0, startCenterY = 0;
@@ -879,18 +957,24 @@
                     maxRadius = Math.max(maxRadius, Math.sqrt(dx * dx + dy * dy));
                 });
 
-                // Create frozen shapes with curves and staggering
-                // KEY INSIGHT: Curves are based on position in the GROUP, not individual path
-                // Shapes on the left/right edges swing wide AROUND the group
+                // Create shapes with morphing polygons
                 cells.forEach((cell, i) => {
                     const target = targetPositions[i];
 
-                    // Freeze the polygon (deep copy)
-                    const frozenPolygon = cell.displayPolygon ?
+                    // START polygon: current display polygon
+                    const startPolygonRaw = cell.displayPolygon ?
                         cell.displayPolygon.map(p => [...p]) : null;
 
-                    if (!frozenPolygon || frozenPolygon.length < 3) {
+                    if (!startPolygonRaw || startPolygonRaw.length < 3) {
                         console.log('Cell', i, 'has no displayPolygon');
+                        return;
+                    }
+
+                    // END polygon: compute what it will look like at target position
+                    const endPolygonRaw = this.computeCellPolygon(i, targetPositions, targetZone.bounds);
+
+                    if (!endPolygonRaw || endPolygonRaw.length < 3) {
+                        console.log('Cell', i, 'has no target polygon');
                         return;
                     }
 
@@ -899,7 +983,21 @@
                     const targetX = target.x;
                     const targetY = target.y;
 
-                    // Path length for speed calculation
+                    // Convert polygons to relative coordinates (relative to their seed)
+                    // This way we can interpolate shape independently of position
+                    const startRelative = startPolygonRaw.map(p => [p[0] - startX, p[1] - startY]);
+                    const endRelative = endPolygonRaw.map(p => [p[0] - targetX, p[1] - targetY]);
+
+                    // Resample both polygons to same number of points for smooth interpolation
+                    const startResampled = this.resamplePolygon(startRelative, RESAMPLE_POINTS);
+                    const endResampled = this.resamplePolygon(endRelative, RESAMPLE_POINTS);
+
+                    if (!startResampled || !endResampled) {
+                        console.log('Cell', i, 'resample failed');
+                        return;
+                    }
+
+                    // Path calculations
                     const pathDx = targetX - startX;
                     const pathDy = targetY - startY;
                     const pathLen = Math.sqrt(pathDx * pathDx + pathDy * pathDy);
@@ -908,52 +1006,42 @@
                     const toCellX = startX - startCenterX;
                     const toCellY = startY - startCenterY;
 
-                    // Project cell position onto PERPENDICULAR axis of group movement
-                    // This tells us: is this cell on the LEFT or RIGHT edge of the group?
+                    // Project onto perpendicular axis (left/right of movement)
                     const perpPosition = toCellX * perpX + toCellY * perpY;
-                    // Normalized: -1 = far left, 0 = center, +1 = far right
                     const perpNormalized = maxRadius > 0 ? perpPosition / maxRadius : 0;
 
-                    // Project onto movement direction axis
-                    // This tells us: is this cell at the FRONT or BACK of the group?
+                    // Project onto movement direction (front/back of group)
                     const frontPosition = toCellX * normDirX + toCellY * normDirY;
                     const frontNormalized = maxRadius > 0 ? frontPosition / maxRadius : 0;
 
-                    // CURVE CALCULATION:
-                    // - Cells on edges (high |perpNormalized|) curve MORE
-                    // - Curve direction matches their side (left cells curve left, right curve right)
-                    // - Curve amount based on GROUP SIZE, not path length
-                    const edgeFactor = Math.abs(perpNormalized); // 0 = center, 1 = edge
+                    // Curve calculation
+                    const edgeFactor = Math.abs(perpNormalized);
                     const curveDirection = perpNormalized >= 0 ? 1 : -1;
-
-                    // Generous curve: edge cells swing out by up to 1.5x the group radius
                     const curveAmount = edgeFactor * edgeFactor * maxRadius * 1.5;
 
-                    // Control point: midpoint of path, pushed OUT perpendicular to group movement
                     const midX = (startX + targetX) / 2;
                     const midY = (startY + targetY) / 2;
                     const controlX = midX + perpX * curveAmount * curveDirection;
                     const controlY = midY + perpY * curveAmount * curveDirection;
 
-                    // STAGGER: cells at the BACK of the group go first
-                    // Cells at the FRONT wait for others to clear the way
-                    // frontNormalized: -1 = back, +1 = front
-                    // Map to delay: back (0s) to front (1.5s)
+                    // Stagger: back cells go first
                     const departureDelay = (frontNormalized + 1) / 2 * 1.5;
 
-                    // Estimate curve length (longer than straight line for curved paths)
-                    // Quadratic Bezier arc length approximation
-                    const startToControl = Math.sqrt(
-                        (controlX - startX) ** 2 + (controlY - startY) ** 2
-                    );
-                    const controlToEnd = Math.sqrt(
-                        (targetX - controlX) ** 2 + (targetY - controlY) ** 2
-                    );
+                    // Curve length estimation
+                    const startToControl = Math.sqrt((controlX - startX) ** 2 + (controlY - startY) ** 2);
+                    const controlToEnd = Math.sqrt((targetX - controlX) ** 2 + (targetY - controlY) ** 2);
                     const curveLen = (pathLen + startToControl + controlToEnd) / 2;
+
+                    // Calculate bounding radius from start polygon
+                    const boundingRadius = Math.max(...startPolygonRaw.map(p =>
+                        Math.sqrt((p[0] - startX) ** 2 + (p[1] - startY) ** 2)
+                    ));
 
                     this.shapes.push({
                         index: i,
-                        polygon: frozenPolygon,
+                        // Morphing polygons (relative to seed position)
+                        startPolygon: startResampled,
+                        endPolygon: endResampled,
                         pattern: cell.pattern,
                         color: cell.color,
                         opacity: 1.0,
@@ -964,15 +1052,12 @@
                         targetX, targetY,
                         controlX, controlY,
 
-                        pathLen: curveLen, // Use curve length, not straight line
-                        progress: 0,           // 0 to 1 along the path
-                        departureDelay,        // seconds to wait before starting
+                        pathLen: curveLen,
+                        progress: 0,
+                        departureDelay,
                         waitTime: departureDelay,
                         arrived: false,
-                        // Calculate bounding radius from actual polygon
-                        boundingRadius: Math.max(...frozenPolygon.map(p =>
-                            Math.sqrt((p[0] - startX) ** 2 + (p[1] - startY) ** 2)
-                        )),
+                        boundingRadius,
                         cellIndex: cell.index
                     });
                 });
@@ -1098,11 +1183,23 @@
                 }
             }
 
-            // Get current polygon for a shape (translated to current position)
-            getTranslatedPolygon(shape) {
-                const dx = shape.currentX - shape.startX;
-                const dy = shape.currentY - shape.startY;
-                return shape.polygon.map(p => [p[0] + dx, p[1] + dy]);
+            // Get current polygon for a shape (interpolated between start and end, at current position)
+            getInterpolatedPolygon(shape) {
+                // Use eased progress for shape morphing too
+                const t = shape.progress;
+                const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+                // Interpolate each vertex between start and end polygon
+                const interpolated = [];
+                for (let i = 0; i < shape.startPolygon.length; i++) {
+                    const startPt = shape.startPolygon[i];
+                    const endPt = shape.endPolygon[i];
+                    interpolated.push([
+                        startPt[0] + eased * (endPt[0] - startPt[0]) + shape.currentX,
+                        startPt[1] + eased * (endPt[1] - startPt[1]) + shape.currentY
+                    ]);
+                }
+                return interpolated;
             }
 
             // Render all shapes during transition
@@ -1116,7 +1213,7 @@
                 const sortedShapes = [...this.shapes].sort((a, b) => a.currentY - b.currentY);
 
                 for (const shape of sortedShapes) {
-                    const polygon = this.getTranslatedPolygon(shape);
+                    const polygon = this.getInterpolatedPolygon(shape);
                     if (!polygon || polygon.length < 3) continue;
 
                     ctx.save();
