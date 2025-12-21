@@ -947,6 +947,15 @@
                     }
                     const startPolyAbs = cell.displayPolygon.map(p => [...p]);
 
+                    // SANITY CHECK: Is the displayPolygon actually near displacedX/Y?
+                    const polyCentroid = startPolyAbs.reduce((acc, p) => [acc[0] + p[0], acc[1] + p[1]], [0, 0]);
+                    polyCentroid[0] /= startPolyAbs.length;
+                    polyCentroid[1] /= startPolyAbs.length;
+                    const distFromSeed = Math.hypot(polyCentroid[0] - cell.displacedX, polyCentroid[1] - cell.displacedY);
+                    if (distFromSeed > 100) {
+                        console.error(`Cell ${i} MISMATCH: displayPolygon centroid at (${polyCentroid[0].toFixed(0)}, ${polyCentroid[1].toFixed(0)}) but displacedX/Y at (${cell.displacedX.toFixed(0)}, ${cell.displacedY.toFixed(0)}) - distance ${distFromSeed.toFixed(0)}px!`);
+                    }
+
                     // Compute end polygon
                     let endPolyAbs = this.computeCellPolygon(i, targetPositions, targetZone.bounds);
                     if (!endPolyAbs || endPolyAbs.length < 3) {
@@ -1026,11 +1035,25 @@
                 });
 
                 console.log('FlockTransition created', this.shapes.length, 'shapes');
+
+                // Debug: log first shape's starting state
+                if (this.shapes.length > 0) {
+                    const s = this.shapes[0];
+                    console.log('First shape START state:', {
+                        startX: s.startX, startY: s.startY,
+                        currentX: s.currentX, currentY: s.currentY,
+                        startPoly0: s.startPolygon[0],
+                        displayPoly0: cells[s.cellIndex].displayPolygon?.[0]
+                    });
+                }
             }
 
             // Update the flock transition (called each frame)
             update(dt) {
                 if (!this.active) return false;
+
+                // DEBUG: Freeze transition to test if scattering is in setup vs animation
+                return true;  // ENABLED: Cells should appear exactly where they were
 
                 const speed = 200; // pixels per second (slower for visible curves)
                 const arrivalThreshold = 2;
@@ -1183,7 +1206,17 @@
             render(ctx, cornerRadius) {
                 if (!this.active) return;
 
-                console.log('FlockTransition.render() - shapes:', this.shapes.length);
+                // Debug first render only
+                if (this.shapes.length > 0 && this.shapes[0].progress < 0.01) {
+                    const s = this.shapes[0];
+                    const poly = this.getInterpolatedPolygon(s);
+                    console.log('First shape RENDER state:', {
+                        progress: s.progress,
+                        currentX: s.currentX, currentY: s.currentY,
+                        interpolatedPoly0: poly?.[0]
+                    });
+                }
+
                 ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
                 // Sort by Y position for proper overlap (shapes lower on screen drawn later)
