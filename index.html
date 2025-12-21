@@ -837,8 +837,6 @@
             constructor() {
                 this.active = false;
                 this.shapes = [];           // Frozen shapes being animated
-                this.startTime = 0;
-                this.duration = 3000;       // Total transition duration in ms (3 seconds)
                 this.onComplete = null;     // Callback when transition finishes
             }
 
@@ -846,7 +844,6 @@
             start(cells, targetPositions, onComplete) {
                 console.log('FlockTransition.start() called with', cells.length, 'cells');
                 this.active = true;
-                this.startTime = performance.now();
                 this.onComplete = onComplete;
                 this.shapes = [];
 
@@ -938,40 +935,39 @@
             update(dt) {
                 if (!this.active) return false;
 
-                const elapsed = performance.now() - this.startTime;
-                const globalProgress = Math.min(1, elapsed / this.duration);
-
-                // Log first few frames
-                if (elapsed < 100) {
-                    console.log('Frame - elapsed:', Math.round(elapsed), 'ms, progress:', globalProgress.toFixed(3));
-                }
+                const speed = 200; // pixels per second
+                const arrivalThreshold = 2; // snap to target when within 2px
+                const frameTime = Math.min(dt * 16, 50); // dt is in ~1/60th sec units, cap at 50ms
+                const moveDistance = speed * (frameTime / 1000);
 
                 let allArrived = true;
 
-                // Update each shape - simple linear interpolation for now
                 for (const shape of this.shapes) {
                     if (shape.arrived) continue;
 
-                    shape.progress = globalProgress;
+                    // Calculate distance to target
+                    const dx = shape.targetX - shape.currentX;
+                    const dy = shape.targetY - shape.currentY;
+                    const distToTarget = Math.sqrt(dx * dx + dy * dy);
 
-                    if (shape.progress >= 1) {
+                    if (distToTarget <= arrivalThreshold) {
+                        // Close enough - snap to target
                         shape.currentX = shape.targetX;
                         shape.currentY = shape.targetY;
                         shape.arrived = true;
+                        console.log('Shape', shape.index, 'arrived');
                     } else {
                         allArrived = false;
 
-                        // Simple linear interpolation (not even easing for now)
-                        const t = shape.progress;
-                        shape.currentX = shape.startX + (shape.targetX - shape.startX) * t;
-                        shape.currentY = shape.startY + (shape.targetY - shape.startY) * t;
+                        // Move toward target at constant speed
+                        const moveRatio = Math.min(1, moveDistance / distToTarget);
+                        shape.currentX += dx * moveRatio;
+                        shape.currentY += dy * moveRatio;
                     }
                 }
 
-                // NO collision avoidance for now
-                // this.resolveCollisions();
-
-                if (allArrived || globalProgress >= 1) {
+                if (allArrived) {
+                    console.log('All shapes arrived - completing transition');
                     this.complete();
                     return false;
                 }
