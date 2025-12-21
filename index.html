@@ -830,64 +830,51 @@
         }
 
         // ========== FLOCK TRANSITION SYSTEM ==========
-        // Completely separate animation system for bar transitions
-        // Shapes morph from start to end shape while traveling curved paths
+        // Shapes travel in arcs, rotating and morphing from start to end state
 
         class FlockTransition {
             constructor() {
                 this.active = false;
-                this.shapes = [];           // Shapes being animated
-                this.onComplete = null;     // Callback when transition finishes
+                this.shapes = [];
+                this.onComplete = null;
+                this.startRotation = 0;  // Bar rotation at start (degrees)
+                this.endRotation = 0;    // Bar rotation at end (degrees)
             }
 
-            // Resample a polygon to N evenly-spaced points along its perimeter
-            resamplePolygon(polygon, numPoints = 32) {
-                if (!polygon || polygon.length < 3) return null;
+            // Match vertex counts between two polygons by duplicating vertices
+            matchVertexCounts(polyA, polyB) {
+                const a = polyA.map(p => [...p]);
+                const b = polyB.map(p => [...p]);
 
-                // Calculate total perimeter length
-                let perimeter = 0;
-                const segmentLengths = [];
-                for (let i = 0; i < polygon.length; i++) {
-                    const curr = polygon[i];
-                    const next = polygon[(i + 1) % polygon.length];
-                    const len = Math.sqrt((next[0] - curr[0]) ** 2 + (next[1] - curr[1]) ** 2);
-                    segmentLengths.push(len);
-                    perimeter += len;
-                }
-
-                // Sample points evenly along perimeter
-                const result = [];
-                const stepLen = perimeter / numPoints;
-                let accumulated = 0;
-                let segIdx = 0;
-                let segProgress = 0;
-
-                for (let i = 0; i < numPoints; i++) {
-                    const targetDist = i * stepLen;
-
-                    // Advance to the right segment
-                    while (accumulated + segmentLengths[segIdx] < targetDist && segIdx < polygon.length - 1) {
-                        accumulated += segmentLengths[segIdx];
-                        segIdx++;
+                while (a.length < b.length) {
+                    // Find longest edge and split it
+                    let maxLen = 0, maxIdx = 0;
+                    for (let i = 0; i < a.length; i++) {
+                        const next = (i + 1) % a.length;
+                        const len = Math.hypot(a[next][0] - a[i][0], a[next][1] - a[i][1]);
+                        if (len > maxLen) { maxLen = len; maxIdx = i; }
                     }
-
-                    // Interpolate within segment
-                    const remainingDist = targetDist - accumulated;
-                    const segLen = segmentLengths[segIdx];
-                    const t = segLen > 0 ? remainingDist / segLen : 0;
-
-                    const curr = polygon[segIdx];
-                    const next = polygon[(segIdx + 1) % polygon.length];
-                    result.push([
-                        curr[0] + t * (next[0] - curr[0]),
-                        curr[1] + t * (next[1] - curr[1])
-                    ]);
+                    const next = (maxIdx + 1) % a.length;
+                    const mid = [(a[maxIdx][0] + a[next][0]) / 2, (a[maxIdx][1] + a[next][1]) / 2];
+                    a.splice(maxIdx + 1, 0, mid);
                 }
 
-                return result;
+                while (b.length < a.length) {
+                    let maxLen = 0, maxIdx = 0;
+                    for (let i = 0; i < b.length; i++) {
+                        const next = (i + 1) % b.length;
+                        const len = Math.hypot(b[next][0] - b[i][0], b[next][1] - b[i][1]);
+                        if (len > maxLen) { maxLen = len; maxIdx = i; }
+                    }
+                    const next = (maxIdx + 1) % b.length;
+                    const mid = [(b[maxIdx][0] + b[next][0]) / 2, (b[maxIdx][1] + b[next][1]) / 2];
+                    b.splice(maxIdx + 1, 0, mid);
+                }
+
+                return [a, b];
             }
 
-            // Compute Voronoi polygon for a single cell given all seed positions
+            // Compute Voronoi polygon for a cell at target positions
             computeCellPolygon(cellIdx, seedPositions, zoneBounds) {
                 const cell = seedPositions[cellIdx];
                 let polygon = zoneBounds.map(p => [...p]);
@@ -895,7 +882,6 @@
                 for (let j = 0; j < seedPositions.length; j++) {
                     if (cellIdx === j) continue;
                     const other = seedPositions[j];
-
                     const dx = other.x - cell.x;
                     const dy = other.y - cell.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -903,34 +889,27 @@
 
                     const midX = (cell.x + other.x) / 2;
                     const midY = (cell.y + other.y) / 2;
-                    const nx = cell.x - other.x;
-                    const ny = cell.y - other.y;
-
-                    polygon = clipPolygon(polygon, midX, midY, nx, ny);
+                    polygon = clipPolygon(polygon, midX, midY, cell.x - other.x, cell.y - other.y);
                     if (polygon.length < 3) break;
                 }
-
                 return polygon.length >= 3 ? polygon : null;
             }
 
-            // Start a flock transition
-            start(cells, targetPositions, onComplete) {
-                console.log('FlockTransition.start() called with', cells.length, 'cells');
+            // Start transition with rotation info
+            start(cells, targetPositions, oldRotation, newRotation, onComplete) {
+                console.log('FlockTransition.start() - from', oldRotation, '° to', newRotation, '°');
                 this.active = true;
                 this.onComplete = onComplete;
                 this.shapes = [];
+                this.startRotation = oldRotation * Math.PI / 180;
+                this.endRotation = newRotation * Math.PI / 180;
 
-                const RESAMPLE_POINTS = 32; // Number of points for polygon interpolation
-
-                // Get target zone bounds (config is already set to target values)
                 const targetZone = getZoneBounds(true);
-                const gap = config.gap; // Gap for inset
+                const gap = config.gap;
 
-                // Calculate group centers for direction
-                // Use DISPLACED positions for start (matches displayPolygon)
+                // Group centers
                 let startCenterX = 0, startCenterY = 0;
                 let targetCenterX = 0, targetCenterY = 0;
-
                 cells.forEach((cell, i) => {
                     startCenterX += cell.displacedX;
                     startCenterY += cell.displacedY;
@@ -942,7 +921,7 @@
                 targetCenterX /= cells.length;
                 targetCenterY /= cells.length;
 
-                // Overall transition direction
+                // Direction and perpendicular
                 const dirX = targetCenterX - startCenterX;
                 const dirY = targetCenterY - startCenterY;
                 const dirLen = Math.sqrt(dirX * dirX + dirY * dirY);
@@ -951,125 +930,81 @@
                 const perpX = -normDirY;
                 const perpY = normDirX;
 
-                // Find max radius for normalization (use displaced positions)
-                let maxRadius = 0;
+                // Max radius for normalization
+                let maxRadius = 1;
                 cells.forEach(cell => {
-                    const dx = cell.displacedX - startCenterX;
-                    const dy = cell.displacedY - startCenterY;
-                    maxRadius = Math.max(maxRadius, Math.sqrt(dx * dx + dy * dy));
+                    const d = Math.hypot(cell.displacedX - startCenterX, cell.displacedY - startCenterY);
+                    if (d > maxRadius) maxRadius = d;
                 });
 
-                // Create shapes with morphing polygons
                 cells.forEach((cell, i) => {
                     const target = targetPositions[i];
 
-                    // START polygon: current display polygon (already has gap inset)
-                    const startPolygonRaw = cell.displayPolygon ?
-                        cell.displayPolygon.map(p => [...p]) : null;
+                    // Get start polygon (already rendered with gap)
+                    if (!cell.displayPolygon || cell.displayPolygon.length < 3) return;
+                    const startPolyAbs = cell.displayPolygon.map(p => [...p]);
 
-                    if (!startPolygonRaw || startPolygonRaw.length < 3) {
-                        console.log('Cell', i, 'has no displayPolygon');
-                        return;
-                    }
-
-                    // END polygon: compute what it will look like at target position
-                    let endPolygonRaw = this.computeCellPolygon(i, targetPositions, targetZone.bounds);
-
-                    if (!endPolygonRaw || endPolygonRaw.length < 3) {
-                        console.log('Cell', i, 'has no target polygon');
-                        return;
-                    }
-
-                    // Apply gap inset to target polygon (same as displayPolygon gets)
+                    // Compute end polygon
+                    let endPolyAbs = this.computeCellPolygon(i, targetPositions, targetZone.bounds);
+                    if (!endPolyAbs || endPolyAbs.length < 3) return;
                     if (gap > 0) {
-                        endPolygonRaw = insetPolygon(endPolygonRaw, gap / 2);
-                        if (!endPolygonRaw || endPolygonRaw.length < 3) {
-                            console.log('Cell', i, 'target polygon collapsed after inset');
-                            return;
-                        }
+                        endPolyAbs = insetPolygon(endPolyAbs, gap / 2);
+                        if (!endPolyAbs || endPolyAbs.length < 3) return;
                     }
 
-                    // Use DISPLACED position as start (matches displayPolygon)
+                    // Positions
                     const startX = cell.displacedX;
                     const startY = cell.displacedY;
                     const targetX = target.x;
                     const targetY = target.y;
 
-                    // Convert polygons to relative coordinates (relative to their seed)
-                    // This way we can interpolate shape independently of position
-                    const startRelative = startPolygonRaw.map(p => [p[0] - startX, p[1] - startY]);
-                    const endRelative = endPolygonRaw.map(p => [p[0] - targetX, p[1] - targetY]);
+                    // Convert to relative (centered on seed)
+                    let startRel = startPolyAbs.map(p => [p[0] - startX, p[1] - startY]);
+                    let endRel = endPolyAbs.map(p => [p[0] - targetX, p[1] - targetY]);
 
-                    // Resample both polygons to same number of points for smooth interpolation
-                    const startResampled = this.resamplePolygon(startRelative, RESAMPLE_POINTS);
-                    const endResampled = this.resamplePolygon(endRelative, RESAMPLE_POINTS);
+                    // Match vertex counts
+                    [startRel, endRel] = this.matchVertexCounts(startRel, endRel);
 
-                    if (!startResampled || !endResampled) {
-                        console.log('Cell', i, 'resample failed');
-                        return;
-                    }
-
-                    // Path calculations
-                    const pathDx = targetX - startX;
-                    const pathDy = targetY - startY;
-                    const pathLen = Math.sqrt(pathDx * pathDx + pathDy * pathDy);
-
-                    // Position relative to group center
+                    // Curve calculations
                     const toCellX = startX - startCenterX;
                     const toCellY = startY - startCenterY;
+                    const perpPos = toCellX * perpX + toCellY * perpY;
+                    const perpNorm = perpPos / maxRadius;
+                    const frontPos = toCellX * normDirX + toCellY * normDirY;
+                    const frontNorm = frontPos / maxRadius;
 
-                    // Project onto perpendicular axis (left/right of movement)
-                    const perpPosition = toCellX * perpX + toCellY * perpY;
-                    const perpNormalized = maxRadius > 0 ? perpPosition / maxRadius : 0;
-
-                    // Project onto movement direction (front/back of group)
-                    const frontPosition = toCellX * normDirX + toCellY * normDirY;
-                    const frontNormalized = maxRadius > 0 ? frontPosition / maxRadius : 0;
-
-                    // Curve calculation
-                    const edgeFactor = Math.abs(perpNormalized);
-                    const curveDirection = perpNormalized >= 0 ? 1 : -1;
-                    const curveAmount = edgeFactor * edgeFactor * maxRadius * 1.5;
+                    const edgeFactor = Math.abs(perpNorm);
+                    const curveDir = perpNorm >= 0 ? 1 : -1;
+                    const curveAmount = edgeFactor * edgeFactor * maxRadius * 1.2;
 
                     const midX = (startX + targetX) / 2;
                     const midY = (startY + targetY) / 2;
-                    const controlX = midX + perpX * curveAmount * curveDirection;
-                    const controlY = midY + perpY * curveAmount * curveDirection;
+                    const controlX = midX + perpX * curveAmount * curveDir;
+                    const controlY = midY + perpY * curveAmount * curveDir;
 
-                    // Stagger: back cells go first
-                    const departureDelay = (frontNormalized + 1) / 2 * 1.5;
+                    // Path length
+                    const pathLen = Math.hypot(targetX - startX, targetY - startY);
+                    const curveLen = (pathLen + Math.hypot(controlX - startX, controlY - startY) +
+                                     Math.hypot(targetX - controlX, targetY - controlY)) / 2;
 
-                    // Curve length estimation
-                    const startToControl = Math.sqrt((controlX - startX) ** 2 + (controlY - startY) ** 2);
-                    const controlToEnd = Math.sqrt((targetX - controlX) ** 2 + (targetY - controlY) ** 2);
-                    const curveLen = (pathLen + startToControl + controlToEnd) / 2;
-
-                    // Calculate bounding radius from start polygon
-                    const boundingRadius = Math.max(...startPolygonRaw.map(p =>
-                        Math.sqrt((p[0] - startX) ** 2 + (p[1] - startY) ** 2)
-                    ));
+                    // Stagger
+                    const departureDelay = (frontNorm + 1) / 2 * 1.0;
 
                     this.shapes.push({
                         index: i,
-                        // Morphing polygons (relative to seed position)
-                        startPolygon: startResampled,
-                        endPolygon: endResampled,
+                        startPolygon: startRel,
+                        endPolygon: endRel,
                         pattern: cell.pattern,
-                        color: cell.color,
-                        opacity: 1.0,
-
                         startX, startY,
                         currentX: startX,
                         currentY: startY,
                         targetX, targetY,
                         controlX, controlY,
-
-                        pathLen: curveLen,
+                        pathLen: Math.max(curveLen, 1),
                         progress: 0,
                         departureDelay,
                         waitTime: departureDelay,
                         arrived: false,
-                        boundingRadius,
                         cellIndex: cell.index
                     });
                 });
@@ -1195,23 +1130,34 @@
                 }
             }
 
-            // Get current polygon for a shape (interpolated between start and end, at current position)
+            // Get current polygon with rotation and morphing
             getInterpolatedPolygon(shape) {
-                // Use eased progress for shape morphing too
                 const t = shape.progress;
                 const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 
-                // Interpolate each vertex between start and end polygon
-                const interpolated = [];
+                // Rotation interpolation
+                const rotationDelta = this.endRotation - this.startRotation;
+                const currentRotation = rotationDelta * eased;
+                const cos = Math.cos(currentRotation);
+                const sin = Math.sin(currentRotation);
+
+                const result = [];
                 for (let i = 0; i < shape.startPolygon.length; i++) {
                     const startPt = shape.startPolygon[i];
                     const endPt = shape.endPolygon[i];
-                    interpolated.push([
-                        startPt[0] + eased * (endPt[0] - startPt[0]) + shape.currentX,
-                        startPt[1] + eased * (endPt[1] - startPt[1]) + shape.currentY
-                    ]);
+
+                    // Interpolate vertex position (relative coords)
+                    const relX = startPt[0] + eased * (endPt[0] - startPt[0]);
+                    const relY = startPt[1] + eased * (endPt[1] - startPt[1]);
+
+                    // Apply rotation around shape center
+                    const rotX = relX * cos - relY * sin;
+                    const rotY = relX * sin + relY * cos;
+
+                    // Translate to current position
+                    result.push([rotX + shape.currentX, rotY + shape.currentY]);
                 }
-                return interpolated;
+                return result;
             }
 
             // Render all shapes during transition
@@ -2409,6 +2355,11 @@
             if (flockTransition.active) return; // Don't interrupt ongoing transition
 
             const preset = presets[presetName];
+
+            // Capture OLD rotation before updating config
+            const oldRotation = config.contentZoneRotation;
+            const newRotation = preset.rotation;
+
             config.currentPreset = presetName;
             config.isTransitioning = true;
 
@@ -2453,8 +2404,8 @@
                 };
             });
 
-            // Start the flock transition with callback for completion
-            flockTransition.start(cells, targetPositions, (finalPositions) => {
+            // Start the flock transition with rotation info and callback
+            flockTransition.start(cells, targetPositions, oldRotation, newRotation, (finalPositions) => {
                 // Transition complete - update cells to final positions
                 finalPositions.forEach(pos => {
                     const cell = cells.find(c => c.index === pos.index);
