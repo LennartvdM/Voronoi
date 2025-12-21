@@ -844,6 +844,7 @@
 
             // Start a flock transition
             start(cells, targetPositions, onComplete) {
+                console.log('FlockTransition.start() called with', cells.length, 'cells');
                 this.active = true;
                 this.startTime = performance.now();
                 this.onComplete = onComplete;
@@ -889,7 +890,10 @@
                     const frozenPolygon = cell.displayPolygon ?
                         cell.displayPolygon.map(p => [...p]) : null;
 
-                    if (!frozenPolygon || frozenPolygon.length < 3) return;
+                    if (!frozenPolygon || frozenPolygon.length < 3) {
+                        console.log('Cell', i, 'has no displayPolygon:', cell.displayPolygon);
+                        return;
+                    }
 
                     // Calculate centroid of frozen polygon
                     let cx = 0, cy = 0;
@@ -991,6 +995,7 @@
 
                 // Sort by departure order so we process in the right sequence
                 this.shapes.sort((a, b) => a.departureOrder - b.departureOrder);
+                console.log('FlockTransition created', this.shapes.length, 'shapes, active:', this.active);
             }
 
             // Update the flock transition (called each frame)
@@ -1124,6 +1129,7 @@
             render(ctx, cornerRadius) {
                 if (!this.active) return;
 
+                console.log('FlockTransition.render() - shapes:', this.shapes.length);
                 ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
                 // Sort by Y position for proper overlap (shapes lower on screen drawn later)
