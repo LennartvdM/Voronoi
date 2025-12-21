@@ -247,6 +247,43 @@
             background: rgba(255,255,255,0.1);
         }
 
+        /* Preset buttons (radio-style) */
+        .preset-group {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .preset-label {
+            font-size: 11px;
+            color: rgba(255,255,255,0.6);
+            margin-right: 4px;
+        }
+
+        .preset-btn {
+            padding: 6px 12px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.7);
+        }
+
+        .preset-btn:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.3);
+        }
+
+        .preset-btn.active {
+            background: linear-gradient(135deg, rgba(99,102,241,0.4), rgba(139,92,246,0.4));
+            border-color: rgba(139,92,246,0.6);
+            color: #fff;
+            box-shadow: 0 2px 10px rgba(99,102,241,0.3);
+        }
+
         @media (max-width: 1100px) {
             .control-group.hide-tablet {
                 display: none;
@@ -377,6 +414,16 @@
 
             <div class="divider"></div>
 
+            <!-- Bar Presets -->
+            <div class="preset-group">
+                <span class="preset-label">Layout:</span>
+                <button class="preset-btn active" data-preset="horizontal">Horizontal</button>
+                <button class="preset-btn" data-preset="vertical">Vertical</button>
+                <button class="preset-btn" data-preset="diagonal">Diagonal</button>
+            </div>
+
+            <div class="divider"></div>
+
             <!-- Content Zone -->
             <div class="control-group">
                 <label>Zone Margin</label>
@@ -392,11 +439,25 @@
                     <span class="control-value" id="contentZoneRotationVal">0°</span>
                 </div>
             </div>
+            <div class="control-group">
+                <label>Position</label>
+                <div class="control-row">
+                    <input type="range" id="contentZonePosition" min="-100" max="100" value="0">
+                    <span class="control-value" id="contentZonePositionVal">0%</span>
+                </div>
+            </div>
             <div class="control-group hide-tablet">
                 <label>Bleed Buffer</label>
                 <div class="control-row">
                     <input type="range" id="bleedBuffer" min="20" max="200" value="158">
                     <span class="control-value" id="bleedBufferVal">158</span>
+                </div>
+            </div>
+            <div class="control-group hide-tablet">
+                <label>Trans Speed</label>
+                <div class="control-row">
+                    <input type="range" id="transitionSpeed" min="1" max="20" value="6">
+                    <span class="control-value" id="transitionSpeedVal">6</span>
                 </div>
             </div>
 
@@ -444,7 +505,20 @@
             contentZoneEnabled: true,    // Enable/disable content zone
             contentZoneMargin: 0.15,     // Margin as fraction of zone dimension
             contentZoneRotation: 0,      // Rotation in degrees (0 = horizontal, 90 = vertical)
-            bleedBuffer: 158             // Pixel buffer beyond content zone (how far hovered cell can extend)
+            contentZonePosition: 0,      // Position offset (-1 to 1, perpendicular to bar orientation)
+            bleedBuffer: 158,            // Pixel buffer beyond content zone (how far hovered cell can extend)
+
+            // Bar layout presets
+            currentPreset: 'horizontal', // 'horizontal', 'vertical', 'diagonal'
+            transitionSpeed: 6,          // Speed of bar transitions (1-20)
+            isTransitioning: false       // Whether cells are currently transitioning
+        };
+
+        // Preset definitions
+        const presets = {
+            horizontal: { rotation: 0, position: 0, margin: 0.15 },
+            vertical: { rotation: 90, position: -0.7, margin: 0.15 },  // Left side
+            diagonal: { rotation: 45, position: 0, margin: 0.15 }     // Bottom-left to top-right
         };
 
         // ========== SAMPLE DATA ==========
@@ -587,6 +661,17 @@
                 this.x = x;
                 this.y = y;
 
+                // Parametric position along bar (0-1)
+                // Used for consistent cell identity during transitions
+                this.parametricT = 0;
+
+                // Transition targets (for flubber effect)
+                this.transitionTargetX = x;
+                this.transitionTargetY = y;
+                this.transitionProgress = 1.0;  // 1 = at target, 0 = at start
+                this.transitionStartX = x;
+                this.transitionStartY = y;
+
                 // Scale animation (exponential smoothing - no resets)
                 this.scale = 1.0;              // Current scale
                 this.targetScale = 1.0;        // Target scale
@@ -629,6 +714,28 @@
             update(dt, isHovered) {
                 // Exponential smoothing - smoothly chase targets without resets
                 // When switching cells, just changes target - no jarring restarts
+
+                // === BAR TRANSITION ANIMATION (Flubber effect) ===
+                if (this.transitionProgress < 1) {
+                    // Progress-based animation with easing
+                    const transitionLerp = config.transitionSpeed / 100;
+                    // Advance progress (can start negative for stagger delay)
+                    this.transitionProgress = Math.min(1, this.transitionProgress + transitionLerp * 0.8);
+
+                    // Clamp for easing calculation (negative progress = still at start)
+                    const clampedProgress = Math.max(0, this.transitionProgress);
+                    const easedProgress = easeOutSmooth(clampedProgress);
+
+                    // Update base position (the seed point)
+                    this.baseX = this.transitionStartX + (this.transitionTargetX - this.transitionStartX) * easedProgress;
+                    this.baseY = this.transitionStartY + (this.transitionTargetY - this.transitionStartY) * easedProgress;
+
+                    // Also update displaced position to follow
+                    this.displacedX = this.baseX;
+                    this.displacedY = this.baseY;
+                    this.targetDisplacedX = this.baseX;
+                    this.targetDisplacedY = this.baseY;
+                }
 
                 // === HOVER STATE SMOOTHING ===
                 const targetHover = isHovered ? 1 : 0;
@@ -763,13 +870,33 @@
             const margin = config.contentZoneEnabled ? config.contentZoneMargin : 0;
             const buffer = includeBuffer ? config.bleedBuffer : 0;
 
-            const cx = width / 2;
-            const cy = height / 2;
-
-            // Snap to nearest 45° for discrete rulesets
+            // Calculate center with position offset
+            // Position is perpendicular to bar orientation
             const rawAngle = config.contentZoneRotation;
             const snappedAngle = Math.round(rawAngle / 45) * 45 % 360;
             const rotation = snappedAngle * Math.PI / 180;
+
+            // Position offset direction is perpendicular to the bar
+            // For horizontal bar (0°): offset is vertical (up/down)
+            // For vertical bar (90°): offset is horizontal (left/right)
+            // For diagonal (45°): offset is horizontal (as specified by user)
+            const positionOffset = config.contentZonePosition;
+            let offsetX = 0, offsetY = 0;
+
+            const normalizedAngle = ((snappedAngle % 180) + 180) % 180;
+            if (normalizedAngle === 0) {
+                // Horizontal bar - offset vertically
+                offsetY = positionOffset * (height / 2) * 0.8;
+            } else if (normalizedAngle === 90) {
+                // Vertical bar - offset horizontally
+                offsetX = positionOffset * (width / 2) * 0.8;
+            } else {
+                // Diagonal bars - offset horizontally (screen is wide)
+                offsetX = positionOffset * (width / 2) * 0.8;
+            }
+
+            const cx = width / 2 + offsetX;
+            const cy = height / 2 + offsetY;
 
             const cos = Math.cos(rotation);
             const sin = Math.sin(rotation);
@@ -781,7 +908,7 @@
             // Band thickness depends on angle sector
             // 0°/180°: use height, 90°/270°: use width, 45°/135°/225°/315°: use diagonal blend
             let effectiveSize;
-            const normalizedAngle = ((snappedAngle % 180) + 180) % 180; // 0-179
+            // normalizedAngle already computed above for position offset
 
             if (normalizedAngle === 0) {
                 // Horizontal band
@@ -1635,6 +1762,145 @@
             // Compute base Voronoi ONCE - shapes are fixed from here
             computeBaseVoronoi();
             updateDisplayPolygons();
+
+            // Calculate parametric positions for each cell
+            assignParametricPositions();
+        }
+
+        // Calculate parametric position (0-1) for each cell along the bar
+        function assignParametricPositions() {
+            if (cells.length === 0) return;
+
+            const zone = getZoneBounds(false);
+            const snappedAngle = zone.snappedAngle;
+            const rotation = snappedAngle * Math.PI / 180;
+
+            // Project each cell onto the bar's main axis
+            const cos = Math.cos(rotation);
+            const sin = Math.sin(rotation);
+
+            // Get center for projection
+            const cx = width / 2;
+            const cy = height / 2;
+
+            // Project cells onto the bar axis and find min/max
+            const projections = cells.map(cell => {
+                const dx = cell.baseX - cx;
+                const dy = cell.baseY - cy;
+                // Project onto bar direction (cos, sin)
+                return dx * cos + dy * sin;
+            });
+
+            const minProj = Math.min(...projections);
+            const maxProj = Math.max(...projections);
+            const range = maxProj - minProj || 1;
+
+            // Assign normalized parametric positions
+            cells.forEach((cell, i) => {
+                cell.parametricT = (projections[i] - minProj) / range;
+            });
+        }
+
+        // Transition to a new preset
+        function transitionToPreset(presetName) {
+            if (config.currentPreset === presetName && !config.isTransitioning) return;
+            if (!presets[presetName]) return;
+
+            const preset = presets[presetName];
+            config.currentPreset = presetName;
+            config.isTransitioning = true;
+
+            // Store current positions as transition starts
+            cells.forEach(cell => {
+                cell.transitionStartX = cell.baseX;
+                cell.transitionStartY = cell.baseY;
+            });
+
+            // Update config to new preset values
+            config.contentZoneRotation = preset.rotation;
+            config.contentZonePosition = preset.position;
+            config.contentZoneMargin = preset.margin;
+
+            // Calculate new target positions based on parametric positions
+            const zone = getZoneBounds(false);
+            const rotation = preset.rotation * Math.PI / 180;
+            const cos = Math.cos(rotation);
+            const sin = Math.sin(rotation);
+
+            // Calculate the center of the new zone
+            const normalizedAngle = ((preset.rotation % 180) + 180) % 180;
+            let offsetX = 0, offsetY = 0;
+
+            if (normalizedAngle === 0) {
+                offsetY = preset.position * (height / 2) * 0.8;
+            } else if (normalizedAngle === 90) {
+                offsetX = preset.position * (width / 2) * 0.8;
+            } else {
+                offsetX = preset.position * (width / 2) * 0.8;
+            }
+
+            const cx = width / 2 + offsetX;
+            const cy = height / 2 + offsetY;
+
+            // Calculate bar extent for positioning cells
+            const barLength = Math.sqrt(width * width + height * height) * 0.6;
+
+            // Calculate target positions for each cell
+            cells.forEach((cell, index) => {
+                // Position along bar based on parametric T
+                const t = cell.parametricT;
+                const barPos = (t - 0.5) * barLength;
+
+                // Add deterministic perpendicular spread to avoid all cells on exact line
+                // Use golden ratio for nice distribution
+                const spreadAmount = 50;
+                const goldenRatio = 0.618033988749;
+                const spreadPhase = ((index * goldenRatio) % 1) * 2 - 1; // -1 to 1
+                const perpOffset = spreadPhase * spreadAmount;
+
+                // Target position along the bar with spread
+                cell.transitionTargetX = cx + barPos * cos - perpOffset * sin;
+                cell.transitionTargetY = cy + barPos * sin + perpOffset * cos;
+
+                // Add staggered start for more organic feel
+                const staggerDelay = cell.parametricT * 0.3; // Cells at end start slightly later
+                cell.transitionProgress = -staggerDelay;
+            });
+
+            // Update UI elements
+            updatePresetUI(presetName);
+            updateControlValues();
+        }
+
+        // Update control slider values to match current config
+        function updateControlValues() {
+            const rotationEl = document.getElementById('contentZoneRotation');
+            const rotationVal = document.getElementById('contentZoneRotationVal');
+            if (rotationEl) {
+                rotationEl.value = config.contentZoneRotation;
+                rotationVal.textContent = config.contentZoneRotation + '°';
+            }
+
+            const marginEl = document.getElementById('contentZoneMargin');
+            const marginVal = document.getElementById('contentZoneMarginVal');
+            if (marginEl) {
+                marginEl.value = config.contentZoneMargin * 100;
+                marginVal.textContent = Math.round(config.contentZoneMargin * 100) + '%';
+            }
+
+            const positionEl = document.getElementById('contentZonePosition');
+            const positionVal = document.getElementById('contentZonePositionVal');
+            if (positionEl) {
+                positionEl.value = config.contentZonePosition * 100;
+                positionVal.textContent = Math.round(config.contentZonePosition * 100) + '%';
+            }
+        }
+
+        // Update preset radio button UI
+        function updatePresetUI(activePreset) {
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.preset === activePreset);
+            });
         }
 
         // ========== EVENTS ==========
@@ -1929,6 +2195,33 @@
             });
             contentZoneRotationEl.addEventListener('change', generateCells);
 
+            // Zone Position
+            const contentZonePositionEl = document.getElementById('contentZonePosition');
+            const contentZonePositionVal = document.getElementById('contentZonePositionVal');
+            contentZonePositionEl.addEventListener('input', () => {
+                config.contentZonePosition = +contentZonePositionEl.value / 100;
+                contentZonePositionVal.textContent = contentZonePositionEl.value + '%';
+            });
+            contentZonePositionEl.addEventListener('change', generateCells);
+
+            // Transition Speed
+            const transitionSpeedEl = document.getElementById('transitionSpeed');
+            const transitionSpeedVal = document.getElementById('transitionSpeedVal');
+            transitionSpeedEl.addEventListener('input', () => {
+                config.transitionSpeed = +transitionSpeedEl.value;
+                transitionSpeedVal.textContent = config.transitionSpeed;
+            });
+
+            // Preset buttons
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const preset = btn.dataset.preset;
+                    if (preset) {
+                        transitionToPreset(preset);
+                    }
+                });
+            });
+
             const bleedBufferEl = document.getElementById('bleedBuffer');
             const bleedBufferVal = document.getElementById('bleedBufferVal');
             bleedBufferEl.addEventListener('input', () => {
@@ -2020,6 +2313,25 @@
             // Now run animations with valid, constrained targets
             for (let i = 0; i < cells.length; i++) {
                 cells[i].update(dt, i === hoveredCell);
+            }
+
+            // Check if all transitions are complete
+            if (config.isTransitioning) {
+                let allComplete = true;
+                for (const cell of cells) {
+                    if (cell.transitionProgress < 1) {
+                        allComplete = false;
+                        break;
+                    }
+                }
+
+                if (allComplete) {
+                    config.isTransitioning = false;
+                    // Recompute base Voronoi with new final positions
+                    computeBaseVoronoi();
+                    // Reassign parametric positions for future transitions
+                    assignParametricPositions();
+                }
             }
 
             // Update display polygons - uses animated displacedX/Y from each cell
