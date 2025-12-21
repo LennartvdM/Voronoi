@@ -879,7 +879,7 @@
                     maxRadius = Math.max(maxRadius, Math.sqrt(dx * dx + dy * dy));
                 });
 
-                // SIMPLIFIED: Create frozen shapes - straight lines, no stagger, no collision
+                // Create frozen shapes with curves and staggering
                 cells.forEach((cell, i) => {
                     const target = targetPositions[i];
 
@@ -892,20 +892,55 @@
                         return;
                     }
 
-                    // Start position = current seed position
                     const startX = cell.baseX;
                     const startY = cell.baseY;
-
-                    // Target position = where seed should end up
                     const targetX = target.x;
                     const targetY = target.y;
 
-                    // Control point = midpoint (straight line)
-                    const controlX = (startX + targetX) / 2;
-                    const controlY = (startY + targetY) / 2;
+                    // Vector from start to target
+                    const pathDx = targetX - startX;
+                    const pathDy = targetY - startY;
+                    const pathLen = Math.sqrt(pathDx * pathDx + pathDy * pathDy);
 
-                    console.log('Shape', i, ': start=', Math.round(startX), Math.round(startY),
-                                'target=', Math.round(targetX), Math.round(targetY));
+                    // Perpendicular to path (for curve offset)
+                    let perpX = 0, perpY = 0;
+                    if (pathLen > 1) {
+                        perpX = -pathDy / pathLen;
+                        perpY = pathDx / pathLen;
+                    }
+
+                    // Position relative to group center determines curve direction
+                    const toCellX = startX - startCenterX;
+                    const toCellY = startY - startCenterY;
+                    const distFromCenter = Math.sqrt(toCellX * toCellX + toCellY * toCellY);
+                    const radiusFactor = maxRadius > 0 ? distFromCenter / maxRadius : 0;
+
+                    // Which side of the movement direction is this cell?
+                    // Cross product with movement direction
+                    const side = toCellX * perpY - toCellY * perpX;
+                    const curveDirection = side >= 0 ? 1 : -1;
+
+                    // Curve amount - outer cells curve more
+                    const curveAmount = radiusFactor * pathLen * 0.4;
+
+                    // Control point for Bezier curve
+                    const midX = (startX + targetX) / 2;
+                    const midY = (startY + targetY) / 2;
+                    const controlX = midX + perpX * curveAmount * curveDirection;
+                    const controlY = midY + perpY * curveAmount * curveDirection;
+
+                    // Stagger: cells "behind" the movement direction go first
+                    // Project cell position onto movement direction
+                    const dirX = targetCenterX - startCenterX;
+                    const dirY = targetCenterY - startCenterY;
+                    const dirLen = Math.sqrt(dirX * dirX + dirY * dirY);
+                    let frontBack = 0;
+                    if (dirLen > 1) {
+                        frontBack = (toCellX * dirX + toCellY * dirY) / (dirLen * maxRadius || 1);
+                    }
+                    // frontBack: -1 = behind, +1 = in front
+                    // Cells in front should wait (higher delay)
+                    const departureDelay = (frontBack + 1) / 2 * 0.5; // 0 to 0.5 seconds
 
                     this.shapes.push({
                         index: i,
@@ -920,8 +955,10 @@
                         targetX, targetY,
                         controlX, controlY,
 
-                        departureDelay: 0,  // No stagger
-                        progress: 0,
+                        pathLen,
+                        progress: 0,           // 0 to 1 along the path
+                        departureDelay,        // seconds to wait before starting
+                        waitTime: departureDelay,
                         arrived: false,
                         boundingRadius: 50,
                         cellIndex: cell.index
@@ -935,36 +972,47 @@
             update(dt) {
                 if (!this.active) return false;
 
-                const speed = 200; // pixels per second
-                const arrivalThreshold = 2; // snap to target when within 2px
-                const frameTime = Math.min(dt * 16, 50); // dt is in ~1/60th sec units, cap at 50ms
-                const moveDistance = speed * (frameTime / 1000);
+                const speed = 300; // pixels per second
+                const arrivalThreshold = 2;
+                const frameTime = Math.min(dt * 16, 50) / 1000; // seconds
 
                 let allArrived = true;
 
                 for (const shape of this.shapes) {
                     if (shape.arrived) continue;
 
-                    // Calculate distance to target
-                    const dx = shape.targetX - shape.currentX;
-                    const dy = shape.targetY - shape.currentY;
-                    const distToTarget = Math.sqrt(dx * dx + dy * dy);
+                    // Handle departure delay (staggering)
+                    if (shape.waitTime > 0) {
+                        shape.waitTime -= frameTime;
+                        allArrived = false;
+                        continue;
+                    }
 
-                    if (distToTarget <= arrivalThreshold) {
-                        // Close enough - snap to target
+                    // Advance progress based on speed and path length
+                    const progressStep = (speed * frameTime) / shape.pathLen;
+                    shape.progress = Math.min(1, shape.progress + progressStep);
+
+                    if (shape.progress >= 1) {
                         shape.currentX = shape.targetX;
                         shape.currentY = shape.targetY;
                         shape.arrived = true;
-                        console.log('Shape', shape.index, 'arrived');
                     } else {
                         allArrived = false;
 
-                        // Move toward target at constant speed
-                        const moveRatio = Math.min(1, moveDistance / distToTarget);
-                        shape.currentX += dx * moveRatio;
-                        shape.currentY += dy * moveRatio;
+                        // Quadratic Bezier position
+                        const t = shape.progress;
+                        const oneMinusT = 1 - t;
+                        shape.currentX = oneMinusT * oneMinusT * shape.startX +
+                                        2 * oneMinusT * t * shape.controlX +
+                                        t * t * shape.targetX;
+                        shape.currentY = oneMinusT * oneMinusT * shape.startY +
+                                        2 * oneMinusT * t * shape.controlY +
+                                        t * t * shape.targetY;
                     }
                 }
+
+                // Collision avoidance
+                this.resolveCollisions();
 
                 if (allArrived) {
                     console.log('All shapes arrived - completing transition');
