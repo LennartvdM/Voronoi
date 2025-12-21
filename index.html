@@ -1026,6 +1026,17 @@
                 });
 
                 console.log('FlockTransition created', this.shapes.length, 'shapes');
+
+                // Debug: log first shape's starting state
+                if (this.shapes.length > 0) {
+                    const s = this.shapes[0];
+                    console.log('First shape START state:', {
+                        startX: s.startX, startY: s.startY,
+                        currentX: s.currentX, currentY: s.currentY,
+                        startPoly0: s.startPolygon[0],
+                        displayPoly0: cells[s.cellIndex].displayPolygon?.[0]
+                    });
+                }
             }
 
             // Update the flock transition (called each frame)
@@ -1183,7 +1194,17 @@
             render(ctx, cornerRadius) {
                 if (!this.active) return;
 
-                console.log('FlockTransition.render() - shapes:', this.shapes.length);
+                // Debug first render only
+                if (this.shapes.length > 0 && this.shapes[0].progress < 0.01) {
+                    const s = this.shapes[0];
+                    const poly = this.getInterpolatedPolygon(s);
+                    console.log('First shape RENDER state:', {
+                        progress: s.progress,
+                        currentX: s.currentX, currentY: s.currentY,
+                        interpolatedPoly0: poly?.[0]
+                    });
+                }
+
                 ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
                 // Sort by Y position for proper overlap (shapes lower on screen drawn later)
