@@ -941,15 +941,24 @@
                     const target = targetPositions[i];
 
                     // Get start polygon (already rendered with gap)
-                    if (!cell.displayPolygon || cell.displayPolygon.length < 3) return;
+                    if (!cell.displayPolygon || cell.displayPolygon.length < 3) {
+                        console.warn(`FlockTransition: skipping cell ${i} - invalid start polygon`);
+                        return;
+                    }
                     const startPolyAbs = cell.displayPolygon.map(p => [...p]);
 
                     // Compute end polygon
                     let endPolyAbs = this.computeCellPolygon(i, targetPositions, targetZone.bounds);
-                    if (!endPolyAbs || endPolyAbs.length < 3) return;
+                    if (!endPolyAbs || endPolyAbs.length < 3) {
+                        console.warn(`FlockTransition: skipping cell ${i} - invalid end polygon`);
+                        return;
+                    }
                     if (gap > 0) {
                         endPolyAbs = insetPolygon(endPolyAbs, gap / 2);
-                        if (!endPolyAbs || endPolyAbs.length < 3) return;
+                        if (!endPolyAbs || endPolyAbs.length < 3) {
+                            console.warn(`FlockTransition: skipping cell ${i} - end polygon collapsed after gap inset`);
+                            return;
+                        }
                     }
 
                     // Positions
@@ -990,6 +999,11 @@
                     // Stagger
                     const departureDelay = (frontNorm + 1) / 2 * 1.0;
 
+                    // Calculate bounding radius for collision detection
+                    const boundingRadius = Math.max(...startPolyAbs.map(p =>
+                        Math.hypot(p[0] - startX, p[1] - startY)
+                    ));
+
                     this.shapes.push({
                         index: i,
                         startPolygon: startRel,
@@ -1005,7 +1019,9 @@
                         departureDelay,
                         waitTime: departureDelay,
                         arrived: false,
-                        cellIndex: cell.index
+                        cellIndex: cell.index,
+                        boundingRadius,
+                        opacity: 1.0
                     });
                 });
 
@@ -1135,8 +1151,11 @@
                 const t = shape.progress;
                 const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 
-                // Rotation interpolation
-                const rotationDelta = this.endRotation - this.startRotation;
+                // Rotation interpolation - use shortest path
+                let rotationDelta = this.endRotation - this.startRotation;
+                // Normalize to [-π, π] for shortest rotation path
+                while (rotationDelta > Math.PI) rotationDelta -= 2 * Math.PI;
+                while (rotationDelta < -Math.PI) rotationDelta += 2 * Math.PI;
                 const currentRotation = rotationDelta * eased;
                 const cos = Math.cos(currentRotation);
                 const sin = Math.sin(currentRotation);
