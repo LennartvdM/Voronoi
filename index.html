@@ -947,6 +947,15 @@
                     }
                     const startPolyAbs = cell.displayPolygon.map(p => [...p]);
 
+                    // SANITY CHECK: Is the displayPolygon actually near displacedX/Y?
+                    const polyCentroid = startPolyAbs.reduce((acc, p) => [acc[0] + p[0], acc[1] + p[1]], [0, 0]);
+                    polyCentroid[0] /= startPolyAbs.length;
+                    polyCentroid[1] /= startPolyAbs.length;
+                    const distFromSeed = Math.hypot(polyCentroid[0] - cell.displacedX, polyCentroid[1] - cell.displacedY);
+                    if (distFromSeed > 100) {
+                        console.error(`Cell ${i} MISMATCH: displayPolygon centroid at (${polyCentroid[0].toFixed(0)}, ${polyCentroid[1].toFixed(0)}) but displacedX/Y at (${cell.displacedX.toFixed(0)}, ${cell.displacedY.toFixed(0)}) - distance ${distFromSeed.toFixed(0)}px!`);
+                    }
+
                     // Compute end polygon
                     let endPolyAbs = this.computeCellPolygon(i, targetPositions, targetZone.bounds);
                     if (!endPolyAbs || endPolyAbs.length < 3) {
