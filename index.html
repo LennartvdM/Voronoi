@@ -830,121 +830,85 @@
         }
 
         // ========== FLOCK TRANSITION SYSTEM ==========
-        // Shapes travel in arcs, rotating and morphing from start to end state
+        // Autonomous steering behaviors - cells find their own curved paths
+        // Like Teh Tarik: cells "pour" from one container to another
+        // Curves EMERGE from separation forces, not pre-computed paths
 
         class FlockTransition {
             constructor() {
                 this.active = false;
                 this.shapes = [];
                 this.onComplete = null;
-                this.startRotation = 0;  // Bar rotation at start (degrees)
-                this.endRotation = 0;    // Bar rotation at end (degrees)
+                this.elapsedTime = 0;
             }
 
-            // Match vertex counts between two polygons by duplicating vertices
-            matchVertexCounts(polyA, polyB) {
-                const a = polyA.map(p => [...p]);
-                const b = polyB.map(p => [...p]);
-
-                while (a.length < b.length) {
-                    // Find longest edge and split it
-                    let maxLen = 0, maxIdx = 0;
-                    for (let i = 0; i < a.length; i++) {
-                        const next = (i + 1) % a.length;
-                        const len = Math.hypot(a[next][0] - a[i][0], a[next][1] - a[i][1]);
-                        if (len > maxLen) { maxLen = len; maxIdx = i; }
-                    }
-                    const next = (maxIdx + 1) % a.length;
-                    const mid = [(a[maxIdx][0] + a[next][0]) / 2, (a[maxIdx][1] + a[next][1]) / 2];
-                    a.splice(maxIdx + 1, 0, mid);
-                }
-
-                while (b.length < a.length) {
-                    let maxLen = 0, maxIdx = 0;
-                    for (let i = 0; i < b.length; i++) {
-                        const next = (i + 1) % b.length;
-                        const len = Math.hypot(b[next][0] - b[i][0], b[next][1] - b[i][1]);
-                        if (len > maxLen) { maxLen = len; maxIdx = i; }
-                    }
-                    const next = (maxIdx + 1) % b.length;
-                    const mid = [(b[maxIdx][0] + b[next][0]) / 2, (b[maxIdx][1] + b[next][1]) / 2];
-                    b.splice(maxIdx + 1, 0, mid);
-                }
-
-                return [a, b];
+            // Box-Muller for normal distribution (bell curve stagger)
+            gaussianRandom(mean, stdDev) {
+                const u1 = Math.random();
+                const u2 = Math.random();
+                const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+                return z * stdDev + mean;
             }
 
-            // Compute Voronoi polygon for a cell at target positions
+            // Compute target polygon
             computeCellPolygon(cellIdx, seedPositions, zoneBounds) {
                 const cell = seedPositions[cellIdx];
                 let polygon = zoneBounds.map(p => [...p]);
-
                 for (let j = 0; j < seedPositions.length; j++) {
                     if (cellIdx === j) continue;
                     const other = seedPositions[j];
-                    const dx = other.x - cell.x;
-                    const dy = other.y - cell.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const dist = Math.hypot(other.x - cell.x, other.y - cell.y);
                     if (dist < 0.001) continue;
-
-                    const midX = (cell.x + other.x) / 2;
-                    const midY = (cell.y + other.y) / 2;
-                    polygon = clipPolygon(polygon, midX, midY, cell.x - other.x, cell.y - other.y);
+                    polygon = clipPolygon(polygon, (cell.x + other.x) / 2, (cell.y + other.y) / 2,
+                                         cell.x - other.x, cell.y - other.y);
                     if (polygon.length < 3) break;
                 }
                 return polygon.length >= 3 ? polygon : null;
             }
 
-            // Start transition with rotation info
+            // Match vertex counts
+            matchVertexCounts(polyA, polyB) {
+                const a = polyA.map(p => [...p]);
+                const b = polyB.map(p => [...p]);
+                while (a.length < b.length) {
+                    let maxLen = 0, maxIdx = 0;
+                    for (let i = 0; i < a.length; i++) {
+                        const len = Math.hypot(a[(i+1)%a.length][0]-a[i][0], a[(i+1)%a.length][1]-a[i][1]);
+                        if (len > maxLen) { maxLen = len; maxIdx = i; }
+                    }
+                    a.splice(maxIdx + 1, 0, [(a[maxIdx][0]+a[(maxIdx+1)%a.length][0])/2,
+                                              (a[maxIdx][1]+a[(maxIdx+1)%a.length][1])/2]);
+                }
+                while (b.length < a.length) {
+                    let maxLen = 0, maxIdx = 0;
+                    for (let i = 0; i < b.length; i++) {
+                        const len = Math.hypot(b[(i+1)%b.length][0]-b[i][0], b[(i+1)%b.length][1]-b[i][1]);
+                        if (len > maxLen) { maxLen = len; maxIdx = i; }
+                    }
+                    b.splice(maxIdx + 1, 0, [(b[maxIdx][0]+b[(maxIdx+1)%b.length][0])/2,
+                                              (b[maxIdx][1]+b[(maxIdx+1)%b.length][1])/2]);
+                }
+                return [a, b];
+            }
+
             start(cells, targetPositions, oldRotation, newRotation, onComplete) {
-                console.log('FlockTransition.start() - from', oldRotation, '° to', newRotation, '°');
                 this.active = true;
                 this.onComplete = onComplete;
                 this.shapes = [];
-                this.startRotation = oldRotation * Math.PI / 180;
-                this.endRotation = newRotation * Math.PI / 180;
+                this.elapsedTime = 0;
 
                 const targetZone = getZoneBounds(true);
                 const gap = config.gap;
 
-                // Group centers
-                let startCenterX = 0, startCenterY = 0;
-                let targetCenterX = 0, targetCenterY = 0;
-                cells.forEach((cell, i) => {
-                    startCenterX += cell.displacedX;
-                    startCenterY += cell.displacedY;
-                    targetCenterX += targetPositions[i].x;
-                    targetCenterY += targetPositions[i].y;
-                });
-                startCenterX /= cells.length;
-                startCenterY /= cells.length;
-                targetCenterX /= cells.length;
-                targetCenterY /= cells.length;
-
-                // Direction and perpendicular
-                const dirX = targetCenterX - startCenterX;
-                const dirY = targetCenterY - startCenterY;
-                const dirLen = Math.sqrt(dirX * dirX + dirY * dirY);
-                const normDirX = dirLen > 1 ? dirX / dirLen : 0;
-                const normDirY = dirLen > 1 ? dirY / dirLen : 1;
-                const perpX = -normDirY;
-                const perpY = normDirX;
-
-                // Max radius for normalization
-                let maxRadius = 1;
-                cells.forEach(cell => {
-                    const d = Math.hypot(cell.displacedX - startCenterX, cell.displacedY - startCenterY);
-                    if (d > maxRadius) maxRadius = d;
-                });
+                // Bell curve stagger: mean=0.6s, stdDev=0.25s
+                // Most cells depart around 0.35-0.85s, full range ~0-1.2s
+                const staggerMean = 0.6;
+                const staggerStdDev = 0.25;
 
                 cells.forEach((cell, i) => {
                     const target = targetPositions[i];
-
-                    // Get start polygon (already rendered with gap)
                     if (!cell.displayPolygon || cell.displayPolygon.length < 3) return;
-                    const startPolyAbs = cell.displayPolygon.map(p => [...p]);
 
-                    // Compute end polygon
                     let endPolyAbs = this.computeCellPolygon(i, targetPositions, targetZone.bounds);
                     if (!endPolyAbs || endPolyAbs.length < 3) return;
                     if (gap > 0) {
@@ -952,267 +916,199 @@
                         if (!endPolyAbs || endPolyAbs.length < 3) return;
                     }
 
-                    // Positions
                     const startX = cell.displacedX;
                     const startY = cell.displacedY;
                     const targetX = target.x;
                     const targetY = target.y;
 
-                    // Convert to relative (centered on seed)
-                    let startRel = startPolyAbs.map(p => [p[0] - startX, p[1] - startY]);
+                    let startRel = cell.displayPolygon.map(p => [p[0] - startX, p[1] - startY]);
                     let endRel = endPolyAbs.map(p => [p[0] - targetX, p[1] - targetY]);
-
-                    // Match vertex counts
                     [startRel, endRel] = this.matchVertexCounts(startRel, endRel);
 
-                    // Curve calculations
-                    const toCellX = startX - startCenterX;
-                    const toCellY = startY - startCenterY;
-                    const perpPos = toCellX * perpX + toCellY * perpY;
-                    const perpNorm = perpPos / maxRadius;
-                    const frontPos = toCellX * normDirX + toCellY * normDirY;
-                    const frontNorm = frontPos / maxRadius;
-
-                    const edgeFactor = Math.abs(perpNorm);
-                    const curveDir = perpNorm >= 0 ? 1 : -1;
-                    const curveAmount = edgeFactor * edgeFactor * maxRadius * 1.2;
-
-                    const midX = (startX + targetX) / 2;
-                    const midY = (startY + targetY) / 2;
-                    const controlX = midX + perpX * curveAmount * curveDir;
-                    const controlY = midY + perpY * curveAmount * curveDir;
-
-                    // Path length
-                    const pathLen = Math.hypot(targetX - startX, targetY - startY);
-                    const curveLen = (pathLen + Math.hypot(controlX - startX, controlY - startY) +
-                                     Math.hypot(targetX - controlX, targetY - controlY)) / 2;
-
-                    // Stagger
-                    const departureDelay = (frontNorm + 1) / 2 * 1.0;
+                    // Normal distribution departure (clamped positive)
+                    const departureTime = Math.max(0, this.gaussianRandom(staggerMean, staggerStdDev));
 
                     this.shapes.push({
                         index: i,
                         startPolygon: startRel,
                         endPolygon: endRel,
                         pattern: cell.pattern,
+                        x: startX, y: startY,
+                        vx: 0, vy: 0,
                         startX, startY,
-                        currentX: startX,
-                        currentY: startY,
                         targetX, targetY,
-                        controlX, controlY,
-                        pathLen: Math.max(curveLen, 1),
-                        progress: 0,
-                        departureDelay,
-                        waitTime: departureDelay,
+                        departureTime,
+                        departed: false,
                         arrived: false,
+                        progress: 0,
                         cellIndex: cell.index
                     });
                 });
 
-                console.log('FlockTransition created', this.shapes.length, 'shapes');
+                console.log('FlockTransition:', this.shapes.length, 'cells, stagger range',
+                    Math.min(...this.shapes.map(s=>s.departureTime)).toFixed(2), '-',
+                    Math.max(...this.shapes.map(s=>s.departureTime)).toFixed(2), 's');
             }
 
-            // Update the flock transition (called each frame)
             update(dt) {
                 if (!this.active) return false;
 
-                const speed = 200; // pixels per second (slower for visible curves)
-                const arrivalThreshold = 2;
-                const frameTime = Math.min(dt * 16, 50) / 1000; // seconds
+                const frameTime = Math.min(dt * 16, 50) / 1000;
+                this.elapsedTime += frameTime;
 
-                let allArrived = true;
+                // STEERING PARAMETERS
+                const maxSpeed = 350;
+                const maxForce = 1200;
+                const arrivalRadius = 80;
+                const arrivalThreshold = 3;
+                const separationRadius = 100;
+                const separationStrength = 800;
+
+                let allDone = true;
 
                 for (const shape of this.shapes) {
                     if (shape.arrived) continue;
+                    allDone = false;
 
-                    // Handle departure delay (staggering)
-                    if (shape.waitTime > 0) {
-                        shape.waitTime -= frameTime;
-                        allArrived = false;
+                    // Check departure
+                    if (!shape.departed) {
+                        if (this.elapsedTime >= shape.departureTime) {
+                            shape.departed = true;
+                        } else {
+                            continue;
+                        }
+                    }
+
+                    // === SEEK with arrival slowdown ===
+                    const toTargetX = shape.targetX - shape.x;
+                    const toTargetY = shape.targetY - shape.y;
+                    const distToTarget = Math.hypot(toTargetX, toTargetY);
+
+                    if (distToTarget < arrivalThreshold) {
+                        shape.x = shape.targetX;
+                        shape.y = shape.targetY;
+                        shape.vx = 0;
+                        shape.vy = 0;
+                        shape.arrived = true;
+                        shape.progress = 1;
                         continue;
                     }
 
-                    // Advance progress based on speed and path length
-                    const progressStep = (speed * frameTime) / shape.pathLen;
-                    shape.progress = Math.min(1, shape.progress + progressStep);
-
-                    if (shape.progress >= 1) {
-                        shape.currentX = shape.targetX;
-                        shape.currentY = shape.targetY;
-                        shape.arrived = true;
-                    } else {
-                        allArrived = false;
-
-                        // Apply ease-in-out for natural movement
-                        // Accelerate at start, decelerate at end
-                        const t = shape.progress;
-                        const eased = t < 0.5
-                            ? 2 * t * t
-                            : 1 - Math.pow(-2 * t + 2, 2) / 2;
-
-                        // Quadratic Bezier position with eased t
-                        const oneMinusT = 1 - eased;
-                        shape.currentX = oneMinusT * oneMinusT * shape.startX +
-                                        2 * oneMinusT * eased * shape.controlX +
-                                        eased * eased * shape.targetX;
-                        shape.currentY = oneMinusT * oneMinusT * shape.startY +
-                                        2 * oneMinusT * eased * shape.controlY +
-                                        eased * eased * shape.targetY;
+                    let desiredSpeed = maxSpeed;
+                    if (distToTarget < arrivalRadius) {
+                        desiredSpeed = maxSpeed * (distToTarget / arrivalRadius);
                     }
+
+                    let desiredVx = (toTargetX / distToTarget) * desiredSpeed;
+                    let desiredVy = (toTargetY / distToTarget) * desiredSpeed;
+
+                    // === SEPARATION - creates the curves ===
+                    let sepX = 0, sepY = 0;
+                    for (const other of this.shapes) {
+                        if (other === shape || !other.departed) continue;
+
+                        const dx = shape.x - other.x;
+                        const dy = shape.y - other.y;
+                        const dist = Math.hypot(dx, dy);
+
+                        if (dist < separationRadius && dist > 0.1) {
+                            const strength = separationStrength * Math.pow(1 - dist / separationRadius, 2);
+                            sepX += (dx / dist) * strength;
+                            sepY += (dy / dist) * strength;
+                        }
+                    }
+
+                    // Combine: seek + separation
+                    let steerX = (desiredVx - shape.vx) + sepX;
+                    let steerY = (desiredVy - shape.vy) + sepY;
+
+                    // Limit force
+                    const steerMag = Math.hypot(steerX, steerY);
+                    if (steerMag > maxForce) {
+                        steerX = (steerX / steerMag) * maxForce;
+                        steerY = (steerY / steerMag) * maxForce;
+                    }
+
+                    // Apply
+                    shape.vx += steerX * frameTime;
+                    shape.vy += steerY * frameTime;
+
+                    // Limit speed
+                    const speed = Math.hypot(shape.vx, shape.vy);
+                    if (speed > maxSpeed) {
+                        shape.vx = (shape.vx / speed) * maxSpeed;
+                        shape.vy = (shape.vy / speed) * maxSpeed;
+                    }
+
+                    shape.x += shape.vx * frameTime;
+                    shape.y += shape.vy * frameTime;
+
+                    // Progress for morphing
+                    const totalDist = Math.hypot(shape.targetX - shape.startX, shape.targetY - shape.startY);
+                    const traveled = Math.hypot(shape.x - shape.startX, shape.y - shape.startY);
+                    shape.progress = Math.min(1, totalDist > 0 ? traveled / totalDist : 1);
                 }
 
-                // Collision avoidance
-                this.resolveCollisions();
-
-                if (allArrived) {
-                    console.log('All shapes arrived - completing transition');
+                if (allDone) {
                     this.complete();
                     return false;
                 }
-
                 return true;
             }
 
-            // Resolve collisions between shapes
-            resolveCollisions() {
-                const minSeparation = 20; // Minimum gap between shapes
-                const iterations = 3;     // Multiple passes for stability
-
-                for (let iter = 0; iter < iterations; iter++) {
-                    for (let i = 0; i < this.shapes.length; i++) {
-                        const shapeA = this.shapes[i];
-                        if (shapeA.arrived) continue;
-
-                        for (let j = i + 1; j < this.shapes.length; j++) {
-                            const shapeB = this.shapes[j];
-                            if (shapeB.arrived) continue;
-
-                            // Quick bounding check
-                            const dx = shapeB.currentX - shapeA.currentX;
-                            const dy = shapeB.currentY - shapeA.currentY;
-                            const dist = Math.sqrt(dx * dx + dy * dy);
-                            const minDist = shapeA.boundingRadius + shapeB.boundingRadius + minSeparation;
-
-                            if (dist < minDist && dist > 0.1) {
-                                // Collision! Push shapes apart
-                                const overlap = minDist - dist;
-                                const pushX = (dx / dist) * overlap * 0.5;
-                                const pushY = (dy / dist) * overlap * 0.5;
-
-                                // Weight by progress - shapes further along yield less
-                                const weightA = 1 - shapeA.progress * 0.5;
-                                const weightB = 1 - shapeB.progress * 0.5;
-                                const totalWeight = weightA + weightB;
-
-                                if (totalWeight > 0) {
-                                    shapeA.currentX -= pushX * (weightA / totalWeight);
-                                    shapeA.currentY -= pushY * (weightA / totalWeight);
-                                    shapeB.currentX += pushX * (weightB / totalWeight);
-                                    shapeB.currentY += pushY * (weightB / totalWeight);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Complete the transition
             complete() {
                 this.active = false;
                 if (this.onComplete) {
-                    // Pass final positions back
-                    const finalPositions = this.shapes.map(shape => ({
-                        index: shape.cellIndex,
-                        x: shape.currentX,
-                        y: shape.currentY
-                    }));
-                    this.onComplete(finalPositions);
+                    this.onComplete(this.shapes.map(s => ({ index: s.cellIndex, x: s.x, y: s.y })));
                 }
             }
 
-            // Get current polygon with rotation and morphing
             getInterpolatedPolygon(shape) {
                 const t = shape.progress;
-                const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-
-                // Rotation interpolation
-                const rotationDelta = this.endRotation - this.startRotation;
-                const currentRotation = rotationDelta * eased;
-                const cos = Math.cos(currentRotation);
-                const sin = Math.sin(currentRotation);
+                const eased = t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
 
                 const result = [];
                 for (let i = 0; i < shape.startPolygon.length; i++) {
-                    const startPt = shape.startPolygon[i];
-                    const endPt = shape.endPolygon[i];
-
-                    // Interpolate vertex position (relative coords)
-                    const relX = startPt[0] + eased * (endPt[0] - startPt[0]);
-                    const relY = startPt[1] + eased * (endPt[1] - startPt[1]);
-
-                    // Apply rotation around shape center
-                    const rotX = relX * cos - relY * sin;
-                    const rotY = relX * sin + relY * cos;
-
-                    // Translate to current position
-                    result.push([rotX + shape.currentX, rotY + shape.currentY]);
+                    const s = shape.startPolygon[i];
+                    const e = shape.endPolygon[i];
+                    result.push([
+                        s[0] + eased * (e[0] - s[0]) + shape.x,
+                        s[1] + eased * (e[1] - s[1]) + shape.y
+                    ]);
                 }
                 return result;
             }
 
-            // Render all shapes during transition
             render(ctx, cornerRadius) {
                 if (!this.active) return;
-
-                console.log('FlockTransition.render() - shapes:', this.shapes.length);
                 ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-                // Sort by Y position for proper overlap (shapes lower on screen drawn later)
-                const sortedShapes = [...this.shapes].sort((a, b) => a.currentY - b.currentY);
+                const sorted = [...this.shapes].sort((a, b) => a.y - b.y);
 
-                for (const shape of sortedShapes) {
+                for (const shape of sorted) {
                     const polygon = this.getInterpolatedPolygon(shape);
                     if (!polygon || polygon.length < 3) continue;
 
                     ctx.save();
-                    ctx.globalAlpha = shape.opacity;
+                    ctx.globalAlpha = shape.departed ? 1.0 : 0.6;
 
-                    // Create rounded clipping path
                     drawRoundedPolygon(ctx, polygon, cornerRadius);
                     ctx.clip();
 
-                    // Calculate bounds
                     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
                     for (const p of polygon) {
-                        minX = Math.min(minX, p[0]);
-                        maxX = Math.max(maxX, p[0]);
-                        minY = Math.min(minY, p[1]);
-                        maxY = Math.max(maxY, p[1]);
+                        minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]);
+                        minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]);
                     }
 
-                    const cellW = maxX - minX;
-                    const cellH = maxY - minY;
-                    const centerX = (minX + maxX) / 2;
-                    const centerY = (minY + maxY) / 2;
-
-                    // Draw pattern
                     if (shape.pattern) {
-                        const size = Math.max(cellW, cellH) * 1.4;
-                        ctx.drawImage(
-                            shape.pattern,
-                            centerX - size / 2,
-                            centerY - size / 2,
-                            size,
-                            size
-                        );
+                        const size = Math.max(maxX - minX, maxY - minY) * 1.4;
+                        ctx.drawImage(shape.pattern, (minX+maxX)/2 - size/2, (minY+maxY)/2 - size/2, size, size);
                     }
 
                     ctx.restore();
 
-                    // Draw border
                     ctx.save();
-                    drawRoundedPolygon(ctx, polygon, cornerRadius);
-                    ctx.clip();
                     drawRoundedPolygon(ctx, polygon, cornerRadius);
                     ctx.strokeStyle = 'rgba(255,255,255,0.5)';
                     ctx.lineWidth = 2;
