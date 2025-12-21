@@ -829,517 +829,288 @@
             return 1 - Math.pow(1 - t, 3);
         }
 
-        // ========== SHAPESHIFT TRANSITION SYSTEM ==========
-        // Symbiote-style transition: cells detach, travel in organic arcs, reform
-        // Inspired by Venom, T-1000, Sandman - fluid, sentient movement
+        // ========== FLOCK TRANSITION SYSTEM ==========
+        // Autonomous steering behaviors - cells find their own curved paths
+        // Like Teh Tarik: cells "pour" from one container to another
+        // Curves EMERGE from separation forces, not pre-computed paths
 
         class FlockTransition {
             constructor() {
                 this.active = false;
                 this.shapes = [];
                 this.onComplete = null;
-                this.startRotation = 0;
-                this.endRotation = 0;
-                this.globalTime = 0;
-
-                // Transition timing (in seconds)
-                this.detachDuration = 0.3;    // Time for cells to shrink and lift off
-                this.travelDuration = 0.8;    // Time for arc travel
-                this.reformDuration = 0.3;    // Time to expand and settle
-                this.totalDuration = this.detachDuration + this.travelDuration + this.reformDuration;
-
-                // Visual parameters
-                this.transitScale = 0.65;     // Scale during travel (smaller = less collision)
-                this.liftDistance = 40;       // How far cells lift during detach
-                this.maxArcHeight = 150;      // Maximum arc curve height
+                this.elapsedTime = 0;
             }
 
-            // Match vertex counts between two polygons
-            matchVertexCounts(polyA, polyB) {
-                const a = polyA.map(p => [...p]);
-                const b = polyB.map(p => [...p]);
-
-                while (a.length < b.length) {
-                    let maxLen = 0, maxIdx = 0;
-                    for (let i = 0; i < a.length; i++) {
-                        const next = (i + 1) % a.length;
-                        const len = Math.hypot(a[next][0] - a[i][0], a[next][1] - a[i][1]);
-                        if (len > maxLen) { maxLen = len; maxIdx = i; }
-                    }
-                    const next = (maxIdx + 1) % a.length;
-                    const mid = [(a[maxIdx][0] + a[next][0]) / 2, (a[maxIdx][1] + a[next][1]) / 2];
-                    a.splice(maxIdx + 1, 0, mid);
-                }
-
-                while (b.length < a.length) {
-                    let maxLen = 0, maxIdx = 0;
-                    for (let i = 0; i < b.length; i++) {
-                        const next = (i + 1) % b.length;
-                        const len = Math.hypot(b[next][0] - b[i][0], b[next][1] - b[i][1]);
-                        if (len > maxLen) { maxLen = len; maxIdx = i; }
-                    }
-                    const next = (maxIdx + 1) % b.length;
-                    const mid = [(b[maxIdx][0] + b[next][0]) / 2, (b[maxIdx][1] + b[next][1]) / 2];
-                    b.splice(maxIdx + 1, 0, mid);
-                }
-
-                return [a, b];
+            // Box-Muller for normal distribution (bell curve stagger)
+            gaussianRandom(mean, stdDev) {
+                const u1 = Math.random();
+                const u2 = Math.random();
+                const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+                return z * stdDev + mean;
             }
 
-            // Compute Voronoi polygon for a cell at target positions
+            // Compute target polygon
             computeCellPolygon(cellIdx, seedPositions, zoneBounds) {
                 const cell = seedPositions[cellIdx];
                 let polygon = zoneBounds.map(p => [...p]);
-
                 for (let j = 0; j < seedPositions.length; j++) {
                     if (cellIdx === j) continue;
                     const other = seedPositions[j];
-                    const dx = other.x - cell.x;
-                    const dy = other.y - cell.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const dist = Math.hypot(other.x - cell.x, other.y - cell.y);
                     if (dist < 0.001) continue;
-
-                    const midX = (cell.x + other.x) / 2;
-                    const midY = (cell.y + other.y) / 2;
-                    polygon = clipPolygon(polygon, midX, midY, cell.x - other.x, cell.y - other.y);
+                    polygon = clipPolygon(polygon, (cell.x + other.x) / 2, (cell.y + other.y) / 2,
+                                         cell.x - other.x, cell.y - other.y);
                     if (polygon.length < 3) break;
                 }
                 return polygon.length >= 3 ? polygon : null;
             }
 
-            // Smooth easing functions
-            easeOutQuad(t) { return 1 - (1 - t) * (1 - t); }
-            easeInQuad(t) { return t * t; }
-            easeInOutQuad(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
-            easeOutBack(t) { const c1 = 1.70158; const c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); }
-            easeInBack(t) { const c1 = 1.70158; const c3 = c1 + 1; return c3 * t * t * t - c1 * t * t; }
+            // Match vertex counts
+            matchVertexCounts(polyA, polyB) {
+                const a = polyA.map(p => [...p]);
+                const b = polyB.map(p => [...p]);
+                while (a.length < b.length) {
+                    let maxLen = 0, maxIdx = 0;
+                    for (let i = 0; i < a.length; i++) {
+                        const len = Math.hypot(a[(i+1)%a.length][0]-a[i][0], a[(i+1)%a.length][1]-a[i][1]);
+                        if (len > maxLen) { maxLen = len; maxIdx = i; }
+                    }
+                    a.splice(maxIdx + 1, 0, [(a[maxIdx][0]+a[(maxIdx+1)%a.length][0])/2,
+                                              (a[maxIdx][1]+a[(maxIdx+1)%a.length][1])/2]);
+                }
+                while (b.length < a.length) {
+                    let maxLen = 0, maxIdx = 0;
+                    for (let i = 0; i < b.length; i++) {
+                        const len = Math.hypot(b[(i+1)%b.length][0]-b[i][0], b[(i+1)%b.length][1]-b[i][1]);
+                        if (len > maxLen) { maxLen = len; maxIdx = i; }
+                    }
+                    b.splice(maxIdx + 1, 0, [(b[maxIdx][0]+b[(maxIdx+1)%b.length][0])/2,
+                                              (b[maxIdx][1]+b[(maxIdx+1)%b.length][1])/2]);
+                }
+                return [a, b];
+            }
 
-            // Start transition
             start(cells, targetPositions, oldRotation, newRotation, onComplete) {
-                console.log('ShapeshiftTransition.start() - from', oldRotation, '° to', newRotation, '°');
                 this.active = true;
                 this.onComplete = onComplete;
                 this.shapes = [];
-                this.globalTime = 0;
-                this.startRotation = oldRotation * Math.PI / 180;
-                this.endRotation = newRotation * Math.PI / 180;
+                this.elapsedTime = 0;
 
                 const targetZone = getZoneBounds(true);
                 const gap = config.gap;
 
-                // Calculate rotation direction for arc curving
-                let rotationDelta = newRotation - oldRotation;
-                while (rotationDelta > 180) rotationDelta -= 360;
-                while (rotationDelta < -180) rotationDelta += 360;
-                const rotationDirection = rotationDelta >= 0 ? 1 : -1;
-
-                // Get start positions from polygon centroids
-                const startPositions = cells.map(cell => {
-                    if (!cell.displayPolygon || cell.displayPolygon.length < 3) {
-                        return { x: cell.displacedX, y: cell.displacedY, valid: false };
-                    }
-                    const poly = cell.displayPolygon;
-                    let cx = 0, cy = 0;
-                    for (const p of poly) { cx += p[0]; cy += p[1]; }
-                    return { x: cx / poly.length, y: cy / poly.length, valid: true };
-                });
-
-                // Calculate group centers
-                let startCenterX = 0, startCenterY = 0;
-                let targetCenterX = 0, targetCenterY = 0;
-                let validCount = 0;
-                cells.forEach((cell, i) => {
-                    if (startPositions[i].valid) {
-                        startCenterX += startPositions[i].x;
-                        startCenterY += startPositions[i].y;
-                        validCount++;
-                    }
-                    targetCenterX += targetPositions[i].x;
-                    targetCenterY += targetPositions[i].y;
-                });
-                startCenterX /= validCount || 1;
-                startCenterY /= validCount || 1;
-                targetCenterX /= cells.length;
-                targetCenterY /= cells.length;
-
-                // Movement direction (start -> target center)
-                const moveDirX = targetCenterX - startCenterX;
-                const moveDirY = targetCenterY - startCenterY;
-                const moveDist = Math.hypot(moveDirX, moveDirY);
-                const moveNormX = moveDist > 1 ? moveDirX / moveDist : 0;
-                const moveNormY = moveDist > 1 ? moveDirY / moveDist : 1;
-
-                // Perpendicular to movement (for arc curving)
-                const perpX = -moveNormY;
-                const perpY = moveNormX;
-
-                // Bar direction at start (perpendicular to bar axis)
-                const startBarAngle = oldRotation * Math.PI / 180;
-                const barPerpX = Math.cos(startBarAngle);
-                const barPerpY = Math.sin(startBarAngle);
-
-                // Find max distance from center for normalization
-                let maxDistFromCenter = 1;
-                cells.forEach((cell, i) => {
-                    if (!startPositions[i].valid) return;
-                    const d = Math.hypot(startPositions[i].x - startCenterX, startPositions[i].y - startCenterY);
-                    if (d > maxDistFromCenter) maxDistFromCenter = d;
-                });
-
-                // Calculate travel distances for stagger ordering
-                const travelDistances = [];
-                cells.forEach((cell, i) => {
-                    const startPos = startPositions[i];
-                    const target = targetPositions[i];
-                    if (!startPos.valid) {
-                        travelDistances.push({ index: i, dist: 0 });
-                    } else {
-                        const dist = Math.hypot(target.x - startPos.x, target.y - startPos.y);
-                        travelDistances.push({ index: i, dist });
-                    }
-                });
-                const maxTravelDist = Math.max(...travelDistances.map(t => t.dist), 1);
+                // Bell curve stagger: mean=0.6s, stdDev=0.25s
+                // Most cells depart around 0.35-0.85s, full range ~0-1.2s
+                const staggerMean = 0.6;
+                const staggerStdDev = 0.25;
 
                 cells.forEach((cell, i) => {
                     const target = targetPositions[i];
-                    const startPos = startPositions[i];
+                    if (!cell.displayPolygon || cell.displayPolygon.length < 3) return;
 
-                    if (!startPos.valid) {
-                        console.warn(`ShapeshiftTransition: skipping cell ${i} - invalid start polygon`);
-                        return;
-                    }
-
-                    const startPolyAbs = cell.displayPolygon.map(p => [...p]);
-                    const startX = startPos.x;
-                    const startY = startPos.y;
-
-                    // Compute end polygon
                     let endPolyAbs = this.computeCellPolygon(i, targetPositions, targetZone.bounds);
-                    if (!endPolyAbs || endPolyAbs.length < 3) {
-                        console.warn(`ShapeshiftTransition: skipping cell ${i} - invalid end polygon`);
-                        return;
-                    }
+                    if (!endPolyAbs || endPolyAbs.length < 3) return;
                     if (gap > 0) {
                         endPolyAbs = insetPolygon(endPolyAbs, gap / 2);
-                        if (!endPolyAbs || endPolyAbs.length < 3) {
-                            console.warn(`ShapeshiftTransition: skipping cell ${i} - end polygon collapsed`);
-                            return;
-                        }
+                        if (!endPolyAbs || endPolyAbs.length < 3) return;
                     }
 
+                    const startX = cell.displacedX;
+                    const startY = cell.displacedY;
                     const targetX = target.x;
                     const targetY = target.y;
 
-                    // Convert to relative coordinates
-                    let startRel = startPolyAbs.map(p => [p[0] - startX, p[1] - startY]);
+                    let startRel = cell.displayPolygon.map(p => [p[0] - startX, p[1] - startY]);
                     let endRel = endPolyAbs.map(p => [p[0] - targetX, p[1] - targetY]);
                     [startRel, endRel] = this.matchVertexCounts(startRel, endRel);
 
-                    // Calculate cell's position relative to flock center
-                    const relToStartX = startX - startCenterX;
-                    const relToStartY = startY - startCenterY;
-
-                    // Position along bar axis (for stagger ordering)
-                    const barAxisPos = relToStartX * barPerpX + relToStartY * barPerpY;
-                    const normalizedBarPos = barAxisPos / maxDistFromCenter;
-
-                    // Distance from center (for arc amount)
-                    const distFromCenter = Math.hypot(relToStartX, relToStartY) / maxDistFromCenter;
-
-                    // Side of the bar (for arc direction)
-                    const sideOfBar = relToStartX * moveNormX + relToStartY * moveNormY;
-                    const normalizedSide = sideOfBar / maxDistFromCenter;
-
-                    // Calculate arc control point
-                    // Arc direction: combination of rotation direction and position
-                    // Cells on the outside arc more, cells in the direction of movement lead
-                    const travelDist = Math.hypot(targetX - startX, targetY - startY);
-
-                    // Arc curves in the direction of rotation, more for outer cells
-                    const arcDirection = rotationDirection * (normalizedSide >= 0 ? 1 : -1);
-                    const arcAmount = this.maxArcHeight * (0.3 + distFromCenter * 0.7);
-
-                    // Midpoint of straight path
-                    const midX = (startX + targetX) / 2;
-                    const midY = (startY + targetY) / 2;
-
-                    // Control point offset perpendicular to travel direction
-                    const controlX = midX + perpX * arcAmount * arcDirection;
-                    const controlY = midY + perpY * arcAmount * arcDirection;
-
-                    // Lift direction (perpendicular to bar, away from bar center)
-                    const liftDirX = barPerpX * (normalizedSide >= 0 ? 1 : -1);
-                    const liftDirY = barPerpY * (normalizedSide >= 0 ? 1 : -1);
-
-                    // Detach position (lifted off from start)
-                    const detachX = startX + liftDirX * this.liftDistance * (0.5 + distFromCenter * 0.5);
-                    const detachY = startY + liftDirY * this.liftDistance * (0.5 + distFromCenter * 0.5);
-
-                    // Approach position (lifted off from target)
-                    const approachX = targetX + liftDirX * this.liftDistance * 0.5;
-                    const approachY = targetY + liftDirY * this.liftDistance * 0.5;
-
-                    // Stagger timing: cells further from target depart first
-                    // Also stagger by position along bar for wave effect
-                    const normalizedTravelDist = travelDist / maxTravelDist;
-                    const staggerDelay = (1 - normalizedTravelDist) * 0.15 +
-                                        Math.abs(normalizedBarPos) * 0.1 +
-                                        Math.random() * 0.05; // Small randomness for organic feel
-
-                    // Calculate bounding radius
-                    const boundingRadius = Math.max(...startPolyAbs.map(p =>
-                        Math.hypot(p[0] - startX, p[1] - startY)
-                    ));
+                    // Normal distribution departure (clamped positive)
+                    const departureTime = Math.max(0, this.gaussianRandom(staggerMean, staggerStdDev));
 
                     this.shapes.push({
                         index: i,
                         startPolygon: startRel,
                         endPolygon: endRel,
                         pattern: cell.pattern,
-
-                        // Position waypoints
-                        startX, startY,           // Original attached position
-                        detachX, detachY,         // Lifted off position
-                        controlX, controlY,       // Arc control point
-                        approachX, approachY,     // Pre-landing position
-                        targetX, targetY,         // Final attached position
-
-                        // Current state
-                        currentX: startX,
-                        currentY: startY,
-                        currentScale: 1.0,
-                        currentRotation: 0,
-
-                        // Timing
-                        staggerDelay,
-                        localTime: -staggerDelay,  // Negative = waiting
-
-                        // Phase tracking
-                        phase: 'waiting',  // waiting, detaching, traveling, reforming, done
-
-                        cellIndex: cell.index,
-                        boundingRadius,
-                        opacity: 1.0,
-
-                        // For organic wobble
-                        wobbleOffset: Math.random() * Math.PI * 2,
-                        wobbleSpeed: 2 + Math.random() * 2
+                        x: startX, y: startY,
+                        vx: 0, vy: 0,
+                        startX, startY,
+                        targetX, targetY,
+                        departureTime,
+                        departed: false,
+                        arrived: false,
+                        progress: 0,
+                        cellIndex: cell.index
                     });
                 });
 
-                console.log('ShapeshiftTransition created', this.shapes.length, 'shapes');
+                console.log('FlockTransition:', this.shapes.length, 'cells, stagger range',
+                    Math.min(...this.shapes.map(s=>s.departureTime)).toFixed(2), '-',
+                    Math.max(...this.shapes.map(s=>s.departureTime)).toFixed(2), 's');
             }
 
-            // Update transition (called each frame)
             update(dt) {
                 if (!this.active) return false;
 
                 const frameTime = Math.min(dt * 16, 50) / 1000;
-                this.globalTime += frameTime;
+                this.elapsedTime += frameTime;
+
+                // STEERING PARAMETERS
+                const maxSpeed = 350;
+                const maxForce = 1200;
+                const arrivalRadius = 80;
+                const arrivalThreshold = 3;
+                const separationRadius = 100;
+                const separationStrength = 800;
 
                 let allDone = true;
 
                 for (const shape of this.shapes) {
-                    if (shape.phase === 'done') continue;
+                    if (shape.arrived) continue;
                     allDone = false;
 
-                    shape.localTime += frameTime;
+                    // Check departure
+                    if (!shape.departed) {
+                        if (this.elapsedTime >= shape.departureTime) {
+                            shape.departed = true;
+                        } else {
+                            continue;
+                        }
+                    }
 
-                    if (shape.localTime < 0) {
-                        // Still waiting
-                        shape.phase = 'waiting';
+                    // === SEEK with arrival slowdown ===
+                    const toTargetX = shape.targetX - shape.x;
+                    const toTargetY = shape.targetY - shape.y;
+                    const distToTarget = Math.hypot(toTargetX, toTargetY);
+
+                    if (distToTarget < arrivalThreshold) {
+                        shape.x = shape.targetX;
+                        shape.y = shape.targetY;
+                        shape.vx = 0;
+                        shape.vy = 0;
+                        shape.arrived = true;
+                        shape.progress = 1;
                         continue;
                     }
 
-                    // Determine current phase and progress
-                    if (shape.localTime < this.detachDuration) {
-                        // DETACH PHASE: Shrink and lift off
-                        shape.phase = 'detaching';
-                        const t = shape.localTime / this.detachDuration;
-                        const eased = this.easeOutQuad(t);
-
-                        // Shrink with slight overshoot feel
-                        shape.currentScale = 1.0 - (1.0 - this.transitScale) * this.easeInBack(t);
-
-                        // Lift off from start to detach position
-                        shape.currentX = shape.startX + (shape.detachX - shape.startX) * eased;
-                        shape.currentY = shape.startY + (shape.detachY - shape.startY) * eased;
-
-                    } else if (shape.localTime < this.detachDuration + this.travelDuration) {
-                        // TRAVEL PHASE: Arc movement while shrunken
-                        shape.phase = 'traveling';
-                        const t = (shape.localTime - this.detachDuration) / this.travelDuration;
-                        const eased = this.easeInOutQuad(t);
-
-                        // Stay shrunken with slight wobble
-                        const wobble = Math.sin(shape.localTime * shape.wobbleSpeed + shape.wobbleOffset) * 0.03;
-                        shape.currentScale = this.transitScale + wobble;
-
-                        // Cubic Bezier arc: detach -> control -> approach
-                        // Using quadratic for simplicity: P = (1-t)²·P0 + 2(1-t)t·P1 + t²·P2
-                        const oneMinusT = 1 - eased;
-                        shape.currentX = oneMinusT * oneMinusT * shape.detachX +
-                                        2 * oneMinusT * eased * shape.controlX +
-                                        eased * eased * shape.approachX;
-                        shape.currentY = oneMinusT * oneMinusT * shape.detachY +
-                                        2 * oneMinusT * eased * shape.controlY +
-                                        eased * eased * shape.approachY;
-
-                    } else if (shape.localTime < this.totalDuration) {
-                        // REFORM PHASE: Expand and settle into position
-                        shape.phase = 'reforming';
-                        const t = (shape.localTime - this.detachDuration - this.travelDuration) / this.reformDuration;
-                        const eased = this.easeOutBack(t);
-
-                        // Expand back to full size with overshoot
-                        shape.currentScale = this.transitScale + (1.0 - this.transitScale) * Math.min(eased, 1.0);
-
-                        // Settle from approach to target
-                        const settleEased = this.easeOutQuad(t);
-                        shape.currentX = shape.approachX + (shape.targetX - shape.approachX) * settleEased;
-                        shape.currentY = shape.approachY + (shape.targetY - shape.approachY) * settleEased;
-
-                    } else {
-                        // DONE
-                        shape.phase = 'done';
-                        shape.currentScale = 1.0;
-                        shape.currentX = shape.targetX;
-                        shape.currentY = shape.targetY;
+                    let desiredSpeed = maxSpeed;
+                    if (distToTarget < arrivalRadius) {
+                        desiredSpeed = maxSpeed * (distToTarget / arrivalRadius);
                     }
 
-                    // Calculate rotation progress (consistent across all phases)
-                    const overallProgress = Math.max(0, Math.min(1, shape.localTime / this.totalDuration));
-                    shape.currentRotation = overallProgress;
+                    let desiredVx = (toTargetX / distToTarget) * desiredSpeed;
+                    let desiredVy = (toTargetY / distToTarget) * desiredSpeed;
+
+                    // === SEPARATION - creates the curves ===
+                    let sepX = 0, sepY = 0;
+                    for (const other of this.shapes) {
+                        if (other === shape || !other.departed) continue;
+
+                        const dx = shape.x - other.x;
+                        const dy = shape.y - other.y;
+                        const dist = Math.hypot(dx, dy);
+
+                        if (dist < separationRadius && dist > 0.1) {
+                            const strength = separationStrength * Math.pow(1 - dist / separationRadius, 2);
+                            sepX += (dx / dist) * strength;
+                            sepY += (dy / dist) * strength;
+                        }
+                    }
+
+                    // Combine: seek + separation
+                    let steerX = (desiredVx - shape.vx) + sepX;
+                    let steerY = (desiredVy - shape.vy) + sepY;
+
+                    // Limit force
+                    const steerMag = Math.hypot(steerX, steerY);
+                    if (steerMag > maxForce) {
+                        steerX = (steerX / steerMag) * maxForce;
+                        steerY = (steerY / steerMag) * maxForce;
+                    }
+
+                    // Apply
+                    shape.vx += steerX * frameTime;
+                    shape.vy += steerY * frameTime;
+
+                    // Limit speed
+                    const speed = Math.hypot(shape.vx, shape.vy);
+                    if (speed > maxSpeed) {
+                        shape.vx = (shape.vx / speed) * maxSpeed;
+                        shape.vy = (shape.vy / speed) * maxSpeed;
+                    }
+
+                    shape.x += shape.vx * frameTime;
+                    shape.y += shape.vy * frameTime;
+
+                    // Progress for morphing
+                    const totalDist = Math.hypot(shape.targetX - shape.startX, shape.targetY - shape.startY);
+                    const traveled = Math.hypot(shape.x - shape.startX, shape.y - shape.startY);
+                    shape.progress = Math.min(1, totalDist > 0 ? traveled / totalDist : 1);
                 }
 
                 if (allDone) {
-                    console.log('All shapes complete - finishing transition');
                     this.complete();
                     return false;
                 }
-
                 return true;
             }
 
-            // Complete the transition
             complete() {
                 this.active = false;
                 if (this.onComplete) {
-                    const finalPositions = this.shapes.map(shape => ({
-                        index: shape.cellIndex,
-                        x: shape.targetX,
-                        y: shape.targetY
-                    }));
-                    this.onComplete(finalPositions);
+                    this.onComplete(this.shapes.map(s => ({ index: s.cellIndex, x: s.x, y: s.y })));
                 }
             }
 
-            // Get interpolated polygon with scale and rotation
             getInterpolatedPolygon(shape) {
-                const t = shape.currentRotation;
-                const morphT = this.easeInOutQuad(t);
+                const t = shape.progress;
+                const eased = t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
 
-                // Rotation interpolation
-                let rotationDelta = this.endRotation - this.startRotation;
-                while (rotationDelta > Math.PI) rotationDelta -= 2 * Math.PI;
-                while (rotationDelta < -Math.PI) rotationDelta += 2 * Math.PI;
-                const currentRotation = rotationDelta * morphT;
-                const cos = Math.cos(currentRotation);
-                const sin = Math.sin(currentRotation);
-
-                const scale = shape.currentScale;
                 const result = [];
-
                 for (let i = 0; i < shape.startPolygon.length; i++) {
-                    const startPt = shape.startPolygon[i];
-                    const endPt = shape.endPolygon[i];
-
-                    // Interpolate vertex position
-                    const relX = startPt[0] + morphT * (endPt[0] - startPt[0]);
-                    const relY = startPt[1] + morphT * (endPt[1] - startPt[1]);
-
-                    // Apply scale
-                    const scaledX = relX * scale;
-                    const scaledY = relY * scale;
-
-                    // Apply rotation
-                    const rotX = scaledX * cos - scaledY * sin;
-                    const rotY = scaledX * sin + scaledY * cos;
-
-                    // Translate to current position
-                    result.push([rotX + shape.currentX, rotY + shape.currentY]);
+                    const s = shape.startPolygon[i];
+                    const e = shape.endPolygon[i];
+                    result.push([
+                        s[0] + eased * (e[0] - s[0]) + shape.x,
+                        s[1] + eased * (e[1] - s[1]) + shape.y
+                    ]);
                 }
                 return result;
             }
 
-            // Render all shapes
             render(ctx, cornerRadius) {
                 if (!this.active) return;
-
                 ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-                // Sort by phase priority and Y position
-                // Traveling shapes render on top of waiting/reforming for depth effect
-                const phasePriority = { waiting: 0, detaching: 1, reforming: 1, done: 1, traveling: 2 };
-                const sortedShapes = [...this.shapes].sort((a, b) => {
-                    const pDiff = phasePriority[a.phase] - phasePriority[b.phase];
-                    if (pDiff !== 0) return pDiff;
-                    return a.currentY - b.currentY;
-                });
+                const sorted = [...this.shapes].sort((a, b) => a.y - b.y);
 
-                for (const shape of sortedShapes) {
+                for (const shape of sorted) {
                     const polygon = this.getInterpolatedPolygon(shape);
                     if (!polygon || polygon.length < 3) continue;
 
                     ctx.save();
+                    ctx.globalAlpha = shape.departed ? 1.0 : 0.6;
 
-                    // Slight shadow/glow effect for traveling shapes
-                    if (shape.phase === 'traveling') {
-                        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-                        ctx.shadowBlur = 15;
-                        ctx.shadowOffsetY = 5;
-                    }
-
-                    ctx.globalAlpha = shape.opacity;
-
-                    // Create rounded clipping path
-                    drawRoundedPolygon(ctx, polygon, cornerRadius * shape.currentScale);
+                    drawRoundedPolygon(ctx, polygon, cornerRadius);
                     ctx.clip();
 
-                    // Calculate bounds
                     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
                     for (const p of polygon) {
-                        minX = Math.min(minX, p[0]);
-                        maxX = Math.max(maxX, p[0]);
-                        minY = Math.min(minY, p[1]);
-                        maxY = Math.max(maxY, p[1]);
+                        minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]);
+                        minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]);
                     }
 
-                    const cellW = maxX - minX;
-                    const cellH = maxY - minY;
-                    const centerX = (minX + maxX) / 2;
-                    const centerY = (minY + maxY) / 2;
-
-                    // Draw pattern
                     if (shape.pattern) {
-                        const size = Math.max(cellW, cellH) * 1.4;
-                        ctx.drawImage(
-                            shape.pattern,
-                            centerX - size / 2,
-                            centerY - size / 2,
-                            size,
-                            size
-                        );
+                        const size = Math.max(maxX - minX, maxY - minY) * 1.4;
+                        ctx.drawImage(shape.pattern, (minX+maxX)/2 - size/2, (minY+maxY)/2 - size/2, size, size);
                     }
 
                     ctx.restore();
 
-                    // Draw border
                     ctx.save();
-                    drawRoundedPolygon(ctx, polygon, cornerRadius * shape.currentScale);
-                    ctx.strokeStyle = shape.phase === 'traveling'
-                        ? 'rgba(255,255,255,0.7)'  // Brighter border when flying
-                        : 'rgba(255,255,255,0.5)';
+                    drawRoundedPolygon(ctx, polygon, cornerRadius);
+                    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     ctx.restore();
@@ -1347,9 +1118,8 @@
             }
         }
 
-        // Global transition instance
+        // Global flock transition instance
         let flockTransition = new FlockTransition();
-
         // ========== CELL CLASS ==========
         class Cell {
             constructor(x, y, index) {
