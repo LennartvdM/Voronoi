@@ -907,17 +907,33 @@
                 const targetZone = getZoneBounds(true);
                 const gap = config.gap;
 
-                // Group centers
+                // First pass: compute actual start positions from polygon centroids
+                // (displayPolygon may be basePolygon if cell was over-deformed)
+                const startPositions = cells.map(cell => {
+                    if (!cell.displayPolygon || cell.displayPolygon.length < 3) {
+                        return { x: cell.displacedX, y: cell.displacedY, valid: false };
+                    }
+                    const poly = cell.displayPolygon;
+                    let cx = 0, cy = 0;
+                    for (const p of poly) { cx += p[0]; cy += p[1]; }
+                    return { x: cx / poly.length, y: cy / poly.length, valid: true };
+                });
+
+                // Group centers (use actual polygon positions, not displacedX/Y)
                 let startCenterX = 0, startCenterY = 0;
                 let targetCenterX = 0, targetCenterY = 0;
+                let validCount = 0;
                 cells.forEach((cell, i) => {
-                    startCenterX += cell.displacedX;
-                    startCenterY += cell.displacedY;
+                    if (startPositions[i].valid) {
+                        startCenterX += startPositions[i].x;
+                        startCenterY += startPositions[i].y;
+                        validCount++;
+                    }
                     targetCenterX += targetPositions[i].x;
                     targetCenterY += targetPositions[i].y;
                 });
-                startCenterX /= cells.length;
-                startCenterY /= cells.length;
+                startCenterX /= validCount || 1;
+                startCenterY /= validCount || 1;
                 targetCenterX /= cells.length;
                 targetCenterY /= cells.length;
 
@@ -930,31 +946,26 @@
                 const perpX = -normDirY;
                 const perpY = normDirX;
 
-                // Max radius for normalization
+                // Max radius for normalization (use actual start positions)
                 let maxRadius = 1;
-                cells.forEach(cell => {
-                    const d = Math.hypot(cell.displacedX - startCenterX, cell.displacedY - startCenterY);
+                cells.forEach((cell, i) => {
+                    if (!startPositions[i].valid) return;
+                    const d = Math.hypot(startPositions[i].x - startCenterX, startPositions[i].y - startCenterY);
                     if (d > maxRadius) maxRadius = d;
                 });
 
                 cells.forEach((cell, i) => {
                     const target = targetPositions[i];
+                    const startPos = startPositions[i];
 
-                    // Get start polygon (already rendered with gap)
-                    if (!cell.displayPolygon || cell.displayPolygon.length < 3) {
+                    // Skip cells with invalid polygons
+                    if (!startPos.valid) {
                         console.warn(`FlockTransition: skipping cell ${i} - invalid start polygon`);
                         return;
                     }
                     const startPolyAbs = cell.displayPolygon.map(p => [...p]);
-
-                    // SANITY CHECK: Is the displayPolygon actually near displacedX/Y?
-                    const polyCentroid = startPolyAbs.reduce((acc, p) => [acc[0] + p[0], acc[1] + p[1]], [0, 0]);
-                    polyCentroid[0] /= startPolyAbs.length;
-                    polyCentroid[1] /= startPolyAbs.length;
-                    const distFromSeed = Math.hypot(polyCentroid[0] - cell.displacedX, polyCentroid[1] - cell.displacedY);
-                    if (distFromSeed > 100) {
-                        console.error(`Cell ${i} MISMATCH: displayPolygon centroid at (${polyCentroid[0].toFixed(0)}, ${polyCentroid[1].toFixed(0)}) but displacedX/Y at (${cell.displacedX.toFixed(0)}, ${cell.displacedY.toFixed(0)}) - distance ${distFromSeed.toFixed(0)}px!`);
-                    }
+                    const startX = startPos.x;
+                    const startY = startPos.y;
 
                     // Compute end polygon
                     let endPolyAbs = this.computeCellPolygon(i, targetPositions, targetZone.bounds);
@@ -970,13 +981,11 @@
                         }
                     }
 
-                    // Positions
-                    const startX = cell.displacedX;
-                    const startY = cell.displacedY;
+                    // Target position
                     const targetX = target.x;
                     const targetY = target.y;
 
-                    // Convert to relative (centered on seed)
+                    // Convert to relative (centered on centroid)
                     let startRel = startPolyAbs.map(p => [p[0] - startX, p[1] - startY]);
                     let endRel = endPolyAbs.map(p => [p[0] - targetX, p[1] - targetY]);
 
@@ -1053,7 +1062,7 @@
                 if (!this.active) return false;
 
                 // DEBUG: Freeze transition to test if scattering is in setup vs animation
-                return true;  // ENABLED: Cells should appear exactly where they were
+                // return true;  // Uncomment to freeze
 
                 const speed = 200; // pixels per second (slower for visible curves)
                 const arrivalThreshold = 2;
