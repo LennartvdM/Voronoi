@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Soft Body Water Balloons</title>
+    <title>Soft Body Constraint Solver</title>
     <style>
         * {
             margin: 0;
@@ -29,7 +29,6 @@
             text-decoration: none;
             font-size: 0.9rem;
             z-index: 100;
-            transition: color 0.2s;
         }
 
         .back-link:hover {
@@ -115,64 +114,50 @@
     <a href="index.html" class="back-link">&larr; Back</a>
 
     <div class="controls">
-        <h3>Physics</h3>
+        <h3>Constraints</h3>
         <div class="control-row">
-            <label>Pressure</label>
-            <input type="range" id="pressure" min="0" max="100" value="50">
-            <span id="pressureVal">0.50</span>
+            <label>Iterations</label>
+            <input type="range" id="iterations" min="1" max="30" value="15">
+            <span id="iterationsVal">15</span>
         </div>
         <div class="control-row">
-            <label>Stiffness</label>
-            <input type="range" id="stiffness" min="10" max="100" value="60">
-            <span id="stiffnessVal">0.60</span>
-        </div>
-        <div class="control-row">
-            <label>Damping</label>
-            <input type="range" id="damping" min="50" max="99" value="92">
-            <span id="dampingVal">0.92</span>
-        </div>
-        <div class="control-row">
-            <label>Gravity</label>
-            <input type="range" id="gravity" min="0" max="50" value="10">
-            <span id="gravityVal">0.10</span>
+            <label>Cell Gap</label>
+            <input type="range" id="cellGap" min="0" max="20" value="4">
+            <span id="cellGapVal">4</span>
         </div>
         <div class="divider"></div>
         <button id="resetBtn">Reset</button>
         <button id="addBtn">Add Cell</button>
         <button id="removeBtn">Remove Cell</button>
-        <button id="shakeBtn">Shake!</button>
     </div>
 
     <div class="info">
-        Drag cells to move. Cells only collide when they actually touch.
+        Drag cells. No physics — just constraint solving. Shapes emerge from pressure.
     </div>
 
     <canvas id="canvas"></canvas>
 
     <script>
         // ============================================
-        // SOFT BODY WATER BALLOONS v2
-        // Position-based dynamics with actual collision
+        // PURE CONSTRAINT SOLVER
+        // No velocity, no momentum, no bouncing
+        // Cells just find equilibrium positions
         // ============================================
 
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
 
         const config = {
-            pressure: 0.5,          // Internal pressure (area maintenance)
-            stiffness: 0.6,         // Edge constraint stiffness
-            damping: 0.92,          // Velocity damping
-            gravity: 0.1,           // Downward force
-            substeps: 12,           // Constraint iterations per frame (more = stable but slower)
-            vertexCount: 24,        // Vertices per cell (more = smoother)
-            baseRadius: 45,         // Default cell radius
+            iterations: 15,         // Constraint solving iterations per frame
+            cellGap: 4,             // Minimum gap between cells
+            vertexCount: 24,        // Vertices per cell
+            baseRadius: 50,         // Default cell radius
         };
 
-        // Container bounds
         let container = { x: 0, y: 0, width: 0, height: 0 };
 
         // ============================================
-        // SOFT CELL - Position Based Dynamics
+        // SOFT CELL - Just vertices and constraints
         // ============================================
 
         class SoftCell {
@@ -181,24 +166,20 @@
                 this.radius = radius;
                 this.targetArea = Math.PI * radius * radius;
 
-                // Create ring of vertices
+                // Create ring of vertices (just positions, no velocity)
                 this.verts = [];
                 const n = config.vertexCount;
                 for (let i = 0; i < n; i++) {
                     const angle = (i / n) * Math.PI * 2;
                     this.verts.push({
                         x: x + Math.cos(angle) * radius,
-                        y: y + Math.sin(angle) * radius,
-                        px: x + Math.cos(angle) * radius,  // Previous position (for velocity)
-                        py: y + Math.sin(angle) * radius,
+                        y: y + Math.sin(angle) * radius
                     });
                 }
 
-                // Rest length for each edge
                 this.restLength = (2 * Math.PI * radius) / n;
             }
 
-            // Get centroid
             centroid() {
                 let cx = 0, cy = 0;
                 for (const v of this.verts) {
@@ -209,7 +190,6 @@
                 return { x: cx / n, y: cy / n };
             }
 
-            // Compute area (shoelace)
             area() {
                 let a = 0;
                 const n = this.verts.length;
@@ -219,19 +199,6 @@
                     a -= this.verts[j].x * this.verts[i].y;
                 }
                 return Math.abs(a) / 2;
-            }
-
-            // Integration step - update positions from velocity
-            integrate() {
-                for (const v of this.verts) {
-                    const vx = (v.x - v.px) * config.damping;
-                    const vy = (v.y - v.py) * config.damping + config.gravity;
-
-                    v.px = v.x;
-                    v.py = v.y;
-                    v.x += vx;
-                    v.y += vy;
-                }
             }
 
             // Constraint: maintain edge lengths
@@ -248,8 +215,8 @@
                     if (dist < 0.001) continue;
 
                     const diff = (dist - this.restLength) / dist;
-                    const offsetX = dx * diff * 0.5 * config.stiffness;
-                    const offsetY = dy * diff * 0.5 * config.stiffness;
+                    const offsetX = dx * diff * 0.5;
+                    const offsetY = dy * diff * 0.5;
 
                     v1.x += offsetX;
                     v1.y += offsetY;
@@ -258,14 +225,14 @@
                 }
             }
 
-            // Constraint: maintain area (pressure)
+            // Constraint: maintain target area (pressure)
             constrainArea() {
                 const currentArea = this.area();
                 if (currentArea < 1) return;
 
                 const c = this.centroid();
                 const ratio = this.targetArea / currentArea;
-                const pressure = (ratio - 1) * config.pressure;
+                const pressure = (ratio - 1) * 0.3;
 
                 for (const v of this.verts) {
                     const dx = v.x - c.x;
@@ -273,31 +240,20 @@
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     if (dist < 0.001) continue;
 
-                    v.x += (dx / dist) * pressure * dist * 0.1;
-                    v.y += (dy / dist) * pressure * dist * 0.1;
+                    v.x += (dx / dist) * pressure * dist;
+                    v.y += (dy / dist) * pressure * dist;
                 }
             }
 
-            // Constraint: keep vertices inside container
+            // Constraint: stay inside container
             constrainWalls() {
                 const margin = 2;
                 for (const v of this.verts) {
-                    if (v.x < container.x + margin) {
-                        v.x = container.x + margin;
-                    }
-                    if (v.x > container.x + container.width - margin) {
-                        v.x = container.x + container.width - margin;
-                    }
-                    if (v.y < container.y + margin) {
-                        v.y = container.y + margin;
-                    }
-                    if (v.y > container.y + container.height - margin) {
-                        v.y = container.y + container.height - margin;
-                    }
+                    v.x = Math.max(container.x + margin, Math.min(container.x + container.width - margin, v.x));
+                    v.y = Math.max(container.y + margin, Math.min(container.y + container.height - margin, v.y));
                 }
             }
 
-            // Check if point is inside
             containsPoint(px, py) {
                 let inside = false;
                 const n = this.verts.length;
@@ -312,30 +268,18 @@
                 return inside;
             }
 
-            // Move entire cell
             translate(dx, dy) {
                 for (const v of this.verts) {
                     v.x += dx;
                     v.y += dy;
-                    v.px += dx;
-                    v.py += dy;
-                }
-            }
-
-            // Add impulse
-            impulse(vx, vy) {
-                for (const v of this.verts) {
-                    v.px -= vx;
-                    v.py -= vy;
                 }
             }
         }
 
         // ============================================
-        // COLLISION DETECTION & RESPONSE
+        // COLLISION CONSTRAINTS
         // ============================================
 
-        // Point-in-polygon test (ray casting)
         function pointInPolygon(px, py, verts) {
             let inside = false;
             const n = verts.length;
@@ -350,7 +294,6 @@
             return inside;
         }
 
-        // Find closest edge and distance to polygon boundary
         function closestEdgeToPoint(px, py, verts) {
             let minDist = Infinity;
             let closestPoint = { x: px, y: py };
@@ -361,7 +304,6 @@
                 const v1 = verts[i];
                 const v2 = verts[(i + 1) % n];
 
-                // Project point onto edge
                 const ex = v2.x - v1.x;
                 const ey = v2.y - v1.y;
                 const len2 = ex * ex + ey * ey;
@@ -379,7 +321,6 @@
                 if (dist < minDist) {
                     minDist = dist;
                     closestPoint = { x: closestX, y: closestY };
-                    // Edge normal (perpendicular, pointing outward)
                     const len = Math.sqrt(len2);
                     edgeNormal = { x: -ey / len, y: ex / len };
                 }
@@ -388,55 +329,25 @@
             return { dist: minDist, point: closestPoint, normal: edgeNormal };
         }
 
-        // Resolve penetration: push vertex out of other cell
+        // Push vertex out if inside other cell
         function resolvePenetration(vertex, otherCell) {
             if (!pointInPolygon(vertex.x, vertex.y, otherCell.verts)) {
-                return false;
+                return;
             }
-
-            // Vertex is inside - find nearest edge and push out
             const edge = closestEdgeToPoint(vertex.x, vertex.y, otherCell.verts);
-            const pushDist = edge.dist + 6; // Push out plus margin
-
+            const pushDist = edge.dist + config.cellGap;
             vertex.x = edge.point.x + edge.normal.x * pushDist;
             vertex.y = edge.point.y + edge.normal.y * pushDist;
-
-            return true;
         }
 
-        // Separate two cells based on centroid overlap
-        function separateCentroids(cellA, cellB, minSeparation) {
-            const cA = cellA.centroid();
-            const cB = cellB.centroid();
-            const dx = cB.x - cA.x;
-            const dy = cB.y - cA.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
-            if (dist < minSeparation && dist > 0.001) {
-                const overlap = (minSeparation - dist) / 2;
-                const nx = dx / dist;
-                const ny = dy / dist;
-
-                // Push both cells apart
-                for (const v of cellA.verts) {
-                    v.x -= nx * overlap;
-                    v.y -= ny * overlap;
-                }
-                for (const v of cellB.verts) {
-                    v.x += nx * overlap;
-                    v.y += ny * overlap;
-                }
-            }
-        }
-
-        // Surface collision: keep vertices from getting too close to other cell edges
-        function surfaceCollision(cellA, cellB) {
-            const minDist = 5;
+        // Keep cell surfaces apart
+        function constrainSurfaces(cellA, cellB) {
+            const gap = config.cellGap;
 
             for (const v of cellA.verts) {
                 const edge = closestEdgeToPoint(v.x, v.y, cellB.verts);
-                if (edge.dist < minDist) {
-                    const push = (minDist - edge.dist) * 0.5;
+                if (edge.dist < gap) {
+                    const push = (gap - edge.dist) * 0.5;
                     v.x += edge.normal.x * push;
                     v.y += edge.normal.y * push;
                 }
@@ -444,66 +355,47 @@
 
             for (const v of cellB.verts) {
                 const edge = closestEdgeToPoint(v.x, v.y, cellA.verts);
-                if (edge.dist < minDist) {
-                    const push = (minDist - edge.dist) * 0.5;
+                if (edge.dist < gap) {
+                    const push = (gap - edge.dist) * 0.5;
                     v.x += edge.normal.x * push;
                     v.y += edge.normal.y * push;
                 }
             }
         }
 
-        // Full collision resolution between two cells
-        function collideCells(cellA, cellB) {
-            // Quick centroid distance check
+        // Full collision constraint between two cells
+        function constrainCells(cellA, cellB) {
             const cA = cellA.centroid();
             const cB = cellB.centroid();
             const dist = Math.sqrt((cA.x - cB.x) ** 2 + (cA.y - cB.y) ** 2);
-            if (dist > cellA.radius + cellB.radius + 30) return;
+            if (dist > cellA.radius + cellB.radius + 40) return;
 
-            // 1. Resolve any penetrations (vertices inside other cell)
-            for (const v of cellA.verts) {
-                resolvePenetration(v, cellB);
-            }
-            for (const v of cellB.verts) {
-                resolvePenetration(v, cellA);
-            }
+            // Resolve penetrations
+            for (const v of cellA.verts) resolvePenetration(v, cellB);
+            for (const v of cellB.verts) resolvePenetration(v, cellA);
 
-            // 2. Minimum centroid separation (prevents complete overlap)
-            const minCentroidDist = (cellA.radius + cellB.radius) * 0.4;
-            separateCentroids(cellA, cellB, minCentroidDist);
-
-            // 3. Surface collision (keep edges apart)
-            surfaceCollision(cellA, cellB);
+            // Keep surfaces apart
+            constrainSurfaces(cellA, cellB);
         }
 
         // ============================================
-        // SIMULATION
+        // MAIN SOLVE LOOP
         // ============================================
 
         let cells = [];
 
-        function simulate() {
-            // Integration (apply velocity + gravity)
-            for (const cell of cells) {
-                cell.integrate();
-            }
-
-            // Constraint solving (multiple iterations for stability)
-            for (let iter = 0; iter < config.substeps; iter++) {
-                // Edge length constraints
+        function solve() {
+            for (let iter = 0; iter < config.iterations; iter++) {
+                // Shape constraints
                 for (const cell of cells) {
                     cell.constrainEdges();
-                }
-
-                // Area/pressure constraints
-                for (const cell of cells) {
                     cell.constrainArea();
                 }
 
-                // Cell-cell collisions
+                // Cell-cell constraints
                 for (let i = 0; i < cells.length; i++) {
                     for (let j = i + 1; j < cells.length; j++) {
-                        collideCells(cells[i], cells[j]);
+                        constrainCells(cells[i], cells[j]);
                     }
                 }
 
@@ -521,15 +413,14 @@
         function render() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw container
+            // Container
             ctx.strokeStyle = '#2a2a3a';
             ctx.lineWidth = 3;
             ctx.strokeRect(container.x, container.y, container.width, container.height);
-
             ctx.fillStyle = '#0c0c12';
             ctx.fillRect(container.x + 1, container.y + 1, container.width - 2, container.height - 2);
 
-            // Draw cells
+            // Cells
             for (const cell of cells) {
                 drawCell(cell);
             }
@@ -539,10 +430,7 @@
             const verts = cell.verts;
             if (verts.length < 3) return;
 
-            // Smooth curve through vertices using quadratic bezier
             ctx.beginPath();
-
-            // Start at midpoint of first edge
             const firstMid = {
                 x: (verts[0].x + verts[verts.length - 1].x) / 2,
                 y: (verts[0].y + verts[verts.length - 1].y) / 2
@@ -556,23 +444,22 @@
                 const midY = (curr.y + next.y) / 2;
                 ctx.quadraticCurveTo(curr.x, curr.y, midX, midY);
             }
-
             ctx.closePath();
 
-            // Gradient fill
+            // Fill
             const c = cell.centroid();
             const gradient = ctx.createRadialGradient(
                 c.x - cell.radius * 0.2, c.y - cell.radius * 0.2, 0,
                 c.x, c.y, cell.radius * 1.3
             );
-            gradient.addColorStop(0, lightenColor(cell.color, 0.2));
-            gradient.addColorStop(0.5, cell.color);
-            gradient.addColorStop(1, darkenColor(cell.color, 0.3));
+            gradient.addColorStop(0, lightenColor(cell.color, 0.15));
+            gradient.addColorStop(0.6, cell.color);
+            gradient.addColorStop(1, darkenColor(cell.color, 0.25));
             ctx.fillStyle = gradient;
             ctx.fill();
 
             // Stroke
-            ctx.strokeStyle = lightenColor(cell.color, 0.3);
+            ctx.strokeStyle = lightenColor(cell.color, 0.25);
             ctx.lineWidth = 2;
             ctx.stroke();
         }
@@ -606,7 +493,6 @@
             for (let i = cells.length - 1; i >= 0; i--) {
                 if (cells[i].containsPoint(x, y)) {
                     draggedCell = cells[i];
-                    // Move to top (render last)
                     cells.splice(i, 1);
                     cells.push(draggedCell);
                     lastMouse = { x, y };
@@ -617,28 +503,15 @@
 
         canvas.addEventListener('mousemove', (e) => {
             if (!draggedCell) return;
-
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
-
             draggedCell.translate(x - lastMouse.x, y - lastMouse.y);
             lastMouse = { x, y };
         });
 
-        canvas.addEventListener('mouseup', (e) => {
-            if (draggedCell) {
-                const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                draggedCell.impulse((x - lastMouse.x) * 0.3, (y - lastMouse.y) * 0.3);
-            }
-            draggedCell = null;
-        });
-
-        canvas.addEventListener('mouseleave', () => {
-            draggedCell = null;
-        });
+        canvas.addEventListener('mouseup', () => { draggedCell = null; });
+        canvas.addEventListener('mouseleave', () => { draggedCell = null; });
 
         // ============================================
         // SETUP
@@ -647,7 +520,6 @@
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-
             container.x = 50;
             container.y = 50;
             container.width = canvas.width - 320;
@@ -656,47 +528,32 @@
 
         function initCells() {
             cells = [];
-            const colors = [
-                '#e74c3c', '#3498db', '#2ecc71', '#f39c12',
-                '#9b59b6', '#1abc9c', '#e91e63', '#00bcd4'
-            ];
-
+            const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c'];
             const count = 5;
-            const spacing = Math.min(container.width, container.height) / (count + 1);
 
             for (let i = 0; i < count; i++) {
-                const x = container.x + 100 + (i % 3) * spacing;
-                const y = container.y + 100 + Math.floor(i / 3) * spacing;
-                const radius = config.baseRadius + (Math.random() - 0.5) * 15;
+                const x = container.x + 100 + (i % 3) * 120;
+                const y = container.y + 100 + Math.floor(i / 3) * 120;
+                const radius = config.baseRadius + (Math.random() - 0.5) * 10;
                 cells.push(new SoftCell(x, y, radius, colors[i % colors.length]));
             }
         }
 
         function animate() {
-            simulate();
+            solve();
             render();
             requestAnimationFrame(animate);
         }
 
         // Controls
-        document.getElementById('pressure').addEventListener('input', (e) => {
-            config.pressure = e.target.value / 100;
-            document.getElementById('pressureVal').textContent = config.pressure.toFixed(2);
+        document.getElementById('iterations').addEventListener('input', (e) => {
+            config.iterations = +e.target.value;
+            document.getElementById('iterationsVal').textContent = e.target.value;
         });
 
-        document.getElementById('stiffness').addEventListener('input', (e) => {
-            config.stiffness = e.target.value / 100;
-            document.getElementById('stiffnessVal').textContent = config.stiffness.toFixed(2);
-        });
-
-        document.getElementById('damping').addEventListener('input', (e) => {
-            config.damping = e.target.value / 100;
-            document.getElementById('dampingVal').textContent = config.damping.toFixed(2);
-        });
-
-        document.getElementById('gravity').addEventListener('input', (e) => {
-            config.gravity = e.target.value / 100;
-            document.getElementById('gravityVal').textContent = config.gravity.toFixed(2);
+        document.getElementById('cellGap').addEventListener('input', (e) => {
+            config.cellGap = +e.target.value;
+            document.getElementById('cellGapVal').textContent = e.target.value;
         });
 
         document.getElementById('resetBtn').addEventListener('click', initCells);
@@ -705,18 +562,11 @@
             const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c'];
             const x = container.x + container.width / 2 + (Math.random() - 0.5) * 100;
             const y = container.y + 100;
-            const radius = config.baseRadius + (Math.random() - 0.5) * 15;
-            cells.push(new SoftCell(x, y, radius, colors[cells.length % colors.length]));
+            cells.push(new SoftCell(x, y, config.baseRadius, colors[cells.length % colors.length]));
         });
 
         document.getElementById('removeBtn').addEventListener('click', () => {
             if (cells.length > 1) cells.pop();
-        });
-
-        document.getElementById('shakeBtn').addEventListener('click', () => {
-            for (const cell of cells) {
-                cell.impulse((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20);
-            }
         });
 
         // Init
