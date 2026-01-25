@@ -518,7 +518,8 @@
                     minDist = dist;
                     closestPoint = { x: closestX, y: closestY };
                     const len = Math.sqrt(len2);
-                    edgeNormal = { x: -ey / len, y: ex / len };
+                    // For CCW polygon, outward normal is (ey, -ex)
+                    edgeNormal = { x: ey / len, y: -ex / len };
                 }
             }
 
