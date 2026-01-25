@@ -55,7 +55,7 @@
             color: #888;
             font-size: 0.85rem;
             z-index: 100;
-            min-width: 200px;
+            min-width: 220px;
         }
 
         .controls h3 {
@@ -81,9 +81,10 @@
         }
 
         .control-row span {
-            width: 35px;
+            width: 40px;
             text-align: right;
             font-family: monospace;
+            font-size: 0.8rem;
         }
 
         button {
@@ -102,6 +103,12 @@
             background: #3a3a4a;
             color: #ccc;
         }
+
+        .divider {
+            height: 1px;
+            background: #3a3a4a;
+            margin: 0.75rem 0;
+        }
     </style>
 </head>
 <body>
@@ -111,188 +118,192 @@
         <h3>Physics</h3>
         <div class="control-row">
             <label>Pressure</label>
-            <input type="range" id="pressure" min="0" max="200" value="80">
-            <span id="pressureVal">80</span>
-        </div>
-        <div class="control-row">
-            <label>Repulsion</label>
-            <input type="range" id="repulsion" min="0" max="300" value="150">
-            <span id="repulsionVal">150</span>
-        </div>
-        <div class="control-row">
-            <label>Damping</label>
-            <input type="range" id="damping" min="80" max="99" value="94">
-            <span id="dampingVal">94</span>
+            <input type="range" id="pressure" min="0" max="100" value="50">
+            <span id="pressureVal">0.50</span>
         </div>
         <div class="control-row">
             <label>Stiffness</label>
-            <input type="range" id="stiffness" min="0" max="100" value="40">
-            <span id="stiffnessVal">40</span>
+            <input type="range" id="stiffness" min="10" max="100" value="60">
+            <span id="stiffnessVal">0.60</span>
         </div>
-        <button id="resetBtn">Reset Positions</button>
+        <div class="control-row">
+            <label>Damping</label>
+            <input type="range" id="damping" min="50" max="99" value="92">
+            <span id="dampingVal">0.92</span>
+        </div>
+        <div class="control-row">
+            <label>Gravity</label>
+            <input type="range" id="gravity" min="0" max="50" value="10">
+            <span id="gravityVal">0.10</span>
+        </div>
+        <div class="divider"></div>
+        <button id="resetBtn">Reset</button>
         <button id="addBtn">Add Cell</button>
         <button id="removeBtn">Remove Cell</button>
-        <button id="toggleContainer">Toggle Container B</button>
+        <button id="shakeBtn">Shake!</button>
     </div>
 
     <div class="info">
-        Drag cells to move them. Physics runs continuously - no modes.
+        Drag cells to move. Cells only collide when they actually touch.
     </div>
 
     <canvas id="canvas"></canvas>
 
     <script>
         // ============================================
-        // SOFT BODY WATER BALLOON PHYSICS
-        // No Voronoi computation. Shapes emerge from pressure.
+        // SOFT BODY WATER BALLOONS v2
+        // Position-based dynamics with actual collision
         // ============================================
 
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
 
-        // Config - tunable physics parameters
         const config = {
-            pressure: 80,           // Internal pressure force
-            repulsion: 150,         // Vertex-vertex repulsion between cells
-            damping: 0.94,          // Velocity damping
-            stiffness: 0.4,         // Edge length constraint stiffness
-            wallRepulsion: 200,     // Wall push force
-            vertexCount: 16,        // Vertices per cell
-            baseRadius: 50,         // Target radius for cells
+            pressure: 0.5,          // Internal pressure (area maintenance)
+            stiffness: 0.6,         // Edge constraint stiffness
+            damping: 0.92,          // Velocity damping
+            gravity: 0.1,           // Downward force
+            substeps: 8,            // Constraint iterations per frame
+            vertexCount: 24,        // Vertices per cell (more = smoother)
+            baseRadius: 45,         // Default cell radius
         };
 
-        // Containers - the "bowls" cells can be poured into
-        const containers = {
-            a: { x: 0, y: 0, width: 0, height: 0, active: true },
-            b: { x: 0, y: 0, width: 0, height: 0, active: false }
-        };
+        // Container bounds
+        let container = { x: 0, y: 0, width: 0, height: 0 };
 
         // ============================================
-        // SOFT CELL CLASS
-        // A pressure vessel with a membrane of vertices
+        // SOFT CELL - Position Based Dynamics
         // ============================================
 
         class SoftCell {
             constructor(x, y, radius, color) {
                 this.color = color;
+                this.radius = radius;
                 this.targetArea = Math.PI * radius * radius;
-                this.baseRadius = radius;
 
                 // Create ring of vertices
-                this.vertices = [];
-                const count = config.vertexCount;
-                for (let i = 0; i < count; i++) {
-                    const angle = (i / count) * Math.PI * 2;
-                    this.vertices.push({
+                this.verts = [];
+                const n = config.vertexCount;
+                for (let i = 0; i < n; i++) {
+                    const angle = (i / n) * Math.PI * 2;
+                    this.verts.push({
                         x: x + Math.cos(angle) * radius,
                         y: y + Math.sin(angle) * radius,
-                        vx: 0,
-                        vy: 0
+                        px: x + Math.cos(angle) * radius,  // Previous position (for velocity)
+                        py: y + Math.sin(angle) * radius,
                     });
                 }
 
-                // Compute rest lengths for edge constraints
-                this.restLengths = [];
-                for (let i = 0; i < count; i++) {
-                    const next = (i + 1) % count;
-                    const dx = this.vertices[next].x - this.vertices[i].x;
-                    const dy = this.vertices[next].y - this.vertices[i].y;
-                    this.restLengths.push(Math.sqrt(dx * dx + dy * dy));
-                }
+                // Rest length for each edge
+                this.restLength = (2 * Math.PI * radius) / n;
             }
 
-            // Compute centroid of the cell
-            getCentroid() {
+            // Get centroid
+            centroid() {
                 let cx = 0, cy = 0;
-                for (const v of this.vertices) {
+                for (const v of this.verts) {
                     cx += v.x;
                     cy += v.y;
                 }
-                return {
-                    x: cx / this.vertices.length,
-                    y: cy / this.vertices.length
-                };
+                const n = this.verts.length;
+                return { x: cx / n, y: cy / n };
             }
 
-            // Compute current area using shoelace formula
-            getArea() {
-                let area = 0;
-                const n = this.vertices.length;
+            // Compute area (shoelace)
+            area() {
+                let a = 0;
+                const n = this.verts.length;
                 for (let i = 0; i < n; i++) {
                     const j = (i + 1) % n;
-                    area += this.vertices[i].x * this.vertices[j].y;
-                    area -= this.vertices[j].x * this.vertices[i].y;
+                    a += this.verts[i].x * this.verts[j].y;
+                    a -= this.verts[j].x * this.verts[i].y;
                 }
-                return Math.abs(area) / 2;
+                return Math.abs(a) / 2;
             }
 
-            // Apply internal pressure force
-            applyPressure() {
-                const currentArea = this.getArea();
-                const centroid = this.getCentroid();
+            // Integration step - update positions from velocity
+            integrate() {
+                for (const v of this.verts) {
+                    const vx = (v.x - v.px) * config.damping;
+                    const vy = (v.y - v.py) * config.damping + config.gravity;
 
-                // Pressure proportional to area deficit
-                // If current < target, push outward. If current > target, pull inward.
-                const areaRatio = this.targetArea / Math.max(currentArea, 1);
-                const pressureForce = (areaRatio - 1) * config.pressure;
-
-                for (const v of this.vertices) {
-                    const dx = v.x - centroid.x;
-                    const dy = v.y - centroid.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist > 0.1) {
-                        const nx = dx / dist;
-                        const ny = dy / dist;
-                        v.vx += nx * pressureForce * 0.1;
-                        v.vy += ny * pressureForce * 0.1;
-                    }
+                    v.px = v.x;
+                    v.py = v.y;
+                    v.x += vx;
+                    v.y += vy;
                 }
             }
 
-            // Apply edge constraints (keep membrane from stretching/collapsing)
-            applyEdgeConstraints() {
-                const n = this.vertices.length;
+            // Constraint: maintain edge lengths
+            constrainEdges() {
+                const n = this.verts.length;
                 for (let i = 0; i < n; i++) {
-                    const j = (i + 1) % n;
-                    const v1 = this.vertices[i];
-                    const v2 = this.vertices[j];
+                    const v1 = this.verts[i];
+                    const v2 = this.verts[(i + 1) % n];
 
                     const dx = v2.x - v1.x;
                     const dy = v2.y - v1.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
-                    const restLen = this.restLengths[i];
 
-                    if (dist > 0.1) {
-                        const diff = (dist - restLen) / dist;
-                        const moveX = dx * diff * config.stiffness * 0.5;
-                        const moveY = dy * diff * config.stiffness * 0.5;
+                    if (dist < 0.001) continue;
 
-                        // Position-based correction
-                        v1.x += moveX;
-                        v1.y += moveY;
-                        v2.x -= moveX;
-                        v2.y -= moveY;
+                    const diff = (dist - this.restLength) / dist;
+                    const offsetX = dx * diff * 0.5 * config.stiffness;
+                    const offsetY = dy * diff * 0.5 * config.stiffness;
+
+                    v1.x += offsetX;
+                    v1.y += offsetY;
+                    v2.x -= offsetX;
+                    v2.y -= offsetY;
+                }
+            }
+
+            // Constraint: maintain area (pressure)
+            constrainArea() {
+                const currentArea = this.area();
+                if (currentArea < 1) return;
+
+                const c = this.centroid();
+                const ratio = this.targetArea / currentArea;
+                const pressure = (ratio - 1) * config.pressure;
+
+                for (const v of this.verts) {
+                    const dx = v.x - c.x;
+                    const dy = v.y - c.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 0.001) continue;
+
+                    v.x += (dx / dist) * pressure * dist * 0.1;
+                    v.y += (dy / dist) * pressure * dist * 0.1;
+                }
+            }
+
+            // Constraint: keep vertices inside container
+            constrainWalls() {
+                const margin = 2;
+                for (const v of this.verts) {
+                    if (v.x < container.x + margin) {
+                        v.x = container.x + margin;
+                    }
+                    if (v.x > container.x + container.width - margin) {
+                        v.x = container.x + container.width - margin;
+                    }
+                    if (v.y < container.y + margin) {
+                        v.y = container.y + margin;
+                    }
+                    if (v.y > container.y + container.height - margin) {
+                        v.y = container.y + container.height - margin;
                     }
                 }
             }
 
-            // Apply velocity and damping
-            integrate() {
-                for (const v of this.vertices) {
-                    v.vx *= config.damping;
-                    v.vy *= config.damping;
-                    v.x += v.vx;
-                    v.y += v.vy;
-                }
-            }
-
-            // Check if point is inside cell (for hit testing)
+            // Check if point is inside
             containsPoint(px, py) {
                 let inside = false;
-                const n = this.vertices.length;
+                const n = this.verts.length;
                 for (let i = 0, j = n - 1; i < n; j = i++) {
-                    const vi = this.vertices[i];
-                    const vj = this.vertices[j];
+                    const vi = this.verts[i];
+                    const vj = this.verts[j];
                     if (((vi.y > py) !== (vj.y > py)) &&
                         (px < (vj.x - vi.x) * (py - vi.y) / (vj.y - vi.y) + vi.x)) {
                         inside = !inside;
@@ -301,124 +312,139 @@
                 return inside;
             }
 
-            // Move entire cell by delta
+            // Move entire cell
             translate(dx, dy) {
-                for (const v of this.vertices) {
+                for (const v of this.verts) {
                     v.x += dx;
                     v.y += dy;
+                    v.px += dx;
+                    v.py += dy;
                 }
             }
 
-            // Add velocity to entire cell (for throwing)
-            addVelocity(vx, vy) {
-                for (const v of this.vertices) {
-                    v.vx += vx;
-                    v.vy += vy;
+            // Add impulse
+            impulse(vx, vy) {
+                for (const v of this.verts) {
+                    v.px -= vx;
+                    v.py -= vy;
                 }
             }
         }
 
         // ============================================
-        // PHYSICS SIMULATION
+        // COLLISION DETECTION & RESPONSE
+        // ============================================
+
+        // Find closest point on line segment to point
+        function closestPointOnSegment(px, py, ax, ay, bx, by) {
+            const abx = bx - ax;
+            const aby = by - ay;
+            const apx = px - ax;
+            const apy = py - ay;
+
+            const ab2 = abx * abx + aby * aby;
+            if (ab2 < 0.0001) return { x: ax, y: ay, t: 0 };
+
+            let t = (apx * abx + apy * aby) / ab2;
+            t = Math.max(0, Math.min(1, t));
+
+            return {
+                x: ax + abx * t,
+                y: ay + aby * t,
+                t: t
+            };
+        }
+
+        // Resolve collision between vertex of cell A and edge of cell B
+        function resolveVertexEdgeCollision(cellA, vertIdx, cellB, edgeIdx) {
+            const v = cellA.verts[vertIdx];
+            const e1 = cellB.verts[edgeIdx];
+            const e2 = cellB.verts[(edgeIdx + 1) % cellB.verts.length];
+
+            const closest = closestPointOnSegment(v.x, v.y, e1.x, e1.y, e2.x, e2.y);
+            const dx = v.x - closest.x;
+            const dy = v.y - closest.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            const minDist = 4; // Minimum separation
+
+            if (dist < minDist && dist > 0.001) {
+                // Push apart
+                const overlap = minDist - dist;
+                const nx = dx / dist;
+                const ny = dy / dist;
+
+                // Move vertex out
+                v.x += nx * overlap * 0.5;
+                v.y += ny * overlap * 0.5;
+
+                // Move edge in (both endpoints)
+                const edgePush = overlap * 0.25;
+                e1.x -= nx * edgePush;
+                e1.y -= ny * edgePush;
+                e2.x -= nx * edgePush;
+                e2.y -= ny * edgePush;
+            }
+        }
+
+        // Check all vertex-edge collisions between two cells
+        function collideCells(cellA, cellB) {
+            // Quick bounding box check
+            const cA = cellA.centroid();
+            const cB = cellB.centroid();
+            const dist = Math.sqrt((cA.x - cB.x) ** 2 + (cA.y - cB.y) ** 2);
+            if (dist > cellA.radius + cellB.radius + 20) return;
+
+            // Check A's vertices against B's edges
+            for (let i = 0; i < cellA.verts.length; i++) {
+                for (let j = 0; j < cellB.verts.length; j++) {
+                    resolveVertexEdgeCollision(cellA, i, cellB, j);
+                }
+            }
+
+            // Check B's vertices against A's edges
+            for (let i = 0; i < cellB.verts.length; i++) {
+                for (let j = 0; j < cellA.verts.length; j++) {
+                    resolveVertexEdgeCollision(cellB, i, cellA, j);
+                }
+            }
+        }
+
+        // ============================================
+        // SIMULATION
         // ============================================
 
         let cells = [];
 
-        // Apply repulsion between vertices of different cells
-        function applyCellRepulsion() {
-            const repulsionRange = config.baseRadius * 1.5;
-
-            for (let i = 0; i < cells.length; i++) {
-                for (let j = i + 1; j < cells.length; j++) {
-                    const cellA = cells[i];
-                    const cellB = cells[j];
-
-                    // Check centroid distance first (broad phase)
-                    const centA = cellA.getCentroid();
-                    const centB = cellB.getCentroid();
-                    const centDist = Math.sqrt(
-                        (centB.x - centA.x) ** 2 +
-                        (centB.y - centA.y) ** 2
-                    );
-
-                    if (centDist > config.baseRadius * 4) continue;
-
-                    // Vertex-to-vertex repulsion
-                    for (const va of cellA.vertices) {
-                        for (const vb of cellB.vertices) {
-                            const dx = vb.x - va.x;
-                            const dy = vb.y - va.y;
-                            const dist = Math.sqrt(dx * dx + dy * dy);
-
-                            if (dist > 0.1 && dist < repulsionRange) {
-                                const force = (1 - dist / repulsionRange) * config.repulsion * 0.01;
-                                const nx = dx / dist;
-                                const ny = dy / dist;
-
-                                va.vx -= nx * force;
-                                va.vy -= ny * force;
-                                vb.vx += nx * force;
-                                vb.vy += ny * force;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Apply wall repulsion from container bounds
-        function applyWallRepulsion() {
-            const wallRange = 30;
-
+        function simulate() {
+            // Integration (apply velocity + gravity)
             for (const cell of cells) {
-                for (const v of cell.vertices) {
-                    // Check each active container
-                    for (const [id, cont] of Object.entries(containers)) {
-                        if (!cont.active) continue;
-
-                        // Left wall
-                        if (v.x < cont.x + wallRange) {
-                            const penetration = cont.x + wallRange - v.x;
-                            v.vx += penetration * config.wallRepulsion * 0.01;
-                            if (v.x < cont.x) v.x = cont.x;
-                        }
-                        // Right wall
-                        if (v.x > cont.x + cont.width - wallRange) {
-                            const penetration = v.x - (cont.x + cont.width - wallRange);
-                            v.vx -= penetration * config.wallRepulsion * 0.01;
-                            if (v.x > cont.x + cont.width) v.x = cont.x + cont.width;
-                        }
-                        // Top wall
-                        if (v.y < cont.y + wallRange) {
-                            const penetration = cont.y + wallRange - v.y;
-                            v.vy += penetration * config.wallRepulsion * 0.01;
-                            if (v.y < cont.y) v.y = cont.y;
-                        }
-                        // Bottom wall
-                        if (v.y > cont.y + cont.height - wallRange) {
-                            const penetration = v.y - (cont.y + cont.height - wallRange);
-                            v.vy -= penetration * config.wallRepulsion * 0.01;
-                            if (v.y > cont.y + cont.height) v.y = cont.y + cont.height;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Main physics step
-        function physicsStep() {
-            // Apply forces
-            for (const cell of cells) {
-                cell.applyPressure();
-            }
-
-            applyCellRepulsion();
-            applyWallRepulsion();
-
-            // Constraints and integration
-            for (const cell of cells) {
-                cell.applyEdgeConstraints();
                 cell.integrate();
+            }
+
+            // Constraint solving (multiple iterations for stability)
+            for (let iter = 0; iter < config.substeps; iter++) {
+                // Edge length constraints
+                for (const cell of cells) {
+                    cell.constrainEdges();
+                }
+
+                // Area/pressure constraints
+                for (const cell of cells) {
+                    cell.constrainArea();
+                }
+
+                // Cell-cell collisions
+                for (let i = 0; i < cells.length; i++) {
+                    for (let j = i + 1; j < cells.length; j++) {
+                        collideCells(cells[i], cells[j]);
+                    }
+                }
+
+                // Wall constraints
+                for (const cell of cells) {
+                    cell.constrainWalls();
+                }
             }
         }
 
@@ -429,54 +455,60 @@
         function render() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw containers
-            for (const [id, cont] of Object.entries(containers)) {
-                if (!cont.active) continue;
+            // Draw container
+            ctx.strokeStyle = '#2a2a3a';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(container.x, container.y, container.width, container.height);
 
-                ctx.strokeStyle = '#2a2a3a';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(cont.x, cont.y, cont.width, cont.height);
-
-                ctx.fillStyle = '#0f0f15';
-                ctx.fillRect(cont.x + 1, cont.y + 1, cont.width - 2, cont.height - 2);
-            }
+            ctx.fillStyle = '#0c0c12';
+            ctx.fillRect(container.x + 1, container.y + 1, container.width - 2, container.height - 2);
 
             // Draw cells
             for (const cell of cells) {
-                const verts = cell.vertices;
-
-                // Fill
-                ctx.beginPath();
-                ctx.moveTo(verts[0].x, verts[0].y);
-                for (let i = 1; i < verts.length; i++) {
-                    ctx.lineTo(verts[i].x, verts[i].y);
-                }
-                ctx.closePath();
-
-                // Gradient fill
-                const centroid = cell.getCentroid();
-                const gradient = ctx.createRadialGradient(
-                    centroid.x, centroid.y, 0,
-                    centroid.x, centroid.y, cell.baseRadius * 1.2
-                );
-                gradient.addColorStop(0, cell.color);
-                gradient.addColorStop(1, darkenColor(cell.color, 0.3));
-                ctx.fillStyle = gradient;
-                ctx.fill();
-
-                // Stroke
-                ctx.strokeStyle = lightenColor(cell.color, 0.2);
-                ctx.lineWidth = 2;
-                ctx.stroke();
-
-                // Debug: draw vertices
-                // ctx.fillStyle = '#fff';
-                // for (const v of verts) {
-                //     ctx.beginPath();
-                //     ctx.arc(v.x, v.y, 2, 0, Math.PI * 2);
-                //     ctx.fill();
-                // }
+                drawCell(cell);
             }
+        }
+
+        function drawCell(cell) {
+            const verts = cell.verts;
+            if (verts.length < 3) return;
+
+            // Smooth curve through vertices using quadratic bezier
+            ctx.beginPath();
+
+            // Start at midpoint of first edge
+            const firstMid = {
+                x: (verts[0].x + verts[verts.length - 1].x) / 2,
+                y: (verts[0].y + verts[verts.length - 1].y) / 2
+            };
+            ctx.moveTo(firstMid.x, firstMid.y);
+
+            for (let i = 0; i < verts.length; i++) {
+                const curr = verts[i];
+                const next = verts[(i + 1) % verts.length];
+                const midX = (curr.x + next.x) / 2;
+                const midY = (curr.y + next.y) / 2;
+                ctx.quadraticCurveTo(curr.x, curr.y, midX, midY);
+            }
+
+            ctx.closePath();
+
+            // Gradient fill
+            const c = cell.centroid();
+            const gradient = ctx.createRadialGradient(
+                c.x - cell.radius * 0.2, c.y - cell.radius * 0.2, 0,
+                c.x, c.y, cell.radius * 1.3
+            );
+            gradient.addColorStop(0, lightenColor(cell.color, 0.2));
+            gradient.addColorStop(0.5, cell.color);
+            gradient.addColorStop(1, darkenColor(cell.color, 0.3));
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // Stroke
+            ctx.strokeStyle = lightenColor(cell.color, 0.3);
+            ctx.lineWidth = 2;
+            ctx.stroke();
         }
 
         function darkenColor(hex, factor) {
@@ -505,10 +537,12 @@
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
 
-            // Find cell under mouse (reverse order for z-index)
             for (let i = cells.length - 1; i >= 0; i--) {
                 if (cells[i].containsPoint(x, y)) {
                     draggedCell = cells[i];
+                    // Move to top (render last)
+                    cells.splice(i, 1);
+                    cells.push(draggedCell);
                     lastMouse = { x, y };
                     break;
                 }
@@ -522,23 +556,16 @@
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
 
-            const dx = x - lastMouse.x;
-            const dy = y - lastMouse.y;
-
-            draggedCell.translate(dx, dy);
+            draggedCell.translate(x - lastMouse.x, y - lastMouse.y);
             lastMouse = { x, y };
         });
 
         canvas.addEventListener('mouseup', (e) => {
             if (draggedCell) {
-                // Add throw velocity
                 const rect = canvas.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
-
-                const vx = (x - lastMouse.x) * 0.5;
-                const vy = (y - lastMouse.y) * 0.5;
-                draggedCell.addVelocity(vx, vy);
+                draggedCell.impulse((x - lastMouse.x) * 0.3, (y - lastMouse.y) * 0.3);
             }
             draggedCell = null;
         });
@@ -548,24 +575,17 @@
         });
 
         // ============================================
-        // SETUP AND ANIMATION LOOP
+        // SETUP
         // ============================================
 
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
 
-            // Container A: main area
-            containers.a.x = 50;
-            containers.a.y = 50;
-            containers.a.width = canvas.width - 300;
-            containers.a.height = canvas.height - 100;
-
-            // Container B: smaller side area
-            containers.b.x = canvas.width - 220;
-            containers.b.y = canvas.height / 2 - 150;
-            containers.b.width = 180;
-            containers.b.height = 300;
+            container.x = 50;
+            container.y = 50;
+            container.width = canvas.width - 320;
+            container.height = canvas.height - 100;
         }
 
         function initCells() {
@@ -575,68 +595,62 @@
                 '#9b59b6', '#1abc9c', '#e91e63', '#00bcd4'
             ];
 
-            const cont = containers.a;
-            const cellCount = 6;
+            const count = 5;
+            const spacing = Math.min(container.width, container.height) / (count + 1);
 
-            for (let i = 0; i < cellCount; i++) {
-                const x = cont.x + 100 + Math.random() * (cont.width - 200);
-                const y = cont.y + 100 + Math.random() * (cont.height - 200);
-                const radius = config.baseRadius + (Math.random() - 0.5) * 20;
-                const color = colors[i % colors.length];
-
-                cells.push(new SoftCell(x, y, radius, color));
+            for (let i = 0; i < count; i++) {
+                const x = container.x + 100 + (i % 3) * spacing;
+                const y = container.y + 100 + Math.floor(i / 3) * spacing;
+                const radius = config.baseRadius + (Math.random() - 0.5) * 15;
+                cells.push(new SoftCell(x, y, radius, colors[i % colors.length]));
             }
         }
 
         function animate() {
-            physicsStep();
+            simulate();
             render();
             requestAnimationFrame(animate);
         }
 
         // Controls
         document.getElementById('pressure').addEventListener('input', (e) => {
-            config.pressure = +e.target.value;
-            document.getElementById('pressureVal').textContent = e.target.value;
-        });
-
-        document.getElementById('repulsion').addEventListener('input', (e) => {
-            config.repulsion = +e.target.value;
-            document.getElementById('repulsionVal').textContent = e.target.value;
-        });
-
-        document.getElementById('damping').addEventListener('input', (e) => {
-            config.damping = e.target.value / 100;
-            document.getElementById('dampingVal').textContent = e.target.value;
+            config.pressure = e.target.value / 100;
+            document.getElementById('pressureVal').textContent = config.pressure.toFixed(2);
         });
 
         document.getElementById('stiffness').addEventListener('input', (e) => {
             config.stiffness = e.target.value / 100;
-            document.getElementById('stiffnessVal').textContent = e.target.value;
+            document.getElementById('stiffnessVal').textContent = config.stiffness.toFixed(2);
         });
 
-        document.getElementById('resetBtn').addEventListener('click', () => {
-            initCells();
+        document.getElementById('damping').addEventListener('input', (e) => {
+            config.damping = e.target.value / 100;
+            document.getElementById('dampingVal').textContent = config.damping.toFixed(2);
         });
+
+        document.getElementById('gravity').addEventListener('input', (e) => {
+            config.gravity = e.target.value / 100;
+            document.getElementById('gravityVal').textContent = config.gravity.toFixed(2);
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', initCells);
 
         document.getElementById('addBtn').addEventListener('click', () => {
             const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c'];
-            const cont = containers.a;
-            const x = cont.x + cont.width / 2;
-            const y = cont.y + cont.height / 2;
-            const radius = config.baseRadius + (Math.random() - 0.5) * 20;
-            const color = colors[cells.length % colors.length];
-            cells.push(new SoftCell(x, y, radius, color));
+            const x = container.x + container.width / 2 + (Math.random() - 0.5) * 100;
+            const y = container.y + 100;
+            const radius = config.baseRadius + (Math.random() - 0.5) * 15;
+            cells.push(new SoftCell(x, y, radius, colors[cells.length % colors.length]));
         });
 
         document.getElementById('removeBtn').addEventListener('click', () => {
-            if (cells.length > 1) {
-                cells.pop();
-            }
+            if (cells.length > 1) cells.pop();
         });
 
-        document.getElementById('toggleContainer').addEventListener('click', () => {
-            containers.b.active = !containers.b.active;
+        document.getElementById('shakeBtn').addEventListener('click', () => {
+            for (const cell of cells) {
+                cell.impulse((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20);
+            }
         });
 
         // Init
