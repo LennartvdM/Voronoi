@@ -506,8 +506,8 @@
             <div class="control-group hide-mobile">
                 <label>Zoom Speed</label>
                 <div class="control-row">
-                    <input type="range" id="imageZoomSpeed" min="1" max="100" value="3">
-                    <span class="control-value" id="imageZoomSpeedVal">3</span>
+                    <input type="range" id="imageZoomSpeed" min="1" max="400" value="50">
+                    <span class="control-value" id="imageZoomSpeedVal">50</span>
                 </div>
             </div>
 
@@ -592,7 +592,7 @@
 
             // Visual transitions
             nonHoverImageZoom: 3.0,      // Non-hover image zoom level
-            imageZoomSpeed: 3,           // How fast image zoom transitions (1-100 scale)
+            imageZoomSpeed: 50,          // How fast image zoom transitions (1-400 scale)
             nonHoveredOpacity: 0.36,     // Opacity for non-hovered cells
             opacityTransitionSpeed: 0.15, // How fast opacity transitions
 
@@ -816,6 +816,11 @@
         // Ease-out: starts fast, slows down at end (good for arriving at target)
         function easeOut(t) {
             return cubicBezierEase(t, 0.0, 0.58);
+        }
+
+        // Ease-in: starts slow, accelerates at end (good for catching up)
+        function easeIn(t) {
+            return cubicBezierEase(t, 0.42, 1.0);
         }
 
         // Ease-in-out: slow start, fast middle, slow end (good for smooth transitions)
@@ -1133,9 +1138,12 @@
                 // Used for consistent cell ordering during transitions
                 this.parametricT = 0;
 
-                // Scale animation (exponential smoothing - no resets)
+                // Scale animation (progress-based with easeIn)
                 this.scale = 1.0;              // Current scale
                 this.targetScale = 1.0;        // Target scale
+                this.scaleStart = 1.0;         // Starting scale for animation
+                this.scaleProgress = 1.0;      // Animation progress (0-1)
+                this.lastTargetScale = 1.0;    // Track target changes
 
                 // Displacement animation (exponential smoothing - no resets)
                 this.displacedX = x;           // Current displaced position
@@ -1183,18 +1191,26 @@
                 this.hoverMix += (targetHover - this.hoverMix) * hoverRate;
 
                 // === SCALE ANIMATION ===
-                // Squared curve gives more resolution at slow speeds where differences are perceptible
-                // Speed 1 = 0.01 (very slow), Speed 50 = 0.10, Speed 100 = 0.35 (fast)
-                const t = config.expansionSpeed / 100;
-                const scaleLerp = 0.01 + t * t * 0.34;
-                this.scale += (this.targetScale - this.scale) * scaleLerp;
+                // Progress-based with easeIn: slow start, fast end - cell catches up to image
+                if (this.targetScale !== this.lastTargetScale) {
+                    this.scaleStart = this.scale;
+                    this.scaleProgress = 0;
+                    this.lastTargetScale = this.targetScale;
+                }
 
-                // Snap when very close
-                if (Math.abs(this.scale - this.targetScale) < 0.001) {
+                if (this.scaleProgress < 1) {
+                    // Speed 1-100 maps to slower to faster transitions
+                    const progressRate = 1 + config.expansionSpeed * 0.12;
+                    this.scaleProgress = Math.min(1, this.scaleProgress + progressRate * dt / 1000);
+                    // easeIn: slow start, fast end - cell growth catches up to the rushing image
+                    const easedProgress = easeIn(this.scaleProgress);
+                    this.scale = this.scaleStart + (this.targetScale - this.scaleStart) * easedProgress;
+                } else {
                     this.scale = this.targetScale;
                 }
 
                 // === DISPLACEMENT ANIMATION ===
+                const t = config.expansionSpeed / 100;
                 const displaceLerp = 0.01 + t * t * 0.34;
                 this.displacedX += (this.targetDisplacedX - this.displacedX) * displaceLerp;
                 this.displacedY += (this.targetDisplacedY - this.displacedY) * displaceLerp;
@@ -1215,10 +1231,11 @@
                 }
 
                 if (this.zoomProgress < 1) {
-                    // Faster zoom animation: speed 1-100 maps to ~500ms to ~50ms transition
-                    const progressRate = 2 + config.imageZoomSpeed * 0.15;
+                    // Image zoom: speed 1-400 maps to slower to faster transitions
+                    const progressRate = 0.5 + config.imageZoomSpeed * 0.05;
                     this.zoomProgress = Math.min(1, this.zoomProgress + progressRate * dt / 1000);
-                    const easedProgress = easeInOut(this.zoomProgress);
+                    // easeOut: fast start, slow end - image rushes to fill the cell
+                    const easedProgress = easeOut(this.zoomProgress);
                     this.zoom = this.zoomStart + (this.targetZoom - this.zoomStart) * easedProgress;
                 } else {
                     this.zoom = this.targetZoom;
