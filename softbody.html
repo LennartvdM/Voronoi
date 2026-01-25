@@ -204,8 +204,8 @@
             // Constraint: edge lengths - prevent collapse AND prevent over-stretch
             constrainEdges() {
                 const n = this.verts.length;
-                const minLen = this.restLength * 0.3;  // Don't collapse
-                const maxLen = this.restLength * 2.5;  // Don't over-stretch
+                const minLen = this.restLength * 0.4;
+                const maxLen = this.restLength * 1.8;
 
                 for (let i = 0; i < n; i++) {
                     const v1 = this.verts[i];
@@ -234,22 +234,200 @@
                 }
             }
 
-            // Constraint: prevent collapse and extreme stretch, but don't force sphere
+            // HARD Constraint: CONVEXITY - no inward curves allowed
+            // If vertex is concave, SNAP it to valid position immediately
+            constrainConvexity() {
+                const n = this.verts.length;
+                const c = this.centroid();
+
+                for (let i = 0; i < n; i++) {
+                    const prev = this.verts[(i - 1 + n) % n];
+                    const curr = this.verts[i];
+                    const next = this.verts[(i + 1) % n];
+
+                    // Cross product to check if vertex is concave
+                    const ax = curr.x - prev.x;
+                    const ay = curr.y - prev.y;
+                    const bx = next.x - curr.x;
+                    const by = next.y - curr.y;
+                    const cross = ax * by - ay * bx;
+
+                    // If concave, SNAP to midpoint of prev-next, pushed outward
+                    if (cross < -0.1) {
+                        // Midpoint between neighbors
+                        const midX = (prev.x + next.x) / 2;
+                        const midY = (prev.y + next.y) / 2;
+
+                        // Direction from centroid to midpoint
+                        const dx = midX - c.x;
+                        const dy = midY - c.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist > 0.001) {
+                            // Place vertex on line from centroid through midpoint
+                            // Slightly beyond midpoint to ensure convexity
+                            curr.x = midX + (dx / dist) * 2;
+                            curr.y = midY + (dy / dist) * 2;
+                        } else {
+                            curr.x = midX;
+                            curr.y = midY;
+                        }
+                    }
+                }
+            }
+
+            // HARD Constraint: No self-intersection
+            // Check if polygon crosses itself - if so, reset to sphere
+            checkAndFixSelfIntersection() {
+                const n = this.verts.length;
+
+                // Check all pairs of non-adjacent edges
+                for (let i = 0; i < n; i++) {
+                    const a1 = this.verts[i];
+                    const a2 = this.verts[(i + 1) % n];
+
+                    for (let j = i + 2; j < n; j++) {
+                        if (j === (i - 1 + n) % n) continue; // Skip adjacent
+                        if (i === 0 && j === n - 1) continue; // Skip first-last (adjacent)
+
+                        const b1 = this.verts[j];
+                        const b2 = this.verts[(j + 1) % n];
+
+                        if (this.edgesIntersect(a1, a2, b1, b2)) {
+                            // CATASTROPHIC: Reset to sphere immediately
+                            this.resetToSphere();
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+
+            // Check if two line segments intersect
+            edgesIntersect(a1, a2, b1, b2) {
+                const d1 = this.crossProduct(b2.x - b1.x, b2.y - b1.y, a1.x - b1.x, a1.y - b1.y);
+                const d2 = this.crossProduct(b2.x - b1.x, b2.y - b1.y, a2.x - b1.x, a2.y - b1.y);
+                const d3 = this.crossProduct(a2.x - a1.x, a2.y - a1.y, b1.x - a1.x, b1.y - a1.y);
+                const d4 = this.crossProduct(a2.x - a1.x, a2.y - a1.y, b2.x - a1.x, b2.y - a1.y);
+
+                if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+                    ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
+                    return true;
+                }
+                return false;
+            }
+
+            crossProduct(ax, ay, bx, by) {
+                return ax * by - ay * bx;
+            }
+
+            // Emergency reset to sphere
+            resetToSphere() {
+                const c = this.centroid();
+                const targetRadius = Math.sqrt(this.targetArea / Math.PI);
+                const n = this.verts.length;
+
+                for (let i = 0; i < n; i++) {
+                    const angle = (i / n) * Math.PI * 2;
+                    this.verts[i].x = c.x + Math.cos(angle) * targetRadius;
+                    this.verts[i].y = c.y + Math.sin(angle) * targetRadius;
+                }
+            }
+
+            // HARD Constraint: limit aspect ratio - max 2.5:1
+            constrainAspectRatio() {
+                let minX = Infinity, maxX = -Infinity;
+                let minY = Infinity, maxY = -Infinity;
+                for (const v of this.verts) {
+                    minX = Math.min(minX, v.x);
+                    maxX = Math.max(maxX, v.x);
+                    minY = Math.min(minY, v.y);
+                    maxY = Math.max(maxY, v.y);
+                }
+
+                const width = maxX - minX;
+                const height = maxY - minY;
+                const maxRatio = 2.5;
+                const c = this.centroid();
+
+                // Apply HARD constraint - scale down the long axis IMMEDIATELY
+                if (width > height * maxRatio && height > 5) {
+                    const targetWidth = height * maxRatio;
+                    const scale = targetWidth / width;
+                    for (const v of this.verts) {
+                        v.x = c.x + (v.x - c.x) * scale;
+                    }
+                } else if (height > width * maxRatio && width > 5) {
+                    const targetHeight = width * maxRatio;
+                    const scale = targetHeight / height;
+                    for (const v of this.verts) {
+                        v.y = c.y + (v.y - c.y) * scale;
+                    }
+                }
+
+                // Also check diagonal stretch - use actual vertex distances
+                let maxDist = 0;
+                let minDist = Infinity;
+                for (const v of this.verts) {
+                    const dx = v.x - c.x;
+                    const dy = v.y - c.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    maxDist = Math.max(maxDist, dist);
+                    minDist = Math.min(minDist, dist);
+                }
+
+                // If max radius is more than 3x min radius, something is wrong
+                if (maxDist > minDist * 3 && minDist > 1) {
+                    // Pull extreme vertices inward
+                    const targetMax = minDist * 2.5;
+                    for (const v of this.verts) {
+                        const dx = v.x - c.x;
+                        const dy = v.y - c.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist > targetMax) {
+                            const scale = targetMax / dist;
+                            v.x = c.x + dx * scale;
+                            v.y = c.y + dy * scale;
+                        }
+                    }
+                }
+            }
+
+            // Constraint: gently return to sphere when free (not touching anything)
+            constrainReturnToSphere(isFree) {
+                if (!isFree) return;
+
+                const c = this.centroid();
+                const targetRadius = Math.sqrt(this.targetArea / Math.PI);
+
+                for (const v of this.verts) {
+                    const dx = v.x - c.x;
+                    const dy = v.y - c.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 0.001) continue;
+
+                    // Gently pull toward target radius
+                    const diff = (dist - targetRadius) * 0.02;
+                    v.x -= (dx / dist) * diff;
+                    v.y -= (dy / dist) * diff;
+                }
+            }
+
+            // Constraint: prevent collapse and extreme expansion
             constrainArea() {
                 const currentArea = this.area();
                 if (currentArea < 1) return;
 
-                const minArea = this.targetArea * 0.25;  // Prevent collapse
-                const maxArea = this.targetArea * 1.8;   // Prevent over-expansion
+                const minArea = this.targetArea * 0.3;
+                const maxArea = this.targetArea * 1.5;
 
                 const c = this.centroid();
                 let pressure = 0;
 
-                // Only apply pressure at extremes
                 if (currentArea < minArea) {
-                    pressure = (minArea / currentArea - 1) * 0.4;  // Push out
+                    pressure = (minArea / currentArea - 1) * 0.5;
                 } else if (currentArea > maxArea) {
-                    pressure = (maxArea / currentArea - 1) * 0.4;  // Pull in
+                    pressure = (maxArea / currentArea - 1) * 0.5;
                 }
 
                 if (Math.abs(pressure) < 0.001) return;
@@ -262,41 +440,6 @@
 
                     v.x += (dx / dist) * pressure * dist;
                     v.y += (dy / dist) * pressure * dist;
-                }
-            }
-
-            // Constraint: limit aspect ratio (prevent infinite stretch)
-            constrainAspectRatio() {
-                // Find bounding box
-                let minX = Infinity, maxX = -Infinity;
-                let minY = Infinity, maxY = -Infinity;
-                for (const v of this.verts) {
-                    minX = Math.min(minX, v.x);
-                    maxX = Math.max(maxX, v.x);
-                    minY = Math.min(minY, v.y);
-                    maxY = Math.max(maxY, v.y);
-                }
-
-                const width = maxX - minX;
-                const height = maxY - minY;
-                const maxRatio = 3.5;  // Max 3.5:1 aspect ratio
-
-                const c = this.centroid();
-
-                if (width > height * maxRatio) {
-                    // Too wide - compress horizontally
-                    const targetWidth = height * maxRatio;
-                    const scale = targetWidth / width;
-                    for (const v of this.verts) {
-                        v.x = c.x + (v.x - c.x) * scale;
-                    }
-                } else if (height > width * maxRatio) {
-                    // Too tall - compress vertically
-                    const targetHeight = width * maxRatio;
-                    const scale = targetHeight / height;
-                    for (const v of this.verts) {
-                        v.y = c.y + (v.y - c.y) * scale;
-                    }
                 }
             }
 
@@ -439,13 +582,50 @@
 
         let cells = [];
 
+        // Check if cell is touching any wall
+        function isTouchingWall(cell) {
+            const margin = 10;
+            for (const v of cell.verts) {
+                if (v.x < container.x + margin || v.x > container.x + container.width - margin ||
+                    v.y < container.y + margin || v.y > container.y + container.height - margin) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Check if two cells are close
+        function areCellsClose(cellA, cellB) {
+            const cA = cellA.centroid();
+            const cB = cellB.centroid();
+            const dist = Math.sqrt((cA.x - cB.x) ** 2 + (cA.y - cB.y) ** 2);
+            return dist < cellA.radius + cellB.radius + 20;
+        }
+
         function solve() {
+            // First pass: determine which cells are "free"
+            const isFree = cells.map((cell, i) => {
+                if (isTouchingWall(cell)) return false;
+                for (let j = 0; j < cells.length; j++) {
+                    if (i !== j && areCellsClose(cell, cells[j])) return false;
+                }
+                return true;
+            });
+
             for (let iter = 0; iter < config.iterations; iter++) {
-                // Shape constraints
+                // HARD constraints first - these are non-negotiable
                 for (const cell of cells) {
+                    cell.checkAndFixSelfIntersection();  // Nuclear option if intersecting
+                    cell.constrainConvexity();           // Snap concave vertices
+                    cell.constrainAspectRatio();         // Limit stretch
+                }
+
+                // Shape constraints
+                for (let i = 0; i < cells.length; i++) {
+                    const cell = cells[i];
                     cell.constrainEdges();
                     cell.constrainArea();
-                    cell.constrainAspectRatio();
+                    cell.constrainReturnToSphere(isFree[i]);
                 }
 
                 // Cell-cell constraints
@@ -458,6 +638,13 @@
                 // Wall constraints
                 for (const cell of cells) {
                     cell.constrainWalls();
+                }
+
+                // HARD constraints again after all modifications
+                for (const cell of cells) {
+                    cell.constrainConvexity();
+                    cell.constrainAspectRatio();
+                    cell.checkAndFixSelfIntersection();
                 }
             }
         }
