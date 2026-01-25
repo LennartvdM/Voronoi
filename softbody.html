@@ -201,9 +201,12 @@
                 return Math.abs(a) / 2;
             }
 
-            // Constraint: maintain edge lengths
+            // Constraint: edge lengths - prevent collapse AND prevent over-stretch
             constrainEdges() {
                 const n = this.verts.length;
+                const minLen = this.restLength * 0.3;  // Don't collapse
+                const maxLen = this.restLength * 2.5;  // Don't over-stretch
+
                 for (let i = 0; i < n; i++) {
                     const v1 = this.verts[i];
                     const v2 = this.verts[(i + 1) % n];
@@ -214,25 +217,42 @@
 
                     if (dist < 0.001) continue;
 
-                    const diff = (dist - this.restLength) / dist;
-                    const offsetX = dx * diff * 0.5;
-                    const offsetY = dy * diff * 0.5;
+                    let targetDist = dist;
+                    if (dist < minLen) targetDist = minLen;
+                    if (dist > maxLen) targetDist = maxLen;
 
-                    v1.x += offsetX;
-                    v1.y += offsetY;
-                    v2.x -= offsetX;
-                    v2.y -= offsetY;
+                    if (targetDist !== dist) {
+                        const diff = (dist - targetDist) / dist;
+                        const offsetX = dx * diff * 0.5;
+                        const offsetY = dy * diff * 0.5;
+
+                        v1.x += offsetX;
+                        v1.y += offsetY;
+                        v2.x -= offsetX;
+                        v2.y -= offsetY;
+                    }
                 }
             }
 
-            // Constraint: maintain target area (pressure)
+            // Constraint: prevent collapse and extreme stretch, but don't force sphere
             constrainArea() {
                 const currentArea = this.area();
                 if (currentArea < 1) return;
 
+                const minArea = this.targetArea * 0.25;  // Prevent collapse
+                const maxArea = this.targetArea * 1.8;   // Prevent over-expansion
+
                 const c = this.centroid();
-                const ratio = this.targetArea / currentArea;
-                const pressure = (ratio - 1) * 0.3;
+                let pressure = 0;
+
+                // Only apply pressure at extremes
+                if (currentArea < minArea) {
+                    pressure = (minArea / currentArea - 1) * 0.4;  // Push out
+                } else if (currentArea > maxArea) {
+                    pressure = (maxArea / currentArea - 1) * 0.4;  // Pull in
+                }
+
+                if (Math.abs(pressure) < 0.001) return;
 
                 for (const v of this.verts) {
                     const dx = v.x - c.x;
@@ -242,6 +262,41 @@
 
                     v.x += (dx / dist) * pressure * dist;
                     v.y += (dy / dist) * pressure * dist;
+                }
+            }
+
+            // Constraint: limit aspect ratio (prevent infinite stretch)
+            constrainAspectRatio() {
+                // Find bounding box
+                let minX = Infinity, maxX = -Infinity;
+                let minY = Infinity, maxY = -Infinity;
+                for (const v of this.verts) {
+                    minX = Math.min(minX, v.x);
+                    maxX = Math.max(maxX, v.x);
+                    minY = Math.min(minY, v.y);
+                    maxY = Math.max(maxY, v.y);
+                }
+
+                const width = maxX - minX;
+                const height = maxY - minY;
+                const maxRatio = 3.5;  // Max 3.5:1 aspect ratio
+
+                const c = this.centroid();
+
+                if (width > height * maxRatio) {
+                    // Too wide - compress horizontally
+                    const targetWidth = height * maxRatio;
+                    const scale = targetWidth / width;
+                    for (const v of this.verts) {
+                        v.x = c.x + (v.x - c.x) * scale;
+                    }
+                } else if (height > width * maxRatio) {
+                    // Too tall - compress vertically
+                    const targetHeight = width * maxRatio;
+                    const scale = targetHeight / height;
+                    for (const v of this.verts) {
+                        v.y = c.y + (v.y - c.y) * scale;
+                    }
                 }
             }
 
@@ -390,6 +445,7 @@
                 for (const cell of cells) {
                     cell.constrainEdges();
                     cell.constrainArea();
+                    cell.constrainAspectRatio();
                 }
 
                 // Cell-cell constraints
