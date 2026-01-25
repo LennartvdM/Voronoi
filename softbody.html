@@ -148,8 +148,8 @@
         const ctx = canvas.getContext('2d');
 
         const config = {
-            iterations: 15,         // Constraint solving iterations per frame
-            cellGap: 4,             // Minimum gap between cells
+            iterations: 20,         // Constraint solving iterations per frame
+            cellGap: 5,             // Minimum gap between cells
             vertexCount: 24,        // Vertices per cell
             baseRadius: 50,         // Default cell radius
         };
@@ -413,33 +413,29 @@
                 }
             }
 
-            // Constraint: prevent collapse and extreme expansion
+            // Constraint: ALWAYS maintain target area (incompressible)
             constrainArea() {
                 const currentArea = this.area();
-                if (currentArea < 1) return;
-
-                const minArea = this.targetArea * 0.3;
-                const maxArea = this.targetArea * 1.5;
-
-                const c = this.centroid();
-                let pressure = 0;
-
-                if (currentArea < minArea) {
-                    pressure = (minArea / currentArea - 1) * 0.5;
-                } else if (currentArea > maxArea) {
-                    pressure = (maxArea / currentArea - 1) * 0.5;
+                if (currentArea < 1) {
+                    this.resetToSphere();
+                    return;
                 }
 
-                if (Math.abs(pressure) < 0.001) return;
+                const c = this.centroid();
 
-                for (const v of this.verts) {
-                    const dx = v.x - c.x;
-                    const dy = v.y - c.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < 0.001) continue;
+                // ALWAYS push toward target area, not just at extremes
+                const ratio = Math.sqrt(this.targetArea / currentArea);
 
-                    v.x += (dx / dist) * pressure * dist;
-                    v.y += (dy / dist) * pressure * dist;
+                // Scale all vertices from centroid to achieve target area
+                if (Math.abs(ratio - 1) > 0.01) {
+                    // Blend toward correct area (not instant, but strong)
+                    const blend = 0.3;
+                    const scale = 1 + (ratio - 1) * blend;
+
+                    for (const v of this.verts) {
+                        v.x = c.x + (v.x - c.x) * scale;
+                        v.y = c.y + (v.y - c.y) * scale;
+                    }
                 }
             }
 
@@ -527,34 +523,80 @@
             return { dist: minDist, point: closestPoint, normal: edgeNormal };
         }
 
-        // Push vertex out if inside other cell
-        function resolvePenetration(vertex, otherCell) {
-            if (!pointInPolygon(vertex.x, vertex.y, otherCell.verts)) {
-                return;
+        // HARD collision: Push entire cells apart if centroids too close
+        function separateCentroids(cellA, cellB) {
+            const cA = cellA.centroid();
+            const cB = cellB.centroid();
+            const dx = cB.x - cA.x;
+            const dy = cB.y - cA.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            // Minimum centroid separation based on cell radii
+            const minDist = (cellA.radius + cellB.radius) * 0.7;
+
+            if (dist < minDist && dist > 0.001) {
+                const overlap = minDist - dist;
+                const nx = dx / dist;
+                const ny = dy / dist;
+
+                // Push BOTH cells apart equally
+                const push = overlap * 0.5;
+                for (const v of cellA.verts) {
+                    v.x -= nx * push;
+                    v.y -= ny * push;
+                }
+                for (const v of cellB.verts) {
+                    v.x += nx * push;
+                    v.y += ny * push;
+                }
+                return true;
             }
-            const edge = closestEdgeToPoint(vertex.x, vertex.y, otherCell.verts);
-            const pushDist = edge.dist + config.cellGap;
-            vertex.x = edge.point.x + edge.normal.x * pushDist;
-            vertex.y = edge.point.y + edge.normal.y * pushDist;
+            return false;
         }
 
-        // Keep cell surfaces apart
+        // Push vertex out if inside other cell - HARD push
+        function resolvePenetration(vertex, otherCell) {
+            if (!pointInPolygon(vertex.x, vertex.y, otherCell.verts)) {
+                return false;
+            }
+
+            // Vertex is INSIDE - this is bad, push it OUT
+            const otherCentroid = otherCell.centroid();
+
+            // Push directly away from other cell's centroid
+            const dx = vertex.x - otherCentroid.x;
+            const dy = vertex.y - otherCentroid.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist > 0.001) {
+                // Push out to the edge of the other cell + gap
+                const edge = closestEdgeToPoint(vertex.x, vertex.y, otherCell.verts);
+                const pushDist = edge.dist + config.cellGap + 5;
+                vertex.x = edge.point.x + edge.normal.x * pushDist;
+                vertex.y = edge.point.y + edge.normal.y * pushDist;
+            }
+            return true;
+        }
+
+        // Keep cell surfaces apart - with stronger push
         function constrainSurfaces(cellA, cellB) {
-            const gap = config.cellGap;
+            const gap = config.cellGap + 2;
 
             for (const v of cellA.verts) {
+                if (pointInPolygon(v.x, v.y, cellB.verts)) continue; // Handled by penetration
                 const edge = closestEdgeToPoint(v.x, v.y, cellB.verts);
                 if (edge.dist < gap) {
-                    const push = (gap - edge.dist) * 0.5;
+                    const push = gap - edge.dist;
                     v.x += edge.normal.x * push;
                     v.y += edge.normal.y * push;
                 }
             }
 
             for (const v of cellB.verts) {
+                if (pointInPolygon(v.x, v.y, cellA.verts)) continue;
                 const edge = closestEdgeToPoint(v.x, v.y, cellA.verts);
                 if (edge.dist < gap) {
-                    const push = (gap - edge.dist) * 0.5;
+                    const push = gap - edge.dist;
                     v.x += edge.normal.x * push;
                     v.y += edge.normal.y * push;
                 }
@@ -566,13 +608,16 @@
             const cA = cellA.centroid();
             const cB = cellB.centroid();
             const dist = Math.sqrt((cA.x - cB.x) ** 2 + (cA.y - cB.y) ** 2);
-            if (dist > cellA.radius + cellB.radius + 40) return;
+            if (dist > cellA.radius + cellB.radius + 50) return;
 
-            // Resolve penetrations
+            // FIRST: Separate centroids if too close (prevents deep penetration)
+            separateCentroids(cellA, cellB);
+
+            // THEN: Resolve any vertex penetrations
             for (const v of cellA.verts) resolvePenetration(v, cellB);
             for (const v of cellB.verts) resolvePenetration(v, cellA);
 
-            // Keep surfaces apart
+            // FINALLY: Keep surfaces apart
             constrainSurfaces(cellA, cellB);
         }
 
