@@ -255,9 +255,9 @@
                     const by = next.y - curr.y;
                     const cross = ax * by - ay * bx;
 
-                    // If concave (or barely convex), SNAP outward
-                    // Threshold > 0 ensures strictly convex result
-                    if (cross < 5) {
+                    // Only fix actually concave vertices (cross < 0)
+                    // Don't over-correct - allow natural deformation at contact points
+                    if (cross < 0) {
                         // Midpoint between neighbors
                         const midX = (prev.x + next.x) / 2;
                         const midY = (prev.y + next.y) / 2;
@@ -268,11 +268,9 @@
                         const dist = Math.sqrt(dx * dx + dy * dy);
 
                         if (dist > 0.001) {
-                            // Place vertex on line from centroid through midpoint
-                            // Push beyond midpoint to guarantee convexity
-                            const push = Math.max(5, (5 - cross) * 0.5);
-                            const newX = midX + (dx / dist) * push;
-                            const newY = midY + (dy / dist) * push;
+                            // Place vertex just beyond midpoint
+                            const newX = midX + (dx / dist) * 3;
+                            const newY = midY + (dy / dist) * 3;
                             safeMove(curr, newX, newY, this);
                         } else {
                             safeMove(curr, midX, midY, this);
