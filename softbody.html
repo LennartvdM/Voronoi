@@ -163,7 +163,7 @@
             stiffness: 0.6,         // Edge constraint stiffness
             damping: 0.92,          // Velocity damping
             gravity: 0.1,           // Downward force
-            substeps: 8,            // Constraint iterations per frame
+            substeps: 12,           // Constraint iterations per frame (more = stable but slower)
             vertexCount: 24,        // Vertices per cell (more = smoother)
             baseRadius: 45,         // Default cell radius
         };
@@ -335,79 +335,145 @@
         // COLLISION DETECTION & RESPONSE
         // ============================================
 
-        // Find closest point on line segment to point
-        function closestPointOnSegment(px, py, ax, ay, bx, by) {
-            const abx = bx - ax;
-            const aby = by - ay;
-            const apx = px - ax;
-            const apy = py - ay;
-
-            const ab2 = abx * abx + aby * aby;
-            if (ab2 < 0.0001) return { x: ax, y: ay, t: 0 };
-
-            let t = (apx * abx + apy * aby) / ab2;
-            t = Math.max(0, Math.min(1, t));
-
-            return {
-                x: ax + abx * t,
-                y: ay + aby * t,
-                t: t
-            };
+        // Point-in-polygon test (ray casting)
+        function pointInPolygon(px, py, verts) {
+            let inside = false;
+            const n = verts.length;
+            for (let i = 0, j = n - 1; i < n; j = i++) {
+                const vi = verts[i];
+                const vj = verts[j];
+                if (((vi.y > py) !== (vj.y > py)) &&
+                    (px < (vj.x - vi.x) * (py - vi.y) / (vj.y - vi.y) + vi.x)) {
+                    inside = !inside;
+                }
+            }
+            return inside;
         }
 
-        // Resolve collision between vertex of cell A and edge of cell B
-        function resolveVertexEdgeCollision(cellA, vertIdx, cellB, edgeIdx) {
-            const v = cellA.verts[vertIdx];
-            const e1 = cellB.verts[edgeIdx];
-            const e2 = cellB.verts[(edgeIdx + 1) % cellB.verts.length];
+        // Find closest edge and distance to polygon boundary
+        function closestEdgeToPoint(px, py, verts) {
+            let minDist = Infinity;
+            let closestPoint = { x: px, y: py };
+            let edgeNormal = { x: 0, y: 1 };
 
-            const closest = closestPointOnSegment(v.x, v.y, e1.x, e1.y, e2.x, e2.y);
-            const dx = v.x - closest.x;
-            const dy = v.y - closest.y;
+            const n = verts.length;
+            for (let i = 0; i < n; i++) {
+                const v1 = verts[i];
+                const v2 = verts[(i + 1) % n];
+
+                // Project point onto edge
+                const ex = v2.x - v1.x;
+                const ey = v2.y - v1.y;
+                const len2 = ex * ex + ey * ey;
+                if (len2 < 0.0001) continue;
+
+                let t = ((px - v1.x) * ex + (py - v1.y) * ey) / len2;
+                t = Math.max(0, Math.min(1, t));
+
+                const closestX = v1.x + ex * t;
+                const closestY = v1.y + ey * t;
+                const dx = px - closestX;
+                const dy = py - closestY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < minDist) {
+                    minDist = dist;
+                    closestPoint = { x: closestX, y: closestY };
+                    // Edge normal (perpendicular, pointing outward)
+                    const len = Math.sqrt(len2);
+                    edgeNormal = { x: -ey / len, y: ex / len };
+                }
+            }
+
+            return { dist: minDist, point: closestPoint, normal: edgeNormal };
+        }
+
+        // Resolve penetration: push vertex out of other cell
+        function resolvePenetration(vertex, otherCell) {
+            if (!pointInPolygon(vertex.x, vertex.y, otherCell.verts)) {
+                return false;
+            }
+
+            // Vertex is inside - find nearest edge and push out
+            const edge = closestEdgeToPoint(vertex.x, vertex.y, otherCell.verts);
+            const pushDist = edge.dist + 6; // Push out plus margin
+
+            vertex.x = edge.point.x + edge.normal.x * pushDist;
+            vertex.y = edge.point.y + edge.normal.y * pushDist;
+
+            return true;
+        }
+
+        // Separate two cells based on centroid overlap
+        function separateCentroids(cellA, cellB, minSeparation) {
+            const cA = cellA.centroid();
+            const cB = cellB.centroid();
+            const dx = cB.x - cA.x;
+            const dy = cB.y - cA.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
-            const minDist = 4; // Minimum separation
-
-            if (dist < minDist && dist > 0.001) {
-                // Push apart
-                const overlap = minDist - dist;
+            if (dist < minSeparation && dist > 0.001) {
+                const overlap = (minSeparation - dist) / 2;
                 const nx = dx / dist;
                 const ny = dy / dist;
 
-                // Move vertex out
-                v.x += nx * overlap * 0.5;
-                v.y += ny * overlap * 0.5;
-
-                // Move edge in (both endpoints)
-                const edgePush = overlap * 0.25;
-                e1.x -= nx * edgePush;
-                e1.y -= ny * edgePush;
-                e2.x -= nx * edgePush;
-                e2.y -= ny * edgePush;
+                // Push both cells apart
+                for (const v of cellA.verts) {
+                    v.x -= nx * overlap;
+                    v.y -= ny * overlap;
+                }
+                for (const v of cellB.verts) {
+                    v.x += nx * overlap;
+                    v.y += ny * overlap;
+                }
             }
         }
 
-        // Check all vertex-edge collisions between two cells
+        // Surface collision: keep vertices from getting too close to other cell edges
+        function surfaceCollision(cellA, cellB) {
+            const minDist = 5;
+
+            for (const v of cellA.verts) {
+                const edge = closestEdgeToPoint(v.x, v.y, cellB.verts);
+                if (edge.dist < minDist) {
+                    const push = (minDist - edge.dist) * 0.5;
+                    v.x += edge.normal.x * push;
+                    v.y += edge.normal.y * push;
+                }
+            }
+
+            for (const v of cellB.verts) {
+                const edge = closestEdgeToPoint(v.x, v.y, cellA.verts);
+                if (edge.dist < minDist) {
+                    const push = (minDist - edge.dist) * 0.5;
+                    v.x += edge.normal.x * push;
+                    v.y += edge.normal.y * push;
+                }
+            }
+        }
+
+        // Full collision resolution between two cells
         function collideCells(cellA, cellB) {
-            // Quick bounding box check
+            // Quick centroid distance check
             const cA = cellA.centroid();
             const cB = cellB.centroid();
             const dist = Math.sqrt((cA.x - cB.x) ** 2 + (cA.y - cB.y) ** 2);
-            if (dist > cellA.radius + cellB.radius + 20) return;
+            if (dist > cellA.radius + cellB.radius + 30) return;
 
-            // Check A's vertices against B's edges
-            for (let i = 0; i < cellA.verts.length; i++) {
-                for (let j = 0; j < cellB.verts.length; j++) {
-                    resolveVertexEdgeCollision(cellA, i, cellB, j);
-                }
+            // 1. Resolve any penetrations (vertices inside other cell)
+            for (const v of cellA.verts) {
+                resolvePenetration(v, cellB);
+            }
+            for (const v of cellB.verts) {
+                resolvePenetration(v, cellA);
             }
 
-            // Check B's vertices against A's edges
-            for (let i = 0; i < cellB.verts.length; i++) {
-                for (let j = 0; j < cellA.verts.length; j++) {
-                    resolveVertexEdgeCollision(cellB, i, cellA, j);
-                }
-            }
+            // 2. Minimum centroid separation (prevents complete overlap)
+            const minCentroidDist = (cellA.radius + cellB.radius) * 0.4;
+            separateCentroids(cellA, cellB, minCentroidDist);
+
+            // 3. Surface collision (keep edges apart)
+            surfaceCollision(cellA, cellB);
         }
 
         // ============================================
