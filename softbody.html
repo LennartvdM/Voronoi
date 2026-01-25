@@ -226,10 +226,8 @@
                         const offsetX = dx * diff * 0.5;
                         const offsetY = dy * diff * 0.5;
 
-                        v1.x += offsetX;
-                        v1.y += offsetY;
-                        v2.x -= offsetX;
-                        v2.y -= offsetY;
+                        safeMove(v1, v1.x + offsetX, v1.y + offsetY, this);
+                        safeMove(v2, v2.x - offsetX, v2.y - offsetY, this);
                     }
                 }
             }
@@ -266,11 +264,11 @@
                         if (dist > 0.001) {
                             // Place vertex on line from centroid through midpoint
                             // Slightly beyond midpoint to ensure convexity
-                            curr.x = midX + (dx / dist) * 2;
-                            curr.y = midY + (dy / dist) * 2;
+                            const newX = midX + (dx / dist) * 2;
+                            const newY = midY + (dy / dist) * 2;
+                            safeMove(curr, newX, newY, this);
                         } else {
-                            curr.x = midX;
-                            curr.y = midY;
+                            safeMove(curr, midX, midY, this);
                         }
                     }
                 }
@@ -355,13 +353,15 @@
                     const targetWidth = height * maxRatio;
                     const scale = targetWidth / width;
                     for (const v of this.verts) {
-                        v.x = c.x + (v.x - c.x) * scale;
+                        const newX = c.x + (v.x - c.x) * scale;
+                        safeMove(v, newX, v.y, this);
                     }
                 } else if (height > width * maxRatio && width > 5) {
                     const targetHeight = width * maxRatio;
                     const scale = targetHeight / height;
                     for (const v of this.verts) {
-                        v.y = c.y + (v.y - c.y) * scale;
+                        const newY = c.y + (v.y - c.y) * scale;
+                        safeMove(v, v.x, newY, this);
                     }
                 }
 
@@ -386,8 +386,9 @@
                         const dist = Math.sqrt(dx * dx + dy * dy);
                         if (dist > targetMax) {
                             const scale = targetMax / dist;
-                            v.x = c.x + dx * scale;
-                            v.y = c.y + dy * scale;
+                            const newX = c.x + dx * scale;
+                            const newY = c.y + dy * scale;
+                            safeMove(v, newX, newY, this);
                         }
                     }
                 }
@@ -408,8 +409,9 @@
 
                     // Gently pull toward target radius
                     const diff = (dist - targetRadius) * 0.02;
-                    v.x -= (dx / dist) * diff;
-                    v.y -= (dy / dist) * diff;
+                    const newX = v.x - (dx / dist) * diff;
+                    const newY = v.y - (dy / dist) * diff;
+                    safeMove(v, newX, newY, this);
                 }
             }
 
@@ -433,8 +435,9 @@
                     const scale = 1 + (ratio - 1) * blend;
 
                     for (const v of this.verts) {
-                        v.x = c.x + (v.x - c.x) * scale;
-                        v.y = c.y + (v.y - c.y) * scale;
+                        const newX = c.x + (v.x - c.x) * scale;
+                        const newY = c.y + (v.y - c.y) * scale;
+                        safeMove(v, newX, newY, this);
                     }
                 }
             }
@@ -464,8 +467,7 @@
 
             translate(dx, dy) {
                 for (const v of this.verts) {
-                    v.x += dx;
-                    v.y += dy;
+                    safeMove(v, v.x + dx, v.y + dy, this);
                 }
             }
         }
@@ -516,109 +518,80 @@
                     minDist = dist;
                     closestPoint = { x: closestX, y: closestY };
                     const len = Math.sqrt(len2);
-                    edgeNormal = { x: -ey / len, y: ex / len };
+                    // For CCW polygon, outward normal is (ey, -ex)
+                    edgeNormal = { x: ey / len, y: -ex / len };
                 }
             }
 
             return { dist: minDist, point: closestPoint, normal: edgeNormal };
         }
 
-        // HARD collision: Push entire cells apart if centroids too close
-        function separateCentroids(cellA, cellB) {
-            const cA = cellA.centroid();
-            const cB = cellB.centroid();
-            const dx = cB.x - cA.x;
-            const dy = cB.y - cA.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
+        // Global list of all cells for collision checking
+        // (set before solve() runs)
+        let allCells = [];
 
-            // Minimum centroid separation based on cell radii
-            const minDist = (cellA.radius + cellB.radius) * 0.7;
-
-            if (dist < minDist && dist > 0.001) {
-                const overlap = minDist - dist;
-                const nx = dx / dist;
-                const ny = dy / dist;
-
-                // Push BOTH cells apart equally
-                const push = overlap * 0.5;
-                for (const v of cellA.verts) {
-                    v.x -= nx * push;
-                    v.y -= ny * push;
+        // Check if a point would be inside any other cell
+        function wouldPenetrateOther(x, y, ignoreCell) {
+            for (const other of allCells) {
+                if (other === ignoreCell) continue;
+                if (pointInPolygon(x, y, other.verts)) {
+                    return other;
                 }
-                for (const v of cellB.verts) {
-                    v.x += nx * push;
-                    v.y += ny * push;
-                }
-                return true;
             }
-            return false;
+            return null;
         }
 
-        // Push vertex out if inside other cell - HARD push
-        function resolvePenetration(vertex, otherCell) {
-            if (!pointInPolygon(vertex.x, vertex.y, otherCell.verts)) {
-                return false;
+        // Safe move: move vertex but stop at other cell's boundary
+        function safeMove(vertex, newX, newY, ownerCell) {
+            // Check if new position would be inside another cell
+            const blocker = wouldPenetrateOther(newX, newY, ownerCell);
+
+            if (!blocker) {
+                // Safe - apply full move
+                vertex.x = newX;
+                vertex.y = newY;
+                return;
             }
 
-            // Vertex is INSIDE - this is bad, push it OUT
-            const otherCentroid = otherCell.centroid();
+            // Would penetrate - find safe position on blocker's boundary
+            const edge = closestEdgeToPoint(newX, newY, blocker.verts);
 
-            // Push directly away from other cell's centroid
-            const dx = vertex.x - otherCentroid.x;
-            const dy = vertex.y - otherCentroid.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
-            if (dist > 0.001) {
-                // Push out to the edge of the other cell + gap
-                const edge = closestEdgeToPoint(vertex.x, vertex.y, otherCell.verts);
-                const pushDist = edge.dist + config.cellGap + 5;
-                vertex.x = edge.point.x + edge.normal.x * pushDist;
-                vertex.y = edge.point.y + edge.normal.y * pushDist;
-            }
-            return true;
+            // Place vertex at boundary + gap, along normal
+            vertex.x = edge.point.x + edge.normal.x * (config.cellGap + 1);
+            vertex.y = edge.point.y + edge.normal.y * (config.cellGap + 1);
         }
 
-        // Keep cell surfaces apart - with stronger push
-        function constrainSurfaces(cellA, cellB) {
-            const gap = config.cellGap + 2;
+        // Minimum distance between cell surfaces
+        function maintainSurfaceGap(cellA, cellB) {
+            const gap = config.cellGap;
 
             for (const v of cellA.verts) {
-                if (pointInPolygon(v.x, v.y, cellB.verts)) continue; // Handled by penetration
                 const edge = closestEdgeToPoint(v.x, v.y, cellB.verts);
                 if (edge.dist < gap) {
-                    const push = gap - edge.dist;
-                    v.x += edge.normal.x * push;
-                    v.y += edge.normal.y * push;
+                    // Move to maintain gap
+                    v.x = edge.point.x + edge.normal.x * gap;
+                    v.y = edge.point.y + edge.normal.y * gap;
                 }
             }
 
             for (const v of cellB.verts) {
-                if (pointInPolygon(v.x, v.y, cellA.verts)) continue;
                 const edge = closestEdgeToPoint(v.x, v.y, cellA.verts);
                 if (edge.dist < gap) {
-                    const push = gap - edge.dist;
-                    v.x += edge.normal.x * push;
-                    v.y += edge.normal.y * push;
+                    v.x = edge.point.x + edge.normal.x * gap;
+                    v.y = edge.point.y + edge.normal.y * gap;
                 }
             }
         }
 
-        // Full collision constraint between two cells
+        // Cell-cell collision constraint
         function constrainCells(cellA, cellB) {
             const cA = cellA.centroid();
             const cB = cellB.centroid();
             const dist = Math.sqrt((cA.x - cB.x) ** 2 + (cA.y - cB.y) ** 2);
-            if (dist > cellA.radius + cellB.radius + 50) return;
+            if (dist > cellA.radius + cellB.radius + 60) return;
 
-            // FIRST: Separate centroids if too close (prevents deep penetration)
-            separateCentroids(cellA, cellB);
-
-            // THEN: Resolve any vertex penetrations
-            for (const v of cellA.verts) resolvePenetration(v, cellB);
-            for (const v of cellB.verts) resolvePenetration(v, cellA);
-
-            // FINALLY: Keep surfaces apart
-            constrainSurfaces(cellA, cellB);
+            // Maintain gap between surfaces
+            maintainSurfaceGap(cellA, cellB);
         }
 
         // ============================================
@@ -648,6 +621,9 @@
         }
 
         function solve() {
+            // Set global cell list for collision checks
+            allCells = cells;
+
             // First pass: determine which cells are "free"
             const isFree = cells.map((cell, i) => {
                 if (isTouchingWall(cell)) return false;
