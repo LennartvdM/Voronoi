@@ -125,6 +125,11 @@
             <input type="range" id="cellGap" min="0" max="20" value="4">
             <span id="cellGapVal">4</span>
         </div>
+        <div class="control-row">
+            <label>Vertices</label>
+            <input type="range" id="vertexCount" min="6" max="24" value="12">
+            <span id="vertexCountVal">12</span>
+        </div>
         <div class="divider"></div>
         <button id="resetBtn">Reset</button>
         <button id="addBtn">Add Cell</button>
@@ -150,7 +155,7 @@
         const config = {
             iterations: 20,         // Constraint solving iterations per frame
             cellGap: 5,             // Minimum gap between cells
-            vertexCount: 24,        // Vertices per cell
+            vertexCount: 12,        // Vertices per cell (fewer = simpler physics)
             baseRadius: 50,         // Default cell radius
         };
 
@@ -250,8 +255,9 @@
                     const by = next.y - curr.y;
                     const cross = ax * by - ay * bx;
 
-                    // If concave, SNAP to midpoint of prev-next, pushed outward
-                    if (cross < -0.1) {
+                    // If concave (or barely convex), SNAP outward
+                    // Threshold > 0 ensures strictly convex result
+                    if (cross < 5) {
                         // Midpoint between neighbors
                         const midX = (prev.x + next.x) / 2;
                         const midY = (prev.y + next.y) / 2;
@@ -263,9 +269,10 @@
 
                         if (dist > 0.001) {
                             // Place vertex on line from centroid through midpoint
-                            // Slightly beyond midpoint to ensure convexity
-                            const newX = midX + (dx / dist) * 2;
-                            const newY = midY + (dy / dist) * 2;
+                            // Push beyond midpoint to guarantee convexity
+                            const push = Math.max(5, (5 - cross) * 0.5);
+                            const newX = midX + (dx / dist) * push;
+                            const newY = midY + (dy / dist) * push;
                             safeMove(curr, newX, newY, this);
                         } else {
                             safeMove(curr, midX, midY, this);
@@ -818,6 +825,12 @@
         document.getElementById('cellGap').addEventListener('input', (e) => {
             config.cellGap = +e.target.value;
             document.getElementById('cellGapVal').textContent = e.target.value;
+        });
+
+        document.getElementById('vertexCount').addEventListener('input', (e) => {
+            config.vertexCount = +e.target.value;
+            document.getElementById('vertexCountVal').textContent = e.target.value;
+            initCells(); // Reset to apply new vertex count
         });
 
         document.getElementById('resetBtn').addEventListener('click', initCells);
