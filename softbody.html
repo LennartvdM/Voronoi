@@ -131,6 +131,33 @@
             <span id="vertexCountVal">12</span>
         </div>
         <div class="divider"></div>
+        <h3>Tuning</h3>
+        <div class="control-row">
+            <label>Edge Stretch</label>
+            <input type="range" id="edgeStretch" min="1" max="3" step="0.1" value="1.8">
+            <span id="edgeStretchVal">1.8</span>
+        </div>
+        <div class="control-row">
+            <label>Area Strength</label>
+            <input type="range" id="areaStrength" min="0.05" max="0.8" step="0.05" value="0.3">
+            <span id="areaStrengthVal">0.3</span>
+        </div>
+        <div class="control-row">
+            <label>Aspect Limit</label>
+            <input type="range" id="aspectLimit" min="1.5" max="5" step="0.5" value="2.5">
+            <span id="aspectLimitVal">2.5</span>
+        </div>
+        <div class="control-row">
+            <label>Convex Push</label>
+            <input type="range" id="convexPush" min="1" max="10" step="0.5" value="3">
+            <span id="convexPushVal">3</span>
+        </div>
+        <div class="control-row">
+            <label>Sphere Return</label>
+            <input type="range" id="sphereReturn" min="0" max="0.1" step="0.005" value="0.02">
+            <span id="sphereReturnVal">0.02</span>
+        </div>
+        <div class="divider"></div>
         <button id="resetBtn">Reset</button>
         <button id="addBtn">Add Cell</button>
         <button id="removeBtn">Remove Cell</button>
@@ -157,6 +184,12 @@
             cellGap: 5,             // Minimum gap between cells
             vertexCount: 12,        // Vertices per cell (fewer = simpler physics)
             baseRadius: 50,         // Default cell radius
+            // Tuning parameters
+            edgeStretch: 1.8,       // Max edge length multiplier (1.0 = no stretch)
+            areaStrength: 0.3,      // How aggressively area is preserved (0-1)
+            aspectLimit: 2.5,       // Max aspect ratio before correction
+            convexPush: 3,          // How far to push concave vertices
+            sphereReturn: 0.02,     // How fast free cells return to sphere
         };
 
         let container = { x: 0, y: 0, width: 0, height: 0 };
@@ -210,7 +243,7 @@
             constrainEdges() {
                 const n = this.verts.length;
                 const minLen = this.restLength * 0.4;
-                const maxLen = this.restLength * 1.8;
+                const maxLen = this.restLength * config.edgeStretch;
 
                 for (let i = 0; i < n; i++) {
                     const v1 = this.verts[i];
@@ -269,8 +302,8 @@
 
                         if (dist > 0.001) {
                             // Place vertex just beyond midpoint
-                            const newX = midX + (dx / dist) * 3;
-                            const newY = midY + (dy / dist) * 3;
+                            const newX = midX + (dx / dist) * config.convexPush;
+                            const newY = midY + (dy / dist) * config.convexPush;
                             safeMove(curr, newX, newY, this);
                         } else {
                             safeMove(curr, midX, midY, this);
@@ -350,7 +383,7 @@
 
                 const width = maxX - minX;
                 const height = maxY - minY;
-                const maxRatio = 2.5;
+                const maxRatio = config.aspectLimit;
                 const c = this.centroid();
 
                 // Apply HARD constraint - scale down the long axis IMMEDIATELY
@@ -413,7 +446,7 @@
                     if (dist < 0.001) continue;
 
                     // Gently pull toward target radius
-                    const diff = (dist - targetRadius) * 0.02;
+                    const diff = (dist - targetRadius) * config.sphereReturn;
                     const newX = v.x - (dx / dist) * diff;
                     const newY = v.y - (dy / dist) * diff;
                     safeMove(v, newX, newY, this);
@@ -436,8 +469,7 @@
                 // Scale all vertices from centroid to achieve target area
                 if (Math.abs(ratio - 1) > 0.01) {
                     // Blend toward correct area (not instant, but strong)
-                    const blend = 0.3;
-                    const scale = 1 + (ratio - 1) * blend;
+                    const scale = 1 + (ratio - 1) * config.areaStrength;
 
                     for (const v of this.verts) {
                         const newX = c.x + (v.x - c.x) * scale;
@@ -829,6 +861,31 @@
             config.vertexCount = +e.target.value;
             document.getElementById('vertexCountVal').textContent = e.target.value;
             initCells(); // Reset to apply new vertex count
+        });
+
+        document.getElementById('edgeStretch').addEventListener('input', (e) => {
+            config.edgeStretch = +e.target.value;
+            document.getElementById('edgeStretchVal').textContent = e.target.value;
+        });
+
+        document.getElementById('areaStrength').addEventListener('input', (e) => {
+            config.areaStrength = +e.target.value;
+            document.getElementById('areaStrengthVal').textContent = e.target.value;
+        });
+
+        document.getElementById('aspectLimit').addEventListener('input', (e) => {
+            config.aspectLimit = +e.target.value;
+            document.getElementById('aspectLimitVal').textContent = e.target.value;
+        });
+
+        document.getElementById('convexPush').addEventListener('input', (e) => {
+            config.convexPush = +e.target.value;
+            document.getElementById('convexPushVal').textContent = e.target.value;
+        });
+
+        document.getElementById('sphereReturn').addEventListener('input', (e) => {
+            config.sphereReturn = +e.target.value;
+            document.getElementById('sphereReturnVal').textContent = e.target.value;
         });
 
         document.getElementById('resetBtn').addEventListener('click', initCells);
