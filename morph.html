@@ -84,34 +84,47 @@
         'use strict';
 
         // =======================================================================
-        //  ARCHITECTURE OUTLINE
+        //  ARCHITECTURE
         //
-        //  The idea: cells are a universal layout primitive. The *settled states*
-        //  are just target configurations — any geometry you want. The hard
-        //  problem is the TRAVEL between them. Voronoi tessellation guarantees
-        //  a valid, gap-free, overlap-free tiling at every single frame while
-        //  seeds are in motion.
+        //  Cells are a universal layout primitive. Settled states are just
+        //  target configurations — any geometry. The hard problem is the
+        //  TRAVEL between them. Voronoi tessellation guarantees a valid,
+        //  gap-free, overlap-free tiling at every frame while seeds move.
         //
         //  Data flow per frame:
         //
-        //    1. TARGETS — each layout generator produces an array of {x, y}
-        //       seed positions (one per cell). These are the endpoints.
+        //    1. TARGETS — a layout generator produces {x, y} seed positions.
+        //       Pure function: (W, H, count) → [{x, y}, ...]. Knows nothing
+        //       about animation.
         //
-        //    2. TRANSITION — seeds interpolate from current position toward
-        //       target. Collision avoidance steers seeds so they don't cross
-        //       paths or bunch up.
+        //    2. TRANSITION — seeds interpolate from start → target with
+        //       easeInOutCubic. Greedy nearest-neighbor assignment minimizes
+        //       total travel. 3-pass collision avoidance keeps seeds from
+        //       bunching. Knows nothing about Voronoi.
         //
-        //    3. VORONOI — from the current (moving) seed positions, compute
-        //       Voronoi tessellation every frame. This is what guarantees
-        //       valid tiling mid-flight. Cells may be weird shapes in transit,
-        //       but they tile.
+        //    3. VORONOI — half-plane intersection recomputed every frame
+        //       from current seed positions. O(n²) per cell. Guarantees
+        //       valid tiling at all intermediate states. Knows nothing
+        //       about layouts or transitions.
         //
-        //    4. RENDER — draw the polygons with gap inset, rounded corners,
-        //       color fill, border.
+        //    4. RENDER — inset polygons for gap, round corners, gradient
+        //       fill, border stroke. Hover: highlight cell, show tooltip.
+        //       Knows nothing about seeds.
         //
-        //  The layout generators don't know about animation. The transition
-        //  system doesn't know about rendering. The Voronoi engine doesn't
-        //  know about layouts. Clean separation.
+        //  Current layout generators:
+        //    bento     — recursive rectangle subdivision
+        //    hex       — hexagonal close-packing
+        //    voronoi   — random + 20 Lloyd relaxation iterations
+        //    diagonal  — Poisson-disk in bottom-left triangle
+        //    spiral    — golden-angle Fermat spiral
+        //    tetris    — irregular grid with jitter
+        //
+        //  Open questions / future work:
+        //    - Weighted Voronoi (power diagrams) so cells can have different sizes
+        //    - Container shapes beyond full-canvas rectangle
+        //    - Staggered departure (per-seed delay for cascading feel)
+        //    - Path planning: seeds could arc around obstacles instead of
+        //      relying on collision resolution to push them apart
         // =======================================================================
 
 
@@ -143,6 +156,8 @@
         let transitionStart = 0;          // timestamp when transition began
         let lastTime = 0;
         let animationId;
+        let hoveredCell = -1;             // Index of cell under cursor
+        let mouseX = -9999, mouseY = -9999;
 
 
         // ====================== LAYOUT GENERATORS =============================
@@ -540,7 +555,23 @@
         function render(polygons) {
             ctx.clearRect(0, 0, W, H);
 
+            // Hit-test: find which cell the cursor is in
+            hoveredCell = -1;
             for (let i = 0; i < polygons.length; i++) {
+                if (polygons[i] && pointInPolygon(mouseX, mouseY, polygons[i])) {
+                    hoveredCell = i;
+                    break;
+                }
+            }
+
+            // Draw non-hovered first, hovered last (z-order)
+            const order = [];
+            for (let i = 0; i < polygons.length; i++) {
+                if (i !== hoveredCell) order.push(i);
+            }
+            if (hoveredCell >= 0) order.push(hoveredCell);
+
+            for (const i of order) {
                 const raw = polygons[i];
                 if (!raw || raw.length < 3) continue;
 
@@ -548,9 +579,11 @@
                 if (!polygon || polygon.length < 3) continue;
 
                 const color = cellColors[i % cellColors.length];
+                const isHovered = i === hoveredCell;
 
                 // Fill
                 ctx.save();
+                ctx.globalAlpha = isHovered ? 1.0 : 0.85;
                 drawRoundedPolygon(ctx, polygon, config.cornerRadius);
                 ctx.clip();
 
@@ -561,15 +594,15 @@
                     minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]);
                 }
                 const grad = ctx.createLinearGradient(minX, minY, maxX, maxY);
-                grad.addColorStop(0, color);
-                grad.addColorStop(1, adjustColor(color, -40));
+                grad.addColorStop(0, isHovered ? adjustColor(color, 20) : color);
+                grad.addColorStop(1, adjustColor(color, isHovered ? -20 : -40));
                 ctx.fillStyle = grad;
                 ctx.fill();
 
                 // Cell number watermark
-                ctx.globalAlpha = 0.15;
+                ctx.globalAlpha = isHovered ? 0.25 : 0.12;
                 ctx.fillStyle = '#fff';
-                const size = Math.min(maxX - minX, maxY - minY) * 0.5;
+                const size = Math.min(maxX - minX, maxY - minY) * 0.45;
                 ctx.font = `bold ${size}px system-ui, sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
@@ -577,13 +610,20 @@
 
                 ctx.restore();
 
-                // Border (inner stroke via clip)
+                // Border
                 ctx.save();
                 drawRoundedPolygon(ctx, polygon, config.cornerRadius);
                 ctx.clip();
                 drawRoundedPolygon(ctx, polygon, config.cornerRadius);
-                ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-                ctx.lineWidth = 2;
+                if (isHovered) {
+                    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+                    ctx.lineWidth = 3;
+                    ctx.shadowColor = 'rgba(255,255,255,0.4)';
+                    ctx.shadowBlur = 10;
+                } else {
+                    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                    ctx.lineWidth = 1.5;
+                }
                 ctx.stroke();
                 ctx.restore();
             }
@@ -790,11 +830,22 @@
             document.querySelectorAll('.layout-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const layoutName = btn.dataset.layout;
-                    if (layoutName === config.currentLayout && transitionT >= 1) return;
                     document.querySelectorAll('.layout-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     startTransition(layoutName);
                 });
+            });
+
+            // Mouse tracking for hover
+            canvas.addEventListener('pointermove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                mouseX = e.clientX - rect.left;
+                mouseY = e.clientY - rect.top;
+            });
+            canvas.addEventListener('pointerleave', () => {
+                mouseX = -9999;
+                mouseY = -9999;
+                hoveredCell = -1;
             });
 
             window.addEventListener('resize', () => {
