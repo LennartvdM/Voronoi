@@ -27,13 +27,19 @@
         /* Layout switcher bar */
         .layout-bar {
             position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 8px; z-index: 100;
+            display: flex; gap: 6px; z-index: 100;
             background: rgba(20, 20, 35, 0.9);
             backdrop-filter: blur(12px);
             padding: 8px 12px;
             border-radius: 12px;
             border: 1px solid rgba(255,255,255,0.1);
             box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+
+        .layout-sep {
+            width: 1px;
+            background: rgba(255,255,255,0.12);
+            margin: 2px 4px;
         }
 
         .layout-btn {
@@ -77,6 +83,11 @@
         <button class="layout-btn" data-layout="diagonal">Diagonal</button>
         <button class="layout-btn" data-layout="spiral">Spiral</button>
         <button class="layout-btn" data-layout="tetris">Tetris</button>
+        <div class="layout-sep"></div>
+        <button class="layout-btn" data-layout="rim">Rim</button>
+        <button class="layout-btn" data-layout="diagL">◣ Empty</button>
+        <button class="layout-btn" data-layout="diagR">◥ Empty</button>
+        <button class="layout-btn" data-layout="sidebar">Sidebar</button>
     </div>
 
     <script>
@@ -377,6 +388,126 @@
                 }
                 return results;
             },
+
+            // ---- WHITESPACE LAYOUTS ----
+            // These include a void seed that claims empty space.
+            // The void transitions like any other seed, creating smooth
+            // whitespace animations between layouts.
+
+            // RIM — cells around the outer edge, void in center
+            rim(W, H, count) {
+                const m = 40;
+                const rimThickness = Math.min(W, H) * 0.22;
+                const results = [];
+                let attempts = 0;
+                const minDist = (2 * (W + H) * rimThickness / count) ** 0.5 * 0.5;
+
+                while (results.length < count && attempts < 3000) {
+                    const x = m + Math.random() * (W - m * 2);
+                    const y = m + Math.random() * (H - m * 2);
+                    // Must be within rimThickness of any edge
+                    const distFromEdge = Math.min(x - m, y - m, (W - m) - x, (H - m) - y);
+                    if (distFromEdge < rimThickness) {
+                        let valid = true;
+                        for (const p of results) {
+                            if ((p.x - x) ** 2 + (p.y - y) ** 2 < minDist * minDist) { valid = false; break; }
+                        }
+                        if (valid) results.push({ x, y, w: 1 });
+                    }
+                    attempts++;
+                }
+                while (results.length < count) {
+                    const edge = Math.floor(Math.random() * 4);
+                    const t = Math.random();
+                    const inset = m + Math.random() * rimThickness * 0.5;
+                    if (edge === 0) results.push({ x: m + t * (W - m * 2), y: inset, w: 1 });
+                    else if (edge === 1) results.push({ x: W - inset, y: m + t * (H - m * 2), w: 1 });
+                    else if (edge === 2) results.push({ x: m + t * (W - m * 2), y: H - inset, w: 1 });
+                    else results.push({ x: inset, y: m + t * (H - m * 2), w: 1 });
+                }
+                // Void in center — high weight to push cells outward
+                results.push({ x: W / 2, y: H / 2, w: 3.0, void: true });
+                return results;
+            },
+
+            // DIAG-L — cells in upper-right, void in lower-left (◣ empty)
+            diagL(W, H, count) {
+                const m = 50;
+                const results = [];
+                let attempts = 0;
+                const minDist = Math.sqrt((W * H * 0.5) / count) * 0.4;
+
+                while (results.length < count && attempts < 3000) {
+                    const x = m + Math.random() * (W - m * 2);
+                    const y = m + Math.random() * (H - m * 2);
+                    // Upper-right: x/W + y/H < 1 (above the diagonal)
+                    if (x / W + y / H < 0.95) {
+                        let valid = true;
+                        for (const p of results) {
+                            if ((p.x - x) ** 2 + (p.y - y) ** 2 < minDist * minDist) { valid = false; break; }
+                        }
+                        if (valid) results.push({ x, y, w: 1 });
+                    }
+                    attempts++;
+                }
+                while (results.length < count) {
+                    results.push({ x: W * 0.6 + Math.random() * W * 0.3, y: m + Math.random() * H * 0.3, w: 1 });
+                }
+                // Void in lower-left triangle
+                results.push({ x: W * 0.25, y: H * 0.75, w: 2.5, void: true });
+                return results;
+            },
+
+            // DIAG-R — cells in lower-left, void in upper-right (◥ empty)
+            diagR(W, H, count) {
+                const m = 50;
+                const results = [];
+                let attempts = 0;
+                const minDist = Math.sqrt((W * H * 0.5) / count) * 0.4;
+
+                while (results.length < count && attempts < 3000) {
+                    const x = m + Math.random() * (W - m * 2);
+                    const y = m + Math.random() * (H - m * 2);
+                    // Lower-left: x/W + y/H > 1 (below the diagonal)
+                    if (x / W + y / H > 1.05) {
+                        let valid = true;
+                        for (const p of results) {
+                            if ((p.x - x) ** 2 + (p.y - y) ** 2 < minDist * minDist) { valid = false; break; }
+                        }
+                        if (valid) results.push({ x, y, w: 1 });
+                    }
+                    attempts++;
+                }
+                while (results.length < count) {
+                    results.push({ x: m + Math.random() * W * 0.3, y: H * 0.6 + Math.random() * H * 0.3, w: 1 });
+                }
+                // Void in upper-right triangle
+                results.push({ x: W * 0.75, y: H * 0.25, w: 2.5, void: true });
+                return results;
+            },
+
+            // SIDEBAR — cells condensed into left strip, void claims right side
+            sidebar(W, H, count) {
+                const sidebarW = W * 0.25;
+                const m = 30;
+                const results = [];
+                const cellH = (H - m * 2) / Math.ceil(count / 2);
+                const cols = 2;
+                const colW = (sidebarW - m * 2) / cols;
+
+                for (let i = 0; i < count; i++) {
+                    const col = i % cols;
+                    const row = Math.floor(i / cols);
+                    results.push({
+                        x: m + colW * (col + 0.5) + (Math.random() - 0.5) * colW * 0.2,
+                        y: m + cellH * (row + 0.5) + (Math.random() - 0.5) * cellH * 0.2,
+                        w: 0.7,
+                    });
+                }
+                // Void claiming right 75%
+                results.push({ x: W * 0.65, y: H / 2, w: 3.5, void: true });
+                return results;
+            },
         };
 
 
@@ -392,11 +523,27 @@
         //  Does NOT touch the Voronoi or renderer. Just updates seeds[].
         // ======================================================================
 
+        // Ensure seeds array always has exactly cellCount content + 1 void
+        function normalizeSeeds(seedArr) {
+            const hasVoid = seedArr.some(s => s.void);
+            if (!hasVoid) {
+                // Tuck void in bottom-right corner with negligible weight
+                seedArr.push({ x: W - 10, y: H - 10, w: 0.01, void: true });
+            }
+            return seedArr;
+        }
+
         function startTransition(layoutName) {
-            const newTargets = layouts[layoutName](W, H, config.cellCount);
+            const newTargets = normalizeSeeds(layouts[layoutName](W, H, config.cellCount));
+
+            // Ensure current seeds have same count (pad/trim if needed)
+            while (seeds.length < newTargets.length) {
+                seeds.push({ x: W - 10, y: H - 10, w: 0.01, void: true });
+            }
+
             const assigned = assignSeeds(seeds, newTargets);
 
-            startSeeds = seeds.map(s => ({ x: s.x, y: s.y, w: s.w || 1 }));
+            startSeeds = seeds.map(s => ({ x: s.x, y: s.y, w: s.w || 1, void: !!s.void }));
             targetSeeds = assigned;
             transitionT = 0;
             transitionStart = performance.now();
@@ -404,35 +551,47 @@
         }
 
         // Greedy nearest-neighbor seed assignment
-        // Minimizes total travel distance by greedily matching each seed
-        // to its closest unclaimed target
+        // Pairs void↔void separately so ghost cells never steal content targets
         function assignSeeds(current, targets) {
-            const n = current.length;
-            const result = new Array(n);
-            const claimed = new Array(targets.length).fill(false);
+            const result = new Array(current.length);
 
-            // Build distance matrix and sort by shortest distances first
+            // Separate void and content indices
+            const curVoids = [], curContent = [];
+            current.forEach((s, i) => (s.void ? curVoids : curContent).push(i));
+            const tgtVoids = [], tgtContent = [];
+            targets.forEach((s, i) => (s.void ? tgtVoids : tgtContent).push(i));
+
+            // Pair voids directly (there's usually just 1)
+            for (let k = 0; k < curVoids.length; k++) {
+                const ti = k < tgtVoids.length ? tgtVoids[k] : tgtContent[tgtContent.length - 1];
+                const t = targets[ti];
+                result[curVoids[k]] = { x: t.x, y: t.y, w: t.w || 1, void: !!t.void };
+            }
+
+            // Pair content seeds by shortest distance
+            const claimed = new Set();
             const pairs = [];
-            for (let i = 0; i < n; i++) {
-                for (let j = 0; j < targets.length; j++) {
-                    const dx = current[i].x - targets[j].x;
-                    const dy = current[i].y - targets[j].y;
-                    pairs.push({ i, j, dist: dx * dx + dy * dy });
+            for (const ci of curContent) {
+                for (const tj of tgtContent) {
+                    const dx = current[ci].x - targets[tj].x;
+                    const dy = current[ci].y - targets[tj].y;
+                    pairs.push({ ci, tj, dist: dx * dx + dy * dy });
                 }
             }
             pairs.sort((a, b) => a.dist - b.dist);
 
-            const assigned = new Array(n).fill(false);
-            for (const { i, j } of pairs) {
-                if (assigned[i] || claimed[j]) continue;
-                result[i] = { x: targets[j].x, y: targets[j].y, w: targets[j].w || 1 };
-                assigned[i] = true;
-                claimed[j] = true;
+            const assigned = new Set();
+            for (const { ci, tj } of pairs) {
+                if (assigned.has(ci) || claimed.has(tj)) continue;
+                const t = targets[tj];
+                result[ci] = { x: t.x, y: t.y, w: t.w || 1, void: false };
+                assigned.add(ci);
+                claimed.add(tj);
             }
 
-            // Fallback: if any seed wasn't assigned (shouldn't happen with equal counts)
-            for (let i = 0; i < n; i++) {
-                if (!result[i]) result[i] = { x: current[i].x, y: current[i].y, w: current[i].w || 1 };
+            // Fallback
+            for (let i = 0; i < current.length; i++) {
+                if (!result[i]) result[i] = { x: current[i].x, y: current[i].y, w: current[i].w || 1, void: !!current[i].void };
             }
             return result;
         }
@@ -446,9 +605,11 @@
 
             // Lerp each seed (position + weight) from start to target
             for (let i = 0; i < seeds.length; i++) {
+                if (!startSeeds[i] || !targetSeeds[i]) continue;
                 seeds[i].x = startSeeds[i].x + (targetSeeds[i].x - startSeeds[i].x) * transitionT;
                 seeds[i].y = startSeeds[i].y + (targetSeeds[i].y - startSeeds[i].y) * transitionT;
                 seeds[i].w = startSeeds[i].w + ((targetSeeds[i].w || 1) - startSeeds[i].w) * transitionT;
+                seeds[i].void = targetSeeds[i].void;
             }
 
             // Collision avoidance: 3 relaxation passes
@@ -593,18 +754,20 @@
         function render(polygons) {
             ctx.clearRect(0, 0, W, H);
 
-            // Hit-test: find which cell the cursor is in
+            // Hit-test: find which non-void cell the cursor is in
             hoveredCell = -1;
             for (let i = 0; i < polygons.length; i++) {
+                if (seeds[i] && seeds[i].void) continue;
                 if (polygons[i] && pointInPolygon(mouseX, mouseY, polygons[i])) {
                     hoveredCell = i;
                     break;
                 }
             }
 
-            // Draw non-hovered first, hovered last (z-order)
+            // Draw non-hovered first, hovered last (z-order), skip voids
             const order = [];
             for (let i = 0; i < polygons.length; i++) {
+                if (seeds[i] && seeds[i].void) continue;  // skip void cells
                 if (i !== hoveredCell) order.push(i);
             }
             if (hoveredCell >= 0) order.push(hoveredCell);
@@ -860,9 +1023,9 @@
             resize();
 
             // Generate initial layout
-            seeds = layouts[config.currentLayout](W, H, config.cellCount);
-            targetSeeds = seeds.map(s => ({ x: s.x, y: s.y, w: s.w || 1 }));
-            startSeeds = seeds.map(s => ({ x: s.x, y: s.y, w: s.w || 1 }));
+            seeds = normalizeSeeds(layouts[config.currentLayout](W, H, config.cellCount));
+            targetSeeds = seeds.map(s => ({ ...s }));
+            startSeeds = seeds.map(s => ({ ...s }));
 
             // Layout button events
             document.querySelectorAll('.layout-btn').forEach(btn => {
@@ -889,10 +1052,10 @@
             window.addEventListener('resize', () => {
                 resize();
                 // Recompute current layout for new dimensions
-                targetSeeds = layouts[config.currentLayout](W, H, config.cellCount);
+                targetSeeds = normalizeSeeds(layouts[config.currentLayout](W, H, config.cellCount));
                 if (transitionT >= 1) {
-                    seeds = targetSeeds.map(s => ({ x: s.x, y: s.y, w: s.w || 1 }));
-                    startSeeds = seeds.map(s => ({ x: s.x, y: s.y, w: s.w || 1 }));
+                    seeds = targetSeeds.map(s => ({ ...s }));
+                    startSeeds = seeds.map(s => ({ ...s }));
                 }
             });
 
