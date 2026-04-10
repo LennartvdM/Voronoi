@@ -158,70 +158,189 @@
 
         const layouts = {
 
-            // BENTO — approximate a bento grid by placing seeds at cell centers
-            // of a randomized rectangular subdivision
+            // BENTO — recursive rectangle subdivision, seed at each rect center
             bento(W, H, count) {
-                // TODO: implement rectangular subdivision
-                // Strategy: recursively split rectangles, place seed at each center
-                // For now: placeholder grid
-                return placeholderGrid(W, H, count);
+                const m = 60; // margin
+                const rects = [{ x: m, y: m, w: W - m * 2, h: H - m * 2 }];
+
+                // Subdivide until we have enough rects
+                while (rects.length < count) {
+                    // Split the largest rect
+                    rects.sort((a, b) => (b.w * b.h) - (a.w * a.h));
+                    const r = rects.shift();
+                    // Split along the longer axis with some randomness
+                    const splitH = r.w > r.h;
+                    const ratio = 0.35 + Math.random() * 0.3; // 35-65% split
+                    if (splitH) {
+                        const splitX = r.w * ratio;
+                        rects.push({ x: r.x, y: r.y, w: splitX, h: r.h });
+                        rects.push({ x: r.x + splitX, y: r.y, w: r.w - splitX, h: r.h });
+                    } else {
+                        const splitY = r.h * ratio;
+                        rects.push({ x: r.x, y: r.y, w: r.w, h: splitY });
+                        rects.push({ x: r.x, y: r.y + splitY, w: r.w, h: r.h - splitY });
+                    }
+                }
+
+                return rects.slice(0, count).map(r => ({
+                    x: r.x + r.w / 2,
+                    y: r.y + r.h / 2,
+                }));
             },
 
-            // HEX — hexagonal close-packing
+            // HEX — hexagonal close-packing centered on canvas
             hex(W, H, count) {
-                // TODO: implement hex grid seed placement
-                // Strategy: compute hex grid that fits `count` cells, center it
-                return placeholderGrid(W, H, count);
+                // Find hex grid dimensions that fit count cells
+                const aspect = W / H;
+                let bestCols = 1, bestRows = count;
+                let bestDiff = Infinity;
+                for (let c = 1; c <= count; c++) {
+                    const r = Math.ceil(count / c);
+                    const diff = Math.abs((c / r) * 0.866 - aspect);
+                    if (diff < bestDiff) { bestDiff = diff; bestCols = c; bestRows = r; }
+                }
+
+                const m = 60;
+                const cellW = (W - m * 2) / bestCols;
+                const cellH = (H - m * 2) / bestRows;
+                const results = [];
+
+                for (let row = 0; row < bestRows && results.length < count; row++) {
+                    const cols = row % 2 === 0 ? bestCols : bestCols - 1;
+                    const offset = row % 2 === 0 ? 0 : cellW * 0.5;
+                    for (let col = 0; col < cols && results.length < count; col++) {
+                        results.push({
+                            x: m + offset + cellW * (col + 0.5),
+                            y: m + cellH * (row + 0.5),
+                        });
+                    }
+                }
+                return results;
             },
 
-            // VORONOI — organic random with Lloyd relaxation
+            // VORONOI — random seeds with Lloyd relaxation for organic feel
             voronoi(W, H, count) {
-                // TODO: implement random + Lloyd relaxation
-                // Strategy: random seeds → run N iterations of Lloyd's algorithm
-                // (compute Voronoi, move each seed to its cell's centroid, repeat)
-                return placeholderGrid(W, H, count);
+                const m = 80;
+                // Start with random positions
+                let pts = [];
+                for (let i = 0; i < count; i++) {
+                    pts.push({ x: m + Math.random() * (W - m * 2), y: m + Math.random() * (H - m * 2) });
+                }
+
+                // Lloyd relaxation: move seeds to centroids of their Voronoi cells
+                const bounds = [[0, 0], [W, 0], [W, H], [0, H]];
+                for (let iter = 0; iter < 20; iter++) {
+                    const polys = [];
+                    for (let i = 0; i < pts.length; i++) {
+                        let poly = bounds.map(p => [...p]);
+                        for (let j = 0; j < pts.length; j++) {
+                            if (i === j) continue;
+                            const dx = pts[j].x - pts[i].x;
+                            const dy = pts[j].y - pts[i].y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            if (dist < 0.001) continue;
+                            poly = clipPolygon(poly, (pts[i].x + pts[j].x) / 2, (pts[i].y + pts[j].y) / 2, -dx / dist, -dy / dist);
+                            if (poly.length < 3) break;
+                        }
+                        polys.push(poly);
+                    }
+                    // Move each seed toward its cell centroid
+                    for (let i = 0; i < pts.length; i++) {
+                        if (polys[i].length < 3) continue;
+                        const c = getPolygonCentroid(polys[i]);
+                        pts[i].x += (c.x - pts[i].x) * 0.7;
+                        pts[i].y += (c.y - pts[i].y) * 0.7;
+                    }
+                }
+                return pts;
             },
 
-            // DIAGONAL — cells packed into one diagonal half of the screen
+            // DIAGONAL — seeds packed into the bottom-left diagonal half
             diagonal(W, H, count) {
-                // TODO: implement diagonal-half placement
-                // Strategy: generate seeds only in the bottom-left triangle
-                return placeholderGrid(W, H, count);
+                const m = 60;
+                const pts = [];
+                let attempts = 0;
+                const minDist = Math.sqrt((W * H * 0.5) / count) * 0.5;
+
+                while (pts.length < count && attempts < 3000) {
+                    const x = m + Math.random() * (W - m * 2);
+                    const y = m + Math.random() * (H - m * 2);
+                    // Below the diagonal line from top-right to bottom-left
+                    if (y / H + x / W > 1.0) {
+                        let valid = true;
+                        for (const p of pts) {
+                            if ((p.x - x) ** 2 + (p.y - y) ** 2 < minDist * minDist) { valid = false; break; }
+                        }
+                        if (valid) pts.push({ x, y });
+                    }
+                    attempts++;
+                }
+                // Fill remaining if diagonal is too constrained
+                while (pts.length < count) {
+                    pts.push({ x: m + Math.random() * (W - m * 2) * 0.4, y: H * 0.6 + Math.random() * (H * 0.3) });
+                }
+                return pts;
             },
 
-            // SPIRAL — seeds arranged in a spiral from center
+            // SPIRAL — Fermat / golden angle spiral from center
             spiral(W, H, count) {
-                // TODO: implement Fermat/Archimedean spiral
-                // Strategy: golden-angle spiral, scaled to fill the canvas
-                return placeholderGrid(W, H, count);
+                const cx = W / 2, cy = H / 2;
+                const maxR = Math.min(W, H) * 0.42;
+                const goldenAngle = Math.PI * (3 - Math.sqrt(5)); // ~137.5 degrees
+                const results = [];
+
+                for (let i = 0; i < count; i++) {
+                    const frac = i / (count - 1 || 1);
+                    const r = maxR * Math.sqrt(frac); // sqrt for even area distribution
+                    const theta = i * goldenAngle;
+                    results.push({
+                        x: cx + r * Math.cos(theta),
+                        y: cy + r * Math.sin(theta),
+                    });
+                }
+                return results;
             },
 
-            // TETRIS — seeds placed at centers of tetromino-shaped regions
+            // TETRIS — seeds placed in tetromino-like L/T/S/Z/I/O shapes on a grid
             tetris(W, H, count) {
-                // TODO: implement tetromino packing
-                // Strategy: place tetrominoes on a grid, seed at each piece center
-                return placeholderGrid(W, H, count);
+                const m = 80;
+                const gridW = W - m * 2, gridH = H - m * 2;
+                const cellSize = Math.sqrt((gridW * gridH) / (count * 2.5));
+                const cols = Math.floor(gridW / cellSize);
+                const rows = Math.floor(gridH / cellSize);
+
+                // Place seeds in tetromino-center-like positions
+                // Use an irregular grid with offsets
+                const results = [];
+                const used = new Set();
+
+                for (let i = 0; i < count; i++) {
+                    let placed = false;
+                    for (let attempt = 0; attempt < 50 && !placed; attempt++) {
+                        const col = Math.floor(Math.random() * cols);
+                        const row = Math.floor(Math.random() * rows);
+                        const key = `${col},${row}`;
+                        if (!used.has(key)) {
+                            used.add(key);
+                            // Offset alternating cells for tetris feel
+                            const jitter = (i % 3 === 0) ? cellSize * 0.3 : 0;
+                            results.push({
+                                x: m + cellSize * (col + 0.5) + jitter * (Math.random() - 0.5),
+                                y: m + cellSize * (row + 0.5) + jitter * (Math.random() - 0.5),
+                            });
+                            placed = true;
+                        }
+                    }
+                    if (!placed) {
+                        results.push({
+                            x: m + Math.random() * gridW,
+                            y: m + Math.random() * gridH,
+                        });
+                    }
+                }
+                return results;
             },
         };
-
-        // Temporary: evenly spaced grid so the skeleton renders something
-        function placeholderGrid(W, H, count) {
-            const margin = 80;
-            const cols = Math.ceil(Math.sqrt(count * (W / H)));
-            const rows = Math.ceil(count / cols);
-            const cellW = (W - margin * 2) / cols;
-            const cellH = (H - margin * 2) / rows;
-            const result = [];
-            for (let i = 0; i < count; i++) {
-                const col = i % cols;
-                const row = Math.floor(i / cols);
-                result.push({
-                    x: margin + cellW * (col + 0.5),
-                    y: margin + cellH * (row + 0.5),
-                });
-            }
-            return result;
-        }
 
 
         // ===================== TRANSITION SYSTEM ==============================
@@ -237,19 +356,7 @@
         // ======================================================================
 
         function startTransition(layoutName) {
-            // TODO: implement
-            // 1. Generate new targets from layouts[layoutName](W, H, config.cellCount)
-            // 2. Match current seeds to nearest targets (assignment problem)
-            //    - simple: greedy nearest-neighbor
-            //    - better: Hungarian algorithm for optimal matching
-            // 3. Store startSeeds = copy of current seeds
-            // 4. Set transitionT = 0, record transitionStart = performance.now()
-            // 5. config.currentLayout = layoutName
-
             const newTargets = layouts[layoutName](W, H, config.cellCount);
-
-            // Greedy assignment: for each current seed, claim nearest unclaimed target
-            // TODO: replace with Hungarian for optimal matching
             const assigned = assignSeeds(seeds, newTargets);
 
             startSeeds = seeds.map(s => ({ x: s.x, y: s.y }));
@@ -260,43 +367,84 @@
         }
 
         // Greedy nearest-neighbor seed assignment
-        // Returns reordered targets so targets[i] is where seeds[i] should go
+        // Minimizes total travel distance by greedily matching each seed
+        // to its closest unclaimed target
         function assignSeeds(current, targets) {
-            // TODO: implement
-            // For now: direct 1:1 mapping (works when count matches)
-            return targets.slice(0, current.length);
+            const n = current.length;
+            const result = new Array(n);
+            const claimed = new Array(targets.length).fill(false);
+
+            // Build distance matrix and sort by shortest distances first
+            const pairs = [];
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < targets.length; j++) {
+                    const dx = current[i].x - targets[j].x;
+                    const dy = current[i].y - targets[j].y;
+                    pairs.push({ i, j, dist: dx * dx + dy * dy });
+                }
+            }
+            pairs.sort((a, b) => a.dist - b.dist);
+
+            const assigned = new Array(n).fill(false);
+            for (const { i, j } of pairs) {
+                if (assigned[i] || claimed[j]) continue;
+                result[i] = { x: targets[j].x, y: targets[j].y };
+                assigned[i] = true;
+                claimed[j] = true;
+            }
+
+            // Fallback: if any seed wasn't assigned (shouldn't happen with equal counts)
+            for (let i = 0; i < n; i++) {
+                if (!result[i]) result[i] = { x: current[i].x, y: current[i].y };
+            }
+            return result;
         }
 
         function updateTransition(now) {
-            // TODO: implement
-            // 1. Compute transitionT from elapsed time + easing
-            // 2. For each seed: lerp from startSeeds[i] → targetSeeds[i]
-            // 3. Run collision avoidance pass
-            // 4. Write result into seeds[]
-
             if (transitionT >= 1) return;
 
             const elapsed = now - transitionStart;
             const rawT = Math.min(1, elapsed / config.transitionDuration);
-
-            // Ease-in-out for organic feel
             transitionT = easeInOutCubic(rawT);
 
+            // Lerp each seed from start to target
             for (let i = 0; i < seeds.length; i++) {
                 seeds[i].x = startSeeds[i].x + (targetSeeds[i].x - startSeeds[i].x) * transitionT;
                 seeds[i].y = startSeeds[i].y + (targetSeeds[i].y - startSeeds[i].y) * transitionT;
             }
 
-            // TODO: collision avoidance pass
-            // resolveCollisions(seeds, config.collisionRadius);
+            // Collision avoidance: 3 relaxation passes
+            if (transitionT > 0 && transitionT < 1) {
+                resolveCollisions(seeds, config.collisionRadius);
+                resolveCollisions(seeds, config.collisionRadius);
+                resolveCollisions(seeds, config.collisionRadius);
+            }
         }
 
-        // Collision avoidance — push apart seeds that are too close
+        // Push apart any seeds closer than minDist
         function resolveCollisions(seedArray, minDist) {
-            // TODO: implement
-            // For each pair: if distance < minDist, push apart along
-            // the line connecting them (half each). This is a single
-            // relaxation pass — run it 2-3 times per frame for stability.
+            const n = seedArray.length;
+            const minDistSq = minDist * minDist;
+
+            for (let i = 0; i < n; i++) {
+                for (let j = i + 1; j < n; j++) {
+                    const dx = seedArray[j].x - seedArray[i].x;
+                    const dy = seedArray[j].y - seedArray[i].y;
+                    const distSq = dx * dx + dy * dy;
+
+                    if (distSq < minDistSq && distSq > 0.001) {
+                        const dist = Math.sqrt(distSq);
+                        const overlap = (minDist - dist) / 2;
+                        const nx = dx / dist;
+                        const ny = dy / dist;
+
+                        seedArray[i].x -= nx * overlap;
+                        seedArray[i].y -= ny * overlap;
+                        seedArray[j].x += nx * overlap;
+                        seedArray[j].y += ny * overlap;
+                    }
+                }
+            }
         }
 
         function easeInOutCubic(t) {
@@ -318,29 +466,62 @@
         //  computed from current seed positions — no caching, no shortcuts.
         // ======================================================================
 
-        function computeVoronoi(seeds, W, H) {
-            // TODO: implement
-            // For each seed i:
-            //   polygon = [[0,0],[W,0],[W,H],[0,H]]  (full canvas)
-            //   For each other seed j:
-            //     Compute perpendicular bisector between i and j
-            //     Clip polygon to the half-plane containing seed i
-            //   Store polygon
-            // Return array of polygons (parallel to seeds[])
-            return seeds.map(() => null); // placeholder
+        function computeVoronoi(seedArr, W, H) {
+            const bounds = [[0, 0], [W, 0], [W, H], [0, H]];
+            const polys = [];
+
+            for (let i = 0; i < seedArr.length; i++) {
+                let polygon = bounds.map(p => [...p]);
+                const si = seedArr[i];
+
+                for (let j = 0; j < seedArr.length; j++) {
+                    if (i === j) continue;
+                    const sj = seedArr[j];
+                    const dx = sj.x - si.x;
+                    const dy = sj.y - si.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 0.001) continue;
+
+                    // Bisector midpoint and normal pointing toward seed i
+                    const mx = (si.x + sj.x) / 2;
+                    const my = (si.y + sj.y) / 2;
+                    const nx = -dx / dist;
+                    const ny = -dy / dist;
+
+                    polygon = clipPolygon(polygon, mx, my, nx, ny);
+                    if (polygon.length < 3) break;
+                }
+
+                polys.push(polygon.length >= 3 ? polygon : null);
+            }
+            return polys;
         }
 
-        // Clip a convex polygon to a half-plane defined by point (px,py) and inward normal (nx,ny)
-        // Sutherland-Hodgman single-edge clip
         function clipPolygon(polygon, px, py, nx, ny) {
-            // TODO: implement (port from voronoi.html lines 1784-1806)
-            return polygon;
+            const output = [];
+            const n = polygon.length;
+            for (let i = 0; i < n; i++) {
+                const curr = polygon[i];
+                const next = polygon[(i + 1) % n];
+                const currDist = (curr[0] - px) * nx + (curr[1] - py) * ny;
+                const nextDist = (next[0] - px) * nx + (next[1] - py) * ny;
+                if (currDist >= 0) {
+                    output.push(curr);
+                    if (nextDist < 0) output.push(lineIntersect(curr, next, px, py, nx, ny));
+                } else if (nextDist >= 0) {
+                    output.push(lineIntersect(curr, next, px, py, nx, ny));
+                }
+            }
+            return output;
         }
 
-        // Line-plane intersection helper
         function lineIntersect(a, b, px, py, nx, ny) {
-            // TODO: implement (port from voronoi.html lines 1808-1815)
-            return [0, 0];
+            const dx = b[0] - a[0];
+            const dy = b[1] - a[1];
+            const denom = dx * nx + dy * ny;
+            if (Math.abs(denom) < 0.0001) return [...a];
+            const t = ((px - a[0]) * nx + (py - a[1]) * ny) / denom;
+            return [a[0] + t * dx, a[1] + t * dy];
         }
 
 
@@ -360,23 +541,185 @@
             ctx.clearRect(0, 0, W, H);
 
             for (let i = 0; i < polygons.length; i++) {
-                // TODO: implement
-                // 1. Inset polygon by gap/2
-                // 2. Draw rounded polygon path
-                // 3. Fill with cell color
-                // 4. Stroke border
+                const raw = polygons[i];
+                if (!raw || raw.length < 3) continue;
+
+                const polygon = config.gap > 0 ? insetPolygon(raw, config.gap / 2) : raw;
+                if (!polygon || polygon.length < 3) continue;
+
+                const color = cellColors[i % cellColors.length];
+
+                // Fill
+                ctx.save();
+                drawRoundedPolygon(ctx, polygon, config.cornerRadius);
+                ctx.clip();
+
+                // Gradient fill
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                for (const p of polygon) {
+                    minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]);
+                    minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]);
+                }
+                const grad = ctx.createLinearGradient(minX, minY, maxX, maxY);
+                grad.addColorStop(0, color);
+                grad.addColorStop(1, adjustColor(color, -40));
+                ctx.fillStyle = grad;
+                ctx.fill();
+
+                // Cell number watermark
+                ctx.globalAlpha = 0.15;
+                ctx.fillStyle = '#fff';
+                const size = Math.min(maxX - minX, maxY - minY) * 0.5;
+                ctx.font = `bold ${size}px system-ui, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(i + 1, (minX + maxX) / 2, (minY + maxY) / 2);
+
+                ctx.restore();
+
+                // Border (inner stroke via clip)
+                ctx.save();
+                drawRoundedPolygon(ctx, polygon, config.cornerRadius);
+                ctx.clip();
+                drawRoundedPolygon(ctx, polygon, config.cornerRadius);
+                ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.restore();
             }
         }
 
-        // Inset a convex polygon by `amount` pixels
-        function insetPolygon(polygon, amount) {
-            // TODO: implement (port from voronoi.html lines 1829-1905)
-            return polygon;
+        function adjustColor(hex, amount) {
+            const num = parseInt(hex.slice(1), 16);
+            const r = Math.min(255, Math.max(0, (num >> 16) + amount));
+            const g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + amount));
+            const b = Math.min(255, Math.max(0, (num & 0xff) + amount));
+            return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
         }
 
-        // Draw a polygon path with rounded corners
+        function insetPolygon(polygon, amount) {
+            if (!polygon || polygon.length < 3 || amount <= 0) return polygon;
+            const n = polygon.length;
+
+            // Signed area for winding direction
+            let signedArea = 0;
+            for (let i = 0; i < n; i++) {
+                const j = (i + 1) % n;
+                signedArea += polygon[i][0] * polygon[j][1];
+                signedArea -= polygon[j][0] * polygon[i][1];
+            }
+            const windingSign = signedArea > 0 ? -1 : 1;
+
+            // Offset each edge inward
+            const insetEdges = [];
+            for (let i = 0; i < n; i++) {
+                const p1 = polygon[i];
+                const p2 = polygon[(i + 1) % n];
+                const edx = p2[0] - p1[0];
+                const edy = p2[1] - p1[1];
+                const len = Math.sqrt(edx * edx + edy * edy);
+                if (len < 0.001) continue;
+                const nx = windingSign * edy / len;
+                const ny = windingSign * -edx / len;
+                insetEdges.push({
+                    p1: [p1[0] + nx * amount, p1[1] + ny * amount],
+                    p2: [p2[0] + nx * amount, p2[1] + ny * amount],
+                });
+            }
+            if (insetEdges.length < 3) return polygon;
+
+            // Intersect consecutive offset edges for new vertices
+            const result = [];
+            for (let i = 0; i < insetEdges.length; i++) {
+                const e1 = insetEdges[i];
+                const e2 = insetEdges[(i + 1) % insetEdges.length];
+                const pt = lineLineIntersect(e1.p1, e1.p2, e2.p1, e2.p2);
+                if (pt) result.push(pt);
+            }
+            if (result.length < 3) return polygon;
+
+            // Sanity: inset should be smaller
+            let resultArea = 0;
+            for (let i = 0; i < result.length; i++) {
+                const j = (i + 1) % result.length;
+                resultArea += result[i][0] * result[j][1];
+                resultArea -= result[j][0] * result[i][1];
+            }
+            if (Math.abs(resultArea) > Math.abs(signedArea) * 1.1 || Math.abs(resultArea) < 1) return polygon;
+            return result;
+        }
+
+        function lineLineIntersect(p1, p2, p3, p4) {
+            const denom = (p1[0] - p2[0]) * (p3[1] - p4[1]) - (p1[1] - p2[1]) * (p3[0] - p4[0]);
+            if (Math.abs(denom) < 0.0001) return [(p2[0] + p3[0]) / 2, (p2[1] + p3[1]) / 2];
+            const t = ((p1[0] - p3[0]) * (p3[1] - p4[1]) - (p1[1] - p3[1]) * (p3[0] - p4[0])) / denom;
+            return [p1[0] + t * (p2[0] - p1[0]), p1[1] + t * (p2[1] - p1[1])];
+        }
+
         function drawRoundedPolygon(ctx, polygon, radius) {
-            // TODO: implement (port from voronoi.html lines 2012-2118)
+            if (!polygon || polygon.length < 3) return;
+            const n = polygon.length;
+
+            // Check area — skip rounding for tiny polygons
+            let area = 0;
+            for (let i = 0; i < n; i++) {
+                const j = (i + 1) % n;
+                area += polygon[i][0] * polygon[j][1] - polygon[j][0] * polygon[i][1];
+            }
+            if (Math.abs(area) / 2 < 100 || radius <= 0) {
+                ctx.beginPath();
+                ctx.moveTo(polygon[0][0], polygon[0][1]);
+                for (let i = 1; i < n; i++) ctx.lineTo(polygon[i][0], polygon[i][1]);
+                ctx.closePath();
+                return;
+            }
+
+            // Per-corner radius clamped to edge length and interior angle
+            const radii = [];
+            for (let i = 0; i < n; i++) {
+                const prev = polygon[(i - 1 + n) % n];
+                const curr = polygon[i];
+                const next = polygon[(i + 1) % n];
+                const d1 = Math.sqrt((prev[0] - curr[0]) ** 2 + (prev[1] - curr[1]) ** 2);
+                const d2 = Math.sqrt((next[0] - curr[0]) ** 2 + (next[1] - curr[1]) ** 2);
+                const maxR = Math.min(d1, d2) * 0.5;
+
+                const v1x = prev[0] - curr[0], v1y = prev[1] - curr[1];
+                const v2x = next[0] - curr[0], v2y = next[1] - curr[1];
+                const len1 = Math.sqrt(v1x * v1x + v1y * v1y) || 1;
+                const len2 = Math.sqrt(v2x * v2x + v2y * v2y) || 1;
+                const dot = Math.min(1, Math.max(-1, (v1x * v2x + v1y * v2y) / (len1 * len2)));
+                const angle = Math.acos(dot);
+                const maxByAngle = Math.min(d1, d2) * Math.tan(angle / 2);
+
+                radii[i] = Math.max(0, Math.min(radius, maxR, maxByAngle));
+            }
+
+            ctx.beginPath();
+            let started = false;
+            for (let i = 0; i < n; i++) {
+                const prev = polygon[(i - 1 + n) % n];
+                const curr = polygon[i];
+                const next = polygon[(i + 1) % n];
+                const r = radii[i];
+
+                const d1 = Math.sqrt((prev[0] - curr[0]) ** 2 + (prev[1] - curr[1]) ** 2);
+                const d2 = Math.sqrt((next[0] - curr[0]) ** 2 + (next[1] - curr[1]) ** 2);
+
+                if (r < 0.5 || d1 < 0.5 || d2 < 0.5) {
+                    if (!started) { ctx.moveTo(curr[0], curr[1]); started = true; }
+                    else ctx.lineTo(curr[0], curr[1]);
+                } else {
+                    const dx1 = (prev[0] - curr[0]) / d1, dy1 = (prev[1] - curr[1]) / d1;
+                    const dx2 = (next[0] - curr[0]) / d2, dy2 = (next[1] - curr[1]) / d2;
+                    const sx = curr[0] + dx1 * r, sy = curr[1] + dy1 * r;
+                    const ex = curr[0] + dx2 * r, ey = curr[1] + dy2 * r;
+                    if (!started) { ctx.moveTo(sx, sy); started = true; }
+                    else ctx.lineTo(sx, sy);
+                    ctx.arcTo(curr[0], curr[1], ex, ey, r);
+                }
+            }
+            ctx.closePath();
         }
 
 
