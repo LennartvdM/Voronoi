@@ -86,6 +86,11 @@
             color: #caa06f;
         }
 
+        .tag.new {
+            background: #2a3a4a;
+            color: #6fb0ca;
+        }
+
         .version-card p {
             color: #999;
             font-size: 0.95rem;
@@ -130,6 +135,18 @@
                 <li>Vertex-level membrane simulation</li>
                 <li>No modes, same physics always</li>
                 <li>Shapes emerge from forces</li>
+            </ul>
+        </a>
+
+        <a href="morph.html" class="version-card">
+            <h2>Morph</h2>
+            <span class="tag experimental">New</span>
+            <p>Universal cell primitive. Cells morph between any target layout — bento, hex, tetris, diagonal, spiral — with Voronoi guaranteeing valid tiling mid-flight.</p>
+            <ul>
+                <li>Multiple target layouts as seed configs</li>
+                <li>Voronoi tiling valid at every frame</li>
+                <li>Collision-avoiding seed transitions</li>
+                <li>The travel is the hard problem</li>
             </ul>
         </a>
     </div>

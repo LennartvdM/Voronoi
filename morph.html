@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Morph — Universal Cell Layout</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0f;
+            color: #fff;
+            min-height: 100vh;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        canvas { display: block; width: 100%; height: 100vh; cursor: pointer; }
+
+        .back-link {
+            position: fixed; top: 1rem; left: 1rem;
+            color: #666; text-decoration: none; font-size: 0.9rem; z-index: 100;
+        }
+        .back-link:hover { color: #aaa; }
+
+        /* Layout switcher bar */
+        .layout-bar {
+            position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 8px; z-index: 100;
+            background: rgba(20, 20, 35, 0.9);
+            backdrop-filter: blur(12px);
+            padding: 8px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+
+        .layout-btn {
+            padding: 8px 16px;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            font-size: 12px; font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.7);
+        }
+        .layout-btn:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.3);
+        }
+        .layout-btn.active {
+            background: linear-gradient(135deg, rgba(99,102,241,0.4), rgba(139,92,246,0.4));
+            border-color: rgba(139,92,246,0.6);
+            color: #fff;
+            box-shadow: 0 2px 10px rgba(99,102,241,0.3);
+        }
+
+        .info-label {
+            position: fixed; top: 1rem; right: 1rem;
+            color: #444; font-size: 0.75rem; z-index: 100;
+            font-family: ui-monospace, monospace;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">&larr; Back</a>
+    <canvas id="canvas"></canvas>
+    <div class="info-label" id="info">seeds moving: 0 | fps: 60</div>
+
+    <div class="layout-bar" id="layoutBar">
+        <button class="layout-btn active" data-layout="bento">Bento</button>
+        <button class="layout-btn" data-layout="hex">Hex</button>
+        <button class="layout-btn" data-layout="voronoi">Voronoi</button>
+        <button class="layout-btn" data-layout="diagonal">Diagonal</button>
+        <button class="layout-btn" data-layout="spiral">Spiral</button>
+        <button class="layout-btn" data-layout="tetris">Tetris</button>
+    </div>
+
+    <script>
+    (function() {
+        'use strict';
+
+        // =======================================================================
+        //  ARCHITECTURE OUTLINE
+        //
+        //  The idea: cells are a universal layout primitive. The *settled states*
+        //  are just target configurations — any geometry you want. The hard
+        //  problem is the TRAVEL between them. Voronoi tessellation guarantees
+        //  a valid, gap-free, overlap-free tiling at every single frame while
+        //  seeds are in motion.
+        //
+        //  Data flow per frame:
+        //
+        //    1. TARGETS — each layout generator produces an array of {x, y}
+        //       seed positions (one per cell). These are the endpoints.
+        //
+        //    2. TRANSITION — seeds interpolate from current position toward
+        //       target. Collision avoidance steers seeds so they don't cross
+        //       paths or bunch up.
+        //
+        //    3. VORONOI — from the current (moving) seed positions, compute
+        //       Voronoi tessellation every frame. This is what guarantees
+        //       valid tiling mid-flight. Cells may be weird shapes in transit,
+        //       but they tile.
+        //
+        //    4. RENDER — draw the polygons with gap inset, rounded corners,
+        //       color fill, border.
+        //
+        //  The layout generators don't know about animation. The transition
+        //  system doesn't know about rendering. The Voronoi engine doesn't
+        //  know about layouts. Clean separation.
+        // =======================================================================
+
+
+        // ========================= CONFIGURATION ==============================
+
+        const config = {
+            cellCount: 12,            // Number of cells
+            gap: 20,                  // Pixel gap between cells
+            cornerRadius: 16,         // Rounded corner radius
+            transitionDuration: 1200, // ms for a full layout transition
+            collisionRadius: 40,      // Min distance seeds maintain during travel
+            currentLayout: 'bento',   // Active layout name
+        };
+
+        const cellColors = [
+            '#6366f1', '#06b6d4', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6',
+            '#eab308', '#3b82f6', '#ef4444', '#14b8a6', '#a855f7', '#f97316',
+        ];
+
+
+        // ============================== STATE =================================
+
+        let canvas, ctx;
+        let W, H;                         // Canvas logical size
+        let seeds = [];                   // Current seed positions [{x, y}, ...]
+        let targetSeeds = [];             // Where seeds are heading [{x, y}, ...]
+        let startSeeds = [];              // Where seeds started this transition
+        let transitionT = 1;              // 0→1 progress through current transition
+        let transitionStart = 0;          // timestamp when transition began
+        let lastTime = 0;
+        let animationId;
+
+
+        // ====================== LAYOUT GENERATORS =============================
+        //
+        //  Each generator is a function(W, H, count) → [{x, y}, ...]
+        //  They produce seed positions for `count` cells inside a WxH canvas.
+        //  They know NOTHING about animation or rendering.
+        //  The only contract: return exactly `count` seed positions.
+        //
+        //  TODO: Some layouts may want to return weights per seed (for weighted
+        //  Voronoi / power diagrams). For now, all seeds are equal weight.
+        // ======================================================================
+
+        const layouts = {
+
+            // BENTO — approximate a bento grid by placing seeds at cell centers
+            // of a randomized rectangular subdivision
+            bento(W, H, count) {
+                // TODO: implement rectangular subdivision
+                // Strategy: recursively split rectangles, place seed at each center
+                // For now: placeholder grid
+                return placeholderGrid(W, H, count);
+            },
+
+            // HEX — hexagonal close-packing
+            hex(W, H, count) {
+                // TODO: implement hex grid seed placement
+                // Strategy: compute hex grid that fits `count` cells, center it
+                return placeholderGrid(W, H, count);
+            },
+
+            // VORONOI — organic random with Lloyd relaxation
+            voronoi(W, H, count) {
+                // TODO: implement random + Lloyd relaxation
+                // Strategy: random seeds → run N iterations of Lloyd's algorithm
+                // (compute Voronoi, move each seed to its cell's centroid, repeat)
+                return placeholderGrid(W, H, count);
+            },
+
+            // DIAGONAL — cells packed into one diagonal half of the screen
+            diagonal(W, H, count) {
+                // TODO: implement diagonal-half placement
+                // Strategy: generate seeds only in the bottom-left triangle
+                return placeholderGrid(W, H, count);
+            },
+
+            // SPIRAL — seeds arranged in a spiral from center
+            spiral(W, H, count) {
+                // TODO: implement Fermat/Archimedean spiral
+                // Strategy: golden-angle spiral, scaled to fill the canvas
+                return placeholderGrid(W, H, count);
+            },
+
+            // TETRIS — seeds placed at centers of tetromino-shaped regions
+            tetris(W, H, count) {
+                // TODO: implement tetromino packing
+                // Strategy: place tetrominoes on a grid, seed at each piece center
+                return placeholderGrid(W, H, count);
+            },
+        };
+
+        // Temporary: evenly spaced grid so the skeleton renders something
+        function placeholderGrid(W, H, count) {
+            const margin = 80;
+            const cols = Math.ceil(Math.sqrt(count * (W / H)));
+            const rows = Math.ceil(count / cols);
+            const cellW = (W - margin * 2) / cols;
+            const cellH = (H - margin * 2) / rows;
+            const result = [];
+            for (let i = 0; i < count; i++) {
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                result.push({
+                    x: margin + cellW * (col + 0.5),
+                    y: margin + cellH * (row + 0.5),
+                });
+            }
+            return result;
+        }
+
+
+        // ===================== TRANSITION SYSTEM ==============================
+        //
+        //  Moves seeds from startSeeds → targetSeeds over transitionDuration ms.
+        //  Responsibilities:
+        //    - Eased interpolation (not linear — ease-in-out for organic feel)
+        //    - Collision avoidance: if two seeds get too close mid-flight,
+        //      nudge them apart perpendicular to their travel direction
+        //    - Staggering: seeds don't all depart at once (optional, per-seed delay)
+        //
+        //  Does NOT touch the Voronoi or renderer. Just updates seeds[].
+        // ======================================================================
+
+        function startTransition(layoutName) {
+            // TODO: implement
+            // 1. Generate new targets from layouts[layoutName](W, H, config.cellCount)
+            // 2. Match current seeds to nearest targets (assignment problem)
+            //    - simple: greedy nearest-neighbor
+            //    - better: Hungarian algorithm for optimal matching
+            // 3. Store startSeeds = copy of current seeds
+            // 4. Set transitionT = 0, record transitionStart = performance.now()
+            // 5. config.currentLayout = layoutName
+
+            const newTargets = layouts[layoutName](W, H, config.cellCount);
+
+            // Greedy assignment: for each current seed, claim nearest unclaimed target
+            // TODO: replace with Hungarian for optimal matching
+            const assigned = assignSeeds(seeds, newTargets);
+
+            startSeeds = seeds.map(s => ({ x: s.x, y: s.y }));
+            targetSeeds = assigned;
+            transitionT = 0;
+            transitionStart = performance.now();
+            config.currentLayout = layoutName;
+        }
+
+        // Greedy nearest-neighbor seed assignment
+        // Returns reordered targets so targets[i] is where seeds[i] should go
+        function assignSeeds(current, targets) {
+            // TODO: implement
+            // For now: direct 1:1 mapping (works when count matches)
+            return targets.slice(0, current.length);
+        }
+
+        function updateTransition(now) {
+            // TODO: implement
+            // 1. Compute transitionT from elapsed time + easing
+            // 2. For each seed: lerp from startSeeds[i] → targetSeeds[i]
+            // 3. Run collision avoidance pass
+            // 4. Write result into seeds[]
+
+            if (transitionT >= 1) return;
+
+            const elapsed = now - transitionStart;
+            const rawT = Math.min(1, elapsed / config.transitionDuration);
+
+            // Ease-in-out for organic feel
+            transitionT = easeInOutCubic(rawT);
+
+            for (let i = 0; i < seeds.length; i++) {
+                seeds[i].x = startSeeds[i].x + (targetSeeds[i].x - startSeeds[i].x) * transitionT;
+                seeds[i].y = startSeeds[i].y + (targetSeeds[i].y - startSeeds[i].y) * transitionT;
+            }
+
+            // TODO: collision avoidance pass
+            // resolveCollisions(seeds, config.collisionRadius);
+        }
+
+        // Collision avoidance — push apart seeds that are too close
+        function resolveCollisions(seedArray, minDist) {
+            // TODO: implement
+            // For each pair: if distance < minDist, push apart along
+            // the line connecting them (half each). This is a single
+            // relaxation pass — run it 2-3 times per frame for stability.
+        }
+
+        function easeInOutCubic(t) {
+            return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        }
+
+
+        // ====================== VORONOI ENGINE ================================
+        //
+        //  Takes current seeds[] and canvas bounds, returns polygons[].
+        //  Each polygon is an array of [x, y] vertices — the Voronoi cell.
+        //
+        //  Algorithm: for each seed, start with the full canvas rect,
+        //  then clip against the perpendicular bisector with every other seed.
+        //  This is O(n²) per cell (O(n³) total) but fine for n < 30.
+        //
+        //  This is the same half-plane intersection approach used in voronoi.html.
+        //  It guarantees valid tiling at every frame because it's a true Voronoi
+        //  computed from current seed positions — no caching, no shortcuts.
+        // ======================================================================
+
+        function computeVoronoi(seeds, W, H) {
+            // TODO: implement
+            // For each seed i:
+            //   polygon = [[0,0],[W,0],[W,H],[0,H]]  (full canvas)
+            //   For each other seed j:
+            //     Compute perpendicular bisector between i and j
+            //     Clip polygon to the half-plane containing seed i
+            //   Store polygon
+            // Return array of polygons (parallel to seeds[])
+            return seeds.map(() => null); // placeholder
+        }
+
+        // Clip a convex polygon to a half-plane defined by point (px,py) and inward normal (nx,ny)
+        // Sutherland-Hodgman single-edge clip
+        function clipPolygon(polygon, px, py, nx, ny) {
+            // TODO: implement (port from voronoi.html lines 1784-1806)
+            return polygon;
+        }
+
+        // Line-plane intersection helper
+        function lineIntersect(a, b, px, py, nx, ny) {
+            // TODO: implement (port from voronoi.html lines 1808-1815)
+            return [0, 0];
+        }
+
+
+        // ========================= RENDERER ===================================
+        //
+        //  Draws the current Voronoi polygons to canvas.
+        //  Each polygon gets:
+        //    - Gap inset (shrink polygon inward by gap/2)
+        //    - Rounded corners (arcTo-based)
+        //    - Solid color fill (gradient)
+        //    - Thin white border
+        //
+        //  Also draws debug info if enabled.
+        // ======================================================================
+
+        function render(polygons) {
+            ctx.clearRect(0, 0, W, H);
+
+            for (let i = 0; i < polygons.length; i++) {
+                // TODO: implement
+                // 1. Inset polygon by gap/2
+                // 2. Draw rounded polygon path
+                // 3. Fill with cell color
+                // 4. Stroke border
+            }
+        }
+
+        // Inset a convex polygon by `amount` pixels
+        function insetPolygon(polygon, amount) {
+            // TODO: implement (port from voronoi.html lines 1829-1905)
+            return polygon;
+        }
+
+        // Draw a polygon path with rounded corners
+        function drawRoundedPolygon(ctx, polygon, radius) {
+            // TODO: implement (port from voronoi.html lines 2012-2118)
+        }
+
+
+        // ======================== UTILITIES ===================================
+
+        function getPolygonCentroid(polygon) {
+            if (!polygon || polygon.length < 3) return { x: 0, y: 0 };
+            let cx = 0, cy = 0;
+            for (const p of polygon) { cx += p[0]; cy += p[1]; }
+            return { x: cx / polygon.length, y: cy / polygon.length };
+        }
+
+        function pointInPolygon(x, y, polygon) {
+            if (!polygon || polygon.length < 3) return false;
+            let inside = false;
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const xi = polygon[i][0], yi = polygon[i][1];
+                const xj = polygon[j][0], yj = polygon[j][1];
+                if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+                    inside = !inside;
+                }
+            }
+            return inside;
+        }
+
+
+        // ====================== ANIMATION LOOP ================================
+
+        function animate(time) {
+            const now = performance.now();
+
+            // 1. Update transition (move seeds toward targets)
+            updateTransition(now);
+
+            // 2. Compute Voronoi from current seed positions
+            const polygons = computeVoronoi(seeds, W, H);
+
+            // 3. Render
+            render(polygons);
+
+            // 4. Info overlay
+            const moving = seeds.filter((s, i) =>
+                targetSeeds[i] &&
+                (Math.abs(s.x - targetSeeds[i].x) > 1 || Math.abs(s.y - targetSeeds[i].y) > 1)
+            ).length;
+            const dt = time - lastTime;
+            lastTime = time;
+            const fps = dt > 0 ? Math.round(1000 / dt) : 60;
+            document.getElementById('info').textContent = `seeds moving: ${moving} | fps: ${fps}`;
+
+            animationId = requestAnimationFrame(animate);
+        }
+
+
+        // ======================== INIT & EVENTS ===============================
+
+        function init() {
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            resize();
+
+            // Generate initial layout
+            seeds = layouts[config.currentLayout](W, H, config.cellCount);
+            targetSeeds = seeds.map(s => ({ x: s.x, y: s.y }));
+            startSeeds = seeds.map(s => ({ x: s.x, y: s.y }));
+
+            // Layout button events
+            document.querySelectorAll('.layout-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const layoutName = btn.dataset.layout;
+                    if (layoutName === config.currentLayout && transitionT >= 1) return;
+                    document.querySelectorAll('.layout-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    startTransition(layoutName);
+                });
+            });
+
+            window.addEventListener('resize', () => {
+                resize();
+                // Recompute current layout for new dimensions
+                targetSeeds = layouts[config.currentLayout](W, H, config.cellCount);
+                if (transitionT >= 1) {
+                    seeds = targetSeeds.map(s => ({ x: s.x, y: s.y }));
+                    startSeeds = seeds.map(s => ({ x: s.x, y: s.y }));
+                }
+            });
+
+            animate(0);
+        }
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            W = window.innerWidth;
+            H = window.innerHeight;
+            canvas.width = W * dpr;
+            canvas.height = H * dpr;
+            canvas.style.width = W + 'px';
+            canvas.style.height = H + 'px';
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        // Boot
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+
+    })();
+    </script>
+</body>
+</html>
