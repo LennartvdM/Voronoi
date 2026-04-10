@@ -93,9 +93,9 @@
         //
         //  Data flow per frame:
         //
-        //    1. TARGETS — a layout generator produces {x, y} seed positions.
-        //       Pure function: (W, H, count) → [{x, y}, ...]. Knows nothing
-        //       about animation.
+        //    1. TARGETS — a layout generator produces {x, y, w} seed positions.
+        //       Pure function: (W, H, count) → [{x, y, w}, ...]. Knows nothing
+        //       about animation. Weight w controls cell area via power diagram.
         //
         //    2. TRANSITION — seeds interpolate from start → target with
         //       easeInOutCubic. Greedy nearest-neighbor assignment minimizes
@@ -149,8 +149,8 @@
 
         let canvas, ctx;
         let W, H;                         // Canvas logical size
-        let seeds = [];                   // Current seed positions [{x, y}, ...]
-        let targetSeeds = [];             // Where seeds are heading [{x, y}, ...]
+        let seeds = [];                   // Current seed positions [{x, y, w}, ...]
+        let targetSeeds = [];             // Where seeds are heading [{x, y, w}, ...]
         let startSeeds = [];              // Where seeds started this transition
         let transitionT = 1;              // 0→1 progress through current transition
         let transitionStart = 0;          // timestamp when transition began
@@ -162,13 +162,18 @@
 
         // ====================== LAYOUT GENERATORS =============================
         //
-        //  Each generator is a function(W, H, count) → [{x, y}, ...]
-        //  They produce seed positions for `count` cells inside a WxH canvas.
-        //  They know NOTHING about animation or rendering.
-        //  The only contract: return exactly `count` seed positions.
+        //  Each generator is a function(W, H, count) → [{x, y, w}, ...]
+        //  They produce seed positions + weights for `count` cells.
+        //  Weight w controls cell area via power diagram.
+        //  w=1 is the baseline. w=2 claims ~4x the area (quadratic).
         //
-        //  TODO: Some layouts may want to return weights per seed (for weighted
-        //  Voronoi / power diagrams). For now, all seeds are equal weight.
+        //  Weight strategies per layout:
+        //    bento    — proportional to subdivision rect area (hero card = big)
+        //    hex      — uniform (w=1, all cells equal)
+        //    voronoi  — random variation (organic feel)
+        //    diagonal — distance from corner (bigger near the hypotenuse)
+        //    spiral   — decreasing from center (center = hero)
+        //    tetris   — uniform (grid feel)
         // ======================================================================
 
         const layouts = {
@@ -197,9 +202,14 @@
                     }
                 }
 
-                return rects.slice(0, count).map(r => ({
+                const selected = rects.slice(0, count);
+                // Weight proportional to rect area (normalized so avg ≈ 1)
+                const totalArea = selected.reduce((s, r) => s + r.w * r.h, 0);
+                const avgArea = totalArea / count;
+                return selected.map(r => ({
                     x: r.x + r.w / 2,
                     y: r.y + r.h / 2,
+                    w: Math.sqrt(r.w * r.h / avgArea),  // sqrt so weight scales with linear size
                 }));
             },
 
@@ -227,6 +237,7 @@
                         results.push({
                             x: m + offset + cellW * (col + 0.5),
                             y: m + cellH * (row + 0.5),
+                            w: 1,
                         });
                     }
                 }
@@ -236,10 +247,14 @@
             // VORONOI — random seeds with Lloyd relaxation for organic feel
             voronoi(W, H, count) {
                 const m = 80;
-                // Start with random positions
+                // Start with random positions and random weights
                 let pts = [];
                 for (let i = 0; i < count; i++) {
-                    pts.push({ x: m + Math.random() * (W - m * 2), y: m + Math.random() * (H - m * 2) });
+                    pts.push({
+                        x: m + Math.random() * (W - m * 2),
+                        y: m + Math.random() * (H - m * 2),
+                        w: 0.6 + Math.random() * 0.8,  // 0.6 to 1.4
+                    });
                 }
 
                 // Lloyd relaxation: move seeds to centroids of their Voronoi cells
@@ -286,13 +301,17 @@
                         for (const p of pts) {
                             if ((p.x - x) ** 2 + (p.y - y) ** 2 < minDist * minDist) { valid = false; break; }
                         }
-                        if (valid) pts.push({ x, y });
+                        if (valid) {
+                            // Weight increases with distance from origin (bigger near hypotenuse)
+                            const diagDist = y / H + x / W;  // 1.0 at diagonal, 2.0 at far corner
+                            pts.push({ x, y, w: 0.5 + diagDist * 0.5 });
+                        }
                     }
                     attempts++;
                 }
                 // Fill remaining if diagonal is too constrained
                 while (pts.length < count) {
-                    pts.push({ x: m + Math.random() * (W - m * 2) * 0.4, y: H * 0.6 + Math.random() * (H * 0.3) });
+                    pts.push({ x: m + Math.random() * (W - m * 2) * 0.4, y: H * 0.6 + Math.random() * (H * 0.3), w: 1 });
                 }
                 return pts;
             },
@@ -311,6 +330,7 @@
                     results.push({
                         x: cx + r * Math.cos(theta),
                         y: cy + r * Math.sin(theta),
+                        w: 1.5 - frac * 0.8,  // center = 1.5, edge = 0.7
                     });
                 }
                 return results;
@@ -342,6 +362,7 @@
                             results.push({
                                 x: m + cellSize * (col + 0.5) + jitter * (Math.random() - 0.5),
                                 y: m + cellSize * (row + 0.5) + jitter * (Math.random() - 0.5),
+                                w: 1,
                             });
                             placed = true;
                         }
@@ -350,6 +371,7 @@
                         results.push({
                             x: m + Math.random() * gridW,
                             y: m + Math.random() * gridH,
+                            w: 1,
                         });
                     }
                 }
@@ -374,7 +396,7 @@
             const newTargets = layouts[layoutName](W, H, config.cellCount);
             const assigned = assignSeeds(seeds, newTargets);
 
-            startSeeds = seeds.map(s => ({ x: s.x, y: s.y }));
+            startSeeds = seeds.map(s => ({ x: s.x, y: s.y, w: s.w || 1 }));
             targetSeeds = assigned;
             transitionT = 0;
             transitionStart = performance.now();
@@ -403,14 +425,14 @@
             const assigned = new Array(n).fill(false);
             for (const { i, j } of pairs) {
                 if (assigned[i] || claimed[j]) continue;
-                result[i] = { x: targets[j].x, y: targets[j].y };
+                result[i] = { x: targets[j].x, y: targets[j].y, w: targets[j].w || 1 };
                 assigned[i] = true;
                 claimed[j] = true;
             }
 
             // Fallback: if any seed wasn't assigned (shouldn't happen with equal counts)
             for (let i = 0; i < n; i++) {
-                if (!result[i]) result[i] = { x: current[i].x, y: current[i].y };
+                if (!result[i]) result[i] = { x: current[i].x, y: current[i].y, w: current[i].w || 1 };
             }
             return result;
         }
@@ -422,10 +444,11 @@
             const rawT = Math.min(1, elapsed / config.transitionDuration);
             transitionT = easeInOutCubic(rawT);
 
-            // Lerp each seed from start to target
+            // Lerp each seed (position + weight) from start to target
             for (let i = 0; i < seeds.length; i++) {
                 seeds[i].x = startSeeds[i].x + (targetSeeds[i].x - startSeeds[i].x) * transitionT;
                 seeds[i].y = startSeeds[i].y + (targetSeeds[i].y - startSeeds[i].y) * transitionT;
+                seeds[i].w = startSeeds[i].w + ((targetSeeds[i].w || 1) - startSeeds[i].w) * transitionT;
             }
 
             // Collision avoidance: 3 relaxation passes
@@ -469,16 +492,17 @@
 
         // ====================== VORONOI ENGINE ================================
         //
-        //  Takes current seeds[] and canvas bounds, returns polygons[].
-        //  Each polygon is an array of [x, y] vertices — the Voronoi cell.
+        //  Power diagram (weighted Voronoi). Each seed has weight w.
+        //  The bisector between seeds i and j shifts toward the lighter seed:
         //
-        //  Algorithm: for each seed, start with the full canvas rect,
-        //  then clip against the perpendicular bisector with every other seed.
-        //  This is O(n²) per cell (O(n³) total) but fine for n < 30.
+        //    Standard Voronoi:  bisector at midpoint (si + sj) / 2
+        //    Power diagram:     bisector shifts by (wi² - wj²) / (2 * dist²)
+        //                       along the si→sj axis
         //
-        //  This is the same half-plane intersection approach used in voronoi.html.
-        //  It guarantees valid tiling at every frame because it's a true Voronoi
-        //  computed from current seed positions — no caching, no shortcuts.
+        //  When all weights are equal, this reduces to standard Voronoi.
+        //  Higher weight → bisector pushed away → bigger cell.
+        //
+        //  Still O(n²) per cell, still guarantees valid tiling at every frame.
         // ======================================================================
 
         function computeVoronoi(seedArr, W, H) {
@@ -488,18 +512,32 @@
             for (let i = 0; i < seedArr.length; i++) {
                 let polygon = bounds.map(p => [...p]);
                 const si = seedArr[i];
+                const wi = si.w || 1;
 
                 for (let j = 0; j < seedArr.length; j++) {
                     if (i === j) continue;
                     const sj = seedArr[j];
+                    const wj = sj.w || 1;
                     const dx = sj.x - si.x;
                     const dy = sj.y - si.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < 0.001) continue;
+                    const distSq = dx * dx + dy * dy;
+                    if (distSq < 0.001) continue;
+                    const dist = Math.sqrt(distSq);
 
-                    // Bisector midpoint and normal pointing toward seed i
-                    const mx = (si.x + sj.x) / 2;
-                    const my = (si.y + sj.y) / 2;
+                    // Power diagram: shift bisector along si→sj axis
+                    // shift > 0 means bisector moves toward sj (cell i gets bigger)
+                    // Wi² and Wj² are scaled by a factor so weight 2 vs weight 1
+                    // produces a visible difference. The scale factor converts
+                    // weight units into pixel² units relative to cell spacing.
+                    const avgSpacing = Math.sqrt((W * H) / seedArr.length);
+                    const scale = avgSpacing * avgSpacing * 0.25;
+                    const shift = (wi * wi - wj * wj) * scale / (2 * distSq);
+
+                    // Bisector point: midpoint shifted along si→sj direction
+                    const mx = (si.x + sj.x) / 2 + (dx / dist) * shift * dist;
+                    const my = (si.y + sj.y) / 2 + (dy / dist) * shift * dist;
+
+                    // Normal pointing toward seed i (same as standard Voronoi)
                     const nx = -dx / dist;
                     const ny = -dy / dist;
 
@@ -823,8 +861,8 @@
 
             // Generate initial layout
             seeds = layouts[config.currentLayout](W, H, config.cellCount);
-            targetSeeds = seeds.map(s => ({ x: s.x, y: s.y }));
-            startSeeds = seeds.map(s => ({ x: s.x, y: s.y }));
+            targetSeeds = seeds.map(s => ({ x: s.x, y: s.y, w: s.w || 1 }));
+            startSeeds = seeds.map(s => ({ x: s.x, y: s.y, w: s.w || 1 }));
 
             // Layout button events
             document.querySelectorAll('.layout-btn').forEach(btn => {
@@ -853,8 +891,8 @@
                 // Recompute current layout for new dimensions
                 targetSeeds = layouts[config.currentLayout](W, H, config.cellCount);
                 if (transitionT >= 1) {
-                    seeds = targetSeeds.map(s => ({ x: s.x, y: s.y }));
-                    startSeeds = seeds.map(s => ({ x: s.x, y: s.y }));
+                    seeds = targetSeeds.map(s => ({ x: s.x, y: s.y, w: s.w || 1 }));
+                    startSeeds = seeds.map(s => ({ x: s.x, y: s.y, w: s.w || 1 }));
                 }
             });
 
