@@ -179,10 +179,36 @@
             collisionRadius: 40,      // Min distance seeds maintain during travel
             currentLayout: 'bento',   // Active layout name
 
-            // Hover: spatial/temporal params. Expansion and push magnitude
-            // are role-dependent (see hoverByRole below).
-            hoverFalloff: 240,        // Gaussian σ (px) — spatial reach of push
-            hoverSpeed: 12,           // Exponential lerp rate (per second) for mix & offset
+            // Hover spatial parameters. Magnitude (expansion, push) is
+            // role-dependent (see hoverByRole); dynamics are below.
+            hoverFalloff: 240,        // Gaussian σ (px) — spatial reach of neighbor push
+        };
+
+        // Hover dynamics — asymmetric for a natural, tactile feel.
+        //
+        // hoverMix uses spring physics with two parameter sets that swap
+        // based on target direction. Velocity carries across the switch so
+        // there's no kink in the curve:
+        //
+        //   hover (target=1) : stiff + under-damped → fast ramp with a
+        //                      small overshoot, like the cell snaps into
+        //                      place and settles.
+        //   rest  (target=0) : soft + over-damped → slow, smooth return
+        //                      with no overshoot, like the cell relaxes.
+        //
+        // ω  = √(k)         natural frequency (higher = faster)
+        // ζ  = c / (2√k)    damping ratio  (<1 overshoot, ≥1 critical)
+        const hoverSpring = {
+            hover: { k: 450, c: 26 },   // ω≈21.2, ζ≈0.61 → ~9% overshoot, settle ~0.30s
+            rest:  { k: 55,  c: 18 },   // ω≈7.4,  ζ≈1.21 → over-damped, settle ~0.55s
+        };
+
+        // Neighbor offset lerp rates — no overshoot on the rabble, just
+        // asymmetric speed. Expand snaps out of the way; contract drifts back.
+        //   rate = 1 - exp(-speed * dt)
+        const hoverOffsetRate = {
+            expand:   14,   // time constant ≈ 0.07s
+            contract:  5,   // time constant ≈ 0.20s
         };
 
         // Per-role duration multipliers applied to transitionDuration.
@@ -890,23 +916,38 @@
             const suppress = transitionT < 1;
             const hIdx = suppress ? -1 : hoveredCell;
 
-            const rate = 1 - Math.exp(-config.hoverSpeed * dt);
-
-            // Pass 1: smooth per-seed hoverMix toward its target
+            // Pass 1: spring dynamics on hoverMix per seed.
+            // Target=1 (hovered) uses the stiff under-damped spring for a
+            // snappy ramp + small overshoot. Target=0 (resting) uses the
+            // soft over-damped spring for a slow smooth return. Velocity
+            // carries between the two so the animation curve stays smooth.
+            // Semi-implicit Euler: update velocity first, then position.
             for (let i = 0; i < seeds.length; i++) {
                 const target = (i === hIdx && !seeds[i].void) ? 1 : 0;
                 const cur = seeds[i].hoverMix || 0;
-                seeds[i].hoverMix = cur + (target - cur) * rate;
+                const vel = seeds[i].hoverMixVel || 0;
+
+                const spring = target > 0 ? hoverSpring.hover : hoverSpring.rest;
+                const force = -spring.k * (cur - target) - spring.c * vel;
+                const newVel = vel + force * dt;
+                const newCur = cur + newVel * dt;
+
+                seeds[i].hoverMix = newCur;
+                seeds[i].hoverMixVel = newVel;
             }
 
             // Pass 2: compute target offset from the currently hovered seed
             // and ease each seed's (offsetX, offsetY) toward it. Push
             // magnitude is determined by the HOVERED cell's role — hovering
-            // a carousel cell squeezes hard, hovering the hero barely nudges
-            // since the hero doesn't need to prove anything.
+            // a carousel cell squeezes hard, hovering the hero barely nudges.
+            // Offsets use asymmetric exponential lerp (no overshoot): fast
+            // when moving further from rest, slow when returning home.
             const hasHover = hIdx >= 0 && !seeds[hIdx].void;
             const sigma2 = config.hoverFalloff * config.hoverFalloff;
             const hoverPush = hasHover ? getHoverParams(seeds[hIdx]).push : 0;
+
+            const expandRate = 1 - Math.exp(-hoverOffsetRate.expand * dt);
+            const contractRate = 1 - Math.exp(-hoverOffsetRate.contract * dt);
 
             for (let i = 0; i < seeds.length; i++) {
                 let targetOx = 0, targetOy = 0;
@@ -927,6 +968,14 @@
 
                 const curOx = seeds[i].offsetX || 0;
                 const curOy = seeds[i].offsetY || 0;
+
+                // Direction test by magnitude: further from rest = expand,
+                // closer to rest = contract. Handles both un-hover (target=0)
+                // and hover-to-hover crossfade (target magnitude changes).
+                const curMagSq = curOx * curOx + curOy * curOy;
+                const targetMagSq = targetOx * targetOx + targetOy * targetOy;
+                const rate = targetMagSq >= curMagSq ? expandRate : contractRate;
+
                 seeds[i].offsetX = curOx + (targetOx - curOx) * rate;
                 seeds[i].offsetY = curOy + (targetOy - curOy) * rate;
             }
