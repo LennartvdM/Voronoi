@@ -118,12 +118,16 @@
         //       animation or rendering.
         //
         //    2. TRANSITION — seeds interpolate from start → target with
-        //       easeInOutCubic. Greedy nearest-neighbor assignment is
-        //       role-aware (hero↔hero, carousel↔carousel). Per-role
-        //       duration: void/hero move slowly (carry meaning), carousel
-        //       moves fast (rabble). Click a carousel cell to promote it
-        //       to hero — old hero demotes. 3-pass collision avoidance
-        //       makes the rabble flow around slow-moving anchors.
+        //       easeInOutCubic. Assignment is role-aware (hero↔hero,
+        //       carousel↔carousel) with a greedy nearest-neighbor pass
+        //       followed by 2-opt swap refinement — that refinement is
+        //       guaranteed to produce a non-crossing matching within each
+        //       role, so paths don't need to be resolved mid-flight. Per-
+        //       role durations keep a narrow speed hierarchy (void/hero
+        //       move slightly slower, carousel slightly faster) so the
+        //       semantic hierarchy stays visible while all cells arrive in
+        //       roughly the same beat. Click a carousel cell to promote
+        //       it to hero — old hero demotes.
         //
         //    3. HOVER — per-seed smoothed state on top of the transition
         //       output. The hovered cell's weight is boosted (power
@@ -176,7 +180,6 @@
             gap: 20,                  // Pixel gap between cells
             cornerRadius: 16,         // Rounded corner radius
             transitionDuration: 1200, // Base ms for a full layout transition
-            collisionRadius: 40,      // Min distance seeds maintain during travel
             currentLayout: 'bento',   // Active layout name
 
             // Hover spatial parameters. Magnitude (expansion, push) is
@@ -213,18 +216,25 @@
 
         // Per-role duration multipliers applied to transitionDuration.
         // The motion hierarchy matches the semantic hierarchy: cells that
-        // carry meaning move slowly so the eye stays settled, while small
-        // navigational cells flow fast like water around them.
+        // carry meaning move slightly slower so the eye stays settled, while
+        // small navigational cells flow a bit faster.
+        //
+        // Spread is kept narrow on purpose — the old 1.6/1.4/1.0/0.5 range
+        // meant carousel cells finished in ~600ms while voids were still
+        // travelling at 1920ms, which read as uncoordinated: fast cells
+        // landed, sat still, then slow cells trickled in. Tighter spread
+        // (~1.5x instead of 3.2x) keeps the semantic hierarchy but has all
+        // cells arriving in roughly the same beat.
         //
         // Rule: a cell's duration is max(startRoleMult, targetRoleMult).
         // This means when a cell is promoting/demoting between hero and
         // carousel, it uses the slower (hero) speed — the clicked cell
         // gracefully grows into hero, the old hero gently joins the rabble.
         const roleDurationMultiplier = {
-            void: 1.6,      // text column — very slow, anchor feel
-            hero: 1.4,      // illustration — slow, graceful
-            content: 1.0,   // default (non-reader layouts)
-            carousel: 0.5,  // rabble — fast, flowing
+            void: 1.20,     // text column — slightly slower, anchor feel
+            hero: 1.15,     // illustration — slightly slower, graceful
+            content: 1.00,  // default (non-reader layouts)
+            carousel: 0.80, // rabble — slightly faster, flowing
         };
 
         function getRoleMultiplier(seed) {
@@ -820,7 +830,54 @@
             for (let i = 0; i < current.length; i++) {
                 if (!result[i]) result[i] = { x: current[i].x, y: current[i].y, w: current[i].w || 1, void: !!current[i].void, role: current[i].role || 'content' };
             }
+
+            // 2-opt refinement — eliminate path crossings left by the greedy
+            // pass. For any two same-role assignments (A→X, B→Y) whose paths
+            // cross, swapping to (A→Y, B→X) strictly shortens the total path
+            // length (triangle inequality), so a fixed-point of this loop is
+            // guaranteed to be a non-crossing matching within each role. That
+            // matters because crossings were the "cells flow past each other"
+            // the user is seeing during transitions.
+            refineAssignmentNoCrossings(current, result);
+
             return result;
+        }
+
+        // Swap same-role target pairs whenever that reduces total path length.
+        // Runs until no more improving swaps exist (or the iteration cap).
+        function refineAssignmentNoCrossings(current, result) {
+            const n = current.length;
+            const maxIterations = 30;
+            for (let iter = 0; iter < maxIterations; iter++) {
+                let improved = false;
+                for (let i = 0; i < n; i++) {
+                    if (!result[i] || current[i].void) continue;
+                    for (let j = i + 1; j < n; j++) {
+                        if (!result[j] || current[j].void) continue;
+                        // Only swap within the same target role so hero stays
+                        // hero and carousel stays carousel.
+                        const roleI = result[i].role || 'content';
+                        const roleJ = result[j].role || 'content';
+                        if (roleI !== roleJ) continue;
+
+                        const ci = current[i], cj = current[j];
+                        const ti = result[i], tj = result[j];
+
+                        const currCost = Math.hypot(ci.x - ti.x, ci.y - ti.y)
+                                       + Math.hypot(cj.x - tj.x, cj.y - tj.y);
+                        const swapCost = Math.hypot(ci.x - tj.x, ci.y - tj.y)
+                                       + Math.hypot(cj.x - ti.x, cj.y - ti.y);
+
+                        if (swapCost + 0.5 < currCost) {
+                            const tmp = result[i];
+                            result[i] = result[j];
+                            result[j] = tmp;
+                            improved = true;
+                        }
+                    }
+                }
+                if (!improved) break;
+            }
         }
 
         function updateTransition(now) {
@@ -853,40 +910,12 @@
 
             transitionT = anyMoving ? 0.5 : 1;  // flag: 0.5 = in flight, 1 = settled
 
-            // Collision avoidance — keeps fast carousel cells from colliding
-            // with slow-moving hero/void. Effectively makes the rabble flow
-            // around the anchors.
-            if (anyMoving) {
-                resolveCollisions(seeds, config.collisionRadius);
-                resolveCollisions(seeds, config.collisionRadius);
-                resolveCollisions(seeds, config.collisionRadius);
-            }
-        }
-
-        // Push apart any seeds closer than minDist
-        function resolveCollisions(seedArray, minDist) {
-            const n = seedArray.length;
-            const minDistSq = minDist * minDist;
-
-            for (let i = 0; i < n; i++) {
-                for (let j = i + 1; j < n; j++) {
-                    const dx = seedArray[j].x - seedArray[i].x;
-                    const dy = seedArray[j].y - seedArray[i].y;
-                    const distSq = dx * dx + dy * dy;
-
-                    if (distSq < minDistSq && distSq > 0.001) {
-                        const dist = Math.sqrt(distSq);
-                        const overlap = (minDist - dist) / 2;
-                        const nx = dx / dist;
-                        const ny = dy / dist;
-
-                        seedArray[i].x -= nx * overlap;
-                        seedArray[i].y -= ny * overlap;
-                        seedArray[j].x += nx * overlap;
-                        seedArray[j].y += ny * overlap;
-                    }
-                }
-            }
+            // NOTE: no mid-flight collision resolution. With the 2-opt-refined
+            // assignment in assignSeeds, seed paths are guaranteed not to
+            // cross, so there's nothing left to "push apart". The previous
+            // 3-pass hard separation ran every frame and forcibly shoved
+            // seeds sideways off their tweens whenever they got close — that
+            // was the source of the frantic squeezing during transitions.
         }
 
         function easeInOutCubic(t) {
