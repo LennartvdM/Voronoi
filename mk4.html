@@ -100,10 +100,11 @@
 <body>
     <a href="index.html" class="back-link">&larr; Back</a>
     <canvas id="canvas"></canvas>
-    <div class="info-label" id="info">mk4 &middot; chunk 16 &middot; shape transitions</div>
+    <div class="info-label" id="info">mk4 &middot; chunk 17 &middot; cell labels</div>
 
     <div class="edit-panel">
         <button class="layout-btn" id="shapeToggle">Shape: rect</button>
+        <button class="layout-btn" id="labelToggle">Labels: on</button>
         <button class="layout-btn" id="editToggle">Edit</button>
         <div class="edit-controls" id="editControls">
             <button class="layout-btn" data-save="L1">Save &rarr; Canonical</button>
@@ -483,6 +484,10 @@
                 }
                 ctx.stroke();
                 ctx.globalAlpha = 1;
+                // Chunk 17: cell label drawn at the warped centroid.
+                if (typeof drawFaceLabel === 'function') {
+                    drawFaceLabel(face, isFocused);
+                }
             };
 
             for (const face of mesh.faces) {
@@ -2196,6 +2201,82 @@
             const scale  = dRect / dShape;  // inverted ratio
             return { x: cx + dx * scale, y: cy + dy * scale };
         }
+
+        // ========================= CHUNK 17: CELL LABELS / CONTENT ============
+        //
+        // Each cell can have a label drawn at its (warped) centroid. The
+        // labels make the cells read as UI elements rather than just
+        // colored shapes. Also lays the groundwork for richer per-cell
+        // content (icons, images, custom colors).
+        //
+        // cellLabels is indexed by face.id and defaults to two-digit
+        // strings ("01" through "12"). The label visibility is global
+        // (Labels: on / off button in the upper right). Hidden cells
+        // (visibility < 0.5) don't get labels regardless.
+        //
+        // Font size scales with sqrt(unwarped area) so larger cells
+        // get more prominent labels. Focused (hovered/pinned) cells
+        // get a slight bump and brighter alpha. In edit mode the label
+        // is the raw face id so the user can match cells to specs.
+
+        let labelsVisible = true;
+
+        const cellLabels = [];
+        for (let i = 0; i < 12; i++) {
+            cellLabels.push((i + 1).toString().padStart(2, '0'));
+        }
+
+        function drawFaceLabel(face, isFocused) {
+            if (!labelsVisible) return;
+            const vis = (face.visibility != null) ? face.visibility : 1;
+            const inEdit = (typeof editMode !== 'undefined' && editMode);
+            if (vis < 0.5 && !inEdit) return;
+
+            // Centroid in unwarped space, then warp for display.
+            let cx = 0, cy = 0, n = 0;
+            let he = face.halfEdge;
+            do {
+                cx += he.origin.x;
+                cy += he.origin.y;
+                n++;
+                he = he.next;
+            } while (he !== face.halfEdge);
+            cx /= n; cy /= n;
+
+            const w = warpVertex(cx, cy, W, H);
+
+            // Edit mode: raw face id (helps when hand-tuning specs).
+            // Normal: cellLabels[id], default "01".."12".
+            const label = inEdit
+                ? face.id.toString()
+                : (cellLabels[face.id] || '');
+            if (!label) return;
+
+            // Font size proportional to sqrt(area). Clamped.
+            const area = Math.abs(signedFaceArea(face));
+            const baseSize = Math.max(11, Math.min(28, Math.sqrt(area) * 0.085));
+            const fontSize = isFocused ? baseSize * 1.15 : baseSize;
+
+            ctx.font = '500 ' + fontSize.toFixed(1) + 'px ui-monospace, ui-sans-serif, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // Subtle shadow for legibility against varied cell colors.
+            const alphaText = isFocused ? 0.96 : 0.72;
+            ctx.globalAlpha = (vis < 1) ? vis : 1;
+            ctx.fillStyle = 'rgba(0,0,0,0.45)';
+            ctx.fillText(label, w.x + 0.6, w.y + 0.6);
+            ctx.fillStyle = 'rgba(255,255,255,' + alphaText + ')';
+            ctx.fillText(label, w.x, w.y);
+            ctx.globalAlpha = 1;
+        }
+
+        // Labels toggle button.
+        const labelToggle = document.getElementById('labelToggle');
+        labelToggle.addEventListener('click', () => {
+            labelsVisible = !labelsVisible;
+            labelToggle.textContent = 'Labels: ' + (labelsVisible ? 'on' : 'off');
+        });
 
         // ========================= CHUNK 7 LANDS HERE =========================
         // Polish — colors, hover, easing, arrival ramp.
