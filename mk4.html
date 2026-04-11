@@ -236,7 +236,7 @@
             </div>
         </div>
     </div>
-    <div class="info-label" id="info">mk4 &middot; chunk 22 &middot; persistence + reset</div>
+    <div class="info-label" id="info">mk4 &middot; chunk 23 &middot; ripples + glow</div>
 
     <div class="help-overlay" id="helpOverlay">
         <div class="help-content">
@@ -570,9 +570,15 @@
 
         // Distinct color per face — golden-angle hue, dark-theme palette.
         // Chunk 9: bumped saturation + lightness slightly for richer reads.
-        function faceColor(id) {
-            const hue = (id * 137.508) % 360;
-            return 'hsl(' + hue.toFixed(1) + ', 50%, 42%)';
+        // Chunk 23: takes a stress parameter [0,1] that bumps saturation
+        // and lightness, so cells visibly warm up when boosted by hover,
+        // pin, or ripple.
+        function faceColor(id, stress) {
+            const s = (typeof stress === 'number') ? Math.max(0, Math.min(1, stress)) : 0;
+            const hue   = (id * 137.508) % 360;
+            const sat   = 50 + s * 28;   // 50 → 78
+            const light = 42 + s * 14;   // 42 → 56
+            return 'hsl(' + hue.toFixed(1) + ', ' + sat.toFixed(1) + '%, ' + light.toFixed(1) + '%)';
         }
 
         function renderMesh(mesh) {
@@ -636,7 +642,10 @@
                 }
                 ctx.closePath();
                 ctx.globalAlpha = effectiveVis;
-                ctx.fillStyle = faceColor(face.id);
+                // Chunk 23: stress glow — saturation/lightness bumped
+                // for cells boosted by hover, pin, or ripple.
+                const stress = (typeof computeStress === 'function') ? computeStress(face) : 0;
+                ctx.fillStyle = faceColor(face.id, stress);
                 ctx.fill();
                 if (isFocused) {
                     // Brighter, slightly thicker border for the focused cell.
@@ -1066,14 +1075,15 @@
                     cx /= n;
                     cy /= n;
 
-                    // Chunk 9: effective rest area is modulated by hoverMul
-                    // (boost the hovered/pinned cell), so the comfort range
-                    // grows/shrinks with hover.
-                    // Chunk 12: composes a third multiplier, breathMul, for
-                    // the idle-breathing modulation. All defaults are 1.
+                    // Chunk 9: effective rest area modulated by hoverMul.
+                    // Chunk 12: composes breathMul for idle breathing.
+                    // Chunk 23: composes rippleMul for click-propagated
+                    // wave boosts. All four multipliers default to 1
+                    // (no effect) at rest.
                     const hover  = (f.hoverMul  != null) ? f.hoverMul  : 1;
                     const breath = (f.breathMul != null) ? f.breathMul : 1;
-                    const effRest = f.restArea * hover * breath;
+                    const ripple = (f.rippleMul != null) ? f.rippleMul : 1;
+                    const effRest = f.restArea * hover * breath * ripple;
                     const slack   = (f.slack != null) ? f.slack : DEFAULT_SLACK;
                     const effMin  = effRest * (1 - slack);
                     const effMax  = effRest * (1 + slack);
@@ -2680,9 +2690,15 @@
             }
 
             // Enter: pin (toggle) the keyboard-focused cell.
+            // Chunk 23: also trigger a ripple from the focused cell.
             if (e.key === 'Enter') {
                 if (keyboardFocusedCellId != null) {
                     pinnedCellId = (pinnedCellId === keyboardFocusedCellId) ? null : keyboardFocusedCellId;
+                    if (typeof triggerRipple === 'function') {
+                        for (const f of canonicalMesh.faces) {
+                            if (f.id === keyboardFocusedCellId) { triggerRipple(f); break; }
+                        }
+                    }
                 }
                 e.preventDefault();
                 return;
@@ -2914,6 +2930,167 @@
         // wired up the sliders).
         loadTunables();
 
+        // ========================= CHUNK 23: RIPPLES + STRESS GLOW ============
+        //
+        // Click any cell and a wave of growth propagates outward through
+        // the mesh — distance 0 (the clicked cell) pulses first, then
+        // its direct topological neighbors, then THEIR neighbors, until
+        // the wave reaches the far corners. Each cell briefly puffs up
+        // and brightens as the front passes through.
+        //
+        // Mechanics:
+        //   - BFS over the half-edge mesh from the clicked face computes
+        //     the topology distance from the source to every other face
+        //   - Per frame, advance the wave front: front = elapsed * speed
+        //   - For each face, boost = AMP * cos²((|dist - front|)/THICKNESS
+        //                                       * π/2) * (1 - elapsed/duration)
+        //   - The boost lands in f.rippleMul, which composes into the
+        //     relax pass as a third multiplier alongside hoverMul and
+        //     breathMul. The water-balloon mechanism then visibly grows
+        //     the cell, and the stress glow visibly brightens it.
+        //
+        // Multiple ripples coexist additively (clicking rapidly produces
+        // interfering waves crossing each other).
+        //
+        // Stress glow:
+        //   computeStress(f) reads f.hoverMul and f.rippleMul, normalizes
+        //   each by its maximum range, and returns max(hover, ripple)
+        //   clamped to [0, 1]. The faceColor function then bumps
+        //   saturation and lightness proportional to stress.
+        //
+        // Wired into:
+        //   - chunk 4 relaxMesh (rippleMul as third multiplier)
+        //   - chunk 1 renderMesh / faceColor (stress glow)
+        //   - chunk 11 click handler (trigger ripple on click)
+        //   - chunk 15 touchend tap path (trigger ripple on tap)
+        //   - chunk 20 keyboard Enter handler (trigger ripple on Enter)
+        //   - animate() between updateBreath and relaxMesh
+
+        const RIPPLE_SPEED     = 0.005;  // distance units per ms
+        const RIPPLE_THICKNESS = 1.5;    // wave front width in distance units
+        const RIPPLE_AMP       = 0.20;   // peak boost per ripple (1 + AMP = 1.2)
+        const RIPPLE_DURATION  = 1500;   // ms before the ripple expires
+
+        const ripples = [];
+
+        function bfsFromFace(mesh, sourceFace) {
+            // Returns a Map(face.id → topology distance from sourceFace).
+            // Walks the half-edge twin pointers; outer face is the boundary.
+            const distances = new Map();
+            distances.set(sourceFace.id, 0);
+            const queue = [sourceFace];
+            while (queue.length) {
+                const f = queue.shift();
+                const d = distances.get(f.id);
+                let he = f.halfEdge;
+                do {
+                    if (he.twin && he.twin.face && !he.twin.face.isOuter) {
+                        const nf = he.twin.face;
+                        if (!distances.has(nf.id)) {
+                            distances.set(nf.id, d + 1);
+                            queue.push(nf);
+                        }
+                    }
+                    he = he.next;
+                } while (he !== f.halfEdge);
+            }
+            return distances;
+        }
+
+        function triggerRipple(sourceFace) {
+            if (!sourceFace || sourceFace.isOuter) return;
+            ripples.push({
+                sourceFaceId: sourceFace.id,
+                distances: bfsFromFace(canonicalMesh, sourceFace),
+                startTime: performance.now(),
+                speed: RIPPLE_SPEED,
+                thickness: RIPPLE_THICKNESS,
+                amplitude: RIPPLE_AMP,
+                duration: RIPPLE_DURATION,
+            });
+        }
+
+        function updateRipples(now) {
+            // Reset rippleMul on every face (ripples are entirely
+            // recomputed each frame from the active list).
+            for (const f of canonicalMesh.faces) {
+                if (!f.isOuter) f.rippleMul = 1;
+            }
+            // Walk active ripples in reverse so we can splice expired ones.
+            for (let i = ripples.length - 1; i >= 0; i--) {
+                const r = ripples[i];
+                const elapsed = now - r.startTime;
+                if (elapsed > r.duration) {
+                    ripples.splice(i, 1);
+                    continue;
+                }
+                const front = elapsed * r.speed;
+                const decay = 1 - elapsed / r.duration;  // linear fade
+                for (const f of canonicalMesh.faces) {
+                    if (f.isOuter) continue;
+                    const d = r.distances.get(f.id);
+                    if (d == null) continue;
+                    const dist = Math.abs(d - front);
+                    if (dist > r.thickness) continue;
+                    const fade = Math.cos(dist / r.thickness * Math.PI / 2);
+                    const boost = r.amplitude * fade * fade * decay;
+                    f.rippleMul += boost;
+                }
+            }
+        }
+
+        function computeStress(f) {
+            // Returns [0, 1] from how far the cell is being boosted.
+            // Hover and ripple are normalized by their respective maxes
+            // and the larger of the two wins (so a heavily-hovered cell
+            // looks the same as a peak-rippled cell at full brightness).
+            const hNorm = HOVER_BOOST - 1;
+            const rNorm = RIPPLE_AMP;
+            const h = (f.hoverMul  != null && hNorm > 0)
+                ? Math.max(0, (f.hoverMul  - 1)) / hNorm
+                : 0;
+            const r = (f.rippleMul != null && rNorm > 0)
+                ? Math.max(0, (f.rippleMul - 1)) / rNorm
+                : 0;
+            return Math.min(1, Math.max(h, r));
+        }
+
+        // Click → ripple. Runs in addition to chunk 11's pin handler;
+        // both listeners coexist.
+        canvas.addEventListener('click', (e) => {
+            if (editMode) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const face = faceAtPoint(canonicalMesh, x, y);
+            if (face) triggerRipple(face);
+        });
+
+        // Touch tap → ripple. We track our own touchstart since the
+        // chunk 15 _touchMoved is in a different closure.
+        let _ripStartId = null, _ripStartX = 0, _ripStartY = 0;
+        canvas.addEventListener('touchstart', (e) => {
+            if (editMode || e.touches.length !== 1) return;
+            const t = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            _ripStartId = t.identifier;
+            _ripStartX = t.clientX - rect.left;
+            _ripStartY = t.clientY - rect.top;
+        });
+        canvas.addEventListener('touchend', (e) => {
+            if (editMode) return;
+            const t = Array.from(e.changedTouches).find(tt => tt.identifier === _ripStartId);
+            if (!t) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = t.clientX - rect.left;
+            const y = t.clientY - rect.top;
+            if (Math.hypot(x - _ripStartX, y - _ripStartY) <= 6) {
+                const face = faceAtPoint(canonicalMesh, x, y);
+                if (face) triggerRipple(face);
+            }
+            _ripStartId = null;
+        });
+
         // ========================= CHUNK 7 LANDS HERE =========================
         // Polish — colors, hover, easing, arrival ramp.
 
@@ -2933,8 +3110,9 @@
             if (canonicalMesh) {
                 if (!editMode) {
                     updateTransition(now);
-                    if (typeof updateHover  === 'function') updateHover();
-                    if (typeof updateBreath === 'function') updateBreath(now);
+                    if (typeof updateHover   === 'function') updateHover();
+                    if (typeof updateBreath  === 'function') updateBreath(now);
+                    if (typeof updateRipples === 'function') updateRipples(now);
                     relaxMesh(canonicalMesh);
                 }
                 if (typeof updateShapeBlend === 'function') updateShapeBlend(now);
