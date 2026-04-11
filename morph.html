@@ -1131,11 +1131,48 @@
             }
             if (hoveredCell >= 0) order.push(hoveredCell);
 
+            // Quality thresholds for the post-inset polygon. Cells squeezed
+            // below these render badly (concave "folds" from inset overshoot,
+            // near-invisible slivers, razor-thin wedges). Scale with cornerRadius
+            // so there's always enough room to hold the rounded corners.
+            const minCellArea = Math.max(900, (config.cornerRadius * 2.4) * (config.cornerRadius * 2.4));
+            const minCornerAngleRad = Math.PI / 6; // 30 degrees
+
             for (const i of order) {
                 const raw = polygons[i];
                 if (!raw || raw.length < 3) continue;
 
-                const polygon = config.gap > 0 ? insetPolygon(raw, config.gap / 2) : raw;
+                // Cascade:
+                //   1) Try inset polygon (normal path).
+                //   2) If the inset introduced reflex vertices or dropped the
+                //      cell below the quality floor, fall back to the RAW
+                //      Voronoi polygon — the gap disappears for this cell, but
+                //      shape is preserved and still convex.
+                //   3) If raw is also below the quality floor (truly squeezed
+                //      out of visibility), substitute a minimum-size rounded
+                //      square centered on the seed. It's a brief "reset" for
+                //      the extreme case, but cells never disappear and corners
+                //      always stay rounded.
+                let polygon = config.gap > 0 ? insetPolygon(raw, config.gap / 2) : raw;
+                if (!assessPolygon(polygon, minCellArea, minCornerAngleRad, true).ok) {
+                    // Inset broke it — drop the gap for this cell
+                    polygon = raw;
+                    if (!assessPolygon(polygon, minCellArea, minCornerAngleRad, false).ok) {
+                        // Raw is also below the floor — substitute a minimum
+                        // rounded square at the displaced seed position.
+                        const ds = seeds[i];
+                        if (!ds) continue;
+                        const dx = ds.offsetX || 0;
+                        const dy = ds.offsetY || 0;
+                        const half = Math.max(config.cornerRadius * 1.3, 16);
+                        polygon = [
+                            [ds.x + dx - half, ds.y + dy - half],
+                            [ds.x + dx + half, ds.y + dy - half],
+                            [ds.x + dx + half, ds.y + dy + half],
+                            [ds.x + dx - half, ds.y + dy + half],
+                        ];
+                    }
+                }
                 if (!polygon || polygon.length < 3) continue;
 
                 const color = cellColors[i % cellColors.length];
@@ -1207,6 +1244,67 @@
             const g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + amount));
             const b = Math.min(255, Math.max(0, (num & 0xff) + amount));
             return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+        }
+
+        // Quality check for a polygon about to be rendered. Returns
+        //   { ok, area, hasReflex, hasSharp }
+        // Caller passes the minimum area + minimum interior angle thresholds.
+        // checkReflex skips the reflex test for known-convex inputs (the raw
+        // Voronoi polygon is always convex; only insetPolygon can introduce
+        // reflex vertices when offset edges overshoot at acute corners).
+        function assessPolygon(polygon, minArea, minAngleRad, checkReflex) {
+            if (!polygon || polygon.length < 3) {
+                return { ok: false, area: 0, hasReflex: false, hasSharp: true };
+            }
+            const n = polygon.length;
+
+            // Signed shoelace sum — sign is winding, magnitude/2 is area
+            let signed = 0;
+            for (let k = 0; k < n; k++) {
+                const k1 = (k + 1) % n;
+                signed += polygon[k][0] * polygon[k1][1] - polygon[k1][0] * polygon[k][1];
+            }
+            const winding = Math.sign(signed) || 1;
+            const area = Math.abs(signed) / 2;
+            if (area < minArea) {
+                return { ok: false, area, hasReflex: false, hasSharp: false };
+            }
+
+            let hasReflex = false;
+            let hasSharp = false;
+            for (let k = 0; k < n; k++) {
+                const a = polygon[(k - 1 + n) % n];
+                const b = polygon[k];
+                const c = polygon[(k + 1) % n];
+
+                const ax = a[0] - b[0], ay = a[1] - b[1];
+                const cx = c[0] - b[0], cy = c[1] - b[1];
+                const la = Math.sqrt(ax * ax + ay * ay);
+                const lc = Math.sqrt(cx * cx + cy * cy);
+                if (la < 0.5 || lc < 0.5) continue;
+
+                // Reflex check: incoming x outgoing cross product sign should
+                // match the polygon winding. Mismatch = concave vertex.
+                if (checkReflex) {
+                    const incX = b[0] - a[0], incY = b[1] - a[1];
+                    const outX = c[0] - b[0], outY = c[1] - b[1];
+                    const crossZ = incX * outY - incY * outX;
+                    if (Math.sign(crossZ) !== winding && Math.abs(crossZ) > 0.5) {
+                        hasReflex = true;
+                        break;
+                    }
+                }
+
+                // Interior angle check
+                const dot = (ax * cx + ay * cy) / (la * lc);
+                const ang = Math.acos(Math.min(1, Math.max(-1, dot)));
+                if (ang < minAngleRad) {
+                    hasSharp = true;
+                    break;
+                }
+            }
+
+            return { ok: !hasReflex && !hasSharp, area, hasReflex, hasSharp };
         }
 
         function insetPolygon(polygon, amount) {
@@ -1286,6 +1384,10 @@
                 return;
             }
 
+            // Polygon winding (shoelace sum sign) lets us detect reflex vertices.
+            // In canvas coords (y-down), CW = positive signed area.
+            const windingSign = Math.sign(area) || 1;
+
             // Per-corner radius clamped to edge length and interior angle
             const radii = [];
             for (let i = 0; i < n; i++) {
@@ -1294,6 +1396,22 @@
                 const next = polygon[(i + 1) % n];
                 const d1 = Math.sqrt((prev[0] - curr[0]) ** 2 + (prev[1] - curr[1]) ** 2);
                 const d2 = Math.sqrt((next[0] - curr[0]) ** 2 + (next[1] - curr[1]) ** 2);
+
+                // Reflex-vertex guard: if the turn at this vertex goes against the
+                // overall winding, the vertex is concave. acos() only returns
+                // [0, pi] so the angle-based clamp below would compute the wrong
+                // side and arcTo() would draw an arc folding INWARD (the ugly
+                // concave-corner artifact). Treat reflex vertices as sharp corners.
+                const incX = curr[0] - prev[0];
+                const incY = curr[1] - prev[1];
+                const outX = next[0] - curr[0];
+                const outY = next[1] - curr[1];
+                const crossZ = incX * outY - incY * outX;
+                if (Math.sign(crossZ) !== windingSign && Math.abs(crossZ) > 0.5) {
+                    radii[i] = 0;
+                    continue;
+                }
+
                 const maxR = Math.min(d1, d2) * 0.5;
 
                 const v1x = prev[0] - curr[0], v1y = prev[1] - curr[1];
