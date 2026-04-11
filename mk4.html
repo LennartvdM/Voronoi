@@ -100,7 +100,7 @@
 <body>
     <a href="index.html" class="back-link">&larr; Back</a>
     <canvas id="canvas"></canvas>
-    <div class="info-label" id="info">mk4 &middot; chunk 5 &middot; vertex editor</div>
+    <div class="info-label" id="info">mk4 &middot; chunk 6 &middot; placeholder layouts</div>
 
     <div class="edit-panel">
         <button class="layout-btn" id="editToggle">Edit</button>
@@ -1047,8 +1047,157 @@
         // layouts and re-apply currentLayout.
         window.addEventListener('resize', loadLayoutsFromStorage);
 
-        // ========================= CHUNK 6 LANDS HERE =========================
-        // Authored layouts.
+        // ========================= CHUNK 6: PLACEHOLDER LAYOUTS ==============
+        //
+        // Three placeholder layouts that override chunk 2's affine fixtures
+        // (kept as a fallback). These are *not* hand-authored in the editor
+        // — they're hand-coded by giving each cell a target centroid +
+        // anisotropic scale, then computing vertex positions by averaging
+        // each vertex's contribution from its incident cells.
+        //
+        // localStorage takes precedence: if you've saved real layouts via
+        // the chunk 5 editor, those win on init AND on resize. The
+        // placeholders only fill empty slots.
+        //
+        // Cell id → canonical centroid (as fraction of W, H):
+        //   0 (0.16, 0.20)   1 (0.42, 0.20)   2 (0.67, 0.22)   3 (0.88, 0.17)
+        //   4 (0.13, 0.50)   5 (0.35, 0.49)   6 (0.59, 0.50)   7 (0.84, 0.50)
+        //   8 (0.17, 0.80)   9 (0.44, 0.80)  10 (0.68, 0.80)  11 (0.89, 0.82)
+
+        function buildLayoutFromCellSpecs(specs, mesh, canonicalLayout, W, H) {
+            // For each interior face, compute its canonical centroid, then
+            // accumulate (target_centroid + offset_from_canonical * scale)
+            // at each boundary vertex. Shared vertices average across all
+            // incident cells, so neighboring cells negotiate the position.
+            const V = mesh.vertices.length;
+            const arr = new Float32Array(V * 2);
+            const counts = new Int32Array(V);
+
+            for (const f of mesh.faces) {
+                if (f.isOuter) continue;
+                const spec = specs[f.id];
+                if (!spec) continue;
+
+                // Canonical centroid of this face.
+                let ccx = 0, ccy = 0, n = 0;
+                let he = f.halfEdge;
+                do {
+                    const v = he.origin;
+                    ccx += canonicalLayout[v.id * 2];
+                    ccy += canonicalLayout[v.id * 2 + 1];
+                    n++;
+                    he = he.next;
+                } while (he !== f.halfEdge);
+                ccx /= n;
+                ccy /= n;
+
+                const tX = spec.tx * W;
+                const tY = spec.ty * H;
+                const sx = spec.sx, sy = spec.sy;
+                he = f.halfEdge;
+                do {
+                    const v = he.origin;
+                    const ox = canonicalLayout[v.id * 2]     - ccx;
+                    const oy = canonicalLayout[v.id * 2 + 1] - ccy;
+                    arr[v.id * 2]     += tX + ox * sx;
+                    arr[v.id * 2 + 1] += tY + oy * sy;
+                    counts[v.id]++;
+                    he = he.next;
+                } while (he !== f.halfEdge);
+            }
+
+            for (let i = 0; i < V; i++) {
+                if (counts[i] > 0) {
+                    arr[i * 2]     /= counts[i];
+                    arr[i * 2 + 1] /= counts[i];
+                }
+            }
+            return arr;
+        }
+
+        // L2 — BALANCED. Uniform 4×3 grid, no jitter, all cells the
+        // same target size. Reads as "neat / regular".
+        const L2_BALANCED = [
+            { tx: 0.125, ty: 0.20, sx: 0.85, sy: 0.85 },
+            { tx: 0.375, ty: 0.20, sx: 0.85, sy: 0.85 },
+            { tx: 0.625, ty: 0.20, sx: 0.85, sy: 0.85 },
+            { tx: 0.875, ty: 0.20, sx: 0.85, sy: 0.85 },
+            { tx: 0.125, ty: 0.50, sx: 0.85, sy: 0.85 },
+            { tx: 0.375, ty: 0.50, sx: 0.85, sy: 0.85 },
+            { tx: 0.625, ty: 0.50, sx: 0.85, sy: 0.85 },
+            { tx: 0.875, ty: 0.50, sx: 0.85, sy: 0.85 },
+            { tx: 0.125, ty: 0.80, sx: 0.85, sy: 0.85 },
+            { tx: 0.375, ty: 0.80, sx: 0.85, sy: 0.85 },
+            { tx: 0.625, ty: 0.80, sx: 0.85, sy: 0.85 },
+            { tx: 0.875, ty: 0.80, sx: 0.85, sy: 0.85 },
+        ];
+
+        // L3 — HERO_CENTER. Cells 5 and 6 (middle pair) grow into a
+        // central hero region; surrounding cells pull back slightly
+        // and curve around them. Reads as "focused".
+        const L3_HERO_CENTER = [
+            { tx: 0.13, ty: 0.16, sx: 0.85, sy: 0.85 },  //  0
+            { tx: 0.34, ty: 0.13, sx: 0.85, sy: 0.85 },  //  1
+            { tx: 0.66, ty: 0.13, sx: 0.85, sy: 0.85 },  //  2
+            { tx: 0.87, ty: 0.16, sx: 0.85, sy: 0.85 },  //  3
+            { tx: 0.10, ty: 0.50, sx: 0.85, sy: 0.85 },  //  4
+            { tx: 0.40, ty: 0.50, sx: 1.30, sy: 1.30 },  //  5  hero L
+            { tx: 0.60, ty: 0.50, sx: 1.30, sy: 1.30 },  //  6  hero R
+            { tx: 0.90, ty: 0.50, sx: 0.85, sy: 0.85 },  //  7
+            { tx: 0.13, ty: 0.84, sx: 0.85, sy: 0.85 },  //  8
+            { tx: 0.34, ty: 0.87, sx: 0.85, sy: 0.85 },  //  9
+            { tx: 0.66, ty: 0.87, sx: 0.85, sy: 0.85 },  // 10
+            { tx: 0.87, ty: 0.84, sx: 0.85, sy: 0.85 },  // 11
+        ];
+
+        // L4 — SPARSE. All cells shrunk uniformly toward their canonical
+        // positions, with the two interior cells (5, 6) shrunk extra-small.
+        // The averaging math means a cell's "own" scale is partially
+        // overridden by its neighbors' scales — keeping the targets near
+        // canonical positions avoids the off-canvas blowout the original
+        // outward-rim spec produced. Reads as "sparse / breathing room".
+        const L4_RIM = [
+            { tx: 0.13, ty: 0.20, sx: 0.7, sy: 0.7 },  //  0
+            { tx: 0.38, ty: 0.20, sx: 0.7, sy: 0.7 },  //  1
+            { tx: 0.62, ty: 0.20, sx: 0.7, sy: 0.7 },  //  2
+            { tx: 0.87, ty: 0.20, sx: 0.7, sy: 0.7 },  //  3
+            { tx: 0.13, ty: 0.50, sx: 0.7, sy: 0.7 },  //  4
+            { tx: 0.38, ty: 0.50, sx: 0.4, sy: 0.4 },  //  5  small interior
+            { tx: 0.62, ty: 0.50, sx: 0.4, sy: 0.4 },  //  6  small interior
+            { tx: 0.87, ty: 0.50, sx: 0.7, sy: 0.7 },  //  7
+            { tx: 0.13, ty: 0.80, sx: 0.7, sy: 0.7 },  //  8
+            { tx: 0.38, ty: 0.80, sx: 0.7, sy: 0.7 },  //  9
+            { tx: 0.62, ty: 0.80, sx: 0.7, sy: 0.7 },  // 10
+            { tx: 0.87, ty: 0.80, sx: 0.7, sy: 0.7 },  // 11
+        ];
+
+        function applyChunk6Defaults() {
+            // Storage takes precedence — only fill slots not in storage.
+            // L1 is always the canonical mesh (chunk 2 already built it).
+            let stored = {};
+            try {
+                stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+            } catch (e) {}
+
+            if (!stored.L2) {
+                layouts.L2 = buildLayoutFromCellSpecs(L2_BALANCED,    canonicalMesh, layouts.L1, W, H);
+            }
+            if (!stored.L3) {
+                layouts.L3 = buildLayoutFromCellSpecs(L3_HERO_CENTER, canonicalMesh, layouts.L1, W, H);
+            }
+            if (!stored.L4) {
+                layouts.L4 = buildLayoutFromCellSpecs(L4_RIM,         canonicalMesh, layouts.L1, W, H);
+            }
+
+            // Re-apply currentLayout in case we just changed the slot
+            // the user is sitting on.
+            if (layouts[currentLayout]) {
+                applyLayout(canonicalMesh, layouts[currentLayout]);
+                initFaceRestAreas(canonicalMesh);
+            }
+        }
+        applyChunk6Defaults();
+        window.addEventListener('resize', applyChunk6Defaults);
 
         // ========================= CHUNK 7 LANDS HERE =========================
         // Polish — colors, hover, easing, arrival ramp.
