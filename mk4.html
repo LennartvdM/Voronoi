@@ -67,7 +67,7 @@
 <body>
     <a href="index.html" class="back-link">&larr; Back</a>
     <canvas id="canvas"></canvas>
-    <div class="info-label" id="info">mk4 &middot; chunk 3 &middot; lerp transitions</div>
+    <div class="info-label" id="info">mk4 &middot; chunk 3.5 &middot; rest area plumbing</div>
 
     <div class="layout-bar" id="layoutBar">
         <button class="layout-btn active" data-layout="L1">Layout 1</button>
@@ -508,6 +508,12 @@
         function startTransition(target) {
             transitionStart = captureLayout(canonicalMesh);
             transitionTarget = target;
+            // Chunk 3.5: snapshot rest-area endpoints alongside positions.
+            // captureRestAreas reads current f.restArea (mid-lerp safe);
+            // captureRestAreasFromLayout computes the area each face would
+            // have at the target without mutating anything.
+            transitionRestStart = captureRestAreas(canonicalMesh);
+            transitionRestTarget = captureRestAreasFromLayout(canonicalMesh, target);
             transitionStartTime = performance.now();
             transitioning = true;
         }
@@ -518,6 +524,7 @@
             const tRaw = Math.min(1, elapsed / TRANSITION_DURATION);
             const tEased = easeInOutCubic(tRaw);
 
+            // Lerp vertex positions.
             const start = transitionStart;
             const target = transitionTarget;
             const verts = canonicalMesh.vertices;
@@ -528,10 +535,26 @@
                 verts[i].y = sy + (ty - sy) * tEased;
             }
 
+            // Chunk 3.5: lerp per-face rest areas in lockstep with the
+            // position lerp. Updates restArea + derived comfort bounds.
+            // No forces yet — chunk 4 reads these.
+            const rs = transitionRestStart;
+            const rt = transitionRestTarget;
+            for (const f of canonicalMesh.faces) {
+                if (f.isOuter) continue;
+                const a0 = rs[f.id];
+                const a1 = rt[f.id];
+                f.restArea = a0 + (a1 - a0) * tEased;
+                f.minArea = f.restArea * (1 - f.slack);
+                f.maxArea = f.restArea * (1 + f.slack);
+            }
+
             if (tRaw >= 1) {
                 transitioning = false;
                 transitionStart = null;
                 transitionTarget = null;
+                transitionRestStart = null;
+                transitionRestTarget = null;
             }
         }
 
@@ -540,8 +563,95 @@
             if (layouts[name]) startTransition(layouts[name]);
         };
 
-        // ========================= CHUNK 3.5 LANDS HERE =======================
-        // Per-face rest area + comfort range + lerping.
+        // ========================= CHUNK 3.5: REST AREA PLUMBING =============
+        //
+        // Each interior face gains a `restArea`: the natural size that
+        // face "wants" to be right now. At steady state, restArea matches
+        // the face's actual geometric area, so the comfort range is
+        // centered on where the cell already is. Each face also gets a
+        // `slack` (default ±25%) and derived `minArea` / `maxArea`.
+        //
+        // During a transition, restArea lerps alongside vertex positions
+        // toward the area the face would have in the target layout. This
+        // is the "magic water" piece — natural size is itself animatable,
+        // so a cell that's small in one layout and large in another is
+        // genuinely small or large in each (not stretched or compressed).
+        //
+        // No forces yet — the fields are populated but not consulted.
+        // Chunk 4 lights up the relaxation pass that uses (restArea,
+        // minArea, maxArea) to push back when a cell is squashed or
+        // stretched outside its comfort range.
+
+        const DEFAULT_SLACK = 0.25;  // ±25% comfort range
+
+        function signedFaceArea(face) {
+            // Geometric area from current mesh vertex positions.
+            let a = 0;
+            let he = face.halfEdge;
+            do {
+                const v0 = he.origin;
+                const v1 = he.next.origin;
+                a += v0.x * v1.y - v1.x * v0.y;
+                he = he.next;
+            } while (he !== face.halfEdge);
+            return a / 2;
+        }
+
+        function faceAreaInLayout(face, layout) {
+            // Geometric area as if the mesh's vertices were placed at
+            // `layout` positions. Pure read — does not mutate the mesh.
+            let a = 0;
+            let he = face.halfEdge;
+            do {
+                const v0 = he.origin;
+                const v1 = he.next.origin;
+                const x0 = layout[v0.id * 2],     y0 = layout[v0.id * 2 + 1];
+                const x1 = layout[v1.id * 2],     y1 = layout[v1.id * 2 + 1];
+                a += x0 * y1 - x1 * y0;
+                he = he.next;
+            } while (he !== face.halfEdge);
+            return a / 2;
+        }
+
+        function initFaceRestAreas(mesh) {
+            // Set each interior face's restArea to its current geometric
+            // area. Default slack, derived comfort bounds.
+            for (const f of mesh.faces) {
+                if (f.isOuter) continue;
+                f.restArea = signedFaceArea(f);
+                f.slack = DEFAULT_SLACK;
+                f.minArea = f.restArea * (1 - f.slack);
+                f.maxArea = f.restArea * (1 + f.slack);
+            }
+        }
+        initFaceRestAreas(canonicalMesh);
+        // After resize: chunks 0/1/2 listeners run first (W/H, mesh,
+        // layouts, currentLayout reapply), then this fires last so
+        // restArea matches the post-resize layout the user is sitting on.
+        window.addEventListener('resize', () => initFaceRestAreas(canonicalMesh));
+
+        function captureRestAreas(mesh) {
+            // Snapshot current rest areas indexed by face.id.
+            const interior = mesh.faces.filter(f => !f.isOuter);
+            const arr = new Float32Array(interior.length);
+            for (const f of interior) arr[f.id] = f.restArea;
+            return arr;
+        }
+
+        function captureRestAreasFromLayout(mesh, layout) {
+            // Compute the rest areas each face would have if its vertices
+            // were placed according to `layout`. Used at startTransition
+            // to fix the target rest areas for the lerp.
+            const interior = mesh.faces.filter(f => !f.isOuter);
+            const arr = new Float32Array(interior.length);
+            for (const f of interior) arr[f.id] = faceAreaInLayout(f, layout);
+            return arr;
+        }
+
+        // Transient transition state for the rest-area lerp. Populated at
+        // startTransition, used by updateTransition, released on completion.
+        let transitionRestStart = null;
+        let transitionRestTarget = null;
 
         // ========================= CHUNK 4 LANDS HERE =========================
         // Soft-body relaxation (the water-balloon pass).
