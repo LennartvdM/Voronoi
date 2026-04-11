@@ -231,9 +231,12 @@
                 <input type="range" id="tuneDuration" min="200" max="3000" step="50" value="1200">
                 <span class="tunable-value" id="tuneDurationVal">1200</span>
             </div>
+            <div class="tunable-row" style="margin-top: 4px;">
+                <button class="layout-btn" id="tunablesReset" style="width: 100%;">Reset to defaults</button>
+            </div>
         </div>
     </div>
-    <div class="info-label" id="info">mk4 &middot; chunk 21 &middot; help + reduced motion</div>
+    <div class="info-label" id="info">mk4 &middot; chunk 22 &middot; persistence + reset</div>
 
     <div class="help-overlay" id="helpOverlay">
         <div class="help-content">
@@ -267,6 +270,7 @@
             <button class="layout-btn" data-save="L6">Save &rarr; Bento</button>
             <button class="layout-btn" data-save="L7">Save &rarr; Hollow</button>
             <button class="layout-btn" id="exportBtn">Export JSON</button>
+            <button class="layout-btn" id="resetLayoutsBtn">Reset all slots</button>
         </div>
     </div>
 
@@ -2813,6 +2817,102 @@
                 });
             }
         }
+
+        // ========================= CHUNK 22: PERSISTENCE + RESET ==============
+        //
+        // Tunables persist across reloads (like chunk 5's layouts already
+        // do). Reset buttons restore defaults for both subsystems so the
+        // user can experiment freely and revert.
+        //
+        //   tunables → localStorage('mk4-tunables-v1')
+        //              auto-saved on every slider input
+        //              loaded on init
+        //              "Reset to defaults" button restores TUNABLE_DEFAULTS
+        //
+        //   layouts  → localStorage('mk4-layouts-v1') [from chunk 5]
+        //              "Reset all slots" button removes the storage key
+        //              and re-runs applyProceduralDefaults
+
+        const TUNABLES_KEY = 'mk4-tunables-v1';
+        const TUNABLE_DEFAULTS = {
+            relaxGain: 0.6,
+            slack: 0.25,
+            hoverBoost: 1.8,
+            breathAmp: 0.02,
+            transitionDuration: 1200,
+        };
+
+        function saveTunables() {
+            try {
+                const data = {
+                    relaxGain:          parseFloat(document.getElementById('tuneRelaxGain').value),
+                    slack:              parseFloat(document.getElementById('tuneSlack').value),
+                    hoverBoost:         parseFloat(document.getElementById('tuneHover').value),
+                    breathAmp:          parseFloat(document.getElementById('tuneBreath').value),
+                    transitionDuration: parseFloat(document.getElementById('tuneDuration').value),
+                };
+                localStorage.setItem(TUNABLES_KEY, JSON.stringify(data));
+            } catch (e) {
+                console.warn('mk4: failed to save tunables', e);
+            }
+        }
+
+        function loadTunables() {
+            try {
+                const json = localStorage.getItem(TUNABLES_KEY);
+                if (!json) return;
+                const data = JSON.parse(json);
+                if (typeof data.relaxGain          === 'number') setSliderTo('tuneRelaxGain', data.relaxGain);
+                if (typeof data.slack              === 'number') setSliderTo('tuneSlack',     data.slack);
+                if (typeof data.hoverBoost         === 'number') setSliderTo('tuneHover',     data.hoverBoost);
+                if (typeof data.breathAmp          === 'number') setSliderTo('tuneBreath',    data.breathAmp);
+                if (typeof data.transitionDuration === 'number') setSliderTo('tuneDuration',  data.transitionDuration);
+            } catch (e) {
+                console.warn('mk4: failed to load tunables', e);
+            }
+        }
+
+        function resetTunables() {
+            setSliderTo('tuneRelaxGain', TUNABLE_DEFAULTS.relaxGain);
+            setSliderTo('tuneSlack',     TUNABLE_DEFAULTS.slack);
+            setSliderTo('tuneHover',     TUNABLE_DEFAULTS.hoverBoost);
+            setSliderTo('tuneBreath',    TUNABLE_DEFAULTS.breathAmp);
+            setSliderTo('tuneDuration',  TUNABLE_DEFAULTS.transitionDuration);
+            // Also clear storage so the next reload starts clean.
+            try { localStorage.removeItem(TUNABLES_KEY); } catch (e) {}
+        }
+
+        // Auto-save on every slider change. The chunk 18 bindSlider
+        // listeners run first (they update the let-bound constant);
+        // this listener runs after and reads back the (now-updated)
+        // slider value into storage.
+        ['tuneRelaxGain', 'tuneSlack', 'tuneHover', 'tuneBreath', 'tuneDuration'].forEach(id => {
+            const slider = document.getElementById(id);
+            if (slider) slider.addEventListener('input', saveTunables);
+        });
+
+        // Reset buttons.
+        const tunablesResetBtn = document.getElementById('tunablesReset');
+        if (tunablesResetBtn) {
+            tunablesResetBtn.addEventListener('click', resetTunables);
+        }
+
+        const resetLayoutsBtn = document.getElementById('resetLayoutsBtn');
+        if (resetLayoutsBtn) {
+            resetLayoutsBtn.addEventListener('click', () => {
+                try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+                if (typeof applyProceduralDefaults === 'function') {
+                    applyProceduralDefaults();
+                }
+                // Visual feedback
+                resetLayoutsBtn.classList.add('flash');
+                setTimeout(() => resetLayoutsBtn.classList.remove('flash'), 600);
+            });
+        }
+
+        // Load persisted tunables on init (must run AFTER chunk 18 has
+        // wired up the sliders).
+        loadTunables();
 
         // ========================= CHUNK 7 LANDS HERE =========================
         // Polish — colors, hover, easing, arrival ramp.
