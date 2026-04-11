@@ -179,12 +179,8 @@
             collisionRadius: 40,      // Min distance seeds maintain during travel
             currentLayout: 'bento',   // Active layout name
 
-            // Hover: combines a power-diagram weight boost on the hovered cell
-            // with a Gaussian-falloff push on its neighbors. Tuned so that
-            // even a small carousel cell (w=0.7) visibly claims attention
-            // without clipping neighbors out of existence.
-            hoverExpansion: 0.9,      // Weight multiplier added at full hover (1 + k)
-            hoverPush: 55,            // Max pixel push on neighbors at full hover
+            // Hover: spatial/temporal params. Expansion and push magnitude
+            // are role-dependent (see hoverByRole below).
             hoverFalloff: 240,        // Gaussian σ (px) — spatial reach of push
             hoverSpeed: 12,           // Exponential lerp rate (per second) for mix & offset
         };
@@ -209,6 +205,26 @@
             if (!seed) return 1.0;
             if (seed.void) return roleDurationMultiplier.void;
             return roleDurationMultiplier[seed.role || 'content'] || 1.0;
+        }
+
+        // Per-role hover parameters. The semantic hierarchy drives the
+        // physical one: hero is already the visual anchor so hovering it is
+        // just a confirmation, while carousel cells need a pronounced
+        // expansion to claim attention away from the hero.
+        //
+        //   expansion — weight multiplier added at full hover (1 + k).
+        //               Scales how much the polygon grows via power diagram.
+        //   push      — max pixel displacement on neighbors at full hover.
+        //               Used when THIS role is the one being hovered.
+        const hoverByRole = {
+            hero:     { expansion: 0.05, push: 10 },  // barely grows, barely pushes
+            carousel: { expansion: 0.90, push: 55 },  // pronounced squeeze
+            content:  { expansion: 0.90, push: 55 },  // default for non-reader layouts
+        };
+
+        function getHoverParams(seed) {
+            if (!seed) return hoverByRole.content;
+            return hoverByRole[seed.role || 'content'] || hoverByRole.content;
         }
 
         const cellColors = [
@@ -884,12 +900,13 @@
             }
 
             // Pass 2: compute target offset from the currently hovered seed
-            // and ease each seed's (offsetX, offsetY) toward it. Easing the
-            // offset (rather than just recomputing it from hoverMix) gives a
-            // clean crossfade when hover moves from one cell to another —
-            // neighbors smoothly reshuffle around the new center.
+            // and ease each seed's (offsetX, offsetY) toward it. Push
+            // magnitude is determined by the HOVERED cell's role — hovering
+            // a carousel cell squeezes hard, hovering the hero barely nudges
+            // since the hero doesn't need to prove anything.
             const hasHover = hIdx >= 0 && !seeds[hIdx].void;
             const sigma2 = config.hoverFalloff * config.hoverFalloff;
+            const hoverPush = hasHover ? getHoverParams(seeds[hIdx]).push : 0;
 
             for (let i = 0; i < seeds.length; i++) {
                 let targetOx = 0, targetOy = 0;
@@ -902,7 +919,7 @@
                     if (distSq >= 1) {
                         const dist = Math.sqrt(distSq);
                         const falloff = Math.exp(-distSq / (2 * sigma2));
-                        const push = config.hoverPush * falloff;
+                        const push = hoverPush * falloff;
                         targetOx = (dx / dist) * push;
                         targetOy = (dy / dist) * push;
                     }
@@ -917,16 +934,18 @@
 
         // Produce the seed array fed to computeVoronoi each frame: transition
         // positions + hover offsets, and per-seed weight boosted by hoverMix.
-        // Returns plain objects; does not mutate `seeds`.
+        // Expansion is role-specific (see hoverByRole) — hero hovers barely
+        // grow the cell, carousel hovers grow it a lot. Does not mutate seeds.
         function getDisplacedSeeds() {
             const out = new Array(seeds.length);
             for (let i = 0; i < seeds.length; i++) {
                 const s = seeds[i];
                 const mix = s.hoverMix || 0;
+                const expansion = getHoverParams(s).expansion;
                 out[i] = {
                     x: s.x + (s.offsetX || 0),
                     y: s.y + (s.offsetY || 0),
-                    w: (s.w || 1) * (1 + mix * config.hoverExpansion),
+                    w: (s.w || 1) * (1 + mix * expansion),
                     void: !!s.void,
                     role: s.role || 'content',
                 };
