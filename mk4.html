@@ -100,7 +100,7 @@
 <body>
     <a href="index.html" class="back-link">&larr; Back</a>
     <canvas id="canvas"></canvas>
-    <div class="info-label" id="info">mk4 &middot; chunk 14 &middot; render-time warp (Tier B)</div>
+    <div class="info-label" id="info">mk4 &middot; chunk 15 &middot; feel polish</div>
 
     <div class="edit-panel">
         <button class="layout-btn" id="shapeToggle">Shape: rect</button>
@@ -424,6 +424,9 @@
             // Chunk 14: warp each vertex at draw time so cells visibly
             // fit the container. The mesh state stays in unwarped rect
             // coordinates throughout.
+            // Chunk 15: focused cell (hovered or pinned) drawn LAST
+            // with a slightly bolder border, so it sits on top of
+            // neighboring cells visually.
             const shape = (typeof containerShape !== 'undefined') ? containerShape : 'rect';
             const needsClip = (shape !== 'rect');
             if (needsClip) {
@@ -432,20 +435,27 @@
                 ctx.clip(path);
             }
 
-            for (const face of mesh.faces) {
-                if (face.isOuter) continue;
-                // Chunk 8: visibility lerps in [0, 1]; skip near-zero,
-                // and force visible in edit mode so the user can drag
-                // hidden cells.
+            // Identify the focused face for z-order (chunk 15).
+            let focusedFace = null;
+            if (typeof editMode === 'undefined' || !editMode) {
+                if (hoveredFace) {
+                    focusedFace = hoveredFace;
+                } else if (typeof pinnedCellId !== 'undefined' && pinnedCellId != null) {
+                    for (const f of mesh.faces) {
+                        if (f.id === pinnedCellId) { focusedFace = f; break; }
+                    }
+                }
+            }
+
+            const drawFace = (face, isFocused) => {
                 const vis = (face.visibility != null) ? face.visibility : 1;
                 const effectiveVis = (typeof editMode !== 'undefined' && editMode) ? 1 : vis;
-                if (effectiveVis < 0.005) continue;
+                if (effectiveVis < 0.005) return;
 
                 const verts = facePolygon(face);
-                if (verts.length < 3) continue;
+                if (verts.length < 3) return;
 
                 ctx.beginPath();
-                // Chunk 14: warp at draw time
                 const w0 = warpVertex(verts[0].x, verts[0].y, W, H, shape);
                 ctx.moveTo(w0.x, w0.y);
                 for (let i = 1; i < verts.length; i++) {
@@ -456,12 +466,25 @@
                 ctx.globalAlpha = effectiveVis;
                 ctx.fillStyle = faceColor(face.id);
                 ctx.fill();
-                // Chunk 9: bolder border (1.5px) with slightly brighter
-                // alpha for cleaner cell separation against dark bg.
-                ctx.strokeStyle = 'rgba(255,255,255,0.14)';
-                ctx.lineWidth = 1.5;
+                if (isFocused) {
+                    // Brighter, slightly thicker border for the focused cell.
+                    ctx.strokeStyle = 'rgba(255,255,255,0.32)';
+                    ctx.lineWidth = 2.0;
+                } else {
+                    ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+                    ctx.lineWidth = 1.5;
+                }
                 ctx.stroke();
                 ctx.globalAlpha = 1;
+            };
+
+            for (const face of mesh.faces) {
+                if (face.isOuter) continue;
+                if (face === focusedFace) continue;  // draw last
+                drawFace(face, false);
+            }
+            if (focusedFace) {
+                drawFace(focusedFace, true);
             }
 
             // Chunk 13: restore the unclipped state and stroke the
@@ -1676,12 +1699,16 @@
         //
         //   5. HIT-TEST FIX — see (2). Comes free with hover.
 
-        const HOVER_BOOST = 1.8;   // hovered cell wants 1.8x area; with the
-                                   // default 0.25 slack the relax pulls
-                                   // the cell to effMin = boost*0.75 =
-                                   // 1.35x its rest area (visible 35%
-                                   // growth). Lower boost = barely visible.
-        const HOVER_LERP  = 0.15;  // per-frame ramp toward target (~7 frames)
+        const HOVER_BOOST    = 1.8;   // hovered cell wants 1.8x area; with the
+                                      // default 0.25 slack the relax pulls
+                                      // the cell to effMin = boost*0.75 =
+                                      // 1.35x its rest area (visible 35%
+                                      // growth). Lower boost = barely visible.
+        // Chunk 15: asymmetric ramp — fast snap on hover, slow ease off.
+        // The asymmetry makes the hover feel tactile (cell crisply takes
+        // focus when you arrive, then relaxes gently when you leave).
+        const HOVER_LERP_ON  = 0.30;  // ~3 frames to focus
+        const HOVER_LERP_OFF = 0.06;  // ~17 frames to relax
 
         let hoveredFace = null;
 
@@ -1745,16 +1772,18 @@
 
         function updateHover() {
             // Each frame, ramp every face's hoverMul toward its target
-            // (1.0 normally, HOVER_BOOST when hovered OR pinned). Symmetric
-            // ramp; no snap at the end of transitions. Chunk 11 adds the
-            // pinned-cell case — pinning is just a sticky version of hover.
+            // (1.0 normally, HOVER_BOOST when hovered OR pinned). Chunk 11
+            // adds the pinned-cell case. Chunk 15 makes the ramp
+            // asymmetric: fast snap when growing toward focus (target >
+            // current), slow ease when relaxing back (target < current).
             for (const f of canonicalMesh.faces) {
                 if (f.isOuter) continue;
                 const isFocused = (f === hoveredFace) ||
                                   (typeof pinnedCellId !== 'undefined' && f.id === pinnedCellId);
                 const target  = isFocused ? HOVER_BOOST : 1;
                 const current = (f.hoverMul != null) ? f.hoverMul : 1;
-                f.hoverMul = current + (target - current) * HOVER_LERP;
+                const lerp    = (target > current) ? HOVER_LERP_ON : HOVER_LERP_OFF;
+                f.hoverMul = current + (target - current) * lerp;
             }
         }
 
@@ -1808,6 +1837,85 @@
                 // Click on empty space (or a hidden cell) releases.
                 pinnedCellId = null;
             }
+        });
+
+        // Chunk 15: touch input. touchstart is used for both edit-mode
+        // drag-vertex and non-edit-mode tap-to-pin. touchmove updates
+        // the drag in edit mode. touchend releases the drag. We track
+        // touch start position to distinguish a tap from a drag in
+        // non-edit mode (so a brief touch becomes a pin click, not a
+        // pan).
+        let _touchStartId = null;
+        let _touchStartX = 0, _touchStartY = 0;
+        let _touchMoved = false;
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length !== 1) return;
+            const t = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = t.clientX - rect.left;
+            const y = t.clientY - rect.top;
+            _touchStartId = t.identifier;
+            _touchStartX = x; _touchStartY = y;
+            _touchMoved = false;
+            if (editMode) {
+                // Equivalent to mousedown in edit mode.
+                draggedVertex = vertexAtPoint(x, y);
+                updateCursor();
+            }
+            e.preventDefault();
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            const t = Array.from(e.touches).find(tt => tt.identifier === _touchStartId);
+            if (!t) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = t.clientX - rect.left;
+            const y = t.clientY - rect.top;
+            const dx = x - _touchStartX, dy = y - _touchStartY;
+            if (Math.hypot(dx, dy) > 6) _touchMoved = true;
+            if (editMode && draggedVertex) {
+                // Equivalent to chunk 5's mousemove drag (with chunk 14
+                // unwarp before writing to the unwarped vertex).
+                const shape = (typeof containerShape !== 'undefined') ? containerShape : 'rect';
+                let qx = x, qy = y;
+                if (shape !== 'rect' && typeof unwarpVertex === 'function') {
+                    const u = unwarpVertex(x, y, W, H, shape);
+                    qx = u.x; qy = u.y;
+                }
+                draggedVertex.x = qx;
+                draggedVertex.y = qy;
+            }
+            e.preventDefault();
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            const ended = Array.from(e.changedTouches).find(tt => tt.identifier === _touchStartId);
+            if (!ended) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = ended.clientX - rect.left;
+            const y = ended.clientY - rect.top;
+            if (editMode) {
+                draggedVertex = null;
+                updateCursor();
+            } else if (!_touchMoved) {
+                // Tap (no drag) → pin toggle, equivalent to click handler.
+                const face = faceAtPoint(canonicalMesh, x, y);
+                if (face) {
+                    pinnedCellId = (pinnedCellId === face.id) ? null : face.id;
+                } else {
+                    pinnedCellId = null;
+                }
+            }
+            _touchStartId = null;
+            _touchMoved = false;
+        });
+
+        canvas.addEventListener('touchcancel', () => {
+            if (editMode) draggedVertex = null;
+            _touchStartId = null;
+            _touchMoved = false;
+            updateCursor();
         });
 
         // ========================= CHUNK 12: IDLE BREATHING ===================
