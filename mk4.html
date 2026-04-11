@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>mk4 — Mesh Morph</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0f;
+            color: #fff;
+            min-height: 100vh;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        canvas { display: block; width: 100%; height: 100vh; cursor: default; }
+
+        .back-link {
+            position: fixed; top: 1rem; left: 1rem;
+            color: #666; text-decoration: none; font-size: 0.9rem; z-index: 100;
+        }
+        .back-link:hover { color: #aaa; }
+
+        .layout-bar {
+            position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 6px; z-index: 100;
+            background: rgba(20, 20, 35, 0.9);
+            backdrop-filter: blur(12px);
+            padding: 8px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+
+        .layout-btn {
+            padding: 8px 16px;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            font-size: 12px; font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.7);
+        }
+        .layout-btn:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.3);
+        }
+        .layout-btn.active {
+            background: linear-gradient(135deg, rgba(99,102,241,0.4), rgba(139,92,246,0.4));
+            border-color: rgba(139,92,246,0.6);
+            color: #fff;
+            box-shadow: 0 2px 10px rgba(99,102,241,0.3);
+        }
+
+        .info-label {
+            position: fixed; top: 1rem; right: 1rem;
+            color: #444; font-size: 0.75rem; z-index: 100;
+            font-family: ui-monospace, monospace;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">&larr; Back</a>
+    <canvas id="canvas"></canvas>
+    <div class="info-label" id="info">mk4 &middot; chunk 0 scaffold</div>
+
+    <div class="layout-bar" id="layoutBar">
+        <button class="layout-btn active" data-layout="L1">Layout 1</button>
+        <button class="layout-btn" data-layout="L2">Layout 2</button>
+        <button class="layout-btn" data-layout="L3">Layout 3</button>
+        <button class="layout-btn" data-layout="L4">Layout 4</button>
+    </div>
+
+    <script>
+    (function() {
+        'use strict';
+
+        // =======================================================================
+        //  mk4 — MESH MORPH
+        //
+        //  Architecture:
+        //
+        //    A half-edge mesh with FIXED TOPOLOGY is the source of truth.
+        //    Layouts are different positionings of the same vertices, plus
+        //    a per-layout rest area for each face. Transitions linearly
+        //    interpolate vertex positions and rest areas. A per-frame
+        //    soft-body relaxation pass keeps each cell within its comfort
+        //    range (water balloon, not over-hydrated pizza).
+        //
+        //    Topology never changes → no pops, no vertex correspondence
+        //    problem, no assignment problem, no Voronoi at runtime.
+        //
+        //  Chunk plan (this file is chunk 0):
+        //
+        //    [0] Scaffold — page chrome, no-op buttons, empty animate loop.
+        //    [1] Half-edge mesh + Voronoi seed. Implement HEM. Use a
+        //        one-shot Voronoi computation to populate the canonical
+        //        mesh from a seed config. Render faces statically.
+        //    [2] Layouts as vertex arrays. Float32Array(2*V) per layout.
+        //        Two hard-coded layouts. Instant teleport on button click.
+        //    [3] Linear interpolation. Lerp vertex positions over ~1200ms.
+        //        Topology stays clean by construction; motion still slidey.
+        //    [3.5] Rest area plumbing. Add restArea / slack / min / max to
+        //        each face. Lerp rest areas alongside vertex positions.
+        //        No forces yet.
+        //    [4] Soft-body relaxation. Per-frame area-correction forces.
+        //        This is where the water-balloon feel arrives.
+        //    [5] Vertex editor. Drag vertices, save layouts, export JSON.
+        //    [6] Author 4 real layouts using the editor.
+        //    [7] Polish — colors, borders, hover, arrival ramp,
+        //        per-cell slack tuning, easing.
+        // =======================================================================
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const info = document.getElementById('info');
+
+        let W = 0, H = 0, dpr = 1;
+        function resize() {
+            dpr = window.devicePixelRatio || 1;
+            W = window.innerWidth;
+            H = window.innerHeight;
+            canvas.width = W * dpr;
+            canvas.height = H * dpr;
+            canvas.style.width = W + 'px';
+            canvas.style.height = H + 'px';
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Layout switching — chunk 0 is no-op, just toggles the active class.
+        // Chunks 2+ wire this up to actual layout transitions.
+        let currentLayout = 'L1';
+        const buttons = document.querySelectorAll('.layout-btn');
+        buttons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentLayout = btn.dataset.layout;
+                buttons.forEach(b => b.classList.toggle('active', b === btn));
+            });
+        });
+
+        // ========================= CHUNK 1 LANDS HERE =========================
+        // Half-edge mesh data structure (vertex / half-edge / face).
+        // Voronoi-seeded canonical mesh generator (one-shot).
+        // Static face rendering.
+
+        // ========================= CHUNK 2 LANDS HERE =========================
+        // Layout = Float32Array(2 * V) of vertex positions.
+        // Layout switching = teleport.
+
+        // ========================= CHUNK 3 LANDS HERE =========================
+        // Linear interpolation animation between layouts.
+
+        // ========================= CHUNK 3.5 LANDS HERE =======================
+        // Per-face rest area + comfort range + lerping.
+
+        // ========================= CHUNK 4 LANDS HERE =========================
+        // Soft-body relaxation (the water-balloon pass).
+
+        // ========================= CHUNK 5 LANDS HERE =========================
+        // In-page vertex editor.
+
+        // ========================= CHUNK 6 LANDS HERE =========================
+        // Authored layouts.
+
+        // ========================= CHUNK 7 LANDS HERE =========================
+        // Polish — colors, hover, easing, arrival ramp.
+
+        // Animation loop. Chunk 0 only clears and draws a placeholder;
+        // later chunks fill this in.
+        function animate() {
+            ctx.clearRect(0, 0, W, H);
+
+            ctx.fillStyle = '#222';
+            ctx.font = '14px ui-monospace, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('mk4 scaffold — chunk 0', W / 2, H / 2);
+            ctx.fillText('layout: ' + currentLayout, W / 2, H / 2 + 22);
+
+            requestAnimationFrame(animate);
+        }
+        animate();
+    })();
+    </script>
+</body>
+</html>
