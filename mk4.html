@@ -67,7 +67,7 @@
 <body>
     <a href="index.html" class="back-link">&larr; Back</a>
     <canvas id="canvas"></canvas>
-    <div class="info-label" id="info">mk4 &middot; chunk 3.5 &middot; rest area plumbing</div>
+    <div class="info-label" id="info">mk4 &middot; chunk 4 &middot; soft-body relaxation</div>
 
     <div class="layout-bar" id="layoutBar">
         <button class="layout-btn active" data-layout="L1">Layout 1</button>
@@ -653,8 +653,116 @@
         let transitionRestStart = null;
         let transitionRestTarget = null;
 
-        // ========================= CHUNK 4 LANDS HERE =========================
-        // Soft-body relaxation (the water-balloon pass).
+        // ========================= CHUNK 4: SOFT-BODY RELAXATION =============
+        //
+        // Per-frame relaxation pass that pushes back when a cell's
+        // current geometric area drifts outside its comfort range
+        // [minArea, maxArea]. This is the water-balloon mechanism:
+        // cells resist being squashed or stretched past their natural
+        // size, and the resistance reads as "settling" rather than
+        // "sliding."
+        //
+        // Algorithm (per iteration, per face):
+        //   1. Compute current area A and geometric centroid C in
+        //      one walk over the face's half-edges.
+        //   2. Pick target area = nearest comfort-range edge:
+        //        if A > maxArea: target = maxArea  (must shrink)
+        //        if A < minArea: target = minArea  (must grow)
+        //        else: no force, the cell is comfortable.
+        //   3. The uniform radial scale that achieves the target is
+        //      sqrt(target / A) (since area scales with scale²).
+        //   4. Damp by gain α to avoid over-correction across the
+        //      coupled mesh: effectiveScale = 1 + α * (scale - 1).
+        //   5. For each boundary vertex v of the face, accumulate
+        //      a displacement of (v - C) * (effectiveScale - 1).
+        //   6. After all faces processed, sum displacements at each
+        //      vertex (shared vertices receive contributions from
+        //      every incident cell) and apply.
+        //
+        // RELAX_ITERS iterations per frame so corrections propagate a
+        // bit through the mesh. With α = 0.5 and 2 iters, mild stress
+        // is smoothed within a single frame; severe stress takes a
+        // few frames to settle but the system never explodes.
+        //
+        // No memory across frames. updateTransition overwrites vertex
+        // positions every frame to the pure lerp output, so relaxation
+        // is always a fresh per-frame correction layered on the lerp
+        // trajectory — never an accumulating drift.
+        //
+        // Endpoints (t=0 and t=1): cells are exactly at restArea by
+        // construction, so the relaxation is a strict no-op. No drift,
+        // no force ramping needed at the boundaries of the transition.
+
+        const RELAX_ITERS = 2;
+        const RELAX_GAIN  = 0.5;  // damping factor per iteration
+
+        // Reusable per-vertex displacement accumulators (avoid GC).
+        let _relaxDX = null;
+        let _relaxDY = null;
+        function _ensureRelaxBuffers(n) {
+            if (!_relaxDX || _relaxDX.length < n) {
+                _relaxDX = new Float32Array(n);
+                _relaxDY = new Float32Array(n);
+            }
+        }
+
+        function relaxMesh(mesh) {
+            const V = mesh.vertices.length;
+            _ensureRelaxBuffers(V);
+            const dx = _relaxDX, dy = _relaxDY;
+
+            for (let iter = 0; iter < RELAX_ITERS; iter++) {
+                for (let i = 0; i < V; i++) { dx[i] = 0; dy[i] = 0; }
+
+                for (const f of mesh.faces) {
+                    if (f.isOuter) continue;
+
+                    // Area + centroid in one walk.
+                    let area = 0, cx = 0, cy = 0, n = 0;
+                    let he = f.halfEdge;
+                    do {
+                        const v0 = he.origin;
+                        const v1 = he.next.origin;
+                        area += v0.x * v1.y - v1.x * v0.y;
+                        cx += v0.x;
+                        cy += v0.y;
+                        n++;
+                        he = he.next;
+                    } while (he !== f.halfEdge);
+                    area *= 0.5;
+                    cx /= n;
+                    cy /= n;
+
+                    // Pick the comfort-range edge we need to head toward.
+                    let target;
+                    if (area > f.maxArea)      target = f.maxArea;
+                    else if (area < f.minArea) target = f.minArea;
+                    else                        continue;  // comfortable
+
+                    if (area <= 0) continue;  // degenerate guard
+
+                    const targetScale    = Math.sqrt(target / area);
+                    const effectiveScale = 1 + RELAX_GAIN * (targetScale - 1);
+                    const k = effectiveScale - 1;
+                    if (k === 0) continue;
+
+                    // Push every boundary vertex radially from the centroid.
+                    he = f.halfEdge;
+                    do {
+                        const v = he.origin;
+                        dx[v.id] += (v.x - cx) * k;
+                        dy[v.id] += (v.y - cy) * k;
+                        he = he.next;
+                    } while (he !== f.halfEdge);
+                }
+
+                const verts = mesh.vertices;
+                for (let i = 0; i < V; i++) {
+                    verts[i].x += dx[i];
+                    verts[i].y += dy[i];
+                }
+            }
+        }
 
         // ========================= CHUNK 5 LANDS HERE =========================
         // In-page vertex editor.
@@ -667,14 +775,18 @@
 
         // Animation loop. requestAnimationFrame passes a high-resolution
         // timestamp; we forward it to updateTransition for the lerp clock.
-        // Chunk 1: renders the static canonical mesh.
-        // Chunk 3: ticks the active transition (mutates vertex positions).
-        // Later chunks: relaxation pass, hover, etc.
+        // Chunk 1:   renders the static canonical mesh.
+        // Chunk 3:   ticks the active transition (lerps vertex positions).
+        // Chunk 3.5: lerps per-face rest areas alongside positions.
+        // Chunk 4:   relaxes the mesh — pushes back when a cell drifts
+        //            outside its comfort range. No-op when all cells
+        //            are at restArea.
         function animate(now) {
             if (now == null) now = performance.now();
             ctx.clearRect(0, 0, W, H);
             if (canonicalMesh) {
                 updateTransition(now);
+                relaxMesh(canonicalMesh);
                 renderMesh(canonicalMesh);
             }
             requestAnimationFrame(animate);
