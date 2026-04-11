@@ -100,7 +100,7 @@
 <body>
     <a href="index.html" class="back-link">&larr; Back</a>
     <canvas id="canvas"></canvas>
-    <div class="info-label" id="info">mk4 &middot; chunk 10 &middot; topology-aware spiral</div>
+    <div class="info-label" id="info">mk4 &middot; chunk 11 &middot; click to pin</div>
 
     <div class="edit-panel">
         <button class="layout-btn" id="editToggle">Edit</button>
@@ -1659,11 +1659,14 @@
 
         function updateHover() {
             // Each frame, ramp every face's hoverMul toward its target
-            // (1.0 normally, HOVER_BOOST when hovered). Symmetric ramp;
-            // no snap at the end of transitions.
+            // (1.0 normally, HOVER_BOOST when hovered OR pinned). Symmetric
+            // ramp; no snap at the end of transitions. Chunk 11 adds the
+            // pinned-cell case — pinning is just a sticky version of hover.
             for (const f of canonicalMesh.faces) {
                 if (f.isOuter) continue;
-                const target  = (f === hoveredFace) ? HOVER_BOOST : 1;
+                const isFocused = (f === hoveredFace) ||
+                                  (typeof pinnedCellId !== 'undefined' && f.id === pinnedCellId);
+                const target  = isFocused ? HOVER_BOOST : 1;
                 const current = (f.hoverMul != null) ? f.hoverMul : 1;
                 f.hoverMul = current + (target - current) * HOVER_LERP;
             }
@@ -1686,6 +1689,40 @@
         // call with typeof, so this catches the case where the function
         // didn't exist at init time.
         applyLayoutSlack(currentLayout);
+
+        // ========================= CHUNK 11: CLICK-TO-PIN =====================
+        //
+        // Clicking a cell in non-edit mode "pins" it — the cell stays at
+        // HOVER_BOOST size permanently until you click somewhere else.
+        // Click the same cell again to release. Click empty space (or a
+        // hidden cell) to release.
+        //
+        // The pinning shares the chunk 9 hover machinery: pinned cells
+        // are treated as if they were hovered. The updateHover modification
+        // above ORs the pin into the focus check — one symmetric ramp,
+        // no double-stacking.
+        //
+        // Pin survives layout transitions (cell identity is the persistent
+        // thing, not position). Pin is independent of edit mode (chunk 5
+        // takes over the cursor in edit mode and click events are
+        // edit-mode-filtered).
+
+        let pinnedCellId = null;
+
+        canvas.addEventListener('click', (e) => {
+            if (editMode) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const face = faceAtPoint(canonicalMesh, x, y);
+            if (face) {
+                // Toggle: clicking the pinned cell unpins it.
+                pinnedCellId = (pinnedCellId === face.id) ? null : face.id;
+            } else {
+                // Click on empty space (or a hidden cell) releases.
+                pinnedCellId = null;
+            }
+        });
 
         // ========================= CHUNK 7 LANDS HERE =========================
         // Polish — colors, hover, easing, arrival ramp.
