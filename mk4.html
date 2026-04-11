@@ -100,24 +100,28 @@
 <body>
     <a href="index.html" class="back-link">&larr; Back</a>
     <canvas id="canvas"></canvas>
-    <div class="info-label" id="info">mk4 &middot; chunk 6 &middot; placeholder layouts</div>
+    <div class="info-label" id="info">mk4 &middot; chunk 7 &middot; procedural layouts</div>
 
     <div class="edit-panel">
         <button class="layout-btn" id="editToggle">Edit</button>
         <div class="edit-controls" id="editControls">
-            <button class="layout-btn" data-save="L1">Save &rarr; L1</button>
-            <button class="layout-btn" data-save="L2">Save &rarr; L2</button>
-            <button class="layout-btn" data-save="L3">Save &rarr; L3</button>
-            <button class="layout-btn" data-save="L4">Save &rarr; L4</button>
+            <button class="layout-btn" data-save="L1">Save &rarr; Canonical</button>
+            <button class="layout-btn" data-save="L2">Save &rarr; Hex</button>
+            <button class="layout-btn" data-save="L3">Save &rarr; Spiral</button>
+            <button class="layout-btn" data-save="L4">Save &rarr; Sidebar</button>
+            <button class="layout-btn" data-save="L5">Save &rarr; Diagonal</button>
+            <button class="layout-btn" data-save="L6">Save &rarr; Bento</button>
             <button class="layout-btn" id="exportBtn">Export JSON</button>
         </div>
     </div>
 
     <div class="layout-bar" id="layoutBar">
-        <button class="layout-btn active" data-layout="L1">Layout 1</button>
-        <button class="layout-btn" data-layout="L2">Layout 2</button>
-        <button class="layout-btn" data-layout="L3">Layout 3</button>
-        <button class="layout-btn" data-layout="L4">Layout 4</button>
+        <button class="layout-btn active" data-layout="L1">Canonical</button>
+        <button class="layout-btn" data-layout="L2">Hex</button>
+        <button class="layout-btn" data-layout="L3">Spiral</button>
+        <button class="layout-btn" data-layout="L4">Sidebar</button>
+        <button class="layout-btn" data-layout="L5">Diagonal</button>
+        <button class="layout-btn" data-layout="L6">Bento</button>
     </div>
 
     <script>
@@ -1047,17 +1051,32 @@
         // layouts and re-apply currentLayout.
         window.addEventListener('resize', loadLayoutsFromStorage);
 
-        // ========================= CHUNK 6: PLACEHOLDER LAYOUTS ==============
+        // ========================= CHUNK 7: PROCEDURAL LAYOUTS ==============
         //
-        // Three placeholder layouts that override chunk 2's affine fixtures
-        // (kept as a fallback). These are *not* hand-authored in the editor
-        // — they're hand-coded by giving each cell a target centroid +
-        // anisotropic scale, then computing vertex positions by averaging
-        // each vertex's contribution from its incident cells.
+        // Procedural layout generators ported from morph.html. Each
+        // generator returns 12 cell specs in canonical-id order (cell 0
+        // is the canonical top-left of the 4×3 grid, cell 11 the
+        // bottom-right). buildLayoutFromCellSpecs then converts the
+        // specs to vertex positions by averaging each vertex's
+        // contribution from its incident cells.
         //
-        // localStorage takes precedence: if you've saved real layouts via
-        // the chunk 5 editor, those win on init AND on resize. The
-        // placeholders only fill empty slots.
+        // Note on the averaging method: a cell's "own" scale gets
+        // partially overridden by its neighbors' scales at shared
+        // vertices. This means uniform-scale layouts (hex, spiral,
+        // sidebar, diagonal) work cleanly, while mixed-scale layouts
+        // (bento with one big hero) get diluted: the hero is bigger
+        // than its neighbors but not as much as the bare scale would
+        // imply. Acceptable trade-off for procedural generation.
+        //
+        // Layouts that need true hidden cells (rim with hollow center,
+        // sidebar with void claiming the right side) are deferred to a
+        // future chunk that adds per-face visibility lerping. The mk4
+        // versions of sidebar and diagonal use natural whitespace from
+        // packing cells into one part of the canvas, leaving the rest
+        // visually empty without hiding anything.
+        //
+        // localStorage takes precedence: if you've saved real layouts
+        // via the chunk 5 editor, those win on init AND on resize.
         //
         // Cell id → canonical centroid (as fraction of W, H):
         //   0 (0.16, 0.20)   1 (0.42, 0.20)   2 (0.67, 0.22)   3 (0.88, 0.17)
@@ -1115,89 +1134,142 @@
             return arr;
         }
 
-        // L2 — BALANCED. Uniform 4×3 grid, no jitter, all cells the
-        // same target size. Reads as "neat / regular".
-        const L2_BALANCED = [
-            { tx: 0.125, ty: 0.20, sx: 0.85, sy: 0.85 },
-            { tx: 0.375, ty: 0.20, sx: 0.85, sy: 0.85 },
-            { tx: 0.625, ty: 0.20, sx: 0.85, sy: 0.85 },
-            { tx: 0.875, ty: 0.20, sx: 0.85, sy: 0.85 },
-            { tx: 0.125, ty: 0.50, sx: 0.85, sy: 0.85 },
-            { tx: 0.375, ty: 0.50, sx: 0.85, sy: 0.85 },
-            { tx: 0.625, ty: 0.50, sx: 0.85, sy: 0.85 },
-            { tx: 0.875, ty: 0.50, sx: 0.85, sy: 0.85 },
-            { tx: 0.125, ty: 0.80, sx: 0.85, sy: 0.85 },
-            { tx: 0.375, ty: 0.80, sx: 0.85, sy: 0.85 },
-            { tx: 0.625, ty: 0.80, sx: 0.85, sy: 0.85 },
-            { tx: 0.875, ty: 0.80, sx: 0.85, sy: 0.85 },
-        ];
+        // ---- Procedural generators ----
+        //
+        // Each function returns an array of 12 { tx, ty, sx, sy } specs
+        // in canonical-id order. tx/ty are fractions of (W, H); sx/sy
+        // are scales relative to the canonical centroid offset.
 
-        // L3 — HERO_CENTER. Cells 5 and 6 (middle pair) grow into a
-        // central hero region; surrounding cells pull back slightly
-        // and curve around them. Reads as "focused".
-        const L3_HERO_CENTER = [
-            { tx: 0.13, ty: 0.16, sx: 0.85, sy: 0.85 },  //  0
-            { tx: 0.34, ty: 0.13, sx: 0.85, sy: 0.85 },  //  1
-            { tx: 0.66, ty: 0.13, sx: 0.85, sy: 0.85 },  //  2
-            { tx: 0.87, ty: 0.16, sx: 0.85, sy: 0.85 },  //  3
-            { tx: 0.10, ty: 0.50, sx: 0.85, sy: 0.85 },  //  4
-            { tx: 0.40, ty: 0.50, sx: 1.30, sy: 1.30 },  //  5  hero L
-            { tx: 0.60, ty: 0.50, sx: 1.30, sy: 1.30 },  //  6  hero R
-            { tx: 0.90, ty: 0.50, sx: 0.85, sy: 0.85 },  //  7
-            { tx: 0.13, ty: 0.84, sx: 0.85, sy: 0.85 },  //  8
-            { tx: 0.34, ty: 0.87, sx: 0.85, sy: 0.85 },  //  9
-            { tx: 0.66, ty: 0.87, sx: 0.85, sy: 0.85 },  // 10
-            { tx: 0.87, ty: 0.84, sx: 0.85, sy: 0.85 },  // 11
-        ];
+        // HEX — hexagonal close-packing, 4×3 with row-offset.
+        // Even rows aligned to columns; odd row shifted half a column.
+        function hexLayout(W, H) {
+            const r = [];
+            for (let row = 0; row < 3; row++) {
+                const yFrac = 0.20 + row * 0.30;
+                const xOff  = (row % 2) * 0.11;
+                for (let col = 0; col < 4; col++) {
+                    r.push({
+                        tx: 0.105 + col * 0.22 + xOff,
+                        ty: yFrac,
+                        sx: 0.85, sy: 0.95,
+                    });
+                }
+            }
+            return r;
+        }
 
-        // L4 — SPARSE. All cells shrunk uniformly toward their canonical
-        // positions, with the two interior cells (5, 6) shrunk extra-small.
-        // The averaging math means a cell's "own" scale is partially
-        // overridden by its neighbors' scales — keeping the targets near
-        // canonical positions avoids the off-canvas blowout the original
-        // outward-rim spec produced. Reads as "sparse / breathing room".
-        const L4_RIM = [
-            { tx: 0.13, ty: 0.20, sx: 0.7, sy: 0.7 },  //  0
-            { tx: 0.38, ty: 0.20, sx: 0.7, sy: 0.7 },  //  1
-            { tx: 0.62, ty: 0.20, sx: 0.7, sy: 0.7 },  //  2
-            { tx: 0.87, ty: 0.20, sx: 0.7, sy: 0.7 },  //  3
-            { tx: 0.13, ty: 0.50, sx: 0.7, sy: 0.7 },  //  4
-            { tx: 0.38, ty: 0.50, sx: 0.4, sy: 0.4 },  //  5  small interior
-            { tx: 0.62, ty: 0.50, sx: 0.4, sy: 0.4 },  //  6  small interior
-            { tx: 0.87, ty: 0.50, sx: 0.7, sy: 0.7 },  //  7
-            { tx: 0.13, ty: 0.80, sx: 0.7, sy: 0.7 },  //  8
-            { tx: 0.38, ty: 0.80, sx: 0.7, sy: 0.7 },  //  9
-            { tx: 0.62, ty: 0.80, sx: 0.7, sy: 0.7 },  // 10
-            { tx: 0.87, ty: 0.80, sx: 0.7, sy: 0.7 },  // 11
-        ];
+        // SWIRL — each cell rotated around the canvas center from its
+        // canonical position, with rotation angle proportional to radius
+        // (cells further from center spin more). Topologically friendly:
+        // every cell stays close to its canonical neighborhood. Reads as
+        // "spiral-ish" without the topology damage that a true Fermat
+        // spiral causes when forced onto a fixed 4×3 mesh.
+        function spiralLayout(W, H) {
+            const r = [];
+            const cx = 0.5, cy = 0.5;
+            const ar = H / W;  // y is "shorter" — keep angles round in pixel space
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < 4; col++) {
+                    const x = 0.125 + col * 0.25;
+                    const y = 0.20  + row * 0.30;
+                    // Distance from canvas center in pixel space.
+                    const dxp = (x - cx) / ar;
+                    const dyp = (y - cy);
+                    const radius = Math.hypot(dxp, dyp);
+                    const baseAngle = Math.atan2(dyp, dxp);
+                    // More spin further out: ~0.5 rad at the corners.
+                    const newAngle  = baseAngle + radius * 1.4;
+                    const newRadius = radius * 0.85;
+                    r.push({
+                        tx: cx + newRadius * Math.cos(newAngle) * ar,
+                        ty: cy + newRadius * Math.sin(newAngle),
+                        sx: 0.85, sy: 0.85,
+                    });
+                }
+            }
+            return r;
+        }
 
-        function applyChunk6Defaults() {
-            // Storage takes precedence — only fill slots not in storage.
-            // L1 is always the canonical mesh (chunk 2 already built it).
+        // SIDEBAR — cells condensed into a narrow vertical strip on
+        // the left, the right ~75% naturally empty. No void cell
+        // needed: just compress the x range and let whitespace happen.
+        function sidebarLayout(W, H) {
+            const r = [];
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < 4; col++) {
+                    r.push({
+                        tx: 0.05 + col * 0.05,   // x in [0.05, 0.20]
+                        ty: 0.16 + row * 0.34,
+                        sx: 0.30, sy: 0.95,
+                    });
+                }
+            }
+            return r;
+        }
+
+        // DIAGONAL — cells packed into the upper-left triangular half,
+        // the lower-right naturally empty. Each cell's target is its
+        // canonical position, scaled toward (0, 0).
+        function diagonalLayout(W, H) {
+            const r = [];
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < 4; col++) {
+                    const cx = 0.125 + col * 0.25;
+                    const cy = 0.20  + row * 0.30;
+                    r.push({
+                        tx: cx * 0.55,
+                        ty: cy * 0.55,
+                        sx: 0.55, sy: 0.55,
+                    });
+                }
+            }
+            return r;
+        }
+
+        // BENTO — cell 6 grows as a central hero; the others stay near
+        // canonical positions at slightly reduced scale. Mixed scales
+        // get diluted by the averaging method, so the hero is visibly
+        // bigger but not as dramatic as the bare 1.5 scale would imply.
+        function bentoLayout(W, H) {
+            const r = [];
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < 4; col++) {
+                    const i = row * 4 + col;
+                    if (i === 6) {
+                        r.push({ tx: 0.55, ty: 0.50, sx: 1.50, sy: 1.50 });
+                    } else {
+                        r.push({
+                            tx: 0.125 + col * 0.25,
+                            ty: 0.20  + row * 0.30,
+                            sx: 0.85, sy: 0.85,
+                        });
+                    }
+                }
+            }
+            return r;
+        }
+
+        function applyProceduralDefaults() {
+            // Storage takes precedence — only fill slots NOT saved by
+            // the chunk 5 editor. L1 is always the canonical mesh.
             let stored = {};
             try {
                 stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
             } catch (e) {}
 
-            if (!stored.L2) {
-                layouts.L2 = buildLayoutFromCellSpecs(L2_BALANCED,    canonicalMesh, layouts.L1, W, H);
-            }
-            if (!stored.L3) {
-                layouts.L3 = buildLayoutFromCellSpecs(L3_HERO_CENTER, canonicalMesh, layouts.L1, W, H);
-            }
-            if (!stored.L4) {
-                layouts.L4 = buildLayoutFromCellSpecs(L4_RIM,         canonicalMesh, layouts.L1, W, H);
-            }
+            if (!stored.L2) layouts.L2 = buildLayoutFromCellSpecs(hexLayout(W, H),      canonicalMesh, layouts.L1, W, H);
+            if (!stored.L3) layouts.L3 = buildLayoutFromCellSpecs(spiralLayout(W, H),   canonicalMesh, layouts.L1, W, H);
+            if (!stored.L4) layouts.L4 = buildLayoutFromCellSpecs(sidebarLayout(W, H),  canonicalMesh, layouts.L1, W, H);
+            if (!stored.L5) layouts.L5 = buildLayoutFromCellSpecs(diagonalLayout(W, H), canonicalMesh, layouts.L1, W, H);
+            if (!stored.L6) layouts.L6 = buildLayoutFromCellSpecs(bentoLayout(W, H),    canonicalMesh, layouts.L1, W, H);
 
-            // Re-apply currentLayout in case we just changed the slot
-            // the user is sitting on.
             if (layouts[currentLayout]) {
                 applyLayout(canonicalMesh, layouts[currentLayout]);
                 initFaceRestAreas(canonicalMesh);
             }
         }
-        applyChunk6Defaults();
-        window.addEventListener('resize', applyChunk6Defaults);
+        applyProceduralDefaults();
+        window.addEventListener('resize', applyProceduralDefaults);
 
         // ========================= CHUNK 7 LANDS HERE =========================
         // Polish — colors, hover, easing, arrival ramp.
