@@ -100,7 +100,7 @@
 <body>
     <a href="index.html" class="back-link">&larr; Back</a>
     <canvas id="canvas"></canvas>
-    <div class="info-label" id="info">mk4 &middot; chunk 15 &middot; feel polish</div>
+    <div class="info-label" id="info">mk4 &middot; chunk 16 &middot; shape transitions</div>
 
     <div class="edit-panel">
         <button class="layout-btn" id="shapeToggle">Shape: rect</button>
@@ -427,8 +427,13 @@
             // Chunk 15: focused cell (hovered or pinned) drawn LAST
             // with a slightly bolder border, so it sits on top of
             // neighboring cells visually.
+            // Chunk 16: skip clipping during transitions — the
+            // blended shape isn't easily expressible as a Path2D, and
+            // the warp ensures cells are inside the visible region.
+            // We only clip when fully settled at a non-rect shape.
             const shape = (typeof containerShape !== 'undefined') ? containerShape : 'rect';
-            const needsClip = (shape !== 'rect');
+            const settled = (typeof shapeT === 'undefined') || shapeT >= 1;
+            const needsClip = settled && (shape !== 'rect');
             if (needsClip) {
                 ctx.save();
                 const path = buildContainerPath(W, H, shape);
@@ -456,10 +461,12 @@
                 if (verts.length < 3) return;
 
                 ctx.beginPath();
-                const w0 = warpVertex(verts[0].x, verts[0].y, W, H, shape);
+                // Chunk 16: warpVertex now reads containerShape /
+                // containerPrevShape / shapeT internally.
+                const w0 = warpVertex(verts[0].x, verts[0].y, W, H);
                 ctx.moveTo(w0.x, w0.y);
                 for (let i = 1; i < verts.length; i++) {
-                    const wi = warpVertex(verts[i].x, verts[i].y, W, H, shape);
+                    const wi = warpVertex(verts[i].x, verts[i].y, W, H);
                     ctx.lineTo(wi.x, wi.y);
                 }
                 ctx.closePath();
@@ -1041,14 +1048,11 @@
         // ---- Hit-test, drag, hover ----
 
         function vertexAtPoint(x, y) {
-            // Chunk 14: (x, y) is in screen-space; unwarp once and
-            // compare against unwarped vertex positions. Hit radius
-            // stays in screen-space units, but we test in mesh-space
-            // by approximating the warp scale near the cursor.
-            const shape = (typeof containerShape !== 'undefined') ? containerShape : 'rect';
+            // Chunk 14/16: (x, y) is in screen-space; unwarp once and
+            // compare against unwarped vertex positions.
             let qx = x, qy = y;
-            if (shape !== 'rect' && typeof unwarpVertex === 'function') {
-                const u = unwarpVertex(x, y, W, H, shape);
+            if (typeof unwarpVertex === 'function') {
+                const u = unwarpVertex(x, y, W, H);
                 qx = u.x; qy = u.y;
             }
             let closest = null;
@@ -1086,12 +1090,10 @@
             if (!editMode) return;
             const p = canvasPos(e);
             if (draggedVertex) {
-                // Chunk 14: cursor is in screen-space; unwarp it
-                // before writing to the (unwarped) vertex position.
-                const shape = (typeof containerShape !== 'undefined') ? containerShape : 'rect';
+                // Chunk 14/16: unwarp cursor before writing to vertex.
                 let qx = p.x, qy = p.y;
-                if (shape !== 'rect' && typeof unwarpVertex === 'function') {
-                    const u = unwarpVertex(p.x, p.y, W, H, shape);
+                if (typeof unwarpVertex === 'function') {
+                    const u = unwarpVertex(p.x, p.y, W, H);
                     qx = u.x; qy = u.y;
                 }
                 draggedVertex.x = qx;
@@ -1117,18 +1119,16 @@
         // ---- Render handles (called from animate when editMode) ----
 
         function renderHandles() {
-            // Chunk 14: warp each vertex to its visible (screen-space)
-            // position before drawing the handle, so handles overlay the
-            // visible vertices.
-            const shape = (typeof containerShape !== 'undefined') ? containerShape : 'rect';
-            const useWarp = (shape !== 'rect' && typeof warpVertex === 'function');
+            // Chunk 14/16: warp each vertex to its visible (screen-space)
+            // position before drawing the handle.
+            const useWarp = (typeof warpVertex === 'function');
             for (const v of canonicalMesh.vertices) {
                 const isActive  = v === draggedVertex;
                 const isHovered = v === hoveredVertex && !draggedVertex;
                 const r = (isActive || isHovered) ? HANDLE_RADIUS * 1.6 : HANDLE_RADIUS;
                 let dx = v.x, dy = v.y;
                 if (useWarp) {
-                    const w = warpVertex(v.x, v.y, W, H, shape);
+                    const w = warpVertex(v.x, v.y, W, H);
                     dx = w.x; dy = w.y;
                 }
                 ctx.beginPath();
@@ -1734,13 +1734,12 @@
             //
             // Chunk 14: (px, py) is in screen-space (warped). Unwarp
             // it once to get the underlying mesh-space point, then
-            // hit-test against the unwarped polygons. The warp is
-            // continuous and bijective, so this gives the same answer
-            // as warping every polygon vertex and testing.
-            const shape = (typeof containerShape !== 'undefined') ? containerShape : 'rect';
+            // hit-test against the unwarped polygons.
+            // Chunk 16: unwarpVertex reads containerShape state
+            // internally, including any in-flight shape transition.
             let qx = px, qy = py;
-            if (shape !== 'rect' && typeof unwarpVertex === 'function') {
-                const u = unwarpVertex(px, py, W, H, shape);
+            if (typeof unwarpVertex === 'function') {
+                const u = unwarpVertex(px, py, W, H);
                 qx = u.x; qy = u.y;
             }
             for (const f of mesh.faces) {
@@ -1875,12 +1874,10 @@
             const dx = x - _touchStartX, dy = y - _touchStartY;
             if (Math.hypot(dx, dy) > 6) _touchMoved = true;
             if (editMode && draggedVertex) {
-                // Equivalent to chunk 5's mousemove drag (with chunk 14
-                // unwarp before writing to the unwarped vertex).
-                const shape = (typeof containerShape !== 'undefined') ? containerShape : 'rect';
+                // Equivalent to chunk 5's mousemove drag.
                 let qx = x, qy = y;
-                if (shape !== 'rect' && typeof unwarpVertex === 'function') {
-                    const u = unwarpVertex(x, y, W, H, shape);
+                if (typeof unwarpVertex === 'function') {
+                    const u = unwarpVertex(x, y, W, H);
                     qx = u.x; qy = u.y;
                 }
                 draggedVertex.x = qx;
@@ -1980,6 +1977,13 @@
 
         const CONTAINER_SHAPES = ['rect', 'rounded', 'circle'];
         let containerShape = 'rect';
+        // Chunk 16: shape transitions. shapeT = 1 means we're at
+        // containerShape; shapeT < 1 means we're partway from
+        // containerPrevShape to containerShape.
+        let containerPrevShape = 'rect';
+        let shapeT = 1;
+        let shapeStartTime = 0;
+        const SHAPE_TRANSITION_DURATION = 700;  // ms
 
         function buildContainerPath(W, H, shape) {
             // Returns a Path2D for the current shape, sized to (W, H).
@@ -2022,12 +2026,36 @@
         }
 
         // Shape toggle button — cycles through CONTAINER_SHAPES.
+        // Chunk 16: starts a smooth transition from the current shape
+        // to the next, instead of an instant snap.
         const shapeToggle = document.getElementById('shapeToggle');
         shapeToggle.addEventListener('click', () => {
             const idx = CONTAINER_SHAPES.indexOf(containerShape);
+            // Start the new transition from wherever we are RIGHT NOW.
+            // If we're mid-transition, the previous shape is the
+            // currently-rendered effective shape. We approximate this
+            // by snapping to the current shape (containerShape) and
+            // starting fresh — visually fine since shapeT becomes 0.
+            // Re-clicks during transit therefore "redirect" smoothly
+            // because the warp blends from where we are to the new
+            // target via shapeT.
+            containerPrevShape = containerShape;
             containerShape = CONTAINER_SHAPES[(idx + 1) % CONTAINER_SHAPES.length];
+            shapeT = 0;
+            shapeStartTime = performance.now();
             shapeToggle.textContent = 'Shape: ' + containerShape;
         });
+
+        function updateShapeBlend(now) {
+            if (shapeT >= 1) return;
+            const elapsed = now - shapeStartTime;
+            const tRaw = Math.min(1, elapsed / SHAPE_TRANSITION_DURATION);
+            // easeInOutCubic, same shape as the layout transition
+            shapeT = tRaw < 0.5
+                ? 4 * tRaw * tRaw * tRaw
+                : 1 - Math.pow(-2 * tRaw + 2, 3) / 2;
+            if (tRaw >= 1) shapeT = 1;
+        }
 
         // ========================= CHUNK 14: RENDER-TIME WARPING ==============
         //
@@ -2126,30 +2154,45 @@
             return rectRadiusAlong(dx, dy, W, H);
         }
 
-        function warpVertex(x, y, W, H, shape) {
-            if (shape === 'rect') return { x, y };
+        // Chunk 16: warpVertex / unwarpVertex now read containerShape,
+        // containerPrevShape, shapeT directly so callers don't need to
+        // know about the blend state. dShape blends between the prev
+        // shape and the current shape via the eased shapeT.
+
+        function _effectiveDShape(dx, dy, W, H) {
+            const sCur  = shapeRadiusAlong(dx, dy, W, H, containerShape);
+            if (shapeT >= 1 || containerPrevShape === containerShape) return sCur;
+            const sPrev = shapeRadiusAlong(dx, dy, W, H, containerPrevShape);
+            // shapeT is already eased by the caller (updateShapeBlend).
+            return sPrev + (sCur - sPrev) * shapeT;
+        }
+
+        function warpVertex(x, y, W, H) {
+            // Identity if we're not in a non-rect shape AND not in a
+            // transition involving a non-rect shape.
+            const idle = (shapeT >= 1);
+            if (idle && containerShape === 'rect') return { x, y };
+            if (idle && containerShape === 'rect' && containerPrevShape === 'rect') return { x, y };
             const cx = W / 2, cy = H / 2;
             const dx = x - cx;
             const dy = y - cy;
             if (dx === 0 && dy === 0) return { x: cx, y: cy };
             const dRect  = rectRadiusAlong(dx, dy, W, H);
-            const dShape = shapeRadiusAlong(dx, dy, W, H, shape);
+            const dShape = _effectiveDShape(dx, dy, W, H);
             const scale  = dShape / dRect;
             return { x: cx + dx * scale, y: cy + dy * scale };
         }
 
-        function unwarpVertex(x, y, W, H, shape) {
-            // Inverse of warpVertex: given a screen-space point, find
-            // the unwarped mesh-space point. Direction is preserved by
-            // the warp, so the same dShape/dRect computation applies in
-            // reverse.
-            if (shape === 'rect') return { x, y };
+        function unwarpVertex(x, y, W, H) {
+            // Inverse of warpVertex; same blend handling.
+            const idle = (shapeT >= 1);
+            if (idle && containerShape === 'rect') return { x, y };
             const cx = W / 2, cy = H / 2;
             const dx = x - cx;
             const dy = y - cy;
             if (dx === 0 && dy === 0) return { x: cx, y: cy };
             const dRect  = rectRadiusAlong(dx, dy, W, H);
-            const dShape = shapeRadiusAlong(dx, dy, W, H, shape);
+            const dShape = _effectiveDShape(dx, dy, W, H);
             const scale  = dRect / dShape;  // inverted ratio
             return { x: cx + dx * scale, y: cy + dy * scale };
         }
@@ -2177,6 +2220,7 @@
                     if (typeof updateBreath === 'function') updateBreath(now);
                     relaxMesh(canonicalMesh);
                 }
+                if (typeof updateShapeBlend === 'function') updateShapeBlend(now);
                 renderMesh(canonicalMesh);
                 if (editMode) renderHandles();
             }
