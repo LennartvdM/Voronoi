@@ -100,9 +100,10 @@
 <body>
     <a href="index.html" class="back-link">&larr; Back</a>
     <canvas id="canvas"></canvas>
-    <div class="info-label" id="info">mk4 &middot; chunk 12 &middot; idle breathing</div>
+    <div class="info-label" id="info">mk4 &middot; chunk 13 &middot; container shapes</div>
 
     <div class="edit-panel">
+        <button class="layout-btn" id="shapeToggle">Shape: rect</button>
         <button class="layout-btn" id="editToggle">Edit</button>
         <div class="edit-controls" id="editControls">
             <button class="layout-btn" data-save="L1">Save &rarr; Canonical</button>
@@ -416,6 +417,18 @@
         }
 
         function renderMesh(mesh) {
+            // Chunk 13: clip to the current container shape. Save the
+            // canvas state so we can restore the unclipped state at the
+            // end (the clip is otherwise sticky for the rest of the
+            // frame).
+            const shape = (typeof containerShape !== 'undefined') ? containerShape : 'rect';
+            const needsClip = (shape !== 'rect');
+            if (needsClip) {
+                ctx.save();
+                const path = buildContainerPath(W, H, shape);
+                ctx.clip(path);
+            }
+
             for (const face of mesh.faces) {
                 if (face.isOuter) continue;
                 // Chunk 8: visibility lerps in [0, 1]; skip near-zero,
@@ -443,6 +456,15 @@
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
                 ctx.globalAlpha = 1;
+            }
+
+            // Chunk 13: restore the unclipped state and stroke the
+            // container outline so the user can see the edge.
+            if (needsClip) {
+                ctx.restore();
+                if (typeof strokeContainerOutline === 'function') {
+                    strokeContainerOutline(ctx, W, H, shape);
+                }
             }
         }
 
@@ -1778,6 +1800,80 @@
                 f.breathMul = 1 + BREATH_AMP * Math.sin(now * BREATH_FREQ + phase);
             }
         }
+
+        // ========================= CHUNK 13: CONTAINER SHAPES =================
+        //
+        // The mesh is computed and rendered against the full rectangular
+        // canvas. This chunk adds visual clipping to a non-rectangular
+        // container shape: cells extend slightly past the container in
+        // some places, but only the inside is drawn (Tier A — visual
+        // clipping only). The mesh topology and vertex positions are
+        // unchanged; the relax / hover / breath / transitions all run
+        // unchanged. Only the renderer wraps face drawing in a clip.
+        //
+        // Container shapes:
+        //   rect    — default; no clip; identical to chunks 1-12
+        //   rounded — rounded rectangle, corner radius = min(W,H) * 0.04
+        //   circle  — inscribed circle, radius = min(W,H) * 0.45
+        //
+        // The shape outline is rendered AFTER the cells, as a thin
+        // border, so the user can see the container edge.
+        //
+        // Tier B (geometric mesh fitting onto container shape) is
+        // deferred. If clipping looks too harsh on circle/rounded,
+        // we'd need to generalize chunk 1's Sutherland-Hodgman from
+        // rect-clipping to arbitrary-polygon-clipping.
+
+        const CONTAINER_SHAPES = ['rect', 'rounded', 'circle'];
+        let containerShape = 'rect';
+
+        function buildContainerPath(W, H, shape) {
+            // Returns a Path2D for the current shape, sized to (W, H).
+            const p = new Path2D();
+            if (shape === 'rounded') {
+                const r = Math.min(W, H) * 0.04;
+                // Manual rounded rect (broader browser support than
+                // ctx.roundRect, which is recent).
+                p.moveTo(r, 0);
+                p.lineTo(W - r, 0);
+                p.quadraticCurveTo(W, 0, W, r);
+                p.lineTo(W, H - r);
+                p.quadraticCurveTo(W, H, W - r, H);
+                p.lineTo(r, H);
+                p.quadraticCurveTo(0, H, 0, H - r);
+                p.lineTo(0, r);
+                p.quadraticCurveTo(0, 0, r, 0);
+                p.closePath();
+            } else if (shape === 'circle') {
+                const cx = W / 2, cy = H / 2;
+                const radius = Math.min(W, H) * 0.45;
+                p.arc(cx, cy, radius, 0, Math.PI * 2);
+                p.closePath();
+            } else {
+                // rect — full canvas
+                p.rect(0, 0, W, H);
+            }
+            return p;
+        }
+
+        function strokeContainerOutline(ctx, W, H, shape) {
+            // Draws the container edge as a thin border so the user
+            // can see where the clip is. Skipped for 'rect' since the
+            // canvas edge is already the container edge.
+            if (shape === 'rect') return;
+            const p = buildContainerPath(W, H, shape);
+            ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke(p);
+        }
+
+        // Shape toggle button — cycles through CONTAINER_SHAPES.
+        const shapeToggle = document.getElementById('shapeToggle');
+        shapeToggle.addEventListener('click', () => {
+            const idx = CONTAINER_SHAPES.indexOf(containerShape);
+            containerShape = CONTAINER_SHAPES[(idx + 1) % CONTAINER_SHAPES.length];
+            shapeToggle.textContent = 'Shape: ' + containerShape;
+        });
 
         // ========================= CHUNK 7 LANDS HERE =========================
         // Polish — colors, hover, easing, arrival ramp.
