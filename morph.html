@@ -125,13 +125,21 @@
         //       to hero — old hero demotes. 3-pass collision avoidance
         //       makes the rabble flow around slow-moving anchors.
         //
-        //    3. VORONOI — half-plane intersection recomputed every frame
-        //       from current seed positions. O(n²) per cell. Guarantees
-        //       valid tiling at all intermediate states. Knows nothing
-        //       about layouts or transitions.
+        //    3. HOVER — per-seed smoothed state on top of the transition
+        //       output. The hovered cell's weight is boosted (power
+        //       diagram grows its polygon) and neighbors are pushed
+        //       outward with Gaussian falloff (squeeze feel). Suppressed
+        //       during transitions; void cells are never hoverable and
+        //       never pushed (they're semantic anchors).
         //
-        //    4. RENDER — inset polygons for gap, round corners, gradient
-        //       fill, border stroke. Hover: highlight cell, show tooltip.
+        //    4. VORONOI — half-plane intersection recomputed every frame
+        //       from current seed positions + hover offsets. O(n²) per
+        //       cell. Guarantees valid tiling at all intermediate states.
+        //       Knows nothing about layouts or transitions.
+        //
+        //    5. RENDER — inset polygons for gap, round corners, gradient
+        //       fill, border stroke. Border and alpha fade using the
+        //       smoothed hoverMix so visual state eases with the geometry.
         //       Knows nothing about seeds.
         //
         //  Current layout generators:
@@ -170,6 +178,15 @@
             transitionDuration: 1200, // Base ms for a full layout transition
             collisionRadius: 40,      // Min distance seeds maintain during travel
             currentLayout: 'bento',   // Active layout name
+
+            // Hover: combines a power-diagram weight boost on the hovered cell
+            // with a Gaussian-falloff push on its neighbors. Tuned so that
+            // even a small carousel cell (w=0.7) visibly claims attention
+            // without clipping neighbors out of existence.
+            hoverExpansion: 0.9,      // Weight multiplier added at full hover (1 + k)
+            hoverPush: 55,            // Max pixel push on neighbors at full hover
+            hoverFalloff: 240,        // Gaussian σ (px) — spatial reach of push
+            hoverSpeed: 12,           // Exponential lerp rate (per second) for mix & offset
         };
 
         // Per-role duration multipliers applied to transitionDuration.
@@ -835,6 +852,89 @@
         }
 
 
+        // ========================= HOVER SYSTEM ===============================
+        //
+        //  Layered on top of the transition output. Each seed carries:
+        //    - hoverMix  : smoothed 0→1 hover strength (for weight boost & UI)
+        //    - offsetX/Y : smoothed displacement from its transition position
+        //
+        //  Per frame we compute target values from `hoveredCell` and ease the
+        //  seed state toward them. The hovered cell's weight grows (so the
+        //  power diagram claims more area for its polygon), while neighbors
+        //  are pushed radially outward with Gaussian falloff so the squeeze
+        //  feels local and organic.
+        //
+        //  Void cells are anchors — never hoverable, never displaced by hover.
+        //  Hover is suppressed entirely during transitions: seeds are already
+        //  flying, and compounding displacement makes the motion unreadable.
+        // ======================================================================
+
+        function applyHover(dt) {
+            // During a transition, everything eases back to rest
+            const suppress = transitionT < 1;
+            const hIdx = suppress ? -1 : hoveredCell;
+
+            const rate = 1 - Math.exp(-config.hoverSpeed * dt);
+
+            // Pass 1: smooth per-seed hoverMix toward its target
+            for (let i = 0; i < seeds.length; i++) {
+                const target = (i === hIdx && !seeds[i].void) ? 1 : 0;
+                const cur = seeds[i].hoverMix || 0;
+                seeds[i].hoverMix = cur + (target - cur) * rate;
+            }
+
+            // Pass 2: compute target offset from the currently hovered seed
+            // and ease each seed's (offsetX, offsetY) toward it. Easing the
+            // offset (rather than just recomputing it from hoverMix) gives a
+            // clean crossfade when hover moves from one cell to another —
+            // neighbors smoothly reshuffle around the new center.
+            const hasHover = hIdx >= 0 && !seeds[hIdx].void;
+            const sigma2 = config.hoverFalloff * config.hoverFalloff;
+
+            for (let i = 0; i < seeds.length; i++) {
+                let targetOx = 0, targetOy = 0;
+
+                if (hasHover && i !== hIdx && !seeds[i].void) {
+                    const h = seeds[hIdx];
+                    const dx = seeds[i].x - h.x;
+                    const dy = seeds[i].y - h.y;
+                    const distSq = dx * dx + dy * dy;
+                    if (distSq >= 1) {
+                        const dist = Math.sqrt(distSq);
+                        const falloff = Math.exp(-distSq / (2 * sigma2));
+                        const push = config.hoverPush * falloff;
+                        targetOx = (dx / dist) * push;
+                        targetOy = (dy / dist) * push;
+                    }
+                }
+
+                const curOx = seeds[i].offsetX || 0;
+                const curOy = seeds[i].offsetY || 0;
+                seeds[i].offsetX = curOx + (targetOx - curOx) * rate;
+                seeds[i].offsetY = curOy + (targetOy - curOy) * rate;
+            }
+        }
+
+        // Produce the seed array fed to computeVoronoi each frame: transition
+        // positions + hover offsets, and per-seed weight boosted by hoverMix.
+        // Returns plain objects; does not mutate `seeds`.
+        function getDisplacedSeeds() {
+            const out = new Array(seeds.length);
+            for (let i = 0; i < seeds.length; i++) {
+                const s = seeds[i];
+                const mix = s.hoverMix || 0;
+                out[i] = {
+                    x: s.x + (s.offsetX || 0),
+                    y: s.y + (s.offsetY || 0),
+                    w: (s.w || 1) * (1 + mix * config.hoverExpansion),
+                    void: !!s.void,
+                    role: s.role || 'content',
+                };
+            }
+            return out;
+        }
+
+
         // ====================== VORONOI ENGINE ================================
         //
         //  Power diagram (weighted Voronoi). Each seed has weight w.
@@ -971,31 +1071,36 @@
                 if (!polygon || polygon.length < 3) continue;
 
                 const color = cellColors[i % cellColors.length];
-                const isHovered = i === hoveredCell;
                 const isHero = seeds[i] && seeds[i].role === 'hero';
+                // Smoothed hover strength — drives all visual fading so the
+                // border, alpha, and gradient transitions match the geometry
+                const mix = seeds[i] && seeds[i].hoverMix ? seeds[i].hoverMix : 0;
 
                 // Fill
                 ctx.save();
-                // Hero cells get full opacity, carousel cells dim slightly
+                // Hero cells get full opacity, carousel cells dim slightly;
+                // hovering lifts alpha to 1.0 smoothly
                 const baseAlpha = isHero ? 1.0 : 0.72;
-                ctx.globalAlpha = isHovered ? 1.0 : baseAlpha;
+                ctx.globalAlpha = baseAlpha + (1.0 - baseAlpha) * mix;
                 drawRoundedPolygon(ctx, polygon, config.cornerRadius);
                 ctx.clip();
 
-                // Gradient fill
+                // Gradient fill — hovered cells brighten at the top stop and
+                // lighten at the bottom stop proportional to hoverMix
                 let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
                 for (const p of polygon) {
                     minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]);
                     minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]);
                 }
                 const grad = ctx.createLinearGradient(minX, minY, maxX, maxY);
-                grad.addColorStop(0, isHovered ? adjustColor(color, 20) : color);
-                grad.addColorStop(1, adjustColor(color, isHovered ? -20 : -40));
+                grad.addColorStop(0, adjustColor(color, Math.round(20 * mix)));
+                grad.addColorStop(1, adjustColor(color, Math.round(-40 + 20 * mix)));
                 ctx.fillStyle = grad;
                 ctx.fill();
 
-                // Cell number watermark — bigger for hero
-                ctx.globalAlpha = isHovered ? 0.28 : (isHero ? 0.18 : 0.1);
+                // Cell number watermark — bigger for hero, brighter on hover
+                const baseWm = isHero ? 0.18 : 0.1;
+                ctx.globalAlpha = baseWm + (0.28 - baseWm) * mix;
                 ctx.fillStyle = '#fff';
                 const size = Math.min(maxX - minX, maxY - minY) * (isHero ? 0.5 : 0.4);
                 ctx.font = `bold ${size}px system-ui, sans-serif`;
@@ -1005,22 +1110,23 @@
 
                 ctx.restore();
 
-                // Border — hero gets a thicker, slightly brighter border
+                // Border — interpolate from the resting style (hero or normal)
+                // to the hovered style using hoverMix, so the highlight fades
+                // in/out with the polygon growth
                 ctx.save();
                 drawRoundedPolygon(ctx, polygon, config.cornerRadius);
                 ctx.clip();
                 drawRoundedPolygon(ctx, polygon, config.cornerRadius);
-                if (isHovered) {
-                    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-                    ctx.lineWidth = 3;
-                    ctx.shadowColor = 'rgba(255,255,255,0.4)';
-                    ctx.shadowBlur = 10;
-                } else if (isHero) {
-                    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-                    ctx.lineWidth = 3;
-                } else {
-                    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-                    ctx.lineWidth = 1.5;
+
+                const restAlpha = isHero ? 0.4 : 0.15;
+                const restWidth = isHero ? 3 : 1.5;
+                const hoverAlpha = 0.6;
+                const hoverWidth = 3;
+                ctx.strokeStyle = `rgba(255,255,255,${restAlpha + (hoverAlpha - restAlpha) * mix})`;
+                ctx.lineWidth = restWidth + (hoverWidth - restWidth) * mix;
+                if (mix > 0.01) {
+                    ctx.shadowColor = `rgba(255,255,255,${0.4 * mix})`;
+                    ctx.shadowBlur = 10 * mix;
                 }
                 ctx.stroke();
                 ctx.restore();
@@ -1189,19 +1295,27 @@
         function animate(time) {
             const now = performance.now();
 
+            // Delta-time in seconds, capped so a long tab-switch pause doesn't
+            // produce a giant rate and snap hover state into a single frame.
+            const frameMs = time - lastTime;
+            const dt = Math.min(0.05, frameMs > 0 ? frameMs / 1000 : 0.016);
+
             // 1. Update transition (move seeds toward targets)
             updateTransition(now);
 
-            // 2. Compute Voronoi from current seed positions
-            const polygons = computeVoronoi(seeds, W, H);
+            // 2. Ease hover state (hoverMix, offsetX/Y) on top of transition
+            applyHover(dt);
 
-            // 3. Render
+            // 3. Compute Voronoi from displaced seeds (transition + hover offsets,
+            //    weights boosted by hoverMix). Guarantees valid tiling every frame.
+            const polygons = computeVoronoi(getDisplacedSeeds(), W, H);
+
+            // 4. Render
             render(polygons);
 
-            // 4. Info overlay
-            const dt = time - lastTime;
+            // 5. Info overlay
             lastTime = time;
-            const fps = dt > 0 ? Math.round(1000 / dt) : 60;
+            const fps = frameMs > 0 ? Math.round(1000 / frameMs) : 60;
             const hasHero = targetSeeds.some(t => t && t.role === 'hero');
             const hint = hasHero ? 'click a carousel cell to promote it' : 'pick a layout';
             document.getElementById('info').textContent = `${hint} \u00b7 fps: ${fps}`;
