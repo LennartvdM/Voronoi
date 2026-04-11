@@ -100,7 +100,7 @@
 <body>
     <a href="index.html" class="back-link">&larr; Back</a>
     <canvas id="canvas"></canvas>
-    <div class="info-label" id="info">mk4 &middot; chunk 8 &middot; hidden cells</div>
+    <div class="info-label" id="info">mk4 &middot; chunk 9 &middot; hover + polish</div>
 
     <div class="edit-panel">
         <button class="layout-btn" id="editToggle">Edit</button>
@@ -409,9 +409,10 @@
         buildCanonicalMesh();
 
         // Distinct color per face — golden-angle hue, dark-theme palette.
+        // Chunk 9: bumped saturation + lightness slightly for richer reads.
         function faceColor(id) {
             const hue = (id * 137.508) % 360;
-            return 'hsl(' + hue.toFixed(1) + ', 42%, 38%)';
+            return 'hsl(' + hue.toFixed(1) + ', 50%, 42%)';
         }
 
         function renderMesh(mesh) {
@@ -436,8 +437,10 @@
                 ctx.globalAlpha = effectiveVis;
                 ctx.fillStyle = faceColor(face.id);
                 ctx.fill();
-                ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-                ctx.lineWidth = 1;
+                // Chunk 9: bolder border (1.5px) with slightly brighter
+                // alpha for cleaner cell separation against dark bg.
+                ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+                ctx.lineWidth = 1.5;
                 ctx.stroke();
                 ctx.globalAlpha = 1;
             }
@@ -478,6 +481,11 @@
         // hidden when the named layout is the transition target. Populated
         // by chunk 7's procedural defaults.
         const layoutHidden = {};
+        // Chunk 9: parallel dict of per-cell slack overrides per layout.
+        // layoutSlack[name] = { cellId: slackValue, ... }. Cells not in
+        // the override map use DEFAULT_SLACK. Used to make hero cells
+        // tighter (assert themselves) and rim cells looser (yield).
+        const layoutSlack = {};
         function buildLayouts() {
             // L1: canonical positions, captured straight from the mesh.
             layouts.L1 = captureLayout(canonicalMesh);
@@ -591,6 +599,9 @@
             // were hidden in the previous layout).
             transitionVisStart = captureVisibilities(canonicalMesh);
             transitionVisTarget = computeTargetVisibilities(name);
+            // Chunk 9: switch slack to the new layout's overrides
+            // immediately. The relax pass smooths the transition.
+            if (typeof applyLayoutSlack === 'function') applyLayoutSlack(name);
             transitionStartTime = performance.now();
             transitioning = true;
         }
@@ -782,8 +793,8 @@
         // construction, so the relaxation is a strict no-op. No drift,
         // no force ramping needed at the boundaries of the transition.
 
-        const RELAX_ITERS = 2;
-        const RELAX_GAIN  = 0.5;  // damping factor per iteration
+        const RELAX_ITERS = 4;    // chunk 9: bumped from 2 for visible feel
+        const RELAX_GAIN  = 0.6;  // chunk 9: bumped from 0.5
 
         // Reusable per-vertex displacement accumulators (avoid GC).
         let _relaxDX = null;
@@ -822,11 +833,20 @@
                     cx /= n;
                     cy /= n;
 
+                    // Chunk 9: effective rest area is modulated by hoverMul
+                    // (boost the hovered cell), so the comfort range
+                    // grows/shrinks with hover. Default hoverMul = 1.
+                    const hover    = (f.hoverMul != null) ? f.hoverMul : 1;
+                    const effRest  = f.restArea * hover;
+                    const slack    = (f.slack != null) ? f.slack : DEFAULT_SLACK;
+                    const effMin   = effRest * (1 - slack);
+                    const effMax   = effRest * (1 + slack);
+
                     // Pick the comfort-range edge we need to head toward.
                     let target;
-                    if (area > f.maxArea)      target = f.maxArea;
-                    else if (area < f.minArea) target = f.minArea;
-                    else                        continue;  // comfortable
+                    if (area > effMax)      target = effMax;
+                    else if (area < effMin) target = effMin;
+                    else                     continue;  // comfortable
 
                     if (area <= 0) continue;  // degenerate guard
 
@@ -1084,6 +1104,10 @@
                     // accurate so exiting edit mode is consistent.)
                     if (typeof applyLayoutVisibilities === 'function') {
                         applyLayoutVisibilities(name);
+                    }
+                    // Chunk 9: same for slack overrides.
+                    if (typeof applyLayoutSlack === 'function') {
+                        applyLayoutSlack(name);
                     }
                 }
             } else {
@@ -1347,12 +1371,29 @@
             layoutHidden.L6 = [];
             layoutHidden.L7 = [5, 6];
 
+            // Chunk 9: per-layout slack overrides. Bento's hero (cell 6)
+            // gets tight slack so it actually asserts its size against
+            // its neighbors during transit. Hollow's hidden cells get
+            // very loose slack so they yield freely to whatever the
+            // visible perimeter cells need.
+            layoutSlack.L1 = {};
+            layoutSlack.L2 = {};
+            layoutSlack.L3 = {};
+            layoutSlack.L4 = {};
+            layoutSlack.L5 = {};
+            layoutSlack.L6 = { 6: 0.10 };
+            layoutSlack.L7 = { 5: 0.50, 6: 0.50 };
+
             if (layouts[currentLayout]) {
                 applyLayout(canonicalMesh, layouts[currentLayout]);
                 initFaceRestAreas(canonicalMesh);
                 // Chunk 8: sync visibility state to the current layout.
                 if (typeof applyLayoutVisibilities === 'function') {
                     applyLayoutVisibilities(currentLayout);
+                }
+                // Chunk 9: sync slack overrides for the current layout.
+                if (typeof applyLayoutSlack === 'function') {
+                    applyLayoutSlack(currentLayout);
                 }
             }
         }
@@ -1417,6 +1458,133 @@
         // this function existed).
         applyLayoutVisibilities(currentLayout);
 
+        // ========================= CHUNK 9: HOVER + POLISH ===================
+        //
+        // Five polish items in one chunk:
+        //
+        //   1. RELAX_ITERS / RELAX_GAIN bumped (chunk 4 constants)
+        //      from (2, 0.5) to (4, 0.6). The conservative defaults
+        //      from chunk 4 made the water-balloon resistance nearly
+        //      invisible against the chunk-2 fixtures; with the
+        //      aggressive chunk-7 procedural layouts (sidebar,
+        //      diagonal, hollow) the higher tunables actually
+        //      produce visible push-back.
+        //
+        //   2. HOVER. Mouse-over a cell makes it grow via the same
+        //      restArea mechanism we already have: hovered cell's
+        //      hoverMul ramps to 1.4, the relax pass uses
+        //      effectiveRest = restArea * hoverMul, so the cell
+        //      naturally pushes outward and squeezes neighbors.
+        //      No new physics — the existing relax handles it.
+        //
+        //      Hit-test uses point-in-polygon against the actual
+        //      rendered face polygon (chunk 1's facePolygon walk).
+        //      This also fixes audit item #20 from the original
+        //      audit (hit-test against inset-less polygon).
+        //
+        //      The lerp toward target hoverMul is gradual (~7
+        //      frames at 60fps), so chunk 4's audit-item #11
+        //      "hover snap at end of transition" never happens —
+        //      hover blends in smoothly whenever it's set.
+        //
+        //   3. PER-CELL SLACK via layoutSlack[name][cellId]. Bento
+        //      sets cell 6 (hero) to slack=0.10 so it asserts its
+        //      target size against neighbors. Hollow sets cells
+        //      5, 6 (hidden) to slack=0.50 so they yield freely.
+        //      Other cells use DEFAULT_SLACK (0.25).
+        //
+        //   4. VISUAL polish — bolder borders (1.5 px, 14% alpha),
+        //      faceColor saturation 42→50, lightness 38→42 for
+        //      richer reads against the dark background. (See
+        //      chunks 1 / 4 for the actual values.)
+        //
+        //   5. HIT-TEST FIX — see (2). Comes free with hover.
+
+        const HOVER_BOOST = 1.8;   // hovered cell wants 1.8x area; with the
+                                   // default 0.25 slack the relax pulls
+                                   // the cell to effMin = boost*0.75 =
+                                   // 1.35x its rest area (visible 35%
+                                   // growth). Lower boost = barely visible.
+        const HOVER_LERP  = 0.15;  // per-frame ramp toward target (~7 frames)
+
+        let hoveredFace = null;
+
+        function pointInPolygon(px, py, verts) {
+            // Standard ray-casting test for point-in-polygon.
+            let inside = false;
+            const n = verts.length;
+            for (let i = 0, j = n - 1; i < n; j = i++) {
+                const xi = verts[i].x, yi = verts[i].y;
+                const xj = verts[j].x, yj = verts[j].y;
+                if (((yi > py) !== (yj > py)) &&
+                    (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+                    inside = !inside;
+                }
+            }
+            return inside;
+        }
+
+        function faceAtPoint(mesh, px, py) {
+            // Walks all interior faces; returns the one containing
+            // (px, py), or null. Skips faces with visibility < 0.5
+            // so fading-out cells don't catch hover.
+            for (const f of mesh.faces) {
+                if (f.isOuter) continue;
+                const vis = (f.visibility != null) ? f.visibility : 1;
+                if (vis < 0.5) continue;
+                const verts = facePolygon(f);
+                if (verts.length < 3) continue;
+                if (pointInPolygon(px, py, verts)) return f;
+            }
+            return null;
+        }
+
+        // Hover mouse handlers — only fire in non-edit mode (chunk 5
+        // owns the mouse in edit mode for vertex dragging). Both sets
+        // of handlers can coexist on the canvas because each filters
+        // by the editMode flag.
+        canvas.addEventListener('mousemove', (e) => {
+            if (editMode) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            hoveredFace = faceAtPoint(canonicalMesh, x, y);
+        });
+        canvas.addEventListener('mouseleave', () => {
+            if (editMode) return;
+            hoveredFace = null;
+        });
+
+        function updateHover() {
+            // Each frame, ramp every face's hoverMul toward its target
+            // (1.0 normally, HOVER_BOOST when hovered). Symmetric ramp;
+            // no snap at the end of transitions.
+            for (const f of canonicalMesh.faces) {
+                if (f.isOuter) continue;
+                const target  = (f === hoveredFace) ? HOVER_BOOST : 1;
+                const current = (f.hoverMul != null) ? f.hoverMul : 1;
+                f.hoverMul = current + (target - current) * HOVER_LERP;
+            }
+        }
+
+        function applyLayoutSlack(name) {
+            // Snap each face's slack to the layout's per-cell override
+            // (or DEFAULT_SLACK if not overridden). Used by teleport
+            // paths; transitions don't lerp slack — it switches at the
+            // moment of click, with the relax pass smoothing the result.
+            const overrides = layoutSlack[name] || {};
+            for (const f of canonicalMesh.faces) {
+                if (f.isOuter) continue;
+                const v = overrides[f.id];
+                f.slack = (v != null) ? v : DEFAULT_SLACK;
+            }
+        }
+
+        // Initial sync — chunk 7's applyProceduralDefaults guarded the
+        // call with typeof, so this catches the case where the function
+        // didn't exist at init time.
+        applyLayoutSlack(currentLayout);
+
         // ========================= CHUNK 7 LANDS HERE =========================
         // Polish — colors, hover, easing, arrival ramp.
 
@@ -1436,6 +1604,7 @@
             if (canonicalMesh) {
                 if (!editMode) {
                     updateTransition(now);
+                    if (typeof updateHover === 'function') updateHover();
                     relaxMesh(canonicalMesh);
                 }
                 renderMesh(canonicalMesh);
