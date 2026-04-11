@@ -88,6 +88,10 @@
         <button class="layout-btn" data-layout="diagL">◣ Empty</button>
         <button class="layout-btn" data-layout="diagR">◥ Empty</button>
         <button class="layout-btn" data-layout="sidebar">Sidebar</button>
+        <div class="layout-sep"></div>
+        <button class="layout-btn" data-layout="readerL">Read L</button>
+        <button class="layout-btn" data-layout="readerR">Read R</button>
+        <button class="layout-btn" data-layout="readerT">Read T</button>
     </div>
 
     <script>
@@ -104,9 +108,13 @@
         //
         //  Data flow per frame:
         //
-        //    1. TARGETS — a layout generator produces {x, y, w} seed positions.
-        //       Pure function: (W, H, count) → [{x, y, w}, ...]. Knows nothing
-        //       about animation. Weight w controls cell area via power diagram.
+        //    1. TARGETS — a layout generator produces seeds with position,
+        //       weight, and optional role. Shape: {x, y, w, role?, void?}
+        //       - w     : weight, controls cell area via power diagram
+        //       - role  : 'hero' | 'carousel' | 'content' (default)
+        //       - void  : true = claims space but isn't rendered (empty region)
+        //       Pure function: (W, H, count) → seeds. Knows nothing about
+        //       animation or rendering.
         //
         //    2. TRANSITION — seeds interpolate from start → target with
         //       easeInOutCubic. Greedy nearest-neighbor assignment minimizes
@@ -123,12 +131,22 @@
         //       Knows nothing about seeds.
         //
         //  Current layout generators:
-        //    bento     — recursive rectangle subdivision
-        //    hex       — hexagonal close-packing
-        //    voronoi   — random + 20 Lloyd relaxation iterations
-        //    diagonal  — Poisson-disk in bottom-left triangle
-        //    spiral    — golden-angle Fermat spiral
-        //    tetris    — irregular grid with jitter
+        //    Basic tilings:
+        //      bento     — recursive rectangle subdivision (varied weights)
+        //      hex       — hexagonal close-packing (uniform)
+        //      voronoi   — random + 20 Lloyd relaxation iterations
+        //      diagonal  — Poisson-disk in bottom-left triangle
+        //      spiral    — golden-angle Fermat spiral (hero at center)
+        //      tetris    — irregular grid with jitter
+        //    Whitespace layouts (use void cells):
+        //      rim       — cells around outer edge, empty center
+        //      diagL     — cells upper-right, lower-left empty
+        //      diagR     — cells lower-left, upper-right empty
+        //      sidebar   — cells in left strip, right 75% empty
+        //    Reader layouts (hero + carousel + text column):
+        //      readerL   — text column left, hero center-right, carousel around
+        //      readerR   — text column right, hero center-left, carousel around
+        //      readerT   — text banner top, hero center, carousel bottom
         //
         //  Open questions / future work:
         //    - Weighted Voronoi (power diagrams) so cells can have different sizes
@@ -508,6 +526,88 @@
                 results.push({ x: W * 0.65, y: H / 2, w: 3.5, void: true });
                 return results;
             },
+
+            // ---- READER LAYOUTS ----
+            // Structured for reading experiences: a tall void (text column),
+            // one hero cell (illustration), and remaining cells as a content
+            // carousel. The text container scrolls behind the cells; the void
+            // is the window through which the text is visible.
+            //
+            // Weight strategy:
+            //   void  ≈ 2.6 — claims ~25% of screen as text column
+            //   hero  ≈ 2.3 — claims ~25% of screen as illustration
+            //   carousel ≈ 0.7 — small browsing tiles filling the rest
+
+            // READ L — text column on left, hero center-right, carousel around
+            readerL(W, H, count) {
+                const results = [];
+                // Hero — large illustration cell, center-right
+                results.push({ x: W * 0.55, y: H * 0.42, w: 2.3, role: 'hero' });
+
+                // Carousel tiles — arrange in a loose grid around the hero
+                // Top strip (above hero)
+                const topY = H * 0.12;
+                const bottomY = H * 0.85;
+                const rightX = W * 0.92;
+
+                const positions = [
+                    [W * 0.45, topY], [W * 0.62, topY], [W * 0.78, topY], [W * 0.92, topY],
+                    [rightX, H * 0.32], [rightX, H * 0.52], [rightX, H * 0.72],
+                    [W * 0.42, bottomY], [W * 0.56, bottomY], [W * 0.7, bottomY], [W * 0.85, bottomY],
+                ];
+                for (let i = 0; i < count - 1 && i < positions.length; i++) {
+                    results.push({ x: positions[i][0], y: positions[i][1], w: 0.7, role: 'carousel' });
+                }
+
+                // Void — tall text column on left
+                results.push({ x: W * 0.14, y: H * 0.5, w: 2.6, void: true });
+                return results;
+            },
+
+            // READ R — text column on right, hero center-left, carousel around
+            readerR(W, H, count) {
+                const results = [];
+                results.push({ x: W * 0.45, y: H * 0.42, w: 2.3, role: 'hero' });
+
+                const topY = H * 0.12;
+                const bottomY = H * 0.85;
+                const leftX = W * 0.08;
+
+                const positions = [
+                    [W * 0.08, topY], [W * 0.22, topY], [W * 0.38, topY], [W * 0.55, topY],
+                    [leftX, H * 0.32], [leftX, H * 0.52], [leftX, H * 0.72],
+                    [W * 0.15, bottomY], [W * 0.3, bottomY], [W * 0.44, bottomY], [W * 0.58, bottomY],
+                ];
+                for (let i = 0; i < count - 1 && i < positions.length; i++) {
+                    results.push({ x: positions[i][0], y: positions[i][1], w: 0.7, role: 'carousel' });
+                }
+
+                // Void — tall text column on right
+                results.push({ x: W * 0.86, y: H * 0.5, w: 2.6, void: true });
+                return results;
+            },
+
+            // READ T — text banner on top (wide), hero center, carousel bottom
+            // Less ideal for long-form reading but useful for short intros.
+            readerT(W, H, count) {
+                const results = [];
+                results.push({ x: W * 0.5, y: H * 0.55, w: 2.3, role: 'hero' });
+
+                // Carousel in a strip at the bottom, plus a few on each side of hero
+                const positions = [
+                    [W * 0.08, H * 0.52], [W * 0.92, H * 0.52],
+                    [W * 0.1, H * 0.88], [W * 0.25, H * 0.88], [W * 0.4, H * 0.88],
+                    [W * 0.55, H * 0.88], [W * 0.7, H * 0.88], [W * 0.85, H * 0.88],
+                    [W * 0.08, H * 0.72], [W * 0.92, H * 0.72], [W * 0.5, H * 0.88],
+                ];
+                for (let i = 0; i < count - 1 && i < positions.length; i++) {
+                    results.push({ x: positions[i][0], y: positions[i][1], w: 0.7, role: 'carousel' });
+                }
+
+                // Void — horizontal banner at top
+                results.push({ x: W * 0.5, y: H * 0.18, w: 2.5, void: true });
+                return results;
+            },
         };
 
 
@@ -543,7 +643,7 @@
 
             const assigned = assignSeeds(seeds, newTargets);
 
-            startSeeds = seeds.map(s => ({ x: s.x, y: s.y, w: s.w || 1, void: !!s.void }));
+            startSeeds = seeds.map(s => ({ x: s.x, y: s.y, w: s.w || 1, void: !!s.void, role: s.role || 'content' }));
             targetSeeds = assigned;
             transitionT = 0;
             transitionStart = performance.now();
@@ -565,33 +665,50 @@
             for (let k = 0; k < curVoids.length; k++) {
                 const ti = k < tgtVoids.length ? tgtVoids[k] : tgtContent[tgtContent.length - 1];
                 const t = targets[ti];
-                result[curVoids[k]] = { x: t.x, y: t.y, w: t.w || 1, void: !!t.void };
+                result[curVoids[k]] = { x: t.x, y: t.y, w: t.w || 1, void: !!t.void, role: t.role || 'content' };
             }
 
-            // Pair content seeds by shortest distance
+            // Pair content seeds by shortest distance, preferring role-matching pairs
+            // (hero↔hero first, then carousel↔carousel, then unmatched cross-role)
             const claimed = new Set();
-            const pairs = [];
-            for (const ci of curContent) {
-                for (const tj of tgtContent) {
-                    const dx = current[ci].x - targets[tj].x;
-                    const dy = current[ci].y - targets[tj].y;
-                    pairs.push({ ci, tj, dist: dx * dx + dy * dy });
+            const assigned = new Set();
+
+            function pairContent(curPool, tgtPool) {
+                const pairs = [];
+                for (const ci of curPool) {
+                    if (assigned.has(ci)) continue;
+                    for (const tj of tgtPool) {
+                        if (claimed.has(tj)) continue;
+                        const dx = current[ci].x - targets[tj].x;
+                        const dy = current[ci].y - targets[tj].y;
+                        pairs.push({ ci, tj, dist: dx * dx + dy * dy });
+                    }
+                }
+                pairs.sort((a, b) => a.dist - b.dist);
+                for (const { ci, tj } of pairs) {
+                    if (assigned.has(ci) || claimed.has(tj)) continue;
+                    const t = targets[tj];
+                    result[ci] = { x: t.x, y: t.y, w: t.w || 1, void: false, role: t.role || 'content' };
+                    assigned.add(ci);
+                    claimed.add(tj);
                 }
             }
-            pairs.sort((a, b) => a.dist - b.dist);
 
-            const assigned = new Set();
-            for (const { ci, tj } of pairs) {
-                if (assigned.has(ci) || claimed.has(tj)) continue;
-                const t = targets[tj];
-                result[ci] = { x: t.x, y: t.y, w: t.w || 1, void: false };
-                assigned.add(ci);
-                claimed.add(tj);
-            }
+            // Partition content seeds by role
+            const curHero = curContent.filter(i => current[i].role === 'hero');
+            const curCarousel = curContent.filter(i => current[i].role !== 'hero');
+            const tgtHero = tgtContent.filter(i => targets[i].role === 'hero');
+            const tgtCarousel = tgtContent.filter(i => targets[i].role !== 'hero');
+
+            // Pair within roles first — hero stays hero, carousel stays carousel
+            pairContent(curHero, tgtHero);
+            pairContent(curCarousel, tgtCarousel);
+            // Cross-role fallback (when a layout has hero but the next doesn't, or vice versa)
+            pairContent(curContent, tgtContent);
 
             // Fallback
             for (let i = 0; i < current.length; i++) {
-                if (!result[i]) result[i] = { x: current[i].x, y: current[i].y, w: current[i].w || 1, void: !!current[i].void };
+                if (!result[i]) result[i] = { x: current[i].x, y: current[i].y, w: current[i].w || 1, void: !!current[i].void, role: current[i].role || 'content' };
             }
             return result;
         }
@@ -610,6 +727,8 @@
                 seeds[i].y = startSeeds[i].y + (targetSeeds[i].y - startSeeds[i].y) * transitionT;
                 seeds[i].w = startSeeds[i].w + ((targetSeeds[i].w || 1) - startSeeds[i].w) * transitionT;
                 seeds[i].void = targetSeeds[i].void;
+                // Role snaps halfway through so visuals align with shape
+                seeds[i].role = transitionT < 0.5 ? startSeeds[i].role : targetSeeds[i].role;
             }
 
             // Collision avoidance: 3 relaxation passes
@@ -781,10 +900,13 @@
 
                 const color = cellColors[i % cellColors.length];
                 const isHovered = i === hoveredCell;
+                const isHero = seeds[i] && seeds[i].role === 'hero';
 
                 // Fill
                 ctx.save();
-                ctx.globalAlpha = isHovered ? 1.0 : 0.85;
+                // Hero cells get full opacity, carousel cells dim slightly
+                const baseAlpha = isHero ? 1.0 : 0.72;
+                ctx.globalAlpha = isHovered ? 1.0 : baseAlpha;
                 drawRoundedPolygon(ctx, polygon, config.cornerRadius);
                 ctx.clip();
 
@@ -800,10 +922,10 @@
                 ctx.fillStyle = grad;
                 ctx.fill();
 
-                // Cell number watermark
-                ctx.globalAlpha = isHovered ? 0.25 : 0.12;
+                // Cell number watermark — bigger for hero
+                ctx.globalAlpha = isHovered ? 0.28 : (isHero ? 0.18 : 0.1);
                 ctx.fillStyle = '#fff';
-                const size = Math.min(maxX - minX, maxY - minY) * 0.45;
+                const size = Math.min(maxX - minX, maxY - minY) * (isHero ? 0.5 : 0.4);
                 ctx.font = `bold ${size}px system-ui, sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
@@ -811,7 +933,7 @@
 
                 ctx.restore();
 
-                // Border
+                // Border — hero gets a thicker, slightly brighter border
                 ctx.save();
                 drawRoundedPolygon(ctx, polygon, config.cornerRadius);
                 ctx.clip();
@@ -821,8 +943,11 @@
                     ctx.lineWidth = 3;
                     ctx.shadowColor = 'rgba(255,255,255,0.4)';
                     ctx.shadowBlur = 10;
+                } else if (isHero) {
+                    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+                    ctx.lineWidth = 3;
                 } else {
-                    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
                     ctx.lineWidth = 1.5;
                 }
                 ctx.stroke();
