@@ -154,6 +154,49 @@
             font-family: ui-monospace, monospace;
             color: rgba(255,255,255,0.85);
         }
+
+        /* Chunk 21: keyboard shortcut help overlay */
+        .help-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .help-overlay.visible { display: flex; }
+        .help-content {
+            background: rgba(20, 20, 35, 0.96);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            padding: 24px 32px;
+            max-width: 480px;
+            color: rgba(255,255,255,0.92);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            cursor: default;
+        }
+        .help-content h3 {
+            margin-bottom: 16px;
+            font-weight: 500;
+            font-size: 18px;
+        }
+        .help-content table { width: 100%; border-collapse: collapse; }
+        .help-content td { padding: 5px 0; vertical-align: top; font-size: 13px; }
+        .help-content td:first-child {
+            font-family: ui-monospace, monospace;
+            font-size: 11px;
+            color: #b59cff;
+            width: 130px;
+        }
+        .help-dismiss {
+            margin-top: 16px;
+            color: rgba(255,255,255,0.4);
+            font-size: 11px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -190,7 +233,26 @@
             </div>
         </div>
     </div>
-    <div class="info-label" id="info">mk4 &middot; chunk 20 &middot; keyboard nav</div>
+    <div class="info-label" id="info">mk4 &middot; chunk 21 &middot; help + reduced motion</div>
+
+    <div class="help-overlay" id="helpOverlay">
+        <div class="help-content">
+            <h3>Keyboard shortcuts</h3>
+            <table>
+                <tr><td>Tab / &#8679;Tab</td><td>Cycle focus through cells</td></tr>
+                <tr><td>Enter</td><td>Pin the focused cell (toggle)</td></tr>
+                <tr><td>Escape</td><td>Clear pin / focus / play</td></tr>
+                <tr><td>1 .. 7</td><td>Switch to layout L1..L7</td></tr>
+                <tr><td>S</td><td>Cycle container shape</td></tr>
+                <tr><td>L</td><td>Toggle cell labels</td></tr>
+                <tr><td>T</td><td>Toggle tunables panel</td></tr>
+                <tr><td>E</td><td>Toggle vertex editor</td></tr>
+                <tr><td>Space / P</td><td>Toggle auto-play</td></tr>
+                <tr><td>?</td><td>Show / hide this help</td></tr>
+            </table>
+            <p class="help-dismiss">Click anywhere or press Esc to dismiss</p>
+        </div>
+    </div>
 
     <div class="edit-panel">
         <button class="layout-btn" id="shapeToggle">Shape: rect</button>
@@ -2088,7 +2150,7 @@
         let containerPrevShape = 'rect';
         let shapeT = 1;
         let shapeStartTime = 0;
-        const SHAPE_TRANSITION_DURATION = 700;  // ms
+        let SHAPE_TRANSITION_DURATION = 700;  // ms — chunk 21: tunable for reduced motion
 
         function buildContainerPath(W, H, shape) {
             // Returns a Path2D for the current shape, sized to (W, H).
@@ -2681,7 +2743,76 @@
                 e.preventDefault();
                 return;
             }
+
+            // Chunk 21: ? or H toggles help overlay.
+            if (e.key === '?' || e.key === 'h' || e.key === 'H') {
+                if (typeof toggleHelp === 'function') toggleHelp();
+                e.preventDefault();
+                return;
+            }
         });
+
+        // ========================= CHUNK 21: REDUCED MOTION + HELP ============
+        //
+        // Two small accessibility wins:
+        //
+        // 1. PREFERS-REDUCED-MOTION. On init (and on media query
+        //    change), check the OS preference. If reduced is set,
+        //    soften the constants: shorter transitions, no breath,
+        //    shorter shape transitions. Hover boost stays — that's
+        //    interactive feedback, not vestibular motion.
+        //
+        // 2. HELP OVERLAY. Press '?' or 'h' to show a list of all
+        //    keyboard shortcuts (chunk 20 added several but they
+        //    weren't discoverable without reading the source).
+        //    Click anywhere or press Escape to dismiss.
+
+        const helpOverlay = document.getElementById('helpOverlay');
+        function toggleHelp() {
+            const visible = helpOverlay.classList._toggleSet
+                ? helpOverlay.classList._toggleSet.has('visible')  // node test stub
+                : helpOverlay.classList.contains('visible');
+            if (visible) helpOverlay.classList.remove('visible');
+            else helpOverlay.classList.add('visible');
+        }
+        helpOverlay.addEventListener('click', () => {
+            helpOverlay.classList.remove('visible');
+        });
+
+        // Reduced motion handling. Sliders sync via dispatchEvent so
+        // the val span text and the let constants both update through
+        // the chunk 18 bindSlider machinery.
+        function setSliderTo(id, value) {
+            const slider = document.getElementById(id);
+            if (!slider) return;
+            slider.value = value.toString();
+            // Trigger the bindSlider input handler.
+            if (typeof Event !== 'undefined') {
+                slider.dispatchEvent(new Event('input'));
+            } else if (slider._listeners && slider._listeners.input) {
+                // Fallback for environments without Event constructor (test stubs)
+                for (const cb of slider._listeners.input) cb();
+            }
+        }
+
+        function applyReducedMotion() {
+            setSliderTo('tuneDuration', 200);
+            setSliderTo('tuneBreath', 0);
+            SHAPE_TRANSITION_DURATION = 200;
+        }
+
+        if (typeof window.matchMedia === 'function') {
+            const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+            if (mq && mq.matches) applyReducedMotion();
+            // Live re-check if the OS preference changes.
+            if (mq && typeof mq.addEventListener === 'function') {
+                mq.addEventListener('change', (e) => {
+                    if (e.matches) applyReducedMotion();
+                    // We don't auto-restore "full motion" — the user
+                    // may have tweaked sliders manually since.
+                });
+            }
+        }
 
         // ========================= CHUNK 7 LANDS HERE =========================
         // Polish — colors, hover, easing, arrival ramp.
