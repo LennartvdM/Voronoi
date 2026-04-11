@@ -1692,38 +1692,7 @@
                 const isTooSmall = baseArea > 0 && Math.abs(polygonArea) < baseArea * minAreaRatio;
                 const centroidEscaped = !pointInPolygon(centroid.x, centroid.y, polygon);
 
-                // ABSOLUTE minimum area floor: enough room to hold rounded corners so cells
-                // don't shrink to near-invisible slivers. Only applied when the cell's REST
-                // size is comfortably above the floor — naturally small cells aren't punished.
-                const minAbsoluteArea = Math.max(400, (config.cornerRadius * 2.2) * (config.cornerRadius * 2.2));
-                const isAbsoluteTooSmall = baseArea > minAbsoluteArea * 1.5 && Math.abs(polygonArea) < minAbsoluteArea;
-
-                // MINIMUM CORNER ANGLE: prevents cells from being squeezed into razor-thin
-                // wedges whose corners can't be rendered as rounded. Voronoi clipping is
-                // always convex, so we only need to check the acuteness here.
-                const minCornerAngleRad = Math.PI / 6; // 30 degrees
-                let hasSharpCorner = false;
-                {
-                    const pn = polygon.length;
-                    for (let k = 0; k < pn; k++) {
-                        const a = polygon[(k - 1 + pn) % pn];
-                        const b = polygon[k];
-                        const c = polygon[(k + 1) % pn];
-                        const ax = a[0] - b[0], ay = a[1] - b[1];
-                        const cx = c[0] - b[0], cy = c[1] - b[1];
-                        const la = Math.sqrt(ax * ax + ay * ay);
-                        const lc = Math.sqrt(cx * cx + cy * cy);
-                        if (la < 0.5 || lc < 0.5) continue;
-                        const dot = (ax * cx + ay * cy) / (la * lc);
-                        const ang = Math.acos(Math.min(1, Math.max(-1, dot)));
-                        if (ang < minCornerAngleRad) {
-                            hasSharpCorner = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (isInverted || isTooSmall || isAbsoluteTooSmall || centroidEscaped || hasSharpCorner) {
+                if (isInverted || isTooSmall || centroidEscaped) {
                     // Deformation limit reached - use base polygon
                     cell.baseCentroid = getPolygonCentroid(cell.basePolygon);
                     cell.polygon = cell.basePolygon;
@@ -1792,54 +1761,6 @@
 
                 // Apply uniform gap inset
                 cell.displayPolygon = gap > 0 && clipped.length >= 3 ? insetPolygon(clipped, gap / 2) : clipped;
-
-                // FINAL QUALITY GUARD: even though the pre-inset polygon passed all checks,
-                // the gap inset can introduce REFLEX vertices at sharp-ish corners (offset
-                // edges overshoot each other), and shrink the polygon below the absolute
-                // minimum. Either case would render as a concave fold or near-invisible
-                // sliver, so fall back to the base polygon instead.
-                if (cell.displayPolygon && cell.displayPolygon.length >= 3 && cell.basePolygon) {
-                    const dp = cell.displayPolygon;
-                    const dpn = dp.length;
-
-                    // Compute signed area (shoelace sum) to find winding direction + area
-                    let dpSigned = 0;
-                    for (let k = 0; k < dpn; k++) {
-                        const k1 = (k + 1) % dpn;
-                        dpSigned += dp[k][0] * dp[k1][1] - dp[k1][0] * dp[k][1];
-                    }
-                    const dpWinding = Math.sign(dpSigned) || 1;
-                    const dpArea = Math.abs(dpSigned) / 2;
-
-                    let finalBad = false;
-
-                    // Reflex-vertex check: incoming x outgoing cross must match winding
-                    for (let k = 0; k < dpn; k++) {
-                        const a = dp[(k - 1 + dpn) % dpn];
-                        const b = dp[k];
-                        const c = dp[(k + 1) % dpn];
-                        const incX = b[0] - a[0], incY = b[1] - a[1];
-                        const outX = c[0] - b[0], outY = c[1] - b[1];
-                        if (Math.abs(incX) + Math.abs(incY) < 0.5) continue;
-                        if (Math.abs(outX) + Math.abs(outY) < 0.5) continue;
-                        const crossZ = incX * outY - incY * outX;
-                        if (Math.sign(crossZ) !== dpWinding && Math.abs(crossZ) > 0.5) {
-                            finalBad = true;
-                            break;
-                        }
-                    }
-
-                    // Absolute minimum area (post-inset): prevents near-invisible cells
-                    if (!finalBad && baseArea > minAbsoluteArea * 1.5 && dpArea < minAbsoluteArea) {
-                        finalBad = true;
-                    }
-
-                    if (finalBad) {
-                        cell.displayPolygon = cell.basePolygon;
-                        cell.baseCentroid = getPolygonCentroid(cell.basePolygon);
-                        cell.polygon = cell.basePolygon;
-                    }
-                }
 
                 // CRITICAL: Validate centroid against FINAL displayPolygon, not the pre-clipped polygon
                 // The displayPolygon can be much smaller after clipping to bounds and gap inset
@@ -2114,15 +2035,6 @@
 
             const n = polygon.length;
 
-            // Determine polygon winding once so we can detect reflex (concave) vertices.
-            // In canvas coords (y-down), CW polygons have positive shoelace sum.
-            let shoelaceSum = 0;
-            for (let i = 0; i < n; i++) {
-                const j = (i + 1) % n;
-                shoelaceSum += polygon[i][0] * polygon[j][1] - polygon[j][0] * polygon[i][1];
-            }
-            const windingSign = Math.sign(shoelaceSum) || 1;
-
             // Pre-calculate all corner radii to ensure consistency
             const radii = [];
             for (let i = 0; i < n; i++) {
@@ -2132,20 +2044,6 @@
 
                 const dist1 = Math.sqrt((prev[0] - curr[0]) ** 2 + (prev[1] - curr[1]) ** 2);
                 const dist2 = Math.sqrt((next[0] - curr[0]) ** 2 + (next[1] - curr[1]) ** 2);
-
-                // Reflex-vertex guard: if the turn at this vertex goes AGAINST the overall
-                // winding, the vertex is concave. acos() only returns [0, pi] so the
-                // angleLimiter below would compute the wrong side and arcTo() would draw
-                // a fold pointing inward. Skip rounding entirely for these vertices.
-                const incX = curr[0] - prev[0];
-                const incY = curr[1] - prev[1];
-                const outX = next[0] - curr[0];
-                const outY = next[1] - curr[1];
-                const crossZ = incX * outY - incY * outX;
-                if (Math.sign(crossZ) !== windingSign && Math.abs(crossZ) > 0.5) {
-                    radii[i] = 0;
-                    continue;
-                }
 
                 // Limit radius to 50% of the shorter edge - allows corners to meet at edge midpoints
                 // arcTo() handles overflow gracefully, so this is safe even for tight corners
