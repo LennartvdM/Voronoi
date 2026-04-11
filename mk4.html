@@ -100,7 +100,7 @@
 <body>
     <a href="index.html" class="back-link">&larr; Back</a>
     <canvas id="canvas"></canvas>
-    <div class="info-label" id="info">mk4 &middot; chunk 11 &middot; click to pin</div>
+    <div class="info-label" id="info">mk4 &middot; chunk 12 &middot; idle breathing</div>
 
     <div class="edit-panel">
         <button class="layout-btn" id="editToggle">Edit</button>
@@ -714,7 +714,9 @@
             // area. Default slack, derived comfort bounds. Chunk 8 also
             // initializes visibility to 1 if it hasn't been set yet (so
             // existing visibility from the current layout survives the
-            // re-init triggered by edit-mode toggles, etc.).
+            // re-init triggered by edit-mode toggles, etc.). Chunk 12
+            // initializes the breath phase once per face (golden-angle
+            // distribution so cells aren't synchronized).
             for (const f of mesh.faces) {
                 if (f.isOuter) continue;
                 f.restArea = signedFaceArea(f);
@@ -722,6 +724,10 @@
                 f.minArea = f.restArea * (1 - f.slack);
                 f.maxArea = f.restArea * (1 + f.slack);
                 if (f.visibility == null) f.visibility = 1;
+                if (f.breathPhase == null) {
+                    f.breathPhase = (f.id * 137.508 * Math.PI / 180) % (Math.PI * 2);
+                }
+                if (f.breathMul == null) f.breathMul = 1;
             }
         }
         initFaceRestAreas(canonicalMesh);
@@ -834,19 +840,31 @@
                     cy /= n;
 
                     // Chunk 9: effective rest area is modulated by hoverMul
-                    // (boost the hovered cell), so the comfort range
-                    // grows/shrinks with hover. Default hoverMul = 1.
-                    const hover    = (f.hoverMul != null) ? f.hoverMul : 1;
-                    const effRest  = f.restArea * hover;
-                    const slack    = (f.slack != null) ? f.slack : DEFAULT_SLACK;
-                    const effMin   = effRest * (1 - slack);
-                    const effMax   = effRest * (1 + slack);
+                    // (boost the hovered/pinned cell), so the comfort range
+                    // grows/shrinks with hover.
+                    // Chunk 12: composes a third multiplier, breathMul, for
+                    // the idle-breathing modulation. All defaults are 1.
+                    const hover  = (f.hoverMul  != null) ? f.hoverMul  : 1;
+                    const breath = (f.breathMul != null) ? f.breathMul : 1;
+                    const effRest = f.restArea * hover * breath;
+                    const slack   = (f.slack != null) ? f.slack : DEFAULT_SLACK;
+                    const effMin  = effRest * (1 - slack);
+                    const effMax  = effRest * (1 + slack);
 
-                    // Pick the comfort-range edge we need to head toward.
+                    // Chunk 12: target = effRest at all times (no deadband).
+                    // Outside the comfort range we still target the nearer
+                    // bound (the hard branch — keeps the water-balloon
+                    // resistance from chunk 4). Inside the comfort range,
+                    // we softly track effRest so the breath multiplier
+                    // produces visible motion (without a deadband, the
+                    // breath just shifted the bounds and the cell never
+                    // moved). When area == effRest, targetScale = 1 and
+                    // the displacement is zero, so resting cells stay
+                    // exactly put.
                     let target;
                     if (area > effMax)      target = effMax;
                     else if (area < effMin) target = effMin;
-                    else                     continue;  // comfortable
+                    else                     target = effRest;
 
                     if (area <= 0) continue;  // degenerate guard
 
@@ -1724,6 +1742,43 @@
             }
         });
 
+        // ========================= CHUNK 12: IDLE BREATHING ===================
+        //
+        // Subtle per-cell sinusoidal modulation of restArea, so the
+        // mesh "breathes" when idle. Recovers some of the live feel
+        // that morph.html had via its per-frame pressure loop, without
+        // the chaos that loop produced during transitions.
+        //
+        // Each cell has a phase offset (set once at init, golden-angle
+        // distributed so cells aren't synchronized). Each frame:
+        //
+        //   breathMul = 1 + BREATH_AMP * sin(time * BREATH_FREQ + phase)
+        //
+        // The relax pass (chunk 4) composes this as a third multiplier
+        // alongside hoverMul (chunk 9): effRest = restArea * hover * breath.
+        //
+        // BREATH_AMP = 0.02 means ±2% area variation. With default slack
+        // 0.25, this is well within the comfort range, so the relax
+        // doesn't fire forces against the breath — cells just glide
+        // through their cycle. Only when stacked on a stressed cell
+        // (mid-transition or hovered) does the breath visibly compose.
+        //
+        // Skipped in edit mode (vertex positions are user-controlled).
+
+        const BREATH_AMP  = 0.02;   // ±2% area variation per cell
+        const BREATH_FREQ = 0.0015; // rad/ms = 1.5 rad/s → period ≈ 4.2s
+                                    // Bump to 0.003 for ~2s, 0.004 for ~1.5s.
+
+        function updateBreath(now) {
+            // Per-frame sinusoidal modulation, golden-angle phase offset
+            // so cells breathe out of sync.
+            for (const f of canonicalMesh.faces) {
+                if (f.isOuter) continue;
+                const phase = (f.breathPhase != null) ? f.breathPhase : 0;
+                f.breathMul = 1 + BREATH_AMP * Math.sin(now * BREATH_FREQ + phase);
+            }
+        }
+
         // ========================= CHUNK 7 LANDS HERE =========================
         // Polish — colors, hover, easing, arrival ramp.
 
@@ -1743,7 +1798,8 @@
             if (canonicalMesh) {
                 if (!editMode) {
                     updateTransition(now);
-                    if (typeof updateHover === 'function') updateHover();
+                    if (typeof updateHover  === 'function') updateHover();
+                    if (typeof updateBreath === 'function') updateBreath(now);
                     relaxMesh(canonicalMesh);
                 }
                 renderMesh(canonicalMesh);
