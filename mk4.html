@@ -67,7 +67,7 @@
 <body>
     <a href="index.html" class="back-link">&larr; Back</a>
     <canvas id="canvas"></canvas>
-    <div class="info-label" id="info">mk4 &middot; chunk 0 scaffold</div>
+    <div class="info-label" id="info">mk4 &middot; chunk 1 &middot; canonical mesh (12 cells)</div>
 
     <div class="layout-bar" id="layoutBar">
         <button class="layout-btn active" data-layout="L1">Layout 1</button>
@@ -145,10 +145,244 @@
             });
         });
 
-        // ========================= CHUNK 1 LANDS HERE =========================
-        // Half-edge mesh data structure (vertex / half-edge / face).
-        // Voronoi-seeded canonical mesh generator (one-shot).
-        // Static face rendering.
+        // ========================= CHUNK 1: HALF-EDGE MESH ====================
+        //
+        // The HEM is the source of truth: vertices, half-edges, faces with
+        // twin/next pointers, and one outer face wrapping the boundary.
+        // Built from a one-shot Voronoi computation seeded by canonicalSeeds.
+        // Topology of this mesh is FIXED for the lifetime of the page —
+        // every layout and every transition shares it.
+        //
+        //   Vertex   { x, y, id, outHE }
+        //   HalfEdge { origin, twin, next, face, id }
+        //   Face     { id, halfEdge, isOuter }
+        //
+        // Convention: cell polygons are wound in screen-CW order (matches the
+        // bounding-box winding [(0,0),(W,0),(W,H),(0,H)]). Each interior
+        // half-edge has its face on the right when walking origin→dest. The
+        // outer face's half-edges run the opposite way around the perimeter.
+
+        function clipPolygonByHalfPlane(poly, mx, my, nx, ny) {
+            // Sutherland-Hodgman: keep points where (P - (mx,my)) · (nx,ny) <= 0.
+            const out = [];
+            const n = poly.length;
+            if (n === 0) return out;
+            for (let i = 0; i < n; i++) {
+                const p = poly[i];
+                const q = poly[(i + 1) % n];
+                const dp = (p[0] - mx) * nx + (p[1] - my) * ny;
+                const dq = (q[0] - mx) * nx + (q[1] - my) * ny;
+                if (dp <= 0) out.push(p);
+                if ((dp <= 0) !== (dq <= 0)) {
+                    const t = dp / (dp - dq);
+                    out.push([p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])]);
+                }
+            }
+            return out;
+        }
+
+        function computeVoronoiPolygons(seeds, W, H) {
+            // For each seed, clip the canvas rect by the perpendicular bisector
+            // with every other seed. O(n²) per cell, fine at n=12.
+            const cells = [];
+            for (let i = 0; i < seeds.length; i++) {
+                let poly = [[0, 0], [W, 0], [W, H], [0, H]];
+                for (let j = 0; j < seeds.length; j++) {
+                    if (i === j) continue;
+                    const dx = seeds[j].x - seeds[i].x;
+                    const dy = seeds[j].y - seeds[i].y;
+                    const mx = (seeds[i].x + seeds[j].x) / 2;
+                    const my = (seeds[i].y + seeds[j].y) / 2;
+                    poly = clipPolygonByHalfPlane(poly, mx, my, dx, dy);
+                    if (poly.length === 0) break;
+                }
+                cells.push(poly);
+            }
+            return cells;
+        }
+
+        function buildHEM(cellPolygons) {
+            // Builds a half-edge mesh from a list of cell polygons. Cells share
+            // vertices via spatial-snap dedup; an outer face wraps the boundary.
+            const hem = {
+                vertices: [],
+                halfEdges: [],
+                faces: [],
+                outerFace: null,
+            };
+
+            // Snap-to-grid vertex dedup. Voronoi vertices computed from
+            // different cells differ by float noise; snap to 0.01 px.
+            const SNAP = 100;
+            const vertMap = new Map();
+            function getVertex(x, y) {
+                const key = Math.round(x * SNAP) + ',' + Math.round(y * SNAP);
+                let v = vertMap.get(key);
+                if (v) return v;
+                v = { x, y, id: hem.vertices.length, outHE: null };
+                hem.vertices.push(v);
+                vertMap.set(key, v);
+                return v;
+            }
+
+            const heByOriginDest = new Map();  // 'origId,destId' → halfEdge
+            for (let i = 0; i < cellPolygons.length; i++) {
+                const poly = cellPolygons[i];
+                if (poly.length < 3) continue;
+
+                // Resolve and dedup the polygon's vertex list.
+                const verts = [];
+                for (const p of poly) {
+                    const v = getVertex(p[0], p[1]);
+                    if (verts.length === 0 || verts[verts.length - 1] !== v) {
+                        verts.push(v);
+                    }
+                }
+                while (verts.length > 1 && verts[0] === verts[verts.length - 1]) {
+                    verts.pop();
+                }
+                if (verts.length < 3) continue;
+
+                const face = { id: hem.faces.length, halfEdge: null, isOuter: false };
+                hem.faces.push(face);
+
+                const n = verts.length;
+                const ring = [];
+                for (let k = 0; k < n; k++) {
+                    const v0 = verts[k];
+                    const he = {
+                        origin: v0,
+                        twin: null,
+                        next: null,
+                        face: face,
+                        id: hem.halfEdges.length,
+                    };
+                    hem.halfEdges.push(he);
+                    ring.push(he);
+                    if (!v0.outHE) v0.outHE = he;
+                }
+                for (let k = 0; k < n; k++) {
+                    ring[k].next = ring[(k + 1) % n];
+                    const destId = verts[(k + 1) % n].id;
+                    heByOriginDest.set(verts[k].id + ',' + destId, ring[k]);
+                }
+                face.halfEdge = ring[0];
+            }
+
+            // Wire twins; create outer half-edges for unmatched boundary edges.
+            const outerHEs = [];
+            const interiorHEs = hem.halfEdges.slice();
+            for (const he of interiorHEs) {
+                if (he.twin) continue;
+                const v0 = he.origin;
+                const v1 = he.next.origin;
+                const twin = heByOriginDest.get(v1.id + ',' + v0.id);
+                if (twin) {
+                    he.twin = twin;
+                    twin.twin = he;
+                } else {
+                    const outerHE = {
+                        origin: v1,
+                        twin: he,
+                        next: null,
+                        face: null,
+                        id: hem.halfEdges.length,
+                    };
+                    hem.halfEdges.push(outerHE);
+                    outerHEs.push(outerHE);
+                    he.twin = outerHE;
+                }
+            }
+
+            // Outer face. Its half-edges loop around the perimeter in the
+            // opposite winding to the interior cells.
+            const outerFace = { id: -1, halfEdge: null, isOuter: true };
+            hem.faces.push(outerFace);
+            hem.outerFace = outerFace;
+            for (const he of outerHEs) he.face = outerFace;
+
+            // Each outer HE goes from v_a to v_b along the boundary; its next
+            // is the unique outer HE whose origin is v_b.
+            const outerByOrigin = new Map();
+            for (const he of outerHEs) outerByOrigin.set(he.origin.id, he);
+            for (const he of outerHEs) {
+                const dest = he.twin.origin;
+                he.next = outerByOrigin.get(dest.id) || null;
+            }
+            if (outerHEs.length > 0) outerFace.halfEdge = outerHEs[0];
+
+            return hem;
+        }
+
+        function facePolygon(face) {
+            // Walk a face's half-edges, return its vertex list.
+            const verts = [];
+            let he = face.halfEdge;
+            if (!he) return verts;
+            do {
+                verts.push(he.origin);
+                he = he.next;
+                if (!he) break;
+            } while (he !== face.halfEdge);
+            return verts;
+        }
+
+        // Hand-picked canonical seed configuration: 12 seeds in a jittered
+        // 4×3 grid as fractions of (W, H). The Voronoi tessellation of these
+        // seeds defines the canonical mesh's topology — fixed for life.
+        function canonicalSeeds(W, H) {
+            return [
+                { x: W * 0.15, y: H * 0.20 },
+                { x: W * 0.40, y: H * 0.18 },
+                { x: W * 0.65, y: H * 0.22 },
+                { x: W * 0.88, y: H * 0.20 },
+                { x: W * 0.13, y: H * 0.50 },
+                { x: W * 0.38, y: H * 0.48 },
+                { x: W * 0.62, y: H * 0.52 },
+                { x: W * 0.87, y: H * 0.50 },
+                { x: W * 0.18, y: H * 0.80 },
+                { x: W * 0.42, y: H * 0.82 },
+                { x: W * 0.66, y: H * 0.78 },
+                { x: W * 0.90, y: H * 0.80 },
+            ];
+        }
+
+        let canonicalMesh = null;
+        function buildCanonicalMesh() {
+            const seeds = canonicalSeeds(W, H);
+            const polys = computeVoronoiPolygons(seeds, W, H);
+            canonicalMesh = buildHEM(polys);
+        }
+        // Build now and rebuild on resize. Chunk 0's resize() runs first
+        // (updates W/H), then this listener rebuilds the mesh.
+        window.addEventListener('resize', buildCanonicalMesh);
+        buildCanonicalMesh();
+
+        // Distinct color per face — golden-angle hue, dark-theme palette.
+        function faceColor(id) {
+            const hue = (id * 137.508) % 360;
+            return 'hsl(' + hue.toFixed(1) + ', 42%, 38%)';
+        }
+
+        function renderMesh(mesh) {
+            for (const face of mesh.faces) {
+                if (face.isOuter) continue;
+                const verts = facePolygon(face);
+                if (verts.length < 3) continue;
+
+                ctx.beginPath();
+                ctx.moveTo(verts[0].x, verts[0].y);
+                for (let i = 1; i < verts.length; i++) {
+                    ctx.lineTo(verts[i].x, verts[i].y);
+                }
+                ctx.closePath();
+                ctx.fillStyle = faceColor(face.id);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+        }
 
         // ========================= CHUNK 2 LANDS HERE =========================
         // Layout = Float32Array(2 * V) of vertex positions.
@@ -172,18 +406,11 @@
         // ========================= CHUNK 7 LANDS HERE =========================
         // Polish — colors, hover, easing, arrival ramp.
 
-        // Animation loop. Chunk 0 only clears and draws a placeholder;
-        // later chunks fill this in.
+        // Animation loop. Chunk 1 renders the static canonical mesh; later
+        // chunks add layout state, lerping, relaxation forces, etc.
         function animate() {
             ctx.clearRect(0, 0, W, H);
-
-            ctx.fillStyle = '#222';
-            ctx.font = '14px ui-monospace, monospace';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('mk4 scaffold — chunk 0', W / 2, H / 2);
-            ctx.fillText('layout: ' + currentLayout, W / 2, H / 2 + 22);
-
+            if (canonicalMesh) renderMesh(canonicalMesh);
             requestAnimationFrame(animate);
         }
         animate();
