@@ -16,7 +16,8 @@
             touch-action: none;
         }
 
-        canvas { display: block; width: 100%; height: 100vh; cursor: pointer; }
+        canvas { display: block; width: 100%; height: 100vh; cursor: default; }
+        canvas.can-promote { cursor: pointer; }
 
         .back-link {
             position: fixed; top: 1rem; left: 1rem;
@@ -74,7 +75,7 @@
 <body>
     <a href="index.html" class="back-link">&larr; Back</a>
     <canvas id="canvas"></canvas>
-    <div class="info-label" id="info">seeds moving: 0 | fps: 60</div>
+    <div class="info-label" id="info">click a carousel cell to promote it &middot; fps: 60</div>
 
     <div class="layout-bar" id="layoutBar">
         <button class="layout-btn active" data-layout="bento">Bento</button>
@@ -117,9 +118,12 @@
         //       animation or rendering.
         //
         //    2. TRANSITION — seeds interpolate from start → target with
-        //       easeInOutCubic. Greedy nearest-neighbor assignment minimizes
-        //       total travel. 3-pass collision avoidance keeps seeds from
-        //       bunching. Knows nothing about Voronoi.
+        //       easeInOutCubic. Greedy nearest-neighbor assignment is
+        //       role-aware (hero↔hero, carousel↔carousel). Per-role
+        //       duration: void/hero move slowly (carry meaning), carousel
+        //       moves fast (rabble). Click a carousel cell to promote it
+        //       to hero — old hero demotes. 3-pass collision avoidance
+        //       makes the rabble flow around slow-moving anchors.
         //
         //    3. VORONOI — half-plane intersection recomputed every frame
         //       from current seed positions. O(n²) per cell. Guarantees
@@ -163,10 +167,32 @@
             cellCount: 12,            // Number of cells
             gap: 20,                  // Pixel gap between cells
             cornerRadius: 16,         // Rounded corner radius
-            transitionDuration: 1200, // ms for a full layout transition
+            transitionDuration: 1200, // Base ms for a full layout transition
             collisionRadius: 40,      // Min distance seeds maintain during travel
             currentLayout: 'bento',   // Active layout name
         };
+
+        // Per-role duration multipliers applied to transitionDuration.
+        // The motion hierarchy matches the semantic hierarchy: cells that
+        // carry meaning move slowly so the eye stays settled, while small
+        // navigational cells flow fast like water around them.
+        //
+        // Rule: a cell's duration is max(startRoleMult, targetRoleMult).
+        // This means when a cell is promoting/demoting between hero and
+        // carousel, it uses the slower (hero) speed — the clicked cell
+        // gracefully grows into hero, the old hero gently joins the rabble.
+        const roleDurationMultiplier = {
+            void: 1.6,      // text column — very slow, anchor feel
+            hero: 1.4,      // illustration — slow, graceful
+            content: 1.0,   // default (non-reader layouts)
+            carousel: 0.5,  // rabble — fast, flowing
+        };
+
+        function getRoleMultiplier(seed) {
+            if (!seed) return 1.0;
+            if (seed.void) return roleDurationMultiplier.void;
+            return roleDurationMultiplier[seed.role || 'content'] || 1.0;
+        }
 
         const cellColors = [
             '#6366f1', '#06b6d4', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6',
@@ -633,6 +659,31 @@
             return seedArr;
         }
 
+        // Promote a carousel cell to hero, demote the current hero to carousel.
+        // They swap positions and roles. Text (void) stays anchored.
+        // Because the per-role duration uses max(start, target), both the
+        // promoting and demoting cells move at hero speed — slow and graceful.
+        function swapToHero(clickedSeedIdx) {
+            // Find a hero in current targets
+            const heroSeedIdx = targetSeeds.findIndex(t => t && t.role === 'hero');
+            if (heroSeedIdx < 0) return;  // No hero to swap with (non-reader layout)
+            if (heroSeedIdx === clickedSeedIdx) return;
+            if (!targetSeeds[clickedSeedIdx] || targetSeeds[clickedSeedIdx].void) return;
+
+            // Swap targets — clicked takes hero's target, hero takes clicked's target
+            const tmp = targetSeeds[clickedSeedIdx];
+            targetSeeds[clickedSeedIdx] = targetSeeds[heroSeedIdx];
+            targetSeeds[heroSeedIdx] = tmp;
+
+            // Restart transition from current mid-flight positions
+            startSeeds = seeds.map(s => ({
+                x: s.x, y: s.y, w: s.w || 1,
+                void: !!s.void, role: s.role || 'content',
+            }));
+            transitionStart = performance.now();
+            transitionT = 0.5;  // flag: in flight
+        }
+
         function startTransition(layoutName) {
             const newTargets = normalizeSeeds(layouts[layoutName](W, H, config.cellCount));
 
@@ -717,22 +768,36 @@
             if (transitionT >= 1) return;
 
             const elapsed = now - transitionStart;
-            const rawT = Math.min(1, elapsed / config.transitionDuration);
-            transitionT = easeInOutCubic(rawT);
+            let anyMoving = false;
 
-            // Lerp each seed (position + weight) from start to target
+            // Per-cell progress: each seed has its own duration based on role
             for (let i = 0; i < seeds.length; i++) {
                 if (!startSeeds[i] || !targetSeeds[i]) continue;
-                seeds[i].x = startSeeds[i].x + (targetSeeds[i].x - startSeeds[i].x) * transitionT;
-                seeds[i].y = startSeeds[i].y + (targetSeeds[i].y - startSeeds[i].y) * transitionT;
-                seeds[i].w = startSeeds[i].w + ((targetSeeds[i].w || 1) - startSeeds[i].w) * transitionT;
-                seeds[i].void = targetSeeds[i].void;
-                // Role snaps halfway through so visuals align with shape
-                seeds[i].role = transitionT < 0.5 ? startSeeds[i].role : targetSeeds[i].role;
+
+                // Cell's duration = base * max(startRole, targetRole) multiplier
+                // Max rule ensures promoting/demoting cells use the slower speed
+                const startMult = getRoleMultiplier(startSeeds[i]);
+                const targetMult = getRoleMultiplier(targetSeeds[i]);
+                const cellDuration = config.transitionDuration * Math.max(startMult, targetMult);
+
+                const cellRawT = Math.min(1, elapsed / cellDuration);
+                const cellT = easeInOutCubic(cellRawT);
+
+                if (cellRawT < 1) anyMoving = true;
+
+                seeds[i].x = startSeeds[i].x + (targetSeeds[i].x - startSeeds[i].x) * cellT;
+                seeds[i].y = startSeeds[i].y + (targetSeeds[i].y - startSeeds[i].y) * cellT;
+                seeds[i].w = startSeeds[i].w + ((targetSeeds[i].w || 1) - startSeeds[i].w) * cellT;
+                seeds[i].void = cellRawT < 0.5 ? !!startSeeds[i].void : !!targetSeeds[i].void;
+                seeds[i].role = cellRawT < 0.5 ? (startSeeds[i].role || 'content') : (targetSeeds[i].role || 'content');
             }
 
-            // Collision avoidance: 3 relaxation passes
-            if (transitionT > 0 && transitionT < 1) {
+            transitionT = anyMoving ? 0.5 : 1;  // flag: 0.5 = in flight, 1 = settled
+
+            // Collision avoidance — keeps fast carousel cells from colliding
+            // with slow-moving hero/void. Effectively makes the rabble flow
+            // around the anchors.
+            if (anyMoving) {
                 resolveCollisions(seeds, config.collisionRadius);
                 resolveCollisions(seeds, config.collisionRadius);
                 resolveCollisions(seeds, config.collisionRadius);
@@ -882,6 +947,13 @@
                     break;
                 }
             }
+
+            // Cursor: pointer only when hovering a promotable (non-hero) cell
+            // in a layout that has a hero to swap with
+            const hasHero = targetSeeds.some(t => t && t.role === 'hero');
+            const canPromote = hasHero && hoveredCell >= 0 &&
+                seeds[hoveredCell] && seeds[hoveredCell].role !== 'hero';
+            canvas.classList.toggle('can-promote', canPromote);
 
             // Draw non-hovered first, hovered last (z-order), skip voids
             const order = [];
@@ -1127,14 +1199,12 @@
             render(polygons);
 
             // 4. Info overlay
-            const moving = seeds.filter((s, i) =>
-                targetSeeds[i] &&
-                (Math.abs(s.x - targetSeeds[i].x) > 1 || Math.abs(s.y - targetSeeds[i].y) > 1)
-            ).length;
             const dt = time - lastTime;
             lastTime = time;
             const fps = dt > 0 ? Math.round(1000 / dt) : 60;
-            document.getElementById('info').textContent = `seeds moving: ${moving} | fps: ${fps}`;
+            const hasHero = targetSeeds.some(t => t && t.role === 'hero');
+            const hint = hasHero ? 'click a carousel cell to promote it' : 'pick a layout';
+            document.getElementById('info').textContent = `${hint} \u00b7 fps: ${fps}`;
 
             animationId = requestAnimationFrame(animate);
         }
@@ -1172,6 +1242,14 @@
                 mouseX = -9999;
                 mouseY = -9999;
                 hoveredCell = -1;
+            });
+
+            // Click to promote: clicking a carousel cell makes it the new hero
+            canvas.addEventListener('click', () => {
+                if (hoveredCell < 0) return;
+                const clicked = seeds[hoveredCell];
+                if (!clicked || clicked.void || clicked.role === 'hero') return;
+                swapToHero(hoveredCell);
             });
 
             window.addEventListener('resize', () => {
