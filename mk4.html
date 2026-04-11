@@ -190,7 +190,7 @@
             </div>
         </div>
     </div>
-    <div class="info-label" id="info">mk4 &middot; chunk 19 &middot; auto-play</div>
+    <div class="info-label" id="info">mk4 &middot; chunk 20 &middot; keyboard nav</div>
 
     <div class="edit-panel">
         <button class="layout-btn" id="shapeToggle">Shape: rect</button>
@@ -534,6 +534,8 @@
             }
 
             // Identify the focused face for z-order (chunk 15).
+            // Chunk 20: include keyboard focus, with priority order
+            // hover > pin > keyboard so the most recent intent wins.
             let focusedFace = null;
             if (typeof editMode === 'undefined' || !editMode) {
                 if (hoveredFace) {
@@ -541,6 +543,10 @@
                 } else if (typeof pinnedCellId !== 'undefined' && pinnedCellId != null) {
                     for (const f of mesh.faces) {
                         if (f.id === pinnedCellId) { focusedFace = f; break; }
+                    }
+                } else if (typeof keyboardFocusedCellId !== 'undefined' && keyboardFocusedCellId != null) {
+                    for (const f of mesh.faces) {
+                        if (f.id === keyboardFocusedCellId) { focusedFace = f; break; }
                     }
                 }
             }
@@ -1869,14 +1875,15 @@
 
         function updateHover() {
             // Each frame, ramp every face's hoverMul toward its target
-            // (1.0 normally, HOVER_BOOST when hovered OR pinned). Chunk 11
-            // adds the pinned-cell case. Chunk 15 makes the ramp
-            // asymmetric: fast snap when growing toward focus (target >
-            // current), slow ease when relaxing back (target < current).
+            // (1.0 normally, HOVER_BOOST when hovered, pinned, OR
+            // keyboard-focused). Asymmetric ramp: fast snap toward
+            // focus, slow ease back. Chunk 11 added pinning, chunk 15
+            // added asymmetry, chunk 20 adds keyboard focus.
             for (const f of canonicalMesh.faces) {
                 if (f.isOuter) continue;
                 const isFocused = (f === hoveredFace) ||
-                                  (typeof pinnedCellId !== 'undefined' && f.id === pinnedCellId);
+                                  (typeof pinnedCellId           !== 'undefined' && f.id === pinnedCellId) ||
+                                  (typeof keyboardFocusedCellId !== 'undefined' && f.id === keyboardFocusedCellId);
                 const target  = isFocused ? HOVER_BOOST : 1;
                 const current = (f.hoverMul != null) ? f.hoverMul : 1;
                 const lerp    = (target > current) ? HOVER_LERP_ON : HOVER_LERP_OFF;
@@ -2523,6 +2530,157 @@
         // the click handler on the editToggle button).
         editToggle.addEventListener('click', () => {
             if (editMode && playMode) setPlayMode(false);
+        });
+
+        // ========================= CHUNK 20: KEYBOARD NAVIGATION ==============
+        //
+        // Document-level keydown handler. Composes with the existing
+        // hover/pin/edit/play machinery without architectural changes:
+        //
+        //   Tab / Shift+Tab     cycle keyboard focus to next/prev visible cell
+        //   Enter               pin the keyboard-focused cell (toggle)
+        //   Escape              clear pin AND keyboard focus
+        //   1..7                switch to layout L1..L7
+        //   S                   cycle container shape
+        //   L                   toggle labels
+        //   T                   toggle tunables panel
+        //   E                   toggle edit mode
+        //   Space / P           toggle play mode
+        //
+        // Keyboard focus uses the same hoverMul boost as mouse hover
+        // and pin (added to updateHover above). Keyboard-focused cells
+        // also get the chunk 15 z-order treatment so they sit on top
+        // with the brighter border.
+        //
+        // Edit mode swallows most keys (so the user can use Tab/Enter
+        // for normal browser interactions if any text fields are added
+        // later). Only Escape and E work in edit mode.
+
+        let keyboardFocusedCellId = null;
+
+        function visibleFaceIds() {
+            // Sorted list of currently-visible face ids (visibility >= 0.5).
+            const ids = [];
+            for (const f of canonicalMesh.faces) {
+                if (f.isOuter) continue;
+                const vis = (f.visibility != null) ? f.visibility : 1;
+                if (vis < 0.5) continue;
+                ids.push(f.id);
+            }
+            ids.sort((a, b) => a - b);
+            return ids;
+        }
+
+        function cycleKeyboardFocus(delta) {
+            const ids = visibleFaceIds();
+            if (ids.length === 0) { keyboardFocusedCellId = null; return; }
+            if (keyboardFocusedCellId == null) {
+                keyboardFocusedCellId = (delta > 0) ? ids[0] : ids[ids.length - 1];
+                return;
+            }
+            const idx = ids.indexOf(keyboardFocusedCellId);
+            if (idx < 0) {
+                keyboardFocusedCellId = ids[0];
+            } else {
+                const next = (idx + delta + ids.length) % ids.length;
+                keyboardFocusedCellId = ids[next];
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            // Don't intercept while the user is typing in any text input
+            // (none currently in mk4, but be defensive).
+            const tag = (e.target && e.target.tagName) || '';
+            if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+            // Edit mode: only Escape and E work; everything else falls
+            // through to the browser.
+            if (editMode) {
+                if (e.key === 'Escape') {
+                    setEditMode(false);
+                    e.preventDefault();
+                } else if (e.key === 'e' || e.key === 'E') {
+                    setEditMode(false);
+                    e.preventDefault();
+                }
+                return;
+            }
+
+            // Tab / Shift+Tab: cycle keyboard focus.
+            if (e.key === 'Tab') {
+                cycleKeyboardFocus(e.shiftKey ? -1 : 1);
+                e.preventDefault();
+                return;
+            }
+
+            // Enter: pin (toggle) the keyboard-focused cell.
+            if (e.key === 'Enter') {
+                if (keyboardFocusedCellId != null) {
+                    pinnedCellId = (pinnedCellId === keyboardFocusedCellId) ? null : keyboardFocusedCellId;
+                }
+                e.preventDefault();
+                return;
+            }
+
+            // Escape: clear all focus.
+            if (e.key === 'Escape') {
+                pinnedCellId = null;
+                keyboardFocusedCellId = null;
+                if (playMode) setPlayMode(false);
+                e.preventDefault();
+                return;
+            }
+
+            // 1..7: layout switch.
+            if (e.key >= '1' && e.key <= '7') {
+                const idx = parseInt(e.key, 10);
+                const name = 'L' + idx;
+                if (layouts[name]) {
+                    currentLayout = name;
+                    document.querySelectorAll('.layout-bar .layout-btn').forEach(b => {
+                        b.classList.toggle('active', b.dataset && b.dataset.layout === name);
+                    });
+                    goToLayout(name);
+                    if (playMode) setPlayMode(false);
+                }
+                e.preventDefault();
+                return;
+            }
+
+            // S: cycle shape.
+            if (e.key === 's' || e.key === 'S') {
+                shapeToggle.click();
+                e.preventDefault();
+                return;
+            }
+
+            // L: toggle labels.
+            if (e.key === 'l' || e.key === 'L') {
+                labelToggle.click();
+                e.preventDefault();
+                return;
+            }
+
+            // T: toggle tunables panel.
+            if (e.key === 't' || e.key === 'T') {
+                tunablesToggle.click();
+                e.preventDefault();
+                return;
+            }
+
+            // E: toggle edit mode.
+            if (e.key === 'e' || e.key === 'E') {
+                editToggle.click();
+                e.preventDefault();
+                return;
+            }
+
+            // Space or P: toggle play.
+            if (e.key === ' ' || e.key === 'p' || e.key === 'P') {
+                setPlayMode(!playMode);
+                e.preventDefault();
+                return;
+            }
         });
 
         // ========================= CHUNK 7 LANDS HERE =========================
