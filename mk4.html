@@ -95,12 +95,96 @@
             border-color: rgba(111, 202, 143, 0.6);
             color: #6fca8f;
         }
+
+        /* Chunk 18: live tunables panel */
+        .tunables-panel {
+            position: fixed;
+            top: 3rem;
+            left: 1rem;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 220px;
+        }
+        .tunables-panel .layout-btn {
+            text-align: left;
+            width: 100%;
+        }
+        .tunables-controls {
+            display: none;
+            padding: 10px 12px;
+            background: rgba(20, 20, 35, 0.9);
+            backdrop-filter: blur(12px);
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            font-size: 11px;
+            color: rgba(255,255,255,0.7);
+        }
+        .tunables-controls.visible { display: block; }
+        .tunable-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 7px;
+        }
+        .tunable-row:last-child { margin-bottom: 0; }
+        .tunable-row label {
+            flex: 0 0 70px;
+            font-family: ui-monospace, monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: rgba(255,255,255,0.6);
+        }
+        .tunable-row input[type="range"] {
+            flex: 1;
+            min-width: 60px;
+            accent-color: #8b5cf6;
+        }
+        .tunable-value {
+            flex: 0 0 38px;
+            text-align: right;
+            font-family: ui-monospace, monospace;
+            color: rgba(255,255,255,0.85);
+        }
     </style>
 </head>
 <body>
     <a href="index.html" class="back-link">&larr; Back</a>
     <canvas id="canvas"></canvas>
-    <div class="info-label" id="info">mk4 &middot; chunk 17 &middot; cell labels</div>
+
+    <div class="tunables-panel">
+        <button class="layout-btn" id="tunablesToggle">Tune &#9660;</button>
+        <div class="tunables-controls" id="tunablesControls">
+            <div class="tunable-row">
+                <label>Relax</label>
+                <input type="range" id="tuneRelaxGain" min="0.10" max="1.00" step="0.05" value="0.6">
+                <span class="tunable-value" id="tuneRelaxGainVal">0.60</span>
+            </div>
+            <div class="tunable-row">
+                <label>Slack</label>
+                <input type="range" id="tuneSlack" min="0.05" max="0.50" step="0.01" value="0.25">
+                <span class="tunable-value" id="tuneSlackVal">0.25</span>
+            </div>
+            <div class="tunable-row">
+                <label>Hover</label>
+                <input type="range" id="tuneHover" min="1.00" max="3.00" step="0.05" value="1.8">
+                <span class="tunable-value" id="tuneHoverVal">1.80</span>
+            </div>
+            <div class="tunable-row">
+                <label>Breath</label>
+                <input type="range" id="tuneBreath" min="0.00" max="0.10" step="0.005" value="0.02">
+                <span class="tunable-value" id="tuneBreathVal">0.020</span>
+            </div>
+            <div class="tunable-row">
+                <label>Trans ms</label>
+                <input type="range" id="tuneDuration" min="200" max="3000" step="50" value="1200">
+                <span class="tunable-value" id="tuneDurationVal">1200</span>
+            </div>
+        </div>
+    </div>
+    <div class="info-label" id="info">mk4 &middot; chunk 18 &middot; live tunables</div>
 
     <div class="edit-panel">
         <button class="layout-btn" id="shapeToggle">Shape: rect</button>
@@ -627,7 +711,7 @@
         // current (interpolated) positions as the new start and lerps to
         // the new target from there. No jump, no double-back.
 
-        const TRANSITION_DURATION = 1200;  // ms
+        let TRANSITION_DURATION = 1200;  // ms — chunk 18: tunable
         let transitionStart = null;        // Float32Array snapshot
         let transitionTarget = null;       // Float32Array (one of layouts.*)
         let transitionStartTime = 0;
@@ -741,7 +825,7 @@
         // minArea, maxArea) to push back when a cell is squashed or
         // stretched outside its comfort range.
 
-        const DEFAULT_SLACK = 0.25;  // ±25% comfort range
+        let DEFAULT_SLACK = 0.25;  // ±25% comfort range — chunk 18: tunable
 
         function signedFaceArea(face) {
             // Geometric area from current mesh vertex positions.
@@ -863,7 +947,7 @@
         // no force ramping needed at the boundaries of the transition.
 
         const RELAX_ITERS = 4;    // chunk 9: bumped from 2 for visible feel
-        const RELAX_GAIN  = 0.6;  // chunk 9: bumped from 0.5
+        let RELAX_GAIN  = 0.6;    // chunk 9: bumped from 0.5; chunk 18: tunable
 
         // Reusable per-vertex displacement accumulators (avoid GC).
         let _relaxDX = null;
@@ -1704,11 +1788,12 @@
         //
         //   5. HIT-TEST FIX — see (2). Comes free with hover.
 
-        const HOVER_BOOST    = 1.8;   // hovered cell wants 1.8x area; with the
+        let HOVER_BOOST      = 1.8;   // hovered cell wants 1.8x area; with the
                                       // default 0.25 slack the relax pulls
                                       // the cell to effMin = boost*0.75 =
                                       // 1.35x its rest area (visible 35%
                                       // growth). Lower boost = barely visible.
+                                      // Chunk 18: tunable.
         // Chunk 15: asymmetric ramp — fast snap on hover, slow ease off.
         // The asymmetry makes the hover feel tactile (cell crisply takes
         // focus when you arrive, then relaxes gently when you leave).
@@ -1943,7 +2028,7 @@
         //
         // Skipped in edit mode (vertex positions are user-controlled).
 
-        const BREATH_AMP  = 0.02;   // ±2% area variation per cell
+        let BREATH_AMP  = 0.02;     // ±2% area variation per cell — chunk 18: tunable
         const BREATH_FREQ = 0.0015; // rad/ms = 1.5 rad/s → period ≈ 4.2s
                                     // Bump to 0.003 for ~2s, 0.004 for ~1.5s.
 
@@ -2277,6 +2362,76 @@
             labelsVisible = !labelsVisible;
             labelToggle.textContent = 'Labels: ' + (labelsVisible ? 'on' : 'off');
         });
+
+        // ========================= CHUNK 18: LIVE TUNABLES PANEL ==============
+        //
+        // Range sliders bound to the live constants that control the
+        // feel of the demo. Drag a slider; the mesh responds in real
+        // time. Useful both as a dev tool and as a way to communicate
+        // what each subsystem actually does.
+        //
+        // The chunk converts five constants from `const` to `let` so
+        // they can be reassigned:
+        //   RELAX_GAIN          (chunk 4)
+        //   DEFAULT_SLACK       (chunk 3.5)
+        //   HOVER_BOOST         (chunk 9)
+        //   BREATH_AMP          (chunk 12)
+        //   TRANSITION_DURATION (chunk 3)
+        //
+        // RELAX_ITERS, BREATH_FREQ, HOVER_LERP_ON/OFF stay constants
+        // (less commonly tuned, more numerically delicate).
+        //
+        // For DEFAULT_SLACK changes, we walk the faces and re-apply
+        // applyLayoutSlack(currentLayout) so the new default takes
+        // effect on cells that aren't in layoutSlack[currentLayout]
+        // overrides. The other constants are read each frame, so
+        // their changes take effect immediately without further work.
+
+        const tunablesToggle  = document.getElementById('tunablesToggle');
+        const tunablesControls = document.getElementById('tunablesControls');
+        let tunablesVisible = false;
+        tunablesToggle.addEventListener('click', () => {
+            tunablesVisible = !tunablesVisible;
+            tunablesControls.classList.toggle('visible', tunablesVisible);
+            tunablesToggle.textContent = 'Tune ' + (tunablesVisible ? '\u25B2' : '\u25BC');
+        });
+
+        function bindSlider(id, valId, format, onChange) {
+            const slider = document.getElementById(id);
+            const valSpan = document.getElementById(valId);
+            slider.addEventListener('input', () => {
+                const v = parseFloat(slider.value);
+                valSpan.textContent = format(v);
+                onChange(v);
+            });
+        }
+
+        bindSlider('tuneRelaxGain', 'tuneRelaxGainVal',
+            v => v.toFixed(2),
+            v => { RELAX_GAIN = v; });
+
+        bindSlider('tuneSlack', 'tuneSlackVal',
+            v => v.toFixed(2),
+            v => {
+                DEFAULT_SLACK = v;
+                // Re-apply layout slack so faces without per-layout
+                // overrides pick up the new default immediately.
+                if (typeof applyLayoutSlack === 'function') {
+                    applyLayoutSlack(currentLayout);
+                }
+            });
+
+        bindSlider('tuneHover', 'tuneHoverVal',
+            v => v.toFixed(2),
+            v => { HOVER_BOOST = v; });
+
+        bindSlider('tuneBreath', 'tuneBreathVal',
+            v => v.toFixed(3),
+            v => { BREATH_AMP = v; });
+
+        bindSlider('tuneDuration', 'tuneDurationVal',
+            v => v.toFixed(0),
+            v => { TRANSITION_DURATION = v; });
 
         // ========================= CHUNK 7 LANDS HERE =========================
         // Polish — colors, hover, easing, arrival ramp.
