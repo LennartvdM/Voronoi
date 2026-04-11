@@ -100,7 +100,7 @@
 <body>
     <a href="index.html" class="back-link">&larr; Back</a>
     <canvas id="canvas"></canvas>
-    <div class="info-label" id="info">mk4 &middot; chunk 9 &middot; hover + polish</div>
+    <div class="info-label" id="info">mk4 &middot; chunk 10 &middot; topology-aware spiral</div>
 
     <div class="edit-panel">
         <button class="layout-btn" id="editToggle">Edit</button>
@@ -1230,34 +1230,31 @@
             return r;
         }
 
-        // SWIRL — each cell rotated around the canvas center from its
-        // canonical position, with rotation angle proportional to radius
-        // (cells further from center spin more). Topologically friendly:
-        // every cell stays close to its canonical neighborhood. Reads as
-        // "spiral-ish" without the topology damage that a true Fermat
-        // spiral causes when forced onto a fixed 4×3 mesh.
+        // SPIRAL — true Fermat / golden-angle spiral from the center
+        // outward. Returns 12 specs in spiral order (innermost first).
+        // Used WITH assignSpecsToCanonical (chunk 10): the canonical cell
+        // closest to the canvas center gets assigned to the innermost
+        // spiral position, the next-closest cell to the next, etc. This
+        // preserves canonical adjacency through the radical re-arrangement,
+        // so topology stays clean. (The pre-chunk-10 row-major assignment
+        // produced flipped cells.)
         function spiralLayout(W, H) {
             const r = [];
-            const cx = 0.5, cy = 0.5;
-            const ar = H / W;  // y is "shorter" — keep angles round in pixel space
-            for (let row = 0; row < 3; row++) {
-                for (let col = 0; col < 4; col++) {
-                    const x = 0.125 + col * 0.25;
-                    const y = 0.20  + row * 0.30;
-                    // Distance from canvas center in pixel space.
-                    const dxp = (x - cx) / ar;
-                    const dyp = (y - cy);
-                    const radius = Math.hypot(dxp, dyp);
-                    const baseAngle = Math.atan2(dyp, dxp);
-                    // More spin further out: ~0.5 rad at the corners.
-                    const newAngle  = baseAngle + radius * 1.4;
-                    const newRadius = radius * 0.85;
-                    r.push({
-                        tx: cx + newRadius * Math.cos(newAngle) * ar,
-                        ty: cy + newRadius * Math.sin(newAngle),
-                        sx: 0.85, sy: 0.85,
-                    });
-                }
+            const goldenAngle = Math.PI * (3 - Math.sqrt(5));  // ≈ 137.5°
+            const cx = W / 2, cy = H / 2;
+            const minR = Math.min(W, H) * 0.05;
+            const maxR = Math.min(W, H) * 0.42;
+            for (let i = 0; i < 12; i++) {
+                const t = i / 11;
+                const radius = minR + Math.sqrt(t) * (maxR - minR);
+                const angle  = i * goldenAngle;
+                const px = cx + radius * Math.cos(angle);
+                const py = cy + radius * Math.sin(angle);
+                r.push({
+                    tx: px / W,
+                    ty: py / H,
+                    sx: 0.85, sy: 0.85,
+                });
             }
             return r;
         }
@@ -1345,6 +1342,107 @@
             ];
         }
 
+        // Chunk 10: greedy topology-aware assignment of canonical cells
+        // to spec positions by spatial proximity.
+        //
+        // The procedural generators above return a list of 12 specs in
+        // some natural order (e.g. spiral order from center outward).
+        // Without assignment, spec[i] is forced onto canonical cell i,
+        // which can scramble adjacencies for layouts that radically
+        // rearrange — most visibly the Fermat spiral, which produced a
+        // flipped cell with the row-major mapping.
+        //
+        // The fix: greedily match each canonical cell to the closest
+        // unused spec, iterating cells in order of distance from the
+        // canvas center (so cells nearest the middle get first pick at
+        // the most-central specs). The result is then reordered into
+        // canonical id order so buildLayoutFromCellSpecs can index it
+        // by face.id as before.
+        //
+        // For layouts that already have specs in canonical-friendly
+        // order (hex, sidebar, diagonal, bento, hollow), the assignment
+        // is approximately a no-op. For spiral, it transforms a broken
+        // layout into a working one.
+
+        function assignSpecsToCanonical(specs, mesh, canonicalLayout, W, H) {
+            const interior = mesh.faces.filter(f => !f.isOuter);
+
+            // Canonical centroid of each interior face, in pixel space.
+            const centroids = new Map();
+            for (const f of interior) {
+                let cx = 0, cy = 0, n = 0;
+                let he = f.halfEdge;
+                do {
+                    const v = he.origin;
+                    cx += canonicalLayout[v.id * 2];
+                    cy += canonicalLayout[v.id * 2 + 1];
+                    n++;
+                    he = he.next;
+                } while (he !== f.halfEdge);
+                centroids.set(f.id, { x: cx / n, y: cy / n });
+            }
+
+            // Iterate cells in order of distance from canvas center
+            // (closest first). The cell nearest the middle picks its
+            // best spec first, getting the most-central spec available.
+            const cellOrder = [...interior].sort((a, b) => {
+                const ca = centroids.get(a.id);
+                const cb = centroids.get(b.id);
+                const da = (ca.x - W / 2) ** 2 + (ca.y - H / 2) ** 2;
+                const db = (cb.x - W / 2) ** 2 + (cb.y - H / 2) ** 2;
+                return da - db;
+            });
+
+            const targets = specs.map(s => ({ x: s.tx * W, y: s.ty * H, spec: s }));
+            const used = new Array(targets.length).fill(false);
+            const result = new Array(specs.length);
+
+            for (const cell of cellOrder) {
+                const cc = centroids.get(cell.id);
+                let bestIdx = -1, bestDist = Infinity;
+                for (let i = 0; i < targets.length; i++) {
+                    if (used[i]) continue;
+                    const dx = targets[i].x - cc.x;
+                    const dy = targets[i].y - cc.y;
+                    const d = dx * dx + dy * dy;
+                    if (d < bestDist) { bestDist = d; bestIdx = i; }
+                }
+                if (bestIdx >= 0) {
+                    used[bestIdx] = true;
+                    result[cell.id] = targets[bestIdx].spec;
+                }
+            }
+            return result;
+        }
+
+        // Convenience wrappers. makeLayout uses canonical-id row-major
+        // (spec[i] → cell i), which works cleanly for layouts where the
+        // spec list is already in canonical row-major order (hex,
+        // sidebar, diagonal, bento, hollow). makeLayoutAssigned applies
+        // the proximity-based assignment first; only used for layouts
+        // where the spec order doesn't naturally match canonical
+        // adjacency (spiral).
+        //
+        // NOTE on why this isn't universal: assignment optimizes total
+        // distance, which is the right objective for layouts that
+        // redistribute cells across the canvas (spiral), but the WRONG
+        // objective for layouts that COMPRESS cells into a sub-region
+        // (sidebar, diagonal). In compressed layouts, "minimize total
+        // distance" causes cells to leap-frog each other and lose the
+        // relative ordering that keeps shared vertices coherent. Hex,
+        // bento, etc. happen to work both ways.
+        function makeLayout(generator) {
+            return buildLayoutFromCellSpecs(
+                generator(W, H), canonicalMesh, layouts.L1, W, H);
+        }
+        function makeLayoutAssigned(generator) {
+            const rawSpecs = generator(W, H);
+            const assignedSpecs = assignSpecsToCanonical(
+                rawSpecs, canonicalMesh, layouts.L1, W, H);
+            return buildLayoutFromCellSpecs(
+                assignedSpecs, canonicalMesh, layouts.L1, W, H);
+        }
+
         function applyProceduralDefaults() {
             // Storage takes precedence — only fill slots NOT saved by
             // the chunk 5 editor. L1 is always the canonical mesh.
@@ -1353,12 +1451,16 @@
                 stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
             } catch (e) {}
 
-            if (!stored.L2) layouts.L2 = buildLayoutFromCellSpecs(hexLayout(W, H),      canonicalMesh, layouts.L1, W, H);
-            if (!stored.L3) layouts.L3 = buildLayoutFromCellSpecs(spiralLayout(W, H),   canonicalMesh, layouts.L1, W, H);
-            if (!stored.L4) layouts.L4 = buildLayoutFromCellSpecs(sidebarLayout(W, H),  canonicalMesh, layouts.L1, W, H);
-            if (!stored.L5) layouts.L5 = buildLayoutFromCellSpecs(diagonalLayout(W, H), canonicalMesh, layouts.L1, W, H);
-            if (!stored.L6) layouts.L6 = buildLayoutFromCellSpecs(bentoLayout(W, H),    canonicalMesh, layouts.L1, W, H);
-            if (!stored.L7) layouts.L7 = buildLayoutFromCellSpecs(hollowLayout(W, H),   canonicalMesh, layouts.L1, W, H);
+            // Chunk 10: spiral uses topology-aware assignment so a true
+            // Fermat spiral can land cleanly on the fixed mesh. The other
+            // layouts already work with canonical row-major and would
+            // break under assignment (see notes on makeLayout).
+            if (!stored.L2) layouts.L2 = makeLayout(hexLayout);
+            if (!stored.L3) layouts.L3 = makeLayoutAssigned(spiralLayout);
+            if (!stored.L4) layouts.L4 = makeLayout(sidebarLayout);
+            if (!stored.L5) layouts.L5 = makeLayout(diagonalLayout);
+            if (!stored.L6) layouts.L6 = makeLayout(bentoLayout);
+            if (!stored.L7) layouts.L7 = makeLayout(hollowLayout);
 
             // Chunk 8: populate per-layout hidden lists. Only Hollow has
             // hidden cells; the rest are all-visible. Storage doesn't
