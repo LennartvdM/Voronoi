@@ -67,7 +67,7 @@
 <body>
     <a href="index.html" class="back-link">&larr; Back</a>
     <canvas id="canvas"></canvas>
-    <div class="info-label" id="info">mk4 &middot; chunk 2 &middot; layout teleport</div>
+    <div class="info-label" id="info">mk4 &middot; chunk 3 &middot; lerp transitions</div>
 
     <div class="layout-bar" id="layoutBar">
         <button class="layout-btn active" data-layout="L1">Layout 1</button>
@@ -465,18 +465,80 @@
             }
         });
 
-        // Wire the layout buttons to teleport. Chunk 0 already added a
-        // handler that updates `currentLayout` and toggles .active; this
-        // adds a second handler that actually applies the layout.
+        // Wire the layout buttons. Chunk 0 already added a handler that
+        // updates `currentLayout` and toggles .active; this adds a second
+        // handler that goes to the layout. `goToLayout` starts as instant
+        // teleport (chunk 2) and gets reassigned by chunk 3 to a smooth
+        // lerp transition.
+        let goToLayout = (name) => {
+            if (layouts[name]) applyLayout(canonicalMesh, layouts[name]);
+        };
         buttons.forEach(btn => {
             btn.addEventListener('click', () => {
-                const name = btn.dataset.layout;
-                if (layouts[name]) applyLayout(canonicalMesh, layouts[name]);
+                goToLayout(btn.dataset.layout);
             });
         });
 
-        // ========================= CHUNK 3 LANDS HERE =========================
-        // Linear interpolation animation between layouts.
+        // ========================= CHUNK 3: LINEAR INTERPOLATION ==============
+        //
+        // Replaces chunk 2's instant teleport with a timed lerp from
+        // wherever the mesh is right now to the target layout. Topology
+        // stays clean by construction (no Voronoi recompute, no vertex
+        // reassignment, no per-frame tessellation — every vertex just
+        // slides from its start position to its target). Motion is still
+        // slidey because there are no rest areas / cell forces yet —
+        // that's chunks 3.5 and 4.
+        //
+        // Re-clicking mid-transition is interruptible: it snapshots the
+        // current (interpolated) positions as the new start and lerps to
+        // the new target from there. No jump, no double-back.
+
+        const TRANSITION_DURATION = 1200;  // ms
+        let transitionStart = null;        // Float32Array snapshot
+        let transitionTarget = null;       // Float32Array (one of layouts.*)
+        let transitionStartTime = 0;
+        let transitioning = false;
+
+        function easeInOutCubic(t) {
+            return t < 0.5
+                ? 4 * t * t * t
+                : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        }
+
+        function startTransition(target) {
+            transitionStart = captureLayout(canonicalMesh);
+            transitionTarget = target;
+            transitionStartTime = performance.now();
+            transitioning = true;
+        }
+
+        function updateTransition(now) {
+            if (!transitioning) return;
+            const elapsed = now - transitionStartTime;
+            const tRaw = Math.min(1, elapsed / TRANSITION_DURATION);
+            const tEased = easeInOutCubic(tRaw);
+
+            const start = transitionStart;
+            const target = transitionTarget;
+            const verts = canonicalMesh.vertices;
+            for (let i = 0; i < verts.length; i++) {
+                const sx = start[i * 2],     sy = start[i * 2 + 1];
+                const tx = target[i * 2],    ty = target[i * 2 + 1];
+                verts[i].x = sx + (tx - sx) * tEased;
+                verts[i].y = sy + (ty - sy) * tEased;
+            }
+
+            if (tRaw >= 1) {
+                transitioning = false;
+                transitionStart = null;
+                transitionTarget = null;
+            }
+        }
+
+        // Replace chunk 2's teleport with smooth transitions.
+        goToLayout = (name) => {
+            if (layouts[name]) startTransition(layouts[name]);
+        };
 
         // ========================= CHUNK 3.5 LANDS HERE =======================
         // Per-face rest area + comfort range + lerping.
@@ -493,11 +555,18 @@
         // ========================= CHUNK 7 LANDS HERE =========================
         // Polish — colors, hover, easing, arrival ramp.
 
-        // Animation loop. Chunk 1 renders the static canonical mesh; later
-        // chunks add layout state, lerping, relaxation forces, etc.
-        function animate() {
+        // Animation loop. requestAnimationFrame passes a high-resolution
+        // timestamp; we forward it to updateTransition for the lerp clock.
+        // Chunk 1: renders the static canonical mesh.
+        // Chunk 3: ticks the active transition (mutates vertex positions).
+        // Later chunks: relaxation pass, hover, etc.
+        function animate(now) {
+            if (now == null) now = performance.now();
             ctx.clearRect(0, 0, W, H);
-            if (canonicalMesh) renderMesh(canonicalMesh);
+            if (canonicalMesh) {
+                updateTransition(now);
+                renderMesh(canonicalMesh);
+            }
             requestAnimationFrame(animate);
         }
         animate();
