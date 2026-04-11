@@ -834,20 +834,10 @@
             return 1 - Math.pow(1 - t, 3);
         }
 
-        // ========== COORDINATED TRANSITION SYSTEM ==========
-        // Smart target assignment + synchronized motion
-        //
-        // Two coordinated principles:
-        //   1. Targets are assigned by RANK on the NEW bar axis. Cells already
-        //      "high" on the new axis get the high targets; cells "low" on the
-        //      new axis get the low targets. This preserves ordering along the
-        //      dominant direction of motion and prevents cells from crossing
-        //      over each other during the transition.
-        //   2. All cells move on a single shared timeline with an ordered
-        //      rank-based stagger, identical easing, and straight-line lerps.
-        //      No separation forces, no independent velocities, no random
-        //      departure times. Shape morph is locked to the same eased clock,
-        //      so position and shape stay in sync.
+        // ========== FLOCK TRANSITION SYSTEM ==========
+        // Autonomous steering behaviors - cells find their own curved paths
+        // Like Teh Tarik: cells "pour" from one container to another
+        // Curves EMERGE from separation forces, not pre-computed paths
 
         class FlockTransition {
             constructor() {
@@ -855,8 +845,14 @@
                 this.shapes = [];
                 this.onComplete = null;
                 this.elapsedTime = 0;
-                this.duration = 1.1;
-                this.maxStagger = 0.22;
+            }
+
+            // Box-Muller for normal distribution (bell curve stagger)
+            gaussianRandom(mean, stdDev) {
+                const u1 = Math.random();
+                const u2 = Math.random();
+                const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+                return z * stdDev + mean;
             }
 
             // Compute target polygon
@@ -909,73 +905,16 @@
                 const targetZone = getZoneBounds(true);
                 const gap = config.gap;
 
-                // Duration derived from the transitionSpeed slider (1..20).
-                // Default 6 -> ~1.1s. Higher values = faster.
-                const speed = Math.max(1, Math.min(20, config.transitionSpeed || 6));
-                this.duration = Math.max(0.4, Math.min(4.0, 6.6 / speed));
-                this.maxStagger = Math.min(0.25, this.duration * 0.22);
-
-                // ============== SMART TARGET ASSIGNMENT ==============
-                // Project every cell and every target onto the NEW bar axis,
-                // sort both by that projection, and match by rank. This keeps
-                // cells in the same relative order along the dominant motion
-                // direction so their paths are near-parallel and don't need
-                // to cross each other.
-                const newRad = newRotation * Math.PI / 180;
-                const axisX = Math.cos(newRad);
-                const axisY = Math.sin(newRad);
-                const cx = width / 2;
-                const cy = height / 2;
-
-                // Valid cells (ones with renderable polygons) get ranked.
-                const validCells = [];
-                cells.forEach((cell, i) => {
-                    if (!cell.displayPolygon || cell.displayPolygon.length < 3) return;
-                    const proj = (cell.displacedX - cx) * axisX + (cell.displacedY - cy) * axisY;
-                    validCells.push({ cellArrayIdx: i, cell, proj });
-                });
-                validCells.sort((a, b) => a.proj - b.proj);
-
-                // Rank all targets along the same axis.
-                const rankedTargets = targetPositions.map((t, idx) => ({
-                    origIdx: idx,
-                    x: t.x,
-                    y: t.y,
-                    proj: (t.x - cx) * axisX + (t.y - cy) * axisY,
-                })).sort((a, b) => a.proj - b.proj);
-
-                // Build a reordered seedPositions array so that computeCellPolygon
-                // produces each cell's END polygon at its assigned target. Index
-                // matches the cells array so Voronoi neighbour relationships are
-                // consistent.
-                const seedPositions = new Array(cells.length);
-                const assignedTarget = new Array(cells.length).fill(null);
-                const rankOf = new Array(cells.length).fill(0);
-                const N = Math.min(validCells.length, rankedTargets.length);
-                for (let rank = 0; rank < N; rank++) {
-                    const vc = validCells[rank];
-                    const t = rankedTargets[rank];
-                    seedPositions[vc.cellArrayIdx] = { x: t.x, y: t.y };
-                    assignedTarget[vc.cellArrayIdx] = { x: t.x, y: t.y };
-                    rankOf[vc.cellArrayIdx] = rank;
-                }
-                // Fill any remaining slots with the cell's current position so
-                // the Voronoi computation stays well defined (edge case: more
-                // cells than valid polygons).
-                for (let i = 0; i < cells.length; i++) {
-                    if (!seedPositions[i]) {
-                        seedPositions[i] = { x: cells[i].displacedX, y: cells[i].displacedY };
-                    }
-                }
-
-                const maxRank = Math.max(1, N - 1);
+                // Bell curve stagger: mean=0.6s, stdDev=0.25s
+                // Most cells depart around 0.35-0.85s, full range ~0-1.2s
+                const staggerMean = 0.6;
+                const staggerStdDev = 0.25;
 
                 cells.forEach((cell, i) => {
-                    const target = assignedTarget[i];
-                    if (!target) return;
+                    const target = targetPositions[i];
                     if (!cell.displayPolygon || cell.displayPolygon.length < 3) return;
 
-                    let endPolyAbs = this.computeCellPolygon(i, seedPositions, targetZone.bounds);
+                    let endPolyAbs = this.computeCellPolygon(i, targetPositions, targetZone.bounds);
                     if (!endPolyAbs || endPolyAbs.length < 3) return;
                     if (gap > 0) {
                         endPolyAbs = insetPolygon(endPolyAbs, gap / 2);
@@ -991,11 +930,8 @@
                     let endRel = endPolyAbs.map(p => [p[0] - targetX, p[1] - targetY]);
                     [startRel, endRel] = this.matchVertexCounts(startRel, endRel);
 
-                    // Ordered stagger - not random. Cells go in rank order so
-                    // the motion reads as a coordinated wave along the new axis.
-                    const departureTime = maxRank > 0
-                        ? (rankOf[i] / maxRank) * this.maxStagger
-                        : 0;
+                    // Normal distribution departure (clamped positive)
+                    const departureTime = Math.max(0, this.gaussianRandom(staggerMean, staggerStdDev));
 
                     this.shapes.push({
                         index: i,
@@ -1003,6 +939,7 @@
                         endPolygon: endRel,
                         pattern: cell.pattern,
                         x: startX, y: startY,
+                        vx: 0, vy: 0,
                         startX, startY,
                         targetX, targetY,
                         departureTime,
@@ -1012,45 +949,112 @@
                         cellIndex: cell.index
                     });
                 });
+
+                console.log('FlockTransition:', this.shapes.length, 'cells, stagger range',
+                    Math.min(...this.shapes.map(s=>s.departureTime)).toFixed(2), '-',
+                    Math.max(...this.shapes.map(s=>s.departureTime)).toFixed(2), 's');
             }
 
             update(dt) {
                 if (!this.active) return false;
 
-                // Same delta-time convention as the rest of the system.
                 const frameTime = Math.min(dt * 16, 50) / 1000;
                 this.elapsedTime += frameTime;
 
-                const duration = this.duration;
-                const maxStagger = this.maxStagger;
-                const perCellSpan = Math.max(0.05, duration - maxStagger);
+                // STEERING PARAMETERS
+                const maxSpeed = 350;
+                const maxForce = 1200;
+                const arrivalRadius = 80;
+                const arrivalThreshold = 3;
+                const separationRadius = 100;
+                const separationStrength = 800;
 
                 let allDone = true;
 
                 for (const shape of this.shapes) {
-                    // Local clock for this cell
-                    const localRaw = (this.elapsedTime - shape.departureTime) / perCellSpan;
-                    const localT = Math.max(0, Math.min(1, localRaw));
+                    if (shape.arrived) continue;
+                    allDone = false;
 
-                    shape.departed = this.elapsedTime >= shape.departureTime;
-                    shape.progress = localT;
-
-                    // Straight-line lerp under the shared easing curve. Every
-                    // cell uses the same curve and the same span, so they
-                    // accelerate and decelerate in sync - no cell can outrun
-                    // another or squeeze past it.
-                    const eased = easeInOut(localT);
-                    shape.x = shape.startX + eased * (shape.targetX - shape.startX);
-                    shape.y = shape.startY + eased * (shape.targetY - shape.startY);
-
-                    if (localT >= 1) {
-                        shape.arrived = true;
-                    } else {
-                        allDone = false;
+                    // Check departure
+                    if (!shape.departed) {
+                        if (this.elapsedTime >= shape.departureTime) {
+                            shape.departed = true;
+                        } else {
+                            continue;
+                        }
                     }
+
+                    // === SEEK with arrival slowdown ===
+                    const toTargetX = shape.targetX - shape.x;
+                    const toTargetY = shape.targetY - shape.y;
+                    const distToTarget = Math.hypot(toTargetX, toTargetY);
+
+                    if (distToTarget < arrivalThreshold) {
+                        shape.x = shape.targetX;
+                        shape.y = shape.targetY;
+                        shape.vx = 0;
+                        shape.vy = 0;
+                        shape.arrived = true;
+                        shape.progress = 1;
+                        continue;
+                    }
+
+                    let desiredSpeed = maxSpeed;
+                    if (distToTarget < arrivalRadius) {
+                        desiredSpeed = maxSpeed * (distToTarget / arrivalRadius);
+                    }
+
+                    let desiredVx = (toTargetX / distToTarget) * desiredSpeed;
+                    let desiredVy = (toTargetY / distToTarget) * desiredSpeed;
+
+                    // === SEPARATION - creates the curves ===
+                    let sepX = 0, sepY = 0;
+                    for (const other of this.shapes) {
+                        if (other === shape || !other.departed) continue;
+
+                        const dx = shape.x - other.x;
+                        const dy = shape.y - other.y;
+                        const dist = Math.hypot(dx, dy);
+
+                        if (dist < separationRadius && dist > 0.1) {
+                            const strength = separationStrength * Math.pow(1 - dist / separationRadius, 2);
+                            sepX += (dx / dist) * strength;
+                            sepY += (dy / dist) * strength;
+                        }
+                    }
+
+                    // Combine: seek + separation
+                    let steerX = (desiredVx - shape.vx) + sepX;
+                    let steerY = (desiredVy - shape.vy) + sepY;
+
+                    // Limit force
+                    const steerMag = Math.hypot(steerX, steerY);
+                    if (steerMag > maxForce) {
+                        steerX = (steerX / steerMag) * maxForce;
+                        steerY = (steerY / steerMag) * maxForce;
+                    }
+
+                    // Apply
+                    shape.vx += steerX * frameTime;
+                    shape.vy += steerY * frameTime;
+
+                    // Limit speed
+                    const speed = Math.hypot(shape.vx, shape.vy);
+                    if (speed > maxSpeed) {
+                        shape.vx = (shape.vx / speed) * maxSpeed;
+                        shape.vy = (shape.vy / speed) * maxSpeed;
+                    }
+
+                    shape.x += shape.vx * frameTime;
+                    shape.y += shape.vy * frameTime;
+
+                    // Progress for morphing
+                    const totalDist = Math.hypot(shape.targetX - shape.startX, shape.targetY - shape.startY);
+                    const traveled = Math.hypot(shape.x - shape.startX, shape.y - shape.startY);
+                    shape.progress = Math.min(1, totalDist > 0 ? traveled / totalDist : 1);
                 }
 
-                if (allDone && this.elapsedTime >= duration) {
+                if (allDone) {
                     this.complete();
                     return false;
                 }
@@ -1060,18 +1064,13 @@
             complete() {
                 this.active = false;
                 if (this.onComplete) {
-                    this.onComplete(this.shapes.map(s => ({
-                        index: s.cellIndex,
-                        x: s.targetX,
-                        y: s.targetY,
-                    })));
+                    this.onComplete(this.shapes.map(s => ({ index: s.cellIndex, x: s.x, y: s.y })));
                 }
             }
 
             getInterpolatedPolygon(shape) {
-                // Shape morph is locked to the same eased clock used for
-                // position so vertex motion and centroid motion stay coherent.
-                const eased = easeInOut(shape.progress);
+                const t = shape.progress;
+                const eased = t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
 
                 const result = [];
                 for (let i = 0; i < shape.startPolygon.length; i++) {
@@ -1096,7 +1095,7 @@
                     if (!polygon || polygon.length < 3) continue;
 
                     ctx.save();
-                    ctx.globalAlpha = 1.0;
+                    ctx.globalAlpha = shape.departed ? 1.0 : 0.6;
 
                     drawRoundedPolygon(ctx, polygon, cornerRadius);
                     ctx.clip();
