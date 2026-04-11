@@ -35,6 +35,12 @@
             box-shadow: 0 8px 32px rgba(0,0,0,0.4);
         }
 
+        .layout-sep {
+            width: 1px;
+            background: rgba(255,255,255,0.12);
+            margin: 2px 4px;
+        }
+
         .layout-btn {
             padding: 8px 16px;
             border: 1px solid rgba(255,255,255,0.15);
@@ -184,7 +190,7 @@
             </div>
         </div>
     </div>
-    <div class="info-label" id="info">mk4 &middot; chunk 18 &middot; live tunables</div>
+    <div class="info-label" id="info">mk4 &middot; chunk 19 &middot; auto-play</div>
 
     <div class="edit-panel">
         <button class="layout-btn" id="shapeToggle">Shape: rect</button>
@@ -210,6 +216,8 @@
         <button class="layout-btn" data-layout="L5">Diagonal</button>
         <button class="layout-btn" data-layout="L6">Bento</button>
         <button class="layout-btn" data-layout="L7">Hollow</button>
+        <div class="layout-sep"></div>
+        <button class="layout-btn" id="playToggle">&#9654; Play</button>
     </div>
 
     <script>
@@ -2432,6 +2440,90 @@
         bindSlider('tuneDuration', 'tuneDurationVal',
             v => v.toFixed(0),
             v => { TRANSITION_DURATION = v; });
+
+        // ========================= CHUNK 19: AUTO-CYCLE PLAY MODE =============
+        //
+        // A "Play" button in the layout bar walks through layouts on
+        // an interval, plus an occasional shape toggle for variety.
+        // Useful for embedding mk4 in a landing page where viewers
+        // just watch the cells morph.
+        //
+        // Stops on:
+        //   - Pressing Play again
+        //   - Clicking any layout button (the user is taking over)
+        //   - Entering edit mode (don't fight the user)
+        //
+        // Hovering and pinning don't stop play. (Hover is read-only,
+        // pinning is a deliberate "I want to watch this cell" act
+        // that's compatible with the auto-cycle.)
+
+        const PLAY_INTERVAL_MS = 2400;       // ms between layout switches
+        const PLAY_SHAPE_EVERY = 4;          // toggle shape every N layouts
+        const PLAY_LAYOUTS = ['L1','L2','L3','L4','L5','L6','L7'];
+
+        let playMode = false;
+        let playIntervalHandle = null;
+        let playStep = 0;
+
+        const playToggle = document.getElementById('playToggle');
+
+        function setPlayMode(on) {
+            playMode = on;
+            if (on) {
+                playToggle.textContent = '\u25A0 Stop';
+                playToggle.classList.add('active');
+                // Pick the next layout that isn't the current one to
+                // get an immediate visible transition.
+                const tick = () => {
+                    if (!playMode) return;
+                    playStep++;
+                    // Cycle layouts
+                    let next = PLAY_LAYOUTS[playStep % PLAY_LAYOUTS.length];
+                    if (next === currentLayout) {
+                        next = PLAY_LAYOUTS[(playStep + 1) % PLAY_LAYOUTS.length];
+                        playStep++;
+                    }
+                    // Update currentLayout + active class via a simulated
+                    // button click on the matching button.
+                    const btn = document.querySelector('.layout-bar .layout-btn[data-layout="' + next + '"]');
+                    if (btn) {
+                        currentLayout = next;
+                        document.querySelectorAll('.layout-bar .layout-btn').forEach(b =>
+                            b.classList.toggle('active', b === btn));
+                    }
+                    goToLayout(next);
+                    // Occasional shape cycle for variety.
+                    if (playStep % PLAY_SHAPE_EVERY === 0) {
+                        shapeToggle.click();
+                    }
+                };
+                tick();  // immediate first transition
+                playIntervalHandle = setInterval(tick, PLAY_INTERVAL_MS);
+            } else {
+                playToggle.textContent = '\u25B6 Play';
+                playToggle.classList.remove('active');
+                if (playIntervalHandle != null) {
+                    clearInterval(playIntervalHandle);
+                    playIntervalHandle = null;
+                }
+            }
+        }
+        playToggle.addEventListener('click', () => setPlayMode(!playMode));
+
+        // Stop play mode when the user takes over (clicks a layout
+        // button explicitly, or enters edit mode). We piggy-back on
+        // the existing chunk 0 layout-button click handlers by
+        // adding a separate listener that runs first.
+        document.querySelectorAll('.layout-bar .layout-btn[data-layout]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (playMode) setPlayMode(false);
+            });
+        });
+        // And on edit mode entry (chunk 5's setEditMode runs after
+        // the click handler on the editToggle button).
+        editToggle.addEventListener('click', () => {
+            if (editMode && playMode) setPlayMode(false);
+        });
 
         // ========================= CHUNK 7 LANDS HERE =========================
         // Polish — colors, hover, easing, arrival ramp.
