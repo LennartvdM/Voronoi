@@ -67,7 +67,7 @@
 <body>
     <a href="index.html" class="back-link">&larr; Back</a>
     <canvas id="canvas"></canvas>
-    <div class="info-label" id="info">mk4 &middot; chunk 1 &middot; canonical mesh (12 cells)</div>
+    <div class="info-label" id="info">mk4 &middot; chunk 2 &middot; layout teleport</div>
 
     <div class="layout-bar" id="layoutBar">
         <button class="layout-btn active" data-layout="L1">Layout 1</button>
@@ -384,9 +384,96 @@
             }
         }
 
-        // ========================= CHUNK 2 LANDS HERE =========================
-        // Layout = Float32Array(2 * V) of vertex positions.
-        // Layout switching = teleport.
+        // ========================= CHUNK 2: LAYOUTS AS VERTEX ARRAYS ==========
+        //
+        // A Layout is a Float32Array(2 * V) of vertex positions, indexed
+        // by vertex.id (so layout[2i] = x, layout[2i+1] = y of vertex i).
+        // Switching layouts overwrites the mesh's vertex positions and the
+        // next animate frame renders the new arrangement. The half-edge
+        // structure is untouched — same vertex objects, same twin/next
+        // pointers, same faces. Only positions move.
+        //
+        // The four layouts here (L2..L4) are deterministic transforms of
+        // L1, kept temporarily as test fixtures so we can verify the
+        // teleport mechanism and cell-identity preservation. They get
+        // replaced by hand-authored layouts in chunk 6.
+
+        function captureLayout(mesh) {
+            const arr = new Float32Array(mesh.vertices.length * 2);
+            for (let i = 0; i < mesh.vertices.length; i++) {
+                arr[i * 2]     = mesh.vertices[i].x;
+                arr[i * 2 + 1] = mesh.vertices[i].y;
+            }
+            return arr;
+        }
+
+        function applyLayout(mesh, layout) {
+            for (let i = 0; i < mesh.vertices.length; i++) {
+                mesh.vertices[i].x = layout[i * 2];
+                mesh.vertices[i].y = layout[i * 2 + 1];
+            }
+        }
+
+        const layouts = {};
+        function buildLayouts() {
+            // L1: canonical positions, captured straight from the mesh.
+            layouts.L1 = captureLayout(canonicalMesh);
+
+            const N = canonicalMesh.vertices.length;
+            const cx = W / 2, cy = H / 2;
+
+            // L2: uniform shrink toward center (cells huddle in, leaves
+            // a margin around the edges).
+            layouts.L2 = new Float32Array(N * 2);
+            for (let i = 0; i < N; i++) {
+                const x = layouts.L1[i * 2], y = layouts.L1[i * 2 + 1];
+                layouts.L2[i * 2]     = cx + (x - cx) * 0.65;
+                layouts.L2[i * 2 + 1] = cy + (y - cy) * 0.65;
+            }
+
+            // L3: horizontal squeeze (cells become tall and narrow,
+            // bunched in a vertical column at center).
+            layouts.L3 = new Float32Array(N * 2);
+            for (let i = 0; i < N; i++) {
+                const x = layouts.L1[i * 2], y = layouts.L1[i * 2 + 1];
+                layouts.L3[i * 2]     = cx + (x - cx) * 0.5;
+                layouts.L3[i * 2 + 1] = y;
+            }
+
+            // L4: small rotation about center (12°). Rigid transform —
+            // guaranteed to preserve cell validity.
+            const ang = 12 * Math.PI / 180;
+            const cs = Math.cos(ang), sn = Math.sin(ang);
+            layouts.L4 = new Float32Array(N * 2);
+            for (let i = 0; i < N; i++) {
+                const dx = layouts.L1[i * 2] - cx;
+                const dy = layouts.L1[i * 2 + 1] - cy;
+                layouts.L4[i * 2]     = cx + dx * cs - dy * sn;
+                layouts.L4[i * 2 + 1] = cy + dx * sn + dy * cs;
+            }
+        }
+        buildLayouts();
+
+        // Rebuild layouts after each resize-driven mesh rebuild, then
+        // re-apply the user's current selection so resize doesn't snap
+        // them back to L1. Order matters: buildLayouts must run after
+        // chunk 1's buildCanonicalMesh (registration order is preserved).
+        window.addEventListener('resize', () => {
+            buildLayouts();
+            if (layouts[currentLayout]) {
+                applyLayout(canonicalMesh, layouts[currentLayout]);
+            }
+        });
+
+        // Wire the layout buttons to teleport. Chunk 0 already added a
+        // handler that updates `currentLayout` and toggles .active; this
+        // adds a second handler that actually applies the layout.
+        buttons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const name = btn.dataset.layout;
+                if (layouts[name]) applyLayout(canonicalMesh, layouts[name]);
+            });
+        });
 
         // ========================= CHUNK 3 LANDS HERE =========================
         // Linear interpolation animation between layouts.
