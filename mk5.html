@@ -314,8 +314,20 @@ class Cell {
         for (let i = 0; i < nVerts; i++) {
             const a = (i / nVerts) * Math.PI * 2;
             const cosA = Math.cos(a), sinA = Math.sin(a);
-            const baseX = this.x + cosA * rFill;
-            const baseY = this.y + sinA * rFill;
+
+            // Vertex radius: max of rFill and distance to viewport boundary.
+            // This ensures the rest poly covers the ENTIRE Voronoi region —
+            // every direction extends past any possible bisector or viewport
+            // edge, so clipping produces ALL straight edges, no circular arcs.
+            let viewportDist = Infinity;
+            if (cosA > 0.001) viewportDist = Math.min(viewportDist, (W - this.x) / cosA);
+            if (cosA < -0.001) viewportDist = Math.min(viewportDist, -this.x / cosA);
+            if (sinA > 0.001) viewportDist = Math.min(viewportDist, (H - this.y) / sinA);
+            if (sinA < -0.001) viewportDist = Math.min(viewportDist, -this.y / sinA);
+            const vertexR = Math.max(rFill, (viewportDist < Infinity ? viewportDist + 20 : rFill));
+
+            const baseX = this.x + cosA * vertexR;
+            const baseY = this.y + sinA * vertexR;
             let pullX = 0, pullY = 0;
             let borderPullX = 0, borderPullY = 0;
             let cellPullX = 0, cellPullY = 0;
@@ -475,21 +487,9 @@ class Cell {
         // cell body. Multiple passes handle cascading fixes.
         enforceConvexity(poly, this.x, this.y);
 
-        // Area normalization: normalize to inflated area (FILL_FACTOR²).
-        // The inflated rest poly gets clipped by bisectors to the real area.
-        const targetRestArea = this.area * FILL_FACTOR * FILL_FACTOR;
-        const stretchedArea = polygonArea(poly);
-        if (stretchedArea > 1 && Math.abs(stretchedArea - targetRestArea) > targetRestArea * 0.01) {
-            const correction = Math.sqrt(targetRestArea / stretchedArea);
-            for (let i = 0; i < poly.length; i++) {
-                poly[i][0] = this.x + (poly[i][0] - this.x) * correction;
-                poly[i][1] = this.y + (poly[i][1] - this.y) * correction;
-            }
-        }
-
-        // Enforce convexity AGAIN after area normalization —
-        // scaling a thin convex shape can create self-intersection
-        enforceConvexity(poly, this.x, this.y);
+        // No area normalization — the rest poly is intentionally oversized.
+        // Bisector clipping + viewport clipping determine the final shape
+        // and area. This ensures cells fill their full Voronoi regions.
 
         return poly;
     }
@@ -589,8 +589,6 @@ function copyPoly(poly) {
 function simplifyToN(poly, targetN, myStars) {
     if (!poly || poly.length <= targetN) return poly ? poly.map(p => [p[0], p[1]]) : null;
     const n = poly.length;
-    const SNAP_RADIUS = 30;
-
     // Score each vertex by angular deviation (cross product magnitude)
     const scored = [];
     for (let i = 0; i < n; i++) {
@@ -604,12 +602,13 @@ function simplifyToN(poly, targetN, myStars) {
         const lenB = Math.sqrt(bx * bx + by * by) || 1;
         let deviation = cross / (lenA * lenB);
 
-        // Bonus: vertices near a northstar are always kept
+        // Bonus: vertices near a northstar get proportional boost.
+        // Closer = bigger bonus. Guarantees inclusion in top N.
         if (myStars) {
             for (const ns of myStars) {
                 const d = Math.hypot(ns.x - curr[0], ns.y - curr[1]);
-                if (d < SNAP_RADIUS) {
-                    deviation += 10; // guarantee inclusion
+                if (d < 50) {
+                    deviation += 10 * (1 - d / 50); // 10 at center, 0 at 50px
                     break;
                 }
             }
@@ -690,13 +689,18 @@ function computeNorthstars(cells) {
                 if (pt.x < -margin || pt.x > W + margin ||
                     pt.y < -margin || pt.y > H + margin) continue;
 
-                // Delaunay check: no other cell closer than these 3
-                const r2 = (pt.x - a.x) ** 2 + (pt.y - a.y) ** 2;
+                // Delaunay check using WEIGHTED distance (power diagram).
+                // Bisectors use t = wA/(wA+wB), which is a multiplicatively
+                // weighted Voronoi. The check: dist/weight must be larger
+                // for all other cells than for these 3.
+                const distA = Math.hypot(pt.x - a.x, pt.y - a.y);
+                const ref = distA / wA; // weighted distance to cell A
                 let valid = true;
                 for (let m = 0; m < n; m++) {
                     if (m === i || m === j || m === k) continue;
-                    const dm2 = (pt.x - cells[m].x) ** 2 + (pt.y - cells[m].y) ** 2;
-                    if (dm2 < r2 - 1) { valid = false; break; }
+                    const distM = Math.hypot(pt.x - cells[m].x, pt.y - cells[m].y);
+                    const wM = Math.sqrt(cells[m].area);
+                    if (distM / wM < ref - 0.01) { valid = false; break; }
                 }
 
                 if (valid) {
@@ -709,14 +713,15 @@ function computeNorthstars(cells) {
 }
 
 // Snap display polygon corners to nearby northstars.
-// Each corner finds its closest northstar (if within range)
-// and moves to that exact position.
+// Two-tier: hard snap within 15px (exact alignment),
+// soft pull within 50px (gradual convergence, no flicker).
 function snapToNorthstars(displayPoly, myStars) {
     if (!displayPoly || displayPoly.length < 3 || !myStars || myStars.length === 0) return;
-    const SNAP_RADIUS = 30;
+    const HARD_SNAP = 15;
+    const SOFT_RADIUS = 50;
 
     for (let i = 0; i < displayPoly.length; i++) {
-        let bestDist = SNAP_RADIUS, bestStar = null;
+        let bestDist = SOFT_RADIUS, bestStar = null;
         for (const ns of myStars) {
             const d = Math.hypot(ns.x - displayPoly[i][0], ns.y - displayPoly[i][1]);
             if (d < bestDist) {
@@ -725,8 +730,17 @@ function snapToNorthstars(displayPoly, myStars) {
             }
         }
         if (bestStar) {
-            displayPoly[i][0] = bestStar.x;
-            displayPoly[i][1] = bestStar.y;
+            if (bestDist < HARD_SNAP) {
+                // Hard snap — exact position, no gap
+                displayPoly[i][0] = bestStar.x;
+                displayPoly[i][1] = bestStar.y;
+            } else {
+                // Soft pull — quadratic falloff from HARD_SNAP to SOFT_RADIUS
+                const t = (bestDist - HARD_SNAP) / (SOFT_RADIUS - HARD_SNAP);
+                const pull = (1 - t) * (1 - t); // strong near, fades at edge
+                displayPoly[i][0] += (bestStar.x - displayPoly[i][0]) * pull;
+                displayPoly[i][1] += (bestStar.y - displayPoly[i][1]) * pull;
+            }
         }
     }
 }
@@ -859,8 +873,10 @@ function updateAreas(cells) {
     if (cells.length === 0) return;
     const viewportArea = W * H;
     // Fill fraction scales with FILL_FACTOR: higher fill = cells claim more space.
-    // At FF=1.0 (circles), cells claim 70%. At FF=2.0, they claim 95%.
-    const fillFraction = Math.min(0.95, 0.7 + (FILL_FACTOR - 1.0) * 0.25);
+    // At FF=1.0 (circles), cells claim 70%. At FF=2.0+, they claim 105%.
+    // Slightly over 100% ensures bisectors ALWAYS constrain cells, never
+    // the area budget. Cells are oversized targets; clipping does the shaping.
+    const fillFraction = Math.min(1.05, 0.7 + (FILL_FACTOR - 1.0) * 0.35);
     const totalBudget = viewportArea * fillFraction;
 
     // Sum of w² for all visible cells
@@ -1816,15 +1832,12 @@ function animate(time) {
     // ── Compute areas from weights ───────────────────
     updateAreas(cells);
 
-    // ── Solve contacts ───────────────────────────────
-    solveCells(cells, dt);
-
-    // ── Compute northstars (Voronoi vertices) ────────────
-    // Find where 3 cells meet. Each northstar is the intersection
-    // of two weighted bisectors — a local computation, 3 cells only.
+    // ── Compute northstars BEFORE solver ─────────────
+    // Northstars are computed from cell positions + areas (already
+    // updated). By computing them first, the solver can use them
+    // in rest poly generation — the rest poly KNOWS where triple-
+    // points should be, rather than discovering them post-hoc.
     currentNorthstars = computeNorthstars(cells);
-
-    // Build per-cell northstar lookup
     const cellStars = new Map();
     for (const c of cells) cellStars.set(c.id, []);
     for (const ns of currentNorthstars) {
@@ -1833,6 +1846,9 @@ function animate(time) {
             if (arr) arr.push(ns);
         }
     }
+
+    // ── Solve contacts ───────────────────────────────
+    solveCells(cells, dt);
 
     // ── Simplify to 7-corner polygon ────────────────────
     // Reduce solver output to exactly 7 corners — the sharpest
