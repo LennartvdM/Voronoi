@@ -432,9 +432,11 @@ function copyPoly(poly) {
     return poly.map(p => [p[0], p[1]]);
 }
 
-// Enforce convexity on a polygon. Any vertex that creates a
-// concave angle is snapped to the midpoint of its neighbors.
-// Runs up to 3 passes to handle cascading fixes.
+// Enforce convexity on a polygon — HARD constraint.
+// Finds entire concave RUNS (consecutive concave vertices) and
+// replaces them with straight chords between the last convex
+// anchor vertices on either side. Volume that would squeeze
+// past the focal bottleneck redistributes into the cell body.
 function enforceConvexity(poly) {
     const n = poly.length;
     if (n < 3) return;
@@ -445,29 +447,57 @@ function enforceConvexity(poly) {
         const j = (i + 1) % n;
         signedArea += poly[i][0] * poly[j][1] - poly[j][0] * poly[i][1];
     }
-    // For CW winding (signedArea > 0), convex turns have cross > 0
-    // For CCW winding (signedArea < 0), convex turns have cross < 0
     const convexSign = signedArea > 0 ? 1 : -1;
 
-    for (let iter = 0; iter < 3; iter++) {
-        let anyFixed = false;
+    function crossAt(i) {
+        const prev = poly[(i - 1 + n) % n];
+        const curr = poly[i];
+        const next = poly[(i + 1) % n];
+        const ax = curr[0] - prev[0], ay = curr[1] - prev[1];
+        const bx = next[0] - curr[0], by = next[1] - curr[1];
+        return (ax * by - ay * bx) * convexSign;
+    }
+
+    // Multiple passes — fixing one run can create new concavities at junctions
+    for (let pass = 0; pass < n; pass++) {
+        // Find first concave vertex
+        let runStart = -1;
         for (let i = 0; i < n; i++) {
-            const prev = poly[(i - 1 + n) % n];
-            const curr = poly[i];
-            const next = poly[(i + 1) % n];
+            if (crossAt(i) < -0.01) { runStart = i; break; }
+        }
+        if (runStart === -1) break; // fully convex
 
-            const ax = curr[0] - prev[0], ay = curr[1] - prev[1];
-            const bx = next[0] - curr[0], by = next[1] - curr[1];
-            const cross = ax * by - ay * bx;
-
-            if (cross * convexSign < 0) {
-                // Concave — snap to midpoint of neighbors
-                curr[0] = (prev[0] + next[0]) / 2;
-                curr[1] = (prev[1] + next[1]) / 2;
-                anyFixed = true;
+        // Extend to find the full concave run
+        let runEnd = runStart;
+        for (let step = 1; step < n - 1; step++) {
+            const next = (runStart + step) % n;
+            if (crossAt(next) < -0.01) {
+                runEnd = next;
+            } else {
+                break;
             }
         }
-        if (!anyFixed) break;
+
+        // Convex anchors: the vertices just outside the run
+        const anchor1 = poly[(runStart - 1 + n) % n];
+        const anchor2 = poly[(runEnd + 1) % n];
+
+        // Count vertices in the run
+        let runLen = 1;
+        if (runEnd >= runStart) {
+            runLen = runEnd - runStart + 1;
+        } else {
+            runLen = (n - runStart) + runEnd + 1;
+        }
+
+        // Redistribute run vertices along the chord anchor1 → anchor2
+        let idx = runStart;
+        for (let i = 0; i < runLen; i++) {
+            const t = (i + 1) / (runLen + 1);
+            poly[idx][0] = anchor1[0] + (anchor2[0] - anchor1[0]) * t;
+            poly[idx][1] = anchor1[1] + (anchor2[1] - anchor1[1]) * t;
+            idx = (idx + 1) % n;
+        }
     }
 }
 
