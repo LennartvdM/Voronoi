@@ -453,8 +453,9 @@ class Cell {
     }
 
     containsPoint(px, py) {
-        if (!this.polygon || this.polygon.length < 3) return false;
-        return pointInPolygon(px, py, this.polygon);
+        const poly = this._displayPoly || this.polygon;
+        if (!poly || poly.length < 3) return false;
+        return pointInPolygon(px, py, poly);
     }
 }
 
@@ -533,6 +534,38 @@ function scalePoly(poly, cx, cy, scale) {
 
 function copyPoly(poly) {
     return poly.map(p => [p[0], p[1]]);
+}
+
+// Resample a polygon to N evenly-spaced angular vertices around (cx,cy).
+// This gives a fixed vertex count for temporal smoothing.
+function resampleByAngle(poly, cx, cy, n) {
+    if (!poly || poly.length < 3) return null;
+    const result = [];
+    for (let i = 0; i < n; i++) {
+        const angle = (i / n) * Math.PI * 2;
+        const dx = Math.cos(angle), dy = Math.sin(angle);
+        let bestT = 0;
+        const pLen = poly.length;
+        for (let j = 0; j < pLen; j++) {
+            const k = (j + 1) % pLen;
+            const ex = poly[k][0] - poly[j][0], ey = poly[k][1] - poly[j][1];
+            const denom = dx * ey - dy * ex;
+            if (Math.abs(denom) < 0.0001) continue;
+            const fx = poly[j][0] - cx, fy = poly[j][1] - cy;
+            const t = (fx * ey - fy * ex) / denom;
+            const s = (fx * dy - fy * dx) / denom;
+            if (t > 0.001 && s >= -0.001 && s <= 1.001) {
+                if (bestT < 0.001 || t < bestT) bestT = t;
+            }
+        }
+        if (bestT > 0.001) {
+            result.push([cx + dx * bestT, cy + dy * bestT]);
+        } else {
+            // Fallback: use cell center (collapsed vertex)
+            result.push([cx, cy]);
+        }
+    }
+    return result;
 }
 
 // Enforce convexity via convex hull + aspect ratio clamp.
@@ -1148,7 +1181,8 @@ function lighten(hex, f) {
 }
 
 function drawCell(cell) {
-    const poly = cell.polygon;
+    // Use smoothed display polygon for rendering
+    const poly = cell._displayPoly || cell.polygon;
     if (!poly || poly.length < 3) return;
 
     const c = polygonCentroid(poly);
@@ -1498,6 +1532,31 @@ function animate(time) {
 
     // ── Solve contacts ───────────────────────────────
     solveCells(cells, dt);
+
+    // ── Smooth display polygon ───────────────────────
+    // The solver's polygon is recomputed from scratch each frame
+    // (bisector/void/viewport clipping). Resample to fixed vertex
+    // count and lerp toward solver output. This prevents jarring
+    // frame-to-frame shape changes while keeping the physics accurate.
+    const DISPLAY_VERTS = 36;
+    const DISPLAY_SMOOTH = 0.08; // per-frame blend — extremely mellow (~30 frame settle)
+    for (const c of cells) {
+        if (!c.polygon || c.polygon.length < 3) {
+            c._displayPoly = null;
+            continue;
+        }
+        const sampled = resampleByAngle(c.polygon, c.x, c.y, DISPLAY_VERTS);
+        if (!sampled) { c._displayPoly = null; continue; }
+
+        if (c._displayPoly && c._displayPoly.length === DISPLAY_VERTS) {
+            for (let i = 0; i < DISPLAY_VERTS; i++) {
+                c._displayPoly[i][0] += (sampled[i][0] - c._displayPoly[i][0]) * DISPLAY_SMOOTH;
+                c._displayPoly[i][1] += (sampled[i][1] - c._displayPoly[i][1]) * DISPLAY_SMOOTH;
+            }
+        } else {
+            c._displayPoly = sampled;
+        }
+    }
 
     // Render
     render(cells);
