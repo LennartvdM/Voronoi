@@ -196,26 +196,36 @@ class Cell {
             }
 
             // ── Border pull ──────────────────────────────────
-            // Each vertex stretches toward the viewport border it
-            // faces. Distance is irrelevant — only angle matters.
-            // This makes cells fill toward edges like a tessellation.
+            // T-shaped analysis: for each viewport border, ALL
+            // vertices on the border-facing side get pulled in
+            // the border's NORMAL direction (perpendicular to
+            // the border). This creates a broad flat front, not
+            // a tentacle. Distance is irrelevant — only the
+            // facing angle matters.
             if (BORDER_PULL > 0) {
-                // Ray-cast from cell center in vertex direction to find border
-                let borderT = Infinity;
-                if (cosA > 0.001)  borderT = Math.min(borderT, (W - this.x) / cosA);
-                if (cosA < -0.001) borderT = Math.min(borderT, -this.x / cosA);
-                if (sinA > 0.001)  borderT = Math.min(borderT, (H - this.y) / sinA);
-                if (sinA < -0.001) borderT = Math.min(borderT, -this.y / sinA);
+                const borders = [
+                    { nx: -1, ny:  0, dist: this.x },       // left
+                    { nx:  1, ny:  0, dist: W - this.x },    // right
+                    { nx:  0, ny: -1, dist: this.y },        // top
+                    { nx:  0, ny:  1, dist: H - this.y },    // bottom
+                ];
 
-                if (borderT > 0 && borderT < Infinity) {
-                    // Constant pull — doesn't depend on distance
-                    const bPull = BORDER_PULL * rBase;
+                for (const b of borders) {
+                    // How much does this vertex face this border?
+                    const facing = cosA * b.nx + sinA * b.ny;
+                    if (facing <= 0) continue;
+
+                    // Pull in the border's normal direction, not the vertex's radial direction.
+                    // Strength scales with facing: direct = full, glancing = partial.
+                    // Distance is irrelevant — constant pull regardless of how far the border is.
+                    const bPull = BORDER_PULL * rBase * facing;
+
                     // Cap: don't extend past 50% of distance from cell edge to border
-                    const maxExtend = Math.max(0, (borderT - rBase) * 0.5);
+                    const maxExtend = Math.max(0, (b.dist - rBase) * 0.5);
                     const actualPull = Math.min(bPull, maxExtend);
 
-                    pullX += cosA * actualPull;
-                    pullY += sinA * actualPull;
+                    pullX += b.nx * actualPull;
+                    pullY += b.ny * actualPull;
                 }
             }
 
