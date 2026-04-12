@@ -735,7 +735,9 @@ function enforceConvexity(poly, cx, cy) {
 function updateAreas(cells) {
     if (cells.length === 0) return;
     const viewportArea = W * H;
-    const fillFraction = 0.7; // cells claim ~70% of viewport
+    // Fill fraction scales with FILL_FACTOR: higher fill = cells claim more space.
+    // At FF=1.0 (circles), cells claim 70%. At FF=2.0, they claim 95%.
+    const fillFraction = Math.min(0.95, 0.7 + (FILL_FACTOR - 1.0) * 0.25);
     const totalBudget = viewportArea * fillFraction;
 
     // Sum of w² for all visible cells
@@ -1128,21 +1130,6 @@ function solveCells(cells, dt) {
                     // the cell (outward from void), so we NEGATE it.
                     c.polygon = clipByHalfPlane(c.polygon, bp.x, bp.y, -bp.nx, -bp.ny);
                 }
-            }
-        }
-    }
-
-    // ── Phase 4c: Area cap — prevent oversized cells ────────
-    // Inflated rest polys may produce oversized cells where
-    // few neighbors clip. Scale polygon to target area maximum.
-    for (const c of cells) {
-        if (c.polygon.length < 3) continue;
-        const actual = polygonArea(c.polygon);
-        if (actual > c.area * 1.05) {
-            const scale = Math.sqrt(c.area / actual);
-            for (let i = 0; i < c.polygon.length; i++) {
-                c.polygon[i][0] = c.x + (c.polygon[i][0] - c.x) * scale;
-                c.polygon[i][1] = c.y + (c.polygon[i][1] - c.y) * scale;
             }
         }
     }
