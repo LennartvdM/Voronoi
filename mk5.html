@@ -168,17 +168,28 @@ class Cell {
         const poly = [];
         if (debugMode) this._debugPulls = [];
 
-        // ── Find nearest border point from cell CENTER ──────
-        // This is the "stem" of the T. One line, one direction.
-        const dLeft = this.x, dRight = W - this.x;
-        const dTop = this.y, dBottom = H - this.y;
-        const dMin = Math.min(dLeft, dRight, dTop, dBottom);
-        let borderNx = 0, borderNy = 0, borderDist = dMin;
-        let borderPx = this.x, borderPy = this.y; // nearest point on border
-        if (dMin === dLeft)        { borderNx = -1; borderPx = 0; borderPy = this.y; }
-        else if (dMin === dRight)  { borderNx = 1;  borderPx = W; borderPy = this.y; }
-        else if (dMin === dTop)    { borderNx = 0; borderNy = -1; borderPx = this.x; borderPy = 0; }
-        else                       { borderNx = 0; borderNy = 1;  borderPx = this.x; borderPy = H; }
+        // ── Find border direction: radial from viewport center ──
+        // Vector from viewport center through cell center, projected
+        // to where it hits the border. This gives each cell a natural
+        // "outward" direction: top-left cells push top-left, right
+        // cells push right, etc.
+        const vcx = W / 2, vcy = H / 2;
+        let odx = this.x - vcx, ody = this.y - vcy;
+        const odist = Math.sqrt(odx * odx + ody * ody);
+        if (odist < 1) { odx = 0; ody = -1; } // center fallback: push up
+        else { odx /= odist; ody /= odist; }
+
+        // Ray-cast from cell center in outward direction to find border hit
+        let borderT = Infinity;
+        if (odx > 0.001)  borderT = Math.min(borderT, (W - this.x) / odx);
+        if (odx < -0.001) borderT = Math.min(borderT, -this.x / odx);
+        if (ody > 0.001)  borderT = Math.min(borderT, (H - this.y) / ody);
+        if (ody < -0.001) borderT = Math.min(borderT, -this.y / ody);
+
+        const borderNx = odx, borderNy = ody;
+        const borderDist = borderT;
+        const borderPx = this.x + odx * borderT;
+        const borderPy = this.y + ody * borderT;
 
         for (let i = 0; i < nVerts; i++) {
             const a = (i / nVerts) * Math.PI * 2;
