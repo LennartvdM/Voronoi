@@ -222,7 +222,7 @@ const COLORS = [
 // Cells settle under gravity, contact solver prevents compression.
 let GRAVITY_STRENGTH = 0;    // pixels/frame²
 let GRAVITY_ANGLE = Math.PI / 2; // radians (default: downward)
-const VELOCITY_DAMPING = 0.92;   // per-frame velocity decay
+const VELOCITY_DAMPING = 0.85;   // per-frame velocity decay (heavy, settles fast)
 
 // ─── Cell class ──────────────────────────────────────────────
 // The atom. Self-contained. Independently movable. Separable.
@@ -663,7 +663,7 @@ function enforceConvexity(poly, cx, cy) {
 function updateAreas(cells) {
     if (cells.length === 0) return;
     const viewportArea = W * H;
-    const fillFraction = 0.5; // cells claim ~50% of viewport
+    const fillFraction = 0.7; // cells claim ~70% of viewport
     const totalBudget = viewportArea * fillFraction;
 
     // Sum of w² for all visible cells
@@ -1060,50 +1060,35 @@ function solveCells(cells, dt) {
         }
     }
 
-    // ── Phase 5: Hard minimum area enforcement ───────────────
-    // Two mechanisms:
-    // 1. If clipped polygon is too small, SCALE IT UP to minimum.
-    //    The display smoothing makes this look natural.
-    // 2. Strong repulsion pushes the cell away from crowded areas
-    //    so it doesn't need rescaling next frame.
+    // ── Phase 5: Minimum area repulsion ─────────────────────
+    // If a cell is undersized, push it away from the densest
+    // direction. No polygon scaling (that creates overlaps and
+    // chaos). The display smoothing hides the undersized frames
+    // while the cell physically relocates.
     for (const c of cells) {
-        if (c.polygon.length < 3) continue;
+        if (c.polygon.length < 3 || c._dragging) continue;
         const actual = polygonArea(c.polygon);
         const minArea = c.area * MIN_AREA_FRAC;
 
         if (actual < minArea) {
-            // HARD FLOOR: scale polygon up to minimum area from cell center.
-            // This guarantees the cell is never visually tiny.
-            const scale = Math.sqrt(minArea / Math.max(actual, 1));
-            for (const p of c.polygon) {
-                p[0] = c.x + (p[0] - c.x) * scale;
-                p[1] = c.y + (p[1] - c.y) * scale;
+            let fleeDx = 0, fleeDy = 0;
+            for (const other of cells) {
+                if (other === c) continue;
+                const dx = c.x - other.x;
+                const dy = c.y - other.y;
+                const d = Math.sqrt(dx * dx + dy * dy) || 1;
+                const rSum = c.effectiveRadius() + other.effectiveRadius();
+                if (d < rSum * 2) {
+                    fleeDx += (dx / d) * (rSum / d);
+                    fleeDy += (dy / d) * (rSum / d);
+                }
             }
-
-            // Strong repulsion: push cell away from the densest direction
-            if (!c._dragging) {
-                let fleeDx = 0, fleeDy = 0;
-                for (const other of cells) {
-                    if (other === c) continue;
-                    const dx = c.x - other.x;
-                    const dy = c.y - other.y;
-                    const d = Math.sqrt(dx * dx + dy * dy) || 1;
-                    const rSum = c.effectiveRadius() + other.effectiveRadius();
-                    if (d < rSum * 2) {
-                        fleeDx += (dx / d) * (rSum / d);
-                        fleeDy += (dy / d) * (rSum / d);
-                    }
-                }
-                const fleeDist = Math.sqrt(fleeDx * fleeDx + fleeDy * fleeDy);
-                if (fleeDist > 0.01) {
-                    // Aggressive push — proportional to how undersized the cell is
-                    const urgency = 1 - actual / minArea; // 0 = at limit, 1 = collapsed
-                    const push = REPEL_STRENGTH * 3 * dt * urgency;
-                    c.vx += (fleeDx / fleeDist) * push;
-                    c.vy += (fleeDy / fleeDist) * push;
-                    c.x += (fleeDx / fleeDist) * push * 0.5;
-                    c.y += (fleeDy / fleeDist) * push * 0.5;
-                }
+            const fleeDist = Math.sqrt(fleeDx * fleeDx + fleeDy * fleeDy);
+            if (fleeDist > 0.01) {
+                const urgency = 1 - actual / minArea;
+                const push = REPEL_STRENGTH * 2 * dt * urgency;
+                c.vx += (fleeDx / fleeDist) * push;
+                c.vy += (fleeDy / fleeDist) * push;
             }
         }
     }
@@ -1551,29 +1536,37 @@ function animate(time) {
     // ── Solve contacts ───────────────────────────────
     solveCells(cells, dt);
 
-    // ── Smooth display polygon ───────────────────────
-    // The solver's polygon is recomputed from scratch each frame
-    // (bisector/void/viewport clipping). Resample to fixed vertex
-    // count and lerp toward solver output. This prevents jarring
-    // frame-to-frame shape changes while keeping the physics accurate.
+    // ── Smooth display polygon (cell-local space) ─────
+    // Smooth in LOCAL coordinates (relative to cell center) so
+    // position changes are instant. Only SHAPE changes are smoothed.
+    // Prevents the "deflated balloon trailing" artifact.
     const DISPLAY_VERTS = 36;
-    const DISPLAY_SMOOTH = 0.08; // per-frame blend — extremely mellow (~30 frame settle)
+    const DISPLAY_SMOOTH = 0.08;
     for (const c of cells) {
         if (!c.polygon || c.polygon.length < 3) {
+            c._displayLocal = null;
             c._displayPoly = null;
             continue;
         }
+        // Resample solver polygon to local coords (relative to cell center)
         const sampled = resampleByAngle(c.polygon, c.x, c.y, DISPLAY_VERTS);
-        if (!sampled) { c._displayPoly = null; continue; }
+        if (!sampled) { c._displayLocal = null; c._displayPoly = null; continue; }
 
-        if (c._displayPoly && c._displayPoly.length === DISPLAY_VERTS) {
+        // Convert to local (offset from center)
+        const localSampled = sampled.map(p => [p[0] - c.x, p[1] - c.y]);
+
+        if (c._displayLocal && c._displayLocal.length === DISPLAY_VERTS) {
+            // Smooth in local space — only shape changes are lerped
             for (let i = 0; i < DISPLAY_VERTS; i++) {
-                c._displayPoly[i][0] += (sampled[i][0] - c._displayPoly[i][0]) * DISPLAY_SMOOTH;
-                c._displayPoly[i][1] += (sampled[i][1] - c._displayPoly[i][1]) * DISPLAY_SMOOTH;
+                c._displayLocal[i][0] += (localSampled[i][0] - c._displayLocal[i][0]) * DISPLAY_SMOOTH;
+                c._displayLocal[i][1] += (localSampled[i][1] - c._displayLocal[i][1]) * DISPLAY_SMOOTH;
             }
         } else {
-            c._displayPoly = sampled;
+            c._displayLocal = localSampled;
         }
+
+        // Convert back to world for rendering — position is always current
+        c._displayPoly = c._displayLocal.map(p => [p[0] + c.x, p[1] + c.y]);
     }
 
     // Render
