@@ -278,8 +278,8 @@ class Cell {
 
             // ── Cap: combined pull must not overshoot ────────
             // Vertex can't extend past 40% of the gap to nearest
-            // neighbor in the pull direction, OR past 50% of the
-            // distance to the border.
+            // neighbor in the pull direction. Border distance is
+            // IRRELEVANT — the lerp already prevents focal overshoot.
             const pullMag = Math.sqrt(pullX * pullX + pullY * pullY);
             if (pullMag > 0.01) {
                 const pullDirX = pullX / pullMag;
@@ -287,7 +287,7 @@ class Cell {
 
                 let maxReach = Infinity;
 
-                // Cap against neighbors
+                // Cap against neighbors only
                 if (neighbors) {
                     for (const nb of neighbors) {
                         const dx = nb.x - this.x;
@@ -299,16 +299,6 @@ class Cell {
                             maxReach = Math.min(maxReach, rBase + Math.max(gapToNb * 0.4, 0));
                         }
                     }
-                }
-
-                // Cap against border
-                let borderT = Infinity;
-                if (pullDirX > 0.001)  borderT = Math.min(borderT, (W - this.x) / pullDirX);
-                if (pullDirX < -0.001) borderT = Math.min(borderT, -this.x / pullDirX);
-                if (pullDirY > 0.001)  borderT = Math.min(borderT, (H - this.y) / pullDirY);
-                if (pullDirY < -0.001) borderT = Math.min(borderT, -this.y / pullDirY);
-                if (borderT < Infinity) {
-                    maxReach = Math.min(maxReach, (borderT - rBase) * 0.5 + rBase);
                 }
 
                 if (maxReach < Infinity && pullMag > maxReach) {
