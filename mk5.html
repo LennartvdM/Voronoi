@@ -960,6 +960,59 @@ function solveCells(cells, dt) {
         c.polygon = clipByHalfPlane(c.polygon, 0, H - margin, 0, 1);
     }
 
+    // ── Phase 4b: Void object clip ─────────────────────────────
+    // Clip cell polygons against void boundaries. The polygon is
+    // cut so no part of it overlaps any void. For each cell/void
+    // pair, clip against the void edge nearest to the cell center.
+    // This removes the part of the cell extending into the void.
+    for (const c of cells) {
+        if (c.polygon.length < 3) continue;
+        for (const v of voidObjects) {
+            // Find which void edge is nearest to cell center
+            const dLeft = c.x - (v.x - v.w);
+            const dRight = (v.x + v.w) - c.x;
+            const dTop = c.y - (v.y - v.h);
+            const dBot = (v.y + v.h) - c.y;
+
+            // Only clip if the cell is close enough to the void
+            const r = c.effectiveRadius();
+            if (c.x < v.x - v.w - r || c.x > v.x + v.w + r ||
+                c.y < v.y - v.h - r || c.y > v.y + v.h + r) continue;
+
+            if (v.contains(c.x, c.y)) {
+                // Center inside void: clip against nearest edge.
+                // Normal points OUTWARD (away from void center)
+                // to keep the polygon slice on the OUTSIDE.
+                const dMin = Math.min(dLeft, dRight, dTop, dBot);
+                if (dMin === dLeft) {
+                    c.polygon = clipByHalfPlane(c.polygon, v.x - v.w, v.y, 1, 0);
+                } else if (dMin === dRight) {
+                    c.polygon = clipByHalfPlane(c.polygon, v.x + v.w, v.y, -1, 0);
+                } else if (dMin === dTop) {
+                    c.polygon = clipByHalfPlane(c.polygon, v.x, v.y - v.h, 0, 1);
+                } else {
+                    c.polygon = clipByHalfPlane(c.polygon, v.x, v.y + v.h, 0, -1);
+                }
+            } else {
+                // Center outside void: clip against each void edge
+                // the polygon might overlap. Normals point OUTWARD
+                // from the void to keep everything OUTSIDE.
+                if (c.x < v.x && c.x + r > v.x - v.w) {
+                    c.polygon = clipByHalfPlane(c.polygon, v.x - v.w, v.y, 1, 0);
+                }
+                if (c.x > v.x && c.x - r < v.x + v.w) {
+                    c.polygon = clipByHalfPlane(c.polygon, v.x + v.w, v.y, -1, 0);
+                }
+                if (c.y < v.y && c.y + r > v.y - v.h) {
+                    c.polygon = clipByHalfPlane(c.polygon, v.x, v.y - v.h, 0, 1);
+                }
+                if (c.y > v.y && c.y - r < v.y + v.h) {
+                    c.polygon = clipByHalfPlane(c.polygon, v.x, v.y + v.h, 0, -1);
+                }
+            }
+        }
+    }
+
     // ── Phase 5: Hard minimum area enforcement ───────────────
     // If after everything a cell is still too small, push it
     // away from the densest direction. Last resort.
@@ -1391,21 +1444,20 @@ function animate(time) {
         c.weight += (c.targetWeight - c.weight) * weightRate;
     }
 
-    // ── Void object expulsion ────────────────────────
-    // Cells inside void objects get pushed toward the nearest
-    // boundary. Soft force: cells can pass through during motion
-    // but settle outside at rest.
-    const EXPULSION_STRENGTH = 6;
+    // ── Void settling drift ─────────────────────────
+    // No hard centroid expulsion — centers can pass through voids
+    // freely. But when a cell's center IS inside a void, add a
+    // gentle velocity nudge outward. The settling is emergent:
+    // the polygon gets clipped by the void (in the solver), area
+    // loss creates pressure, and this drift helps it resolve.
+    const SETTLE_DRIFT = 1.5;
     for (const c of cells) {
         if (c._dragging) continue;
         for (const v of voidObjects) {
             if (v.contains(c.x, c.y)) {
                 const bp = v.nearestBoundaryPoint(c.x, c.y);
-                const push = EXPULSION_STRENGTH * dt;
-                c.vx += bp.nx * push;
-                c.vy += bp.ny * push;
-                c.x += bp.nx * push * 0.5;
-                c.y += bp.ny * push * 0.5;
+                c.vx += bp.nx * SETTLE_DRIFT * dt;
+                c.vy += bp.ny * SETTLE_DRIFT * dt;
             }
         }
     }
