@@ -93,6 +93,7 @@
             <button class="ctrl-btn active" data-layer="combined" style="font-size:10px;padding:4px 8px;">Combined</button>
             <button class="ctrl-btn active" data-layer="restPoly" style="font-size:10px;padding:4px 8px;">RestPoly</button>
             <button class="ctrl-btn active" data-layer="borderLine" style="font-size:10px;padding:4px 8px;">BdrLine</button>
+            <button class="ctrl-btn active" data-layer="northstars" style="font-size:10px;padding:4px 8px;">Stars</button>
         </span>
         <div class="slider-group">
             <label>Pull</label>
@@ -584,9 +585,11 @@ function copyPoly(poly) {
 // Simplify polygon to exactly N essential corners.
 // Finds the N vertices with the highest angular deviation
 // (sharpest corners) from the solver's polygon.
-function simplifyToN(poly, targetN) {
+// Northstar vertices get a huge bonus so they're always kept.
+function simplifyToN(poly, targetN, myStars) {
     if (!poly || poly.length <= targetN) return poly ? poly.map(p => [p[0], p[1]]) : null;
     const n = poly.length;
+    const SNAP_RADIUS = 30;
 
     // Score each vertex by angular deviation (cross product magnitude)
     const scored = [];
@@ -599,13 +602,133 @@ function simplifyToN(poly, targetN) {
         const cross = Math.abs(ax * by - ay * bx);
         const lenA = Math.sqrt(ax * ax + ay * ay) || 1;
         const lenB = Math.sqrt(bx * bx + by * by) || 1;
-        scored.push({ idx: i, deviation: cross / (lenA * lenB) });
+        let deviation = cross / (lenA * lenB);
+
+        // Bonus: vertices near a northstar are always kept
+        if (myStars) {
+            for (const ns of myStars) {
+                const d = Math.hypot(ns.x - curr[0], ns.y - curr[1]);
+                if (d < SNAP_RADIUS) {
+                    deviation += 10; // guarantee inclusion
+                    break;
+                }
+            }
+        }
+
+        scored.push({ idx: i, deviation });
     }
 
     // Take the top N by deviation, preserving original order
     scored.sort((a, b) => b.deviation - a.deviation);
     const kept = scored.slice(0, targetN).sort((a, b) => a.idx - b.idx);
     return kept.map(k => [poly[k.idx][0], poly[k.idx][1]]);
+}
+
+// ─── Northstar system ────────────────────────────────────────
+// Northstars are the "meeting points" where 3 cells converge —
+// the Voronoi vertices. Computed locally from each triple of
+// nearby cells. Each cell's display corners snap to northstars,
+// so all cells sharing a triple-point have corners at the exact
+// same position. Gaps at triple-points disappear.
+
+let currentNorthstars = [];
+
+function lineIntersect(px, py, dx, dy, qx, qy, ex, ey) {
+    const denom = dx * ey - dy * ex;
+    if (Math.abs(denom) < 0.0001) return null;
+    const s = ((qx - px) * ey - (qy - py) * ex) / denom;
+    return { x: px + s * dx, y: py + s * dy };
+}
+
+function computeNorthstars(cells) {
+    const stars = [];
+    const n = cells.length;
+
+    for (let i = 0; i < n; i++) {
+        const a = cells[i];
+        const ra = a.effectiveRadius();
+        for (let j = i + 1; j < n; j++) {
+            const b = cells[j];
+            const rb = b.effectiveRadius();
+            const dij = Math.hypot(b.x - a.x, b.y - a.y);
+            if (dij > (ra + rb) * FILL_FACTOR * 1.5) continue;
+
+            for (let k = j + 1; k < n; k++) {
+                const c = cells[k];
+                const rc = c.effectiveRadius();
+                const dik = Math.hypot(c.x - a.x, c.y - a.y);
+                const djk = Math.hypot(c.x - b.x, c.y - b.y);
+                if (dik > (ra + rc) * FILL_FACTOR * 1.5) continue;
+                if (djk > (rb + rc) * FILL_FACTOR * 1.5) continue;
+
+                // Compute intersection of weighted bisectors (power diagram vertex)
+                const wA = Math.sqrt(a.area), wB = Math.sqrt(b.area), wC = Math.sqrt(c.area);
+
+                // Bisector(A,B): through weighted midpoint, perpendicular to AB
+                const dxAB = b.x - a.x, dyAB = b.y - a.y;
+                const lenAB = Math.sqrt(dxAB * dxAB + dyAB * dyAB);
+                if (lenAB < 0.01) continue;
+                const tAB = wA / (wA + wB);
+                const mxAB = a.x + dxAB * tAB, myAB = a.y + dyAB * tAB;
+
+                // Bisector(A,C): through weighted midpoint, perpendicular to AC
+                const dxAC = c.x - a.x, dyAC = c.y - a.y;
+                const lenAC = Math.sqrt(dxAC * dxAC + dyAC * dyAC);
+                if (lenAC < 0.01) continue;
+                const tAC = wA / (wA + wC);
+                const mxAC = a.x + dxAC * tAC, myAC = a.y + dyAC * tAC;
+
+                // Intersect the two bisector LINES (perpendicular to AB and AC)
+                const pt = lineIntersect(
+                    mxAB, myAB, -dyAB / lenAB, dxAB / lenAB,
+                    mxAC, myAC, -dyAC / lenAC, dxAC / lenAC
+                );
+                if (!pt) continue;
+
+                // Skip if far outside viewport
+                const margin = Math.max(W, H) * 0.3;
+                if (pt.x < -margin || pt.x > W + margin ||
+                    pt.y < -margin || pt.y > H + margin) continue;
+
+                // Delaunay check: no other cell closer than these 3
+                const r2 = (pt.x - a.x) ** 2 + (pt.y - a.y) ** 2;
+                let valid = true;
+                for (let m = 0; m < n; m++) {
+                    if (m === i || m === j || m === k) continue;
+                    const dm2 = (pt.x - cells[m].x) ** 2 + (pt.y - cells[m].y) ** 2;
+                    if (dm2 < r2 - 1) { valid = false; break; }
+                }
+
+                if (valid) {
+                    stars.push({ x: pt.x, y: pt.y, cells: [a.id, b.id, c.id] });
+                }
+            }
+        }
+    }
+    return stars;
+}
+
+// Snap display polygon corners to nearby northstars.
+// Each corner finds its closest northstar (if within range)
+// and moves to that exact position.
+function snapToNorthstars(displayPoly, myStars) {
+    if (!displayPoly || displayPoly.length < 3 || !myStars || myStars.length === 0) return;
+    const SNAP_RADIUS = 30;
+
+    for (let i = 0; i < displayPoly.length; i++) {
+        let bestDist = SNAP_RADIUS, bestStar = null;
+        for (const ns of myStars) {
+            const d = Math.hypot(ns.x - displayPoly[i][0], ns.y - displayPoly[i][1]);
+            if (d < bestDist) {
+                bestDist = d;
+                bestStar = ns;
+            }
+        }
+        if (bestStar) {
+            displayPoly[i][0] = bestStar.x;
+            displayPoly[i][1] = bestStar.y;
+        }
+    }
 }
 
 // Resample a polygon to N evenly-spaced angular vertices around (cx,cy).
@@ -735,7 +858,9 @@ function enforceConvexity(poly, cx, cy) {
 function updateAreas(cells) {
     if (cells.length === 0) return;
     const viewportArea = W * H;
-    const fillFraction = 0.7; // cells claim ~70% of viewport
+    // Fill fraction scales with FILL_FACTOR: higher fill = cells claim more space.
+    // At FF=1.0 (circles), cells claim 70%. At FF=2.0, they claim 95%.
+    const fillFraction = Math.min(0.95, 0.7 + (FILL_FACTOR - 1.0) * 0.25);
     const totalBudget = viewportArea * fillFraction;
 
     // Sum of w² for all visible cells
@@ -1132,21 +1257,6 @@ function solveCells(cells, dt) {
         }
     }
 
-    // ── Phase 4c: Area cap — prevent oversized cells ────────
-    // Inflated rest polys may produce oversized cells where
-    // few neighbors clip. Scale polygon to target area maximum.
-    for (const c of cells) {
-        if (c.polygon.length < 3) continue;
-        const actual = polygonArea(c.polygon);
-        if (actual > c.area * 1.05) {
-            const scale = Math.sqrt(c.area / actual);
-            for (let i = 0; i < c.polygon.length; i++) {
-                c.polygon[i][0] = c.x + (c.polygon[i][0] - c.x) * scale;
-                c.polygon[i][1] = c.y + (c.polygon[i][1] - c.y) * scale;
-            }
-        }
-    }
-
     // ── Phase 5: Minimum area repulsion ─────────────────────
     // If a cell is undersized, push it away from the densest
     // direction. No polygon scaling (that creates overlaps and
@@ -1360,6 +1470,7 @@ const debugLayers = {
     combined: true,      // white combined pull vectors
     restPoly: true,      // red dashed rest poly outline
     borderLine: true,    // yellow dashed line to border point
+    northstars: true,   // gold star dots at triple-points
 };
 
 function render(cells) {
@@ -1506,6 +1617,33 @@ function renderDebug(cells) {
             ctx.fillStyle = 'orange';
             ctx.fill();
             }
+        }
+    }
+
+    // Northstar dots (gold stars at triple-points)
+    if (debugLayers.northstars && currentNorthstars.length > 0) {
+        for (const ns of currentNorthstars) {
+            // Lines to the 3 participating cells
+            for (const cid of ns.cells) {
+                const cell = cells.find(c => c.id === cid);
+                if (!cell) continue;
+                ctx.beginPath();
+                ctx.moveTo(ns.x, ns.y);
+                ctx.lineTo(cell.x, cell.y);
+                ctx.strokeStyle = 'rgba(255, 220, 50, 0.15)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+            // Star dot
+            ctx.beginPath();
+            ctx.arc(ns.x, ns.y, 4, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 220, 50, 0.9)';
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(ns.x, ns.y, 7, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 220, 50, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
         }
     }
 }
@@ -1681,22 +1819,40 @@ function animate(time) {
     // ── Solve contacts ───────────────────────────────
     solveCells(cells, dt);
 
+    // ── Compute northstars (Voronoi vertices) ────────────
+    // Find where 3 cells meet. Each northstar is the intersection
+    // of two weighted bisectors — a local computation, 3 cells only.
+    currentNorthstars = computeNorthstars(cells);
+
+    // Build per-cell northstar lookup
+    const cellStars = new Map();
+    for (const c of cells) cellStars.set(c.id, []);
+    for (const ns of currentNorthstars) {
+        for (const cid of ns.cells) {
+            const arr = cellStars.get(cid);
+            if (arr) arr.push(ns);
+        }
+    }
+
     // ── Simplify to 7-corner polygon ────────────────────
     // Reduce solver output to exactly 7 corners — the sharpest
-    // angular deviations. Proper polygon, not a sampled circle.
+    // angular deviations. Northstar vertices get bonus score
+    // so they're always kept. Then snap to exact northstar positions.
     for (const c of cells) {
         if (!c.polygon || c.polygon.length < 3) {
             c._displayPoly = null;
             continue;
         }
-        c._displayPoly = simplifyToN(c.polygon, 7);
+        const myStars = cellStars.get(c.id) || [];
+        c._displayPoly = simplifyToN(c.polygon, 7, myStars);
+        snapToNorthstars(c._displayPoly, myStars);
     }
 
     // Render
     render(cells);
 
     // Info
-    info.textContent = `mk5 · voroboids · ${cells.length} cells · ${pairBias.size} contacts · gap ${GAP}px`;
+    info.textContent = `mk5 · voroboids · ${cells.length} cells · ${currentNorthstars.length} stars · gap ${GAP}px`;
 
     requestAnimationFrame(animate);
 }
