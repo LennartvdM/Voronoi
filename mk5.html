@@ -422,16 +422,38 @@ function copyPoly(poly) {
     return poly.map(p => [p[0], p[1]]);
 }
 
-// Enforce convexity — NUCLEAR OPTION.
-// ALWAYS computes the convex hull (no early-out — the check was
-// letting concave polygons through). Uses the hull's own centroid
-// for ray casting (not cell center, which can be outside the hull
-// when pulls are extreme). Resamples N vertices onto the hull.
+// Enforce convexity via convex hull + aspect ratio clamp.
+// Always runs (no early-out). Uses hull centroid for ray casting.
+// Also clamps aspect ratio to prevent hyper-elongation from
+// area normalization amplifying thin shapes.
 function enforceConvexity(poly, cx, cy) {
     const n = poly.length;
     if (n < 3) return;
 
-    // Compute convex hull (Andrew's monotone chain)
+    // ── Aspect ratio clamp ─────────────────────────────
+    // Prevent hyper-elongation. Compute bounding box, if aspect
+    // exceeds MAX_ASPECT, compress the long axis toward center.
+    const MAX_ASPECT = 2.5;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    let pcx = 0, pcy = 0;
+    for (const p of poly) {
+        minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]);
+        minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]);
+        pcx += p[0]; pcy += p[1];
+    }
+    pcx /= n; pcy /= n;
+    const extW = maxX - minX, extH = maxY - minY;
+    if (extW > extH * MAX_ASPECT && extH > 1) {
+        const target = extH * MAX_ASPECT;
+        const scale = target / extW;
+        for (const p of poly) p[0] = pcx + (p[0] - pcx) * scale;
+    } else if (extH > extW * MAX_ASPECT && extW > 1) {
+        const target = extW * MAX_ASPECT;
+        const scale = target / extH;
+        for (const p of poly) p[1] = pcy + (p[1] - pcy) * scale;
+    }
+
+    // ── Convex hull ────────────────────────────────────
     const pts = poly.map(p => ({ x: p[0], y: p[1] }));
     pts.sort((a, b) => a.x - b.x || a.y - b.y);
     const hull = [];
@@ -456,17 +478,12 @@ function enforceConvexity(poly, cx, cy) {
     hull.pop();
     if (hull.length < 3) return;
 
-    // Check if already convex: hull has same number of points as input
-    if (hull.length === n) return; // all points on hull = already convex
-
-    // Use hull centroid as reference — guaranteed inside the hull.
-    // Cell center (cx, cy) can be outside when pulls are extreme.
+    // ── Resample onto hull ─────────────────────────────
+    // Use hull centroid — guaranteed inside the hull.
     let hcx = 0, hcy = 0;
     for (const p of hull) { hcx += p.x; hcy += p.y; }
     hcx /= hull.length; hcy /= hull.length;
 
-    // Resample: for each original vertex, cast a ray from hull centroid
-    // at the vertex's angle and find where it intersects the hull.
     const hLen = hull.length;
     for (let i = 0; i < n; i++) {
         const angle = Math.atan2(poly[i][1] - hcy, poly[i][0] - hcx);
