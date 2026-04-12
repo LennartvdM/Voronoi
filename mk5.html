@@ -1252,9 +1252,14 @@ function drawCell(cell) {
     grad.addColorStop(0.6, cell.color);
     grad.addColorStop(1, darken(cell.color, 0.3));
 
-    // Rounded stroke creates the soft outline
+    // Clip to polygon shape — everything renders INSIDE only
     drawStraightPoly(ctx, poly);
-    ctx.lineWidth = softR * 2;
+    ctx.save();
+    ctx.clip();
+
+    // Inner rounded stroke for soft corners (clipped to interior)
+    drawStraightPoly(ctx, poly);
+    ctx.lineWidth = softR * 4; // doubled — half clipped outside
     ctx.lineJoin = 'round';
     ctx.strokeStyle = grad;
     ctx.stroke();
@@ -1266,15 +1271,13 @@ function drawCell(cell) {
 
     // Border — thin inner stroke
     drawStraightPoly(ctx, poly);
-    ctx.save();
-    ctx.clip();
-    drawStraightPoly(ctx, poly);
     const borderW = cell.hoverMix > 0.1 ? 2 : 1;
     ctx.lineWidth = borderW * 2 + softR * 2;
     ctx.lineJoin = 'round';
     ctx.strokeStyle = `rgba(255,255,255,${0.15 + cell.hoverMix * 0.25})`;
     ctx.stroke();
-    ctx.restore();
+
+    ctx.restore(); // release clip
 
     // Hover glow
     if (cell.hoverMix > 0.05) {
