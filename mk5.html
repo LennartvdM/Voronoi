@@ -323,6 +323,13 @@ class Cell {
             poly.push([baseX + pullX, baseY + pullY]);
         }
 
+        // ── Enforce convexity — HARD constraint ─────────────
+        // Any vertex creating a concave angle gets snapped to the
+        // midpoint of its neighbors. Excess volume that would
+        // squeeze past the focal bottleneck redistributes into the
+        // cell body. Multiple passes handle cascading fixes.
+        enforceConvexity(poly);
+
         // Area normalization: stretch redistributes area, doesn't add it.
         // Scale the stretched polygon back to match the cell's target area.
         // This ensures cells reach toward neighbors but pull in on free sides.
@@ -423,6 +430,45 @@ function scalePoly(poly, cx, cy, scale) {
 
 function copyPoly(poly) {
     return poly.map(p => [p[0], p[1]]);
+}
+
+// Enforce convexity on a polygon. Any vertex that creates a
+// concave angle is snapped to the midpoint of its neighbors.
+// Runs up to 3 passes to handle cascading fixes.
+function enforceConvexity(poly) {
+    const n = poly.length;
+    if (n < 3) return;
+
+    // Determine winding direction from signed area
+    let signedArea = 0;
+    for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        signedArea += poly[i][0] * poly[j][1] - poly[j][0] * poly[i][1];
+    }
+    // For CW winding (signedArea > 0), convex turns have cross > 0
+    // For CCW winding (signedArea < 0), convex turns have cross < 0
+    const convexSign = signedArea > 0 ? 1 : -1;
+
+    for (let iter = 0; iter < 3; iter++) {
+        let anyFixed = false;
+        for (let i = 0; i < n; i++) {
+            const prev = poly[(i - 1 + n) % n];
+            const curr = poly[i];
+            const next = poly[(i + 1) % n];
+
+            const ax = curr[0] - prev[0], ay = curr[1] - prev[1];
+            const bx = next[0] - curr[0], by = next[1] - curr[1];
+            const cross = ax * by - ay * bx;
+
+            if (cross * convexSign < 0) {
+                // Concave — snap to midpoint of neighbors
+                curr[0] = (prev[0] + next[0]) / 2;
+                curr[1] = (prev[1] + next[1]) / 2;
+                anyFixed = true;
+            }
+        }
+        if (!anyFixed) break;
+    }
 }
 
 // ─── Contact solver ──────────────────────────────────────────
