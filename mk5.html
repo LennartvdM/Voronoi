@@ -83,6 +83,8 @@
         <button class="ctrl-btn" id="removeBtn">&minus;</button>
         <button class="ctrl-btn" id="resetBtn">Reset</button>
         <button class="ctrl-btn" id="gapBtn">Gap: 4</button>
+        <button class="ctrl-btn" id="voidBtn">Void</button>
+        <button class="ctrl-btn" id="clearVoidsBtn">Clear</button>
         <button class="ctrl-btn" id="debugBtn">Debug</button>
         <div class="slider-group">
             <label>Pull</label>
@@ -98,6 +100,11 @@
             <label>Focus</label>
             <input type="range" id="focusSlider" min="0.1" max="5" step="0.1" value="1">
             <input type="number" id="focusNum" min="0.1" max="10" step="0.1" value="1">
+        </div>
+        <div class="slider-group">
+            <label>Void</label>
+            <input type="range" id="voidPullSlider" min="0" max="5" step="0.05" value="0">
+            <input type="number" id="voidPullNum" min="0" max="10" step="0.05" value="0">
         </div>
         <div class="slider-group">
             <label>Gravity</label>
@@ -148,6 +155,63 @@ const AREA_ITERS = 3;  // area-correction iterations
 let GRAVITY_REACH = 0.35; // how much cells stretch toward neighbors (cosmetic only)
 let BORDER_PULL = 0;      // how much cells stretch toward viewport borders (angle only, distance irrelevant)
 let BORDER_FOCUS = 1;     // taper curve for border push (0.3=sharp teardrop, 1=linear, 5=wide capsule)
+let VOID_PULL = 0;        // how much cells stretch toward void objects (like border pull)
+
+// ─── Void objects ────────────────────────────────────────────
+// Rigid shapes that cells incline toward but must settle outside.
+// Permeable during motion, authoritative at rest.
+class VoidObject {
+    constructor(x, y, w, h) {
+        this.x = x;      // center x
+        this.y = y;       // center y
+        this.w = w;       // half-width
+        this.h = h;       // half-height
+    }
+
+    // Signed distance from point to box boundary.
+    // Negative = inside, positive = outside.
+    signedDist(px, py) {
+        const dx = Math.abs(px - this.x) - this.w;
+        const dy = Math.abs(py - this.y) - this.h;
+        if (dx > 0 && dy > 0) return Math.sqrt(dx * dx + dy * dy);
+        return Math.max(dx, dy);
+    }
+
+    // Nearest point on the box boundary from an external point
+    nearestBoundaryPoint(px, py) {
+        // Clamp to box, then project to nearest edge
+        const cx = Math.max(this.x - this.w, Math.min(this.x + this.w, px));
+        const cy = Math.max(this.y - this.h, Math.min(this.y + this.h, py));
+
+        // If clamped point equals input, point is inside — push to nearest edge
+        if (Math.abs(cx - px) < 0.01 && Math.abs(cy - py) < 0.01) {
+            const dLeft = px - (this.x - this.w);
+            const dRight = (this.x + this.w) - px;
+            const dTop = py - (this.y - this.h);
+            const dBot = (this.y + this.h) - py;
+            const dMin = Math.min(dLeft, dRight, dTop, dBot);
+            if (dMin === dLeft) return { x: this.x - this.w, y: py, nx: -1, ny: 0 };
+            if (dMin === dRight) return { x: this.x + this.w, y: py, nx: 1, ny: 0 };
+            if (dMin === dTop) return { x: px, y: this.y - this.h, nx: 0, ny: -1 };
+            return { x: px, y: this.y + this.h, nx: 0, ny: 1 };
+        }
+
+        // Outside — nearest point is the clamped point
+        const dx = px - cx, dy = py - cy;
+        const d = Math.sqrt(dx * dx + dy * dy) || 1;
+        return { x: cx, y: cy, nx: dx / d, ny: dy / d };
+    }
+
+    // Is point inside the box?
+    contains(px, py) {
+        return Math.abs(px - this.x) <= this.w && Math.abs(py - this.y) <= this.h;
+    }
+}
+
+let voidObjects = [];
+let placingVoid = false;
+let voidDragStart = null;
+
 const COLORS = [
     '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e',
     '#f97316', '#eab308', '#22c55e', '#14b8a6',
@@ -290,6 +354,27 @@ class Cell {
                     borderPullY = borderNy * bPull;
                     pullX += borderPullX;
                     pullY += borderPullY;
+                }
+            }
+
+            // ── Void object pull ──────────────────────────────
+            // Cells stretch toward void objects the same way they
+            // stretch toward borders — directional push with taper.
+            if (VOID_PULL > 0 && voidObjects.length > 0) {
+                for (const v of voidObjects) {
+                    const bp = v.nearestBoundaryPoint(this.x, this.y);
+                    const dx = bp.x - this.x, dy = bp.y - this.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                    const vnx = dx / dist, vny = dy / dist;
+
+                    // Facing: how much does this vertex point toward the void?
+                    const facing = cosA * vnx + sinA * vny;
+                    if (facing > 0) {
+                        const taper = Math.pow(facing, 1 / Math.max(0.1, BORDER_FOCUS));
+                        const vPull = VOID_PULL * rBase * 0.5 * taper;
+                        pullX += vnx * vPull;
+                        pullY += vny * vPull;
+                    }
                 }
             }
 
@@ -1060,6 +1145,34 @@ function render(cells) {
     for (const c of rest) drawCell(c);
     for (const c of hovered) drawCell(c);
 
+    // Draw void objects
+    for (const v of voidObjects) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(v.x - v.w, v.y - v.h, v.w * 2, v.h * 2);
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+        ctx.fillRect(v.x - v.w, v.y - v.h, v.w * 2, v.h * 2);
+        ctx.restore();
+    }
+
+    // Draw void placement preview
+    if (placingVoid && voidDragStart) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 200, 50, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        const sx = Math.min(voidDragStart.x, mouseX);
+        const sy = Math.min(voidDragStart.y, mouseY);
+        const sw = Math.abs(mouseX - voidDragStart.x);
+        const sh = Math.abs(mouseY - voidDragStart.y);
+        ctx.strokeRect(sx, sy, sw, sh);
+        ctx.setLineDash([]);
+        ctx.restore();
+    }
+
     if (debugMode) renderDebug(cells);
 }
 
@@ -1168,6 +1281,14 @@ canvas.addEventListener('pointerdown', e => {
     const rect = canvas.getBoundingClientRect();
     const px = e.clientX - rect.left;
     const py = e.clientY - rect.top;
+
+    // Void placement mode: start drawing rectangle
+    if (placingVoid) {
+        voidDragStart = { x: px, y: py };
+        canvas.setPointerCapture(e.pointerId);
+        return;
+    }
+
     const cell = findCellAt(px, py);
     if (cell) {
         dragCell = cell;
@@ -1188,7 +1309,23 @@ canvas.addEventListener('pointermove', e => {
     }
 });
 
-canvas.addEventListener('pointerup', () => {
+canvas.addEventListener('pointerup', e => {
+    // Finish void placement
+    if (placingVoid && voidDragStart) {
+        const rect = canvas.getBoundingClientRect();
+        const px = e.clientX - rect.left;
+        const py = e.clientY - rect.top;
+        const cx = (voidDragStart.x + px) / 2;
+        const cy = (voidDragStart.y + py) / 2;
+        const hw = Math.abs(px - voidDragStart.x) / 2;
+        const hh = Math.abs(py - voidDragStart.y) / 2;
+        if (hw > 10 && hh > 10) {
+            voidObjects.push(new VoidObject(cx, cy, hw, hh));
+        }
+        voidDragStart = null;
+        return;
+    }
+
     if (dragCell) dragCell._dragging = false;
     dragCell = null;
 });
@@ -1252,6 +1389,25 @@ function animate(time) {
     const weightRate = 1 - Math.exp(-dt * 0.08);
     for (const c of cells) {
         c.weight += (c.targetWeight - c.weight) * weightRate;
+    }
+
+    // ── Void object expulsion ────────────────────────
+    // Cells inside void objects get pushed toward the nearest
+    // boundary. Soft force: cells can pass through during motion
+    // but settle outside at rest.
+    const EXPULSION_STRENGTH = 6;
+    for (const c of cells) {
+        if (c._dragging) continue;
+        for (const v of voidObjects) {
+            if (v.contains(c.x, c.y)) {
+                const bp = v.nearestBoundaryPoint(c.x, c.y);
+                const push = EXPULSION_STRENGTH * dt;
+                c.vx += bp.nx * push;
+                c.vy += bp.ny * push;
+                c.x += bp.nx * push * 0.5;
+                c.y += bp.ny * push * 0.5;
+            }
+        }
     }
 
     // ── Update hover ─────────────────────────────────
@@ -1337,6 +1493,27 @@ function setFocus(val) {
 }
 focusSlider.addEventListener('input', () => setFocus(parseFloat(focusSlider.value)));
 focusNum.addEventListener('input', () => setFocus(parseFloat(focusNum.value) || 1));
+
+// Void pull
+const voidPullSlider = document.getElementById('voidPullSlider');
+const voidPullNum = document.getElementById('voidPullNum');
+function setVoidPull(val) {
+    VOID_PULL = val;
+    voidPullSlider.value = Math.min(val, parseFloat(voidPullSlider.max));
+    voidPullNum.value = val;
+}
+voidPullSlider.addEventListener('input', () => setVoidPull(parseFloat(voidPullSlider.value)));
+voidPullNum.addEventListener('input', () => setVoidPull(parseFloat(voidPullNum.value) || 0));
+
+// Void placement mode
+document.getElementById('voidBtn').addEventListener('click', () => {
+    placingVoid = !placingVoid;
+    document.getElementById('voidBtn').classList.toggle('active', placingVoid);
+    canvas.style.cursor = placingVoid ? 'crosshair' : 'default';
+});
+document.getElementById('clearVoidsBtn').addEventListener('click', () => {
+    voidObjects = [];
+});
 
 // Gravity controls
 const gravSlider = document.getElementById('gravSlider');
