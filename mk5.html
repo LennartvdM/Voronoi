@@ -314,8 +314,20 @@ class Cell {
         for (let i = 0; i < nVerts; i++) {
             const a = (i / nVerts) * Math.PI * 2;
             const cosA = Math.cos(a), sinA = Math.sin(a);
-            const baseX = this.x + cosA * rFill;
-            const baseY = this.y + sinA * rFill;
+
+            // Vertex radius: max of rFill and distance to viewport boundary.
+            // This ensures the rest poly covers the ENTIRE Voronoi region —
+            // every direction extends past any possible bisector or viewport
+            // edge, so clipping produces ALL straight edges, no circular arcs.
+            let viewportDist = Infinity;
+            if (cosA > 0.001) viewportDist = Math.min(viewportDist, (W - this.x) / cosA);
+            if (cosA < -0.001) viewportDist = Math.min(viewportDist, -this.x / cosA);
+            if (sinA > 0.001) viewportDist = Math.min(viewportDist, (H - this.y) / sinA);
+            if (sinA < -0.001) viewportDist = Math.min(viewportDist, -this.y / sinA);
+            const vertexR = Math.max(rFill, (viewportDist < Infinity ? viewportDist + 20 : rFill));
+
+            const baseX = this.x + cosA * vertexR;
+            const baseY = this.y + sinA * vertexR;
             let pullX = 0, pullY = 0;
             let borderPullX = 0, borderPullY = 0;
             let cellPullX = 0, cellPullY = 0;
@@ -475,21 +487,9 @@ class Cell {
         // cell body. Multiple passes handle cascading fixes.
         enforceConvexity(poly, this.x, this.y);
 
-        // Area normalization: normalize to inflated area (FILL_FACTOR²).
-        // The inflated rest poly gets clipped by bisectors to the real area.
-        const targetRestArea = this.area * FILL_FACTOR * FILL_FACTOR;
-        const stretchedArea = polygonArea(poly);
-        if (stretchedArea > 1 && Math.abs(stretchedArea - targetRestArea) > targetRestArea * 0.01) {
-            const correction = Math.sqrt(targetRestArea / stretchedArea);
-            for (let i = 0; i < poly.length; i++) {
-                poly[i][0] = this.x + (poly[i][0] - this.x) * correction;
-                poly[i][1] = this.y + (poly[i][1] - this.y) * correction;
-            }
-        }
-
-        // Enforce convexity AGAIN after area normalization —
-        // scaling a thin convex shape can create self-intersection
-        enforceConvexity(poly, this.x, this.y);
+        // No area normalization — the rest poly is intentionally oversized.
+        // Bisector clipping + viewport clipping determine the final shape
+        // and area. This ensures cells fill their full Voronoi regions.
 
         return poly;
     }
@@ -859,8 +859,8 @@ function updateAreas(cells) {
     if (cells.length === 0) return;
     const viewportArea = W * H;
     // Fill fraction scales with FILL_FACTOR: higher fill = cells claim more space.
-    // At FF=1.0 (circles), cells claim 70%. At FF=2.0, they claim 95%.
-    const fillFraction = Math.min(0.95, 0.7 + (FILL_FACTOR - 1.0) * 0.25);
+    // At FF=1.0 (circles), cells claim 70%. At FF=2.0+, they claim 100%.
+    const fillFraction = Math.min(1.0, 0.7 + (FILL_FACTOR - 1.0) * 0.3);
     const totalBudget = viewportArea * fillFraction;
 
     // Sum of w² for all visible cells
