@@ -994,28 +994,17 @@ function solveCells(cells, dt) {
                     c.polygon = clipByHalfPlane(c.polygon, v.x, v.y + v.h, 0, -1);
                 }
             } else {
-                // Center outside void: clip against each void edge
-                // the polygon might overlap. BOTH axes must be checked
-                // to prevent "shadow" clipping along the void's axes.
-                // Left edge: cell is left of void AND vertically overlaps
-                if (c.x < v.x && c.x + r > v.x - v.w &&
-                    c.y + r > v.y - v.h && c.y - r < v.y + v.h) {
-                    c.polygon = clipByHalfPlane(c.polygon, v.x - v.w, v.y, 1, 0);
-                }
-                // Right edge
-                if (c.x > v.x && c.x - r < v.x + v.w &&
-                    c.y + r > v.y - v.h && c.y - r < v.y + v.h) {
-                    c.polygon = clipByHalfPlane(c.polygon, v.x + v.w, v.y, -1, 0);
-                }
-                // Top edge
-                if (c.y < v.y && c.y + r > v.y - v.h &&
-                    c.x + r > v.x - v.w && c.x - r < v.x + v.w) {
-                    c.polygon = clipByHalfPlane(c.polygon, v.x, v.y - v.h, 0, 1);
-                }
-                // Bottom edge
-                if (c.y > v.y && c.y - r < v.y + v.h &&
-                    c.x + r > v.x - v.w && c.x - r < v.x + v.w) {
-                    c.polygon = clipByHalfPlane(c.polygon, v.x, v.y + v.h, 0, -1);
+                // Center outside void: find the NEAREST boundary point
+                // and clip against that ONE edge only. This prevents
+                // double-clipping at corners (which created right-angle
+                // shadow cuts).
+                const bp = v.nearestBoundaryPoint(c.x, c.y);
+                const distToBoundary = Math.sqrt(
+                    (c.x - bp.x) * (c.x - bp.x) + (c.y - bp.y) * (c.y - bp.y)
+                );
+                // Only clip if the cell actually reaches the void boundary
+                if (distToBoundary < r) {
+                    c.polygon = clipByHalfPlane(c.polygon, bp.x, bp.y, bp.nx, bp.ny);
                 }
             }
         }
