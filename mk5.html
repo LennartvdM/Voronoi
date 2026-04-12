@@ -1567,6 +1567,11 @@ function animate(time) {
 
         // Convert back to world for rendering — position is always current
         c._displayPoly = c._displayLocal.map(p => [p[0] + c.x, p[1] + c.y]);
+
+        // FINAL GATE: enforce convexity on display polygon.
+        // Smoothing between different frame shapes can create concavity.
+        // Cells must always feel like taut water balloons — never flaccid.
+        enforceConvexity(c._displayPoly, c.x, c.y);
     }
 
     // Render
