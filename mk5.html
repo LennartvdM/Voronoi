@@ -994,30 +994,33 @@ function solveCells(cells, dt) {
                     c.polygon = clipByHalfPlane(c.polygon, v.x, v.y + v.h, 0, -1);
                 }
             } else {
-                // Center outside void: clip against every void edge
-                // that the polygon ACTUALLY crosses. At edges this is
-                // one clip. At corners this is two clips, which makes
-                // the cell wrap around the corner. No shadow artifacts
-                // because we check actual polygon vertex penetration,
-                // not axis-aligned proximity.
-                const edges = [
-                    { mx: v.x - v.w, my: v.y, nx: 1, ny: 0 },  // left (keep left)
-                    { mx: v.x + v.w, my: v.y, nx: -1, ny: 0 },  // right (keep right)
-                    { mx: v.x, my: v.y - v.h, nx: 0, ny: 1 },   // top (keep above)
-                    { mx: v.x, my: v.y + v.h, nx: 0, ny: -1 },  // bottom (keep below)
-                ];
-                for (const e of edges) {
-                    // Does the polygon actually cross this edge?
-                    // Check if any vertex is on the void-interior side
-                    let crosses = false;
-                    for (const p of c.polygon) {
-                        if ((p[0] - e.mx) * e.nx + (p[1] - e.my) * e.ny > 0.1) {
-                            crosses = true; break;
-                        }
-                    }
-                    if (crosses) {
-                        c.polygon = clipByHalfPlane(c.polygon, e.mx, e.my, e.nx, e.ny);
-                    }
+                // Center outside void: use nearest boundary point to
+                // determine edge vs corner interaction.
+                const bp = v.nearestBoundaryPoint(c.x, c.y);
+                const dist = Math.hypot(c.x - bp.x, c.y - bp.y);
+                if (dist >= r) continue; // cell doesn't reach the void
+
+                // Is the nearest point at a CORNER or along an EDGE?
+                const atCornerX = Math.abs(bp.x - (v.x - v.w)) < 1 || Math.abs(bp.x - (v.x + v.w)) < 1;
+                const atCornerY = Math.abs(bp.y - (v.y - v.h)) < 1 || Math.abs(bp.y - (v.y + v.h)) < 1;
+
+                if (atCornerX && atCornerY) {
+                    // CORNER: single diagonal clip for a gentle bend.
+                    // The diagonal bisects the corner angle, creating
+                    // a chamfer that drawRoundedPolygon curves smoothly.
+                    const cornerX = bp.x, cornerY = bp.y;
+                    // Outward diagonal from void center through corner
+                    const dx = cornerX - v.x, dy = cornerY - v.y;
+                    const d = Math.hypot(dx, dy) || 1;
+                    const nx = dx / d, ny = dy / d;
+                    // Offset the clip slightly outward for a gentler bend
+                    const offset = r * 0.15;
+                    c.polygon = clipByHalfPlane(c.polygon,
+                        cornerX + nx * offset, cornerY + ny * offset,
+                        nx, ny);
+                } else {
+                    // EDGE: single half-plane clip along that edge
+                    c.polygon = clipByHalfPlane(c.polygon, bp.x, bp.y, bp.nx, bp.ny);
                 }
             }
         }
