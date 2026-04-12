@@ -78,6 +78,7 @@
         <button class="ctrl-btn" id="removeBtn">&minus; Cell</button>
         <button class="ctrl-btn" id="resetBtn">Reset</button>
         <button class="ctrl-btn" id="gapBtn">Gap: 4</button>
+        <button class="ctrl-btn" id="debugBtn">Debug</button>
         <div class="slider-group">
             <label>Pull</label>
             <input type="range" id="pullSlider" min="0" max="5" step="0.05" value="0.35">
@@ -145,6 +146,8 @@ class Cell {
 
         // Current rendered polygon — updated each frame by solver
         this.polygon = null;
+        // Debug: per-vertex pull vectors
+        this._debugPulls = null; // [{px, py, bx, by, nx, ny}] per vertex
         // Rest polygon before contact clipping (for area correction)
         this.restPoly = null;
 
@@ -163,16 +166,30 @@ class Cell {
         const r = Math.sqrt(this.area / Math.PI);
         const rBase = Math.sqrt(this.baseArea / Math.PI);
         const poly = [];
+        if (debugMode) this._debugPulls = [];
+
+        // ── Find nearest border point from cell CENTER ──────
+        // This is the "stem" of the T. One line, one direction.
+        const dLeft = this.x, dRight = W - this.x;
+        const dTop = this.y, dBottom = H - this.y;
+        const dMin = Math.min(dLeft, dRight, dTop, dBottom);
+        let borderNx = 0, borderNy = 0, borderDist = dMin;
+        let borderPx = this.x, borderPy = this.y; // nearest point on border
+        if (dMin === dLeft)        { borderNx = -1; borderPx = 0; borderPy = this.y; }
+        else if (dMin === dRight)  { borderNx = 1;  borderPx = W; borderPy = this.y; }
+        else if (dMin === dTop)    { borderNx = 0; borderNy = -1; borderPx = this.x; borderPy = 0; }
+        else                       { borderNx = 0; borderNy = 1;  borderPx = this.x; borderPy = H; }
+
         for (let i = 0; i < nVerts; i++) {
             const a = (i / nVerts) * Math.PI * 2;
             const cosA = Math.cos(a), sinA = Math.sin(a);
             const baseX = this.x + cosA * r;
             const baseY = this.y + sinA * r;
             let pullX = 0, pullY = 0;
+            let borderPullX = 0, borderPullY = 0;
+            let cellPullX = 0, cellPullY = 0;
 
             // ── Cell-to-cell gravitational stretch ───────────
-            // Uses BASE radii only — hover inflation must not
-            // affect the pull. Centers haven't moved.
             if (neighbors && neighbors.length > 0) {
                 for (const nb of neighbors) {
                     const dx = nb.x - this.x;
@@ -190,47 +207,45 @@ class Cell {
                     const proximity = 1 - Math.min(dist / (rSum * 2), 1);
                     const strength = facing * facing * proximity * GRAVITY_REACH;
 
-                    pullX += ndx * strength * rBase;
-                    pullY += ndy * strength * rBase;
+                    cellPullX += ndx * strength * rBase;
+                    cellPullY += ndy * strength * rBase;
+                }
+            }
+            pullX += cellPullX;
+            pullY += cellPullY;
+
+            // ── Border pull ──────────────────────────────────
+            // T-shaped: the stem is the line from cell center to
+            // nearest border point. ALL vertices on the border-
+            // facing side get pulled in the border normal direction.
+            // Uniform strength — the entire T crossbar moves.
+            if (BORDER_PULL > 0) {
+                // Is this vertex on the border-facing side?
+                const facing = cosA * borderNx + sinA * borderNy;
+                if (facing > -0.2) {
+                    // Soft ramp at equator
+                    const weight = Math.min(1, (facing + 0.2) / 0.3);
+                    const bPull = BORDER_PULL * rBase * weight;
+                    // Cap: don't extend past 50% of distance to border
+                    const maxExtend = Math.max(0, (borderDist - rBase) * 0.5);
+                    const actualPull = Math.min(bPull, maxExtend);
+
+                    borderPullX = borderNx * actualPull;
+                    borderPullY = borderNy * actualPull;
+                    pullX += borderPullX;
+                    pullY += borderPullY;
                 }
             }
 
-            // ── Border pull ──────────────────────────────────
-            // T-shaped analysis: each vertex finds its nearest
-            // border and pulls toward it in the border's normal
-            // direction. The ENTIRE border-facing side of the cell
-            // pulls uniformly — creating a flat front (the T
-            // crossbar), not a tentacle. Each vertex only pulls
-            // toward ONE border, preventing diagonal combines.
-            // Distance is irrelevant — strength is constant.
-            if (BORDER_PULL > 0) {
-                // Find nearest border to this vertex's base position
-                const vx = this.x + cosA * rBase;
-                const vy = this.y + sinA * rBase;
-                const dists = [
-                    { nx: -1, ny:  0, d: vx },           // left
-                    { nx:  1, ny:  0, d: W - vx },        // right
-                    { nx:  0, ny: -1, d: vy },             // top
-                    { nx:  0, ny:  1, d: H - vy },         // bottom
-                ];
-                dists.sort((a, b) => a.d - b.d);
-                const nearest = dists[0];
-
-                // Only pull if vertex faces the border (is on the border side)
-                const facing = cosA * nearest.nx + sinA * nearest.ny;
-                if (facing > -0.2) {
-                    // Uniform pull — no facing scaling.
-                    // Soft ramp at the equator to prevent hard crease.
-                    const weight = Math.min(1, (facing + 0.2) / 0.3);
-                    const bPull = BORDER_PULL * rBase * weight;
-
-                    // Cap: don't extend past 50% of distance to border
-                    const maxExtend = Math.max(0, nearest.d * 0.5);
-                    const actualPull = Math.min(bPull, maxExtend);
-
-                    pullX += nearest.nx * actualPull;
-                    pullY += nearest.ny * actualPull;
-                }
+            // Store debug vectors
+            if (debugMode) {
+                this._debugPulls.push({
+                    bx: baseX, by: baseY,
+                    cpx: cellPullX, cpy: cellPullY,
+                    bpx: borderPullX, bpy: borderPullY,
+                    px: pullX, py: pullY,
+                    borderNx, borderNy, borderPx, borderPy,
+                });
             }
 
             // ── Cap: combined pull must not overshoot ────────
@@ -742,6 +757,8 @@ function drawCell(cell) {
     ctx.restore();
 }
 
+let debugMode = false;
+
 function render(cells) {
     ctx.clearRect(0, 0, W, H);
     // Draw non-hovered first, hovered last
@@ -749,6 +766,92 @@ function render(cells) {
     const rest = cells.filter(c => c.hoverMix <= 0.5);
     for (const c of rest) drawCell(c);
     for (const c of hovered) drawCell(c);
+
+    if (debugMode) renderDebug(cells);
+}
+
+function renderDebug(cells) {
+    for (const c of cells) {
+        if (!c._debugPulls) continue;
+
+        // Draw line from cell center to nearest border point
+        const d0 = c._debugPulls[0];
+        if (d0) {
+            ctx.beginPath();
+            ctx.moveTo(c.x, c.y);
+            ctx.lineTo(d0.borderPx, d0.borderPy);
+            ctx.strokeStyle = 'rgba(255, 255, 0, 0.6)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Mark nearest border point
+            ctx.beginPath();
+            ctx.arc(d0.borderPx, d0.borderPy, 5, 0, Math.PI * 2);
+            ctx.fillStyle = 'yellow';
+            ctx.fill();
+        }
+
+        // Draw per-vertex vectors
+        for (const d of c._debugPulls) {
+            // Cell-to-cell pull (cyan)
+            if (Math.abs(d.cpx) > 0.5 || Math.abs(d.cpy) > 0.5) {
+                ctx.beginPath();
+                ctx.moveTo(d.bx, d.by);
+                ctx.lineTo(d.bx + d.cpx, d.by + d.cpy);
+                ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+
+            // Border pull (yellow)
+            if (Math.abs(d.bpx) > 0.5 || Math.abs(d.bpy) > 0.5) {
+                ctx.beginPath();
+                ctx.moveTo(d.bx, d.by);
+                ctx.lineTo(d.bx + d.bpx, d.by + d.bpy);
+                ctx.strokeStyle = 'rgba(255, 255, 0, 0.7)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
+
+            // Combined pull (white)
+            if (Math.abs(d.px) > 0.5 || Math.abs(d.py) > 0.5) {
+                ctx.beginPath();
+                ctx.moveTo(d.bx, d.by);
+                ctx.lineTo(d.bx + d.px, d.by + d.py);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // Arrowhead
+                ctx.beginPath();
+                ctx.arc(d.bx + d.px, d.by + d.py, 2, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.fill();
+            }
+        }
+
+        // Draw rest poly outline (before clipping)
+        if (c.restPoly && c.restPoly.length > 2) {
+            ctx.beginPath();
+            ctx.moveTo(c.restPoly[0][0], c.restPoly[0][1]);
+            for (let i = 1; i < c.restPoly.length; i++)
+                ctx.lineTo(c.restPoly[i][0], c.restPoly[i][1]);
+            ctx.closePath();
+            ctx.strokeStyle = 'rgba(255, 100, 100, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // Cell center dot
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+    }
 }
 
 // ─── Interaction ─────────────────────────────────────────────
@@ -890,6 +993,12 @@ function setBorder(val) {
 }
 borderSlider.addEventListener('input', () => setBorder(parseFloat(borderSlider.value)));
 borderNum.addEventListener('input', () => setBorder(parseFloat(borderNum.value) || 0));
+
+// Debug toggle
+document.getElementById('debugBtn').addEventListener('click', () => {
+    debugMode = !debugMode;
+    document.getElementById('debugBtn').classList.toggle('active', debugMode);
+});
 
 // ─── Start ───────────────────────────────────────────────────
 initCells(8);
