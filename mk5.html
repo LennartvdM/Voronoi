@@ -980,31 +980,34 @@ function solveCells(cells, dt) {
                 c.y < v.y - v.h - r || c.y > v.y + v.h + r) continue;
 
             if (v.contains(c.x, c.y)) {
-                // Center inside void: clip against nearest edge to push polygon out
+                // Center inside void: clip against nearest edge.
+                // Normal points OUTWARD (away from void center)
+                // to keep the polygon slice on the OUTSIDE.
                 const dMin = Math.min(dLeft, dRight, dTop, dBot);
                 if (dMin === dLeft) {
-                    c.polygon = clipByHalfPlane(c.polygon, v.x - v.w, v.y, -1, 0);
+                    c.polygon = clipByHalfPlane(c.polygon, v.x - v.w, v.y, 1, 0);
                 } else if (dMin === dRight) {
-                    c.polygon = clipByHalfPlane(c.polygon, v.x + v.w, v.y, 1, 0);
+                    c.polygon = clipByHalfPlane(c.polygon, v.x + v.w, v.y, -1, 0);
                 } else if (dMin === dTop) {
-                    c.polygon = clipByHalfPlane(c.polygon, v.x, v.y - v.h, 0, -1);
+                    c.polygon = clipByHalfPlane(c.polygon, v.x, v.y - v.h, 0, 1);
                 } else {
-                    c.polygon = clipByHalfPlane(c.polygon, v.x, v.y + v.h, 0, 1);
+                    c.polygon = clipByHalfPlane(c.polygon, v.x, v.y + v.h, 0, -1);
                 }
             } else {
-                // Center outside void: clip against whichever edge the cell overlaps
-                // Clip against each void edge that the polygon might cross
+                // Center outside void: clip against each void edge
+                // the polygon might overlap. Normals point OUTWARD
+                // from the void to keep everything OUTSIDE.
                 if (c.x < v.x && c.x + r > v.x - v.w) {
-                    c.polygon = clipByHalfPlane(c.polygon, v.x - v.w, v.y, -1, 0);
+                    c.polygon = clipByHalfPlane(c.polygon, v.x - v.w, v.y, 1, 0);
                 }
                 if (c.x > v.x && c.x - r < v.x + v.w) {
-                    c.polygon = clipByHalfPlane(c.polygon, v.x + v.w, v.y, 1, 0);
+                    c.polygon = clipByHalfPlane(c.polygon, v.x + v.w, v.y, -1, 0);
                 }
                 if (c.y < v.y && c.y + r > v.y - v.h) {
-                    c.polygon = clipByHalfPlane(c.polygon, v.x, v.y - v.h, 0, -1);
+                    c.polygon = clipByHalfPlane(c.polygon, v.x, v.y - v.h, 0, 1);
                 }
                 if (c.y > v.y && c.y - r < v.y + v.h) {
-                    c.polygon = clipByHalfPlane(c.polygon, v.x, v.y + v.h, 0, 1);
+                    c.polygon = clipByHalfPlane(c.polygon, v.x, v.y + v.h, 0, -1);
                 }
             }
         }
