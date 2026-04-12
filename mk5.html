@@ -544,32 +544,31 @@ function copyPoly(poly) {
     return poly.map(p => [p[0], p[1]]);
 }
 
-// Simplify polygon to essential corners by removing vertices
-// that are nearly collinear with their neighbors.
-// Returns a polygon with typically 4-8 vertices.
-function simplifyPoly(poly, threshold) {
-    if (!poly || poly.length <= 4) return poly ? poly.map(p => [p[0], p[1]]) : null;
+// Simplify polygon to exactly N essential corners.
+// Finds the N vertices with the highest angular deviation
+// (sharpest corners) from the solver's polygon.
+function simplifyToN(poly, targetN) {
+    if (!poly || poly.length <= targetN) return poly ? poly.map(p => [p[0], p[1]]) : null;
     const n = poly.length;
-    const corners = [];
+
+    // Score each vertex by angular deviation (cross product magnitude)
+    const scored = [];
     for (let i = 0; i < n; i++) {
         const prev = poly[(i - 1 + n) % n];
         const curr = poly[i];
         const next = poly[(i + 1) % n];
-        // Cross product magnitude = how much this vertex deviates from the line prev→next
         const ax = curr[0] - prev[0], ay = curr[1] - prev[1];
         const bx = next[0] - curr[0], by = next[1] - curr[1];
         const cross = Math.abs(ax * by - ay * bx);
         const lenA = Math.sqrt(ax * ax + ay * ay) || 1;
         const lenB = Math.sqrt(bx * bx + by * by) || 1;
-        // Normalize by edge lengths — angular deviation
-        const deviation = cross / (lenA * lenB);
-        if (deviation > threshold) {
-            corners.push([curr[0], curr[1]]);
-        }
+        scored.push({ idx: i, deviation: cross / (lenA * lenB) });
     }
-    // Ensure minimum 4 corners
-    if (corners.length < 4) return poly.map(p => [p[0], p[1]]);
-    return corners;
+
+    // Take the top N by deviation, preserving original order
+    scored.sort((a, b) => b.deviation - a.deviation);
+    const kept = scored.slice(0, targetN).sort((a, b) => a.idx - b.idx);
+    return kept.map(k => [poly[k.idx][0], poly[k.idx][1]]);
 }
 
 // Resample a polygon to N evenly-spaced angular vertices around (cx,cy).
@@ -1219,24 +1218,14 @@ function lighten(hex, f) {
     return `rgb(${Math.min(255, r + (255 - r) * f)|0},${Math.min(255, g + (255 - g) * f)|0},${Math.min(255, b + (255 - b) * f)|0})`;
 }
 
-// Draw a polygon with bezier-curved edges — water balloon tension.
-// Uses quadratic bezier through midpoints (like softbody.html).
-// Vertices are the CORNERS; edges bulge outward naturally.
-function drawBezierPoly(ctx, poly) {
+// Draw a polygon path with straight edges.
+// Use with lineJoin='round' + thick stroke for softened corners.
+function drawStraightPoly(ctx, poly) {
     if (!poly || poly.length < 3) return;
-    const n = poly.length;
     ctx.beginPath();
-    const firstMid = [
-        (poly[0][0] + poly[n - 1][0]) / 2,
-        (poly[0][1] + poly[n - 1][1]) / 2
-    ];
-    ctx.moveTo(firstMid[0], firstMid[1]);
-    for (let i = 0; i < n; i++) {
-        const curr = poly[i];
-        const next = poly[(i + 1) % n];
-        const midX = (curr[0] + next[0]) / 2;
-        const midY = (curr[1] + next[1]) / 2;
-        ctx.quadraticCurveTo(curr[0], curr[1], midX, midY);
+    ctx.moveTo(poly[0][0], poly[0][1]);
+    for (let i = 1; i < poly.length; i++) {
+        ctx.lineTo(poly[i][0], poly[i][1]);
     }
     ctx.closePath();
 }
@@ -1247,12 +1236,14 @@ function drawCell(cell) {
 
     const c = polygonCentroid(poly);
     const r = cell.effectiveRadius();
+    const softR = Math.min(r * 0.25, 20); // corner softness radius
 
     ctx.save();
     ctx.globalAlpha = 1.0;
 
-    // Fill with radial gradient — bezier curves for taut edges
-    drawBezierPoly(ctx, poly);
+    // Soft polygon: thick stroke with round joins + fill.
+    // Stroke creates rounded corners, fill covers interior.
+    // Combined: polygon with softened corners, straight edges.
     const grad = ctx.createRadialGradient(
         c.x - r * 0.15, c.y - r * 0.15, 0,
         c.x, c.y, r * 1.2
@@ -1260,23 +1251,34 @@ function drawCell(cell) {
     grad.addColorStop(0, lighten(cell.color, 0.2));
     grad.addColorStop(0.6, cell.color);
     grad.addColorStop(1, darken(cell.color, 0.3));
+
+    // Rounded stroke creates the soft outline
+    drawStraightPoly(ctx, poly);
+    ctx.lineWidth = softR * 2;
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = grad;
+    ctx.stroke();
+
+    // Fill the interior
+    drawStraightPoly(ctx, poly);
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // Border — inner stroke with bezier
-    drawBezierPoly(ctx, poly);
+    // Border — thin inner stroke
+    drawStraightPoly(ctx, poly);
     ctx.save();
     ctx.clip();
-    drawBezierPoly(ctx, poly);
+    drawStraightPoly(ctx, poly);
     const borderW = cell.hoverMix > 0.1 ? 2 : 1;
-    ctx.lineWidth = borderW * 2;
+    ctx.lineWidth = borderW * 2 + softR * 2;
+    ctx.lineJoin = 'round';
     ctx.strokeStyle = `rgba(255,255,255,${0.15 + cell.hoverMix * 0.25})`;
     ctx.stroke();
     ctx.restore();
 
     // Hover glow
     if (cell.hoverMix > 0.05) {
-        drawBezierPoly(ctx, poly);
+        drawStraightPoly(ctx, poly);
         ctx.shadowColor = cell.color;
         ctx.shadowBlur = 20 * cell.hoverMix;
         ctx.strokeStyle = `rgba(255,255,255,${0.1 * cell.hoverMix})`;
@@ -1624,16 +1626,15 @@ function animate(time) {
     // ── Solve contacts ───────────────────────────────
     solveCells(cells, dt);
 
-    // ── Simplify polygon to corners ────────────────────
-    // Reduce solver output to essential corners (4-8 vertices).
-    // No smoothing — bezier curves provide visual smoothness.
-    // Raw corners from the solver, rendered with taut curves.
+    // ── Simplify to 5-point polygon ────────────────────
+    // Reduce solver output to exactly 5 corners — the sharpest
+    // angular deviations. Proper polygon, not a sampled circle.
     for (const c of cells) {
         if (!c.polygon || c.polygon.length < 3) {
             c._displayPoly = null;
             continue;
         }
-        c._displayPoly = simplifyPoly(c.polygon, 0.15);
+        c._displayPoly = simplifyToN(c.polygon, 5);
     }
 
     // Render
