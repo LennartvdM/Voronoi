@@ -1585,38 +1585,16 @@ function animate(time) {
     // ── Solve contacts ───────────────────────────────
     solveCells(cells, dt);
 
-    // ── Corner-based display polygon ───────────────────
-    // Simplify the solver's polygon to essential corners (4-8 vertices)
-    // like Voronoi cells. Smooth corner positions between frames.
-    // Render with bezier curves for water-balloon tension.
-    const CORNER_SMOOTH = 0.15; // smooth corner positions per frame
+    // ── Simplify polygon to corners ────────────────────
+    // Reduce solver output to essential corners (4-8 vertices).
+    // No smoothing — bezier curves provide visual smoothness.
+    // Raw corners from the solver, rendered with taut curves.
     for (const c of cells) {
         if (!c.polygon || c.polygon.length < 3) {
-            c._displayCorners = null;
             c._displayPoly = null;
             continue;
         }
-
-        // Simplify to essential corners
-        const corners = simplifyPoly(c.polygon, 0.15);
-        if (!corners || corners.length < 3) { c._displayPoly = null; continue; }
-
-        // Convert to local coords (relative to cell center)
-        const localCorners = corners.map(p => [p[0] - c.x, p[1] - c.y]);
-
-        // Smooth corners in local space
-        if (c._displayCorners && c._displayCorners.length === localCorners.length) {
-            for (let i = 0; i < localCorners.length; i++) {
-                c._displayCorners[i][0] += (localCorners[i][0] - c._displayCorners[i][0]) * CORNER_SMOOTH;
-                c._displayCorners[i][1] += (localCorners[i][1] - c._displayCorners[i][1]) * CORNER_SMOOTH;
-            }
-        } else {
-            // Corner count changed — reset (new contact formed/dissolved)
-            c._displayCorners = localCorners;
-        }
-
-        // Convert back to world
-        c._displayPoly = c._displayCorners.map(p => [p[0] + c.x, p[1] + c.y]);
+        c._displayPoly = simplifyPoly(c.polygon, 0.15);
     }
 
     // Render
