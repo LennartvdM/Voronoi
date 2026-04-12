@@ -432,25 +432,24 @@ function enforceConvexity(poly, cx, cy) {
 
     // ── Aspect ratio clamp ─────────────────────────────
     // Prevent hyper-elongation. Compute bounding box, if aspect
-    // exceeds MAX_ASPECT, compress the long axis toward center.
+    // exceeds MAX_ASPECT, compress the long axis toward CELL CENTER.
+    // All shape operations use cell center as the invariant point
+    // to prevent polygon drift that drags centers.
     const MAX_ASPECT = 2.5;
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    let pcx = 0, pcy = 0;
     for (const p of poly) {
         minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]);
         minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]);
-        pcx += p[0]; pcy += p[1];
     }
-    pcx /= n; pcy /= n;
     const extW = maxX - minX, extH = maxY - minY;
     if (extW > extH * MAX_ASPECT && extH > 1) {
         const target = extH * MAX_ASPECT;
         const scale = target / extW;
-        for (const p of poly) p[0] = pcx + (p[0] - pcx) * scale;
+        for (const p of poly) p[0] = cx + (p[0] - cx) * scale;
     } else if (extH > extW * MAX_ASPECT && extW > 1) {
         const target = extW * MAX_ASPECT;
         const scale = target / extH;
-        for (const p of poly) p[1] = pcy + (p[1] - pcy) * scale;
+        for (const p of poly) p[1] = cy + (p[1] - cy) * scale;
     }
 
     // ── Convex hull ────────────────────────────────────
@@ -479,14 +478,13 @@ function enforceConvexity(poly, cx, cy) {
     if (hull.length < 3) return;
 
     // ── Resample onto hull ─────────────────────────────
-    // Use hull centroid — guaranteed inside the hull.
-    let hcx = 0, hcy = 0;
-    for (const p of hull) { hcx += p.x; hcy += p.y; }
-    hcx /= hull.length; hcy /= hull.length;
-
+    // Use CELL CENTER (cx, cy) as ray origin. Non-border-facing
+    // vertices always stay on the base circle around the cell
+    // center, so the cell center is always inside the hull.
+    // Using hull centroid caused polygon drift.
     const hLen = hull.length;
     for (let i = 0; i < n; i++) {
-        const angle = Math.atan2(poly[i][1] - hcy, poly[i][0] - hcx);
+        const angle = Math.atan2(poly[i][1] - cy, poly[i][0] - cx);
         const rdx = Math.cos(angle), rdy = Math.sin(angle);
 
         let bestT = Infinity;
@@ -496,7 +494,7 @@ function enforceConvexity(poly, cx, cy) {
             const denom = rdx * ey - rdy * ex;
             if (Math.abs(denom) < 0.0001) continue;
 
-            const fx = hull[j].x - hcx, fy = hull[j].y - hcy;
+            const fx = hull[j].x - cx, fy = hull[j].y - cy;
             const t = (fx * ey - fy * ex) / denom;
             const s = (fx * rdy - fy * rdx) / denom;
 
@@ -506,8 +504,8 @@ function enforceConvexity(poly, cx, cy) {
         }
 
         if (bestT < Infinity) {
-            poly[i][0] = hcx + rdx * bestT;
-            poly[i][1] = hcy + rdy * bestT;
+            poly[i][0] = cx + rdx * bestT;
+            poly[i][1] = cy + rdy * bestT;
         }
     }
 }
