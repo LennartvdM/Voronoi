@@ -162,13 +162,18 @@ class Cell {
             const baseY = this.y + Math.sin(a) * r;
             let pullX = 0, pullY = 0;
 
-            // Gravitational stretch toward neighbors
+            // Gravitational stretch toward neighbors.
+            // Uses BASE radii only — hover inflation of any cell
+            // must not affect the pull. Centers haven't moved,
+            // so the pull shouldn't change.
             if (neighbors && neighbors.length > 0) {
+                const rBase = Math.sqrt(this.baseArea / Math.PI);
                 for (const nb of neighbors) {
                     const dx = nb.x - this.x;
                     const dy = nb.y - this.y;
                     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                    const rSum = r + nb.effectiveRadius();
+                    const rNbBase = Math.sqrt(nb.baseArea / Math.PI);
+                    const rSum = rBase + rNbBase;
 
                     if (dist > rSum * 2.5) continue;
 
@@ -182,8 +187,8 @@ class Cell {
                     const proximity = 1 - Math.min(dist / (rSum * 2), 1);
                     const strength = facing * facing * proximity * GRAVITY_REACH;
 
-                    pullX += ndx * strength * r;
-                    pullY += ndy * strength * r;
+                    pullX += ndx * strength * rBase;
+                    pullY += ndy * strength * rBase;
                 }
 
                 // Cap: vertex must not extend past 40% of the way from
@@ -195,6 +200,7 @@ class Cell {
                     const pullDirY = pullY / pullMag;
 
                     // Find the nearest neighbor in the pull direction
+                    const rBase = Math.sqrt(this.baseArea / Math.PI);
                     let minReach = Infinity;
                     for (const nb of neighbors) {
                         const dx = nb.x - this.x;
@@ -202,8 +208,9 @@ class Cell {
                         const dot = dx * pullDirX + dy * pullDirY;
                         if (dot > 0) {
                             // Max reach: from circle edge to 40% of the gap
-                            const gapToNb = dot - r - nb.effectiveRadius();
-                            const maxStretch = r + Math.max(gapToNb * 0.4, 0);
+                            const rNbBase = Math.sqrt(nb.baseArea / Math.PI);
+                            const gapToNb = dot - rBase - rNbBase;
+                            const maxStretch = rBase + Math.max(gapToNb * 0.4, 0);
                             minReach = Math.min(minReach, maxStretch);
                         }
                     }
