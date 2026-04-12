@@ -91,8 +91,8 @@
         </div>
         <div class="slider-group">
             <label>Focus</label>
-            <input type="range" id="focusSlider" min="1" max="20" step="0.5" value="3">
-            <input type="number" id="focusNum" min="0.5" max="50" step="0.5" value="3">
+            <input type="range" id="focusSlider" min="0.1" max="5" step="0.1" value="1">
+            <input type="number" id="focusNum" min="0.1" max="10" step="0.1" value="1">
         </div>
     </div>
 <script>
@@ -132,7 +132,7 @@ const CORNER_RADIUS = 12;
 const AREA_ITERS = 3;  // area-correction iterations
 let GRAVITY_REACH = 0.35; // how much cells stretch toward neighbors (cosmetic only)
 let BORDER_PULL = 0;      // how much cells stretch toward viewport borders (angle only, distance irrelevant)
-let BORDER_FOCUS = 3;     // focal distance for border convergence (multiplier of rBase: 1=sharp, 10+=gentle)
+let BORDER_FOCUS = 1;     // taper curve for border push (0.3=sharp teardrop, 1=linear, 5=wide capsule)
 const COLORS = [
     '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e',
     '#f97316', '#eab308', '#22c55e', '#14b8a6',
@@ -231,48 +231,42 @@ class Cell {
             pullX += cellPullX;
             pullY += cellPullY;
 
-            // ── Border pull with focal convergence ────────────
-            // Border-facing vertices LERP toward a focal point on
-            // the border vector. A lerp can NEVER overshoot — the
-            // vertex approaches the focal point but never passes it.
-            // This makes concavity from border pull impossible at
-            // the source, not just patched after the fact.
+            // ── Border pull — directional push with taper ─────
+            // Each border-facing vertex gets pushed in the border
+            // direction. Push magnitude tapers from full at the tip
+            // to zero at the equator. The taper is always monotonic,
+            // so the shape is CONVEX BY CONSTRUCTION — no focal
+            // point, no convergence, no possibility of concavity.
+            //
+            // BORDER_FOCUS controls the taper curve:
+            //   0.3 = sharp teardrop (power taper, narrow tip)
+            //   1   = linear taper (cone-like)
+            //   2   = quadratic (rounder teardrop)
+            //   5+  = wide, approaching capsule
             if (BORDER_PULL > 0) {
                 const facing = cosA * borderNx + sinA * borderNy;
-                if (facing > -0.2) {
-                    const focalDist = rBase * BORDER_FOCUS;
-                    const focalX = this.x + borderNx * focalDist;
-                    const focalY = this.y + borderNy * focalDist;
+                if (facing > 0) {
+                    // Taper: facing^(1/BORDER_FOCUS)
+                    // Monotonic from 0 (equator) to 1 (tip).
+                    const taper = Math.pow(facing, 1 / Math.max(0.1, BORDER_FOCUS));
+                    const bPull = BORDER_PULL * rBase * 0.5 * taper;
 
-                    // Weight: 0 at equator, 1 at tip
-                    const weight = Math.min(1, (facing + 0.2) / 0.3);
-
-                    // Convergence: how much of the way from base to focal.
-                    // Normalized so BORDER_PULL=5 ≈ 90% toward focal.
-                    // NEVER exceeds 0.95 — vertex can't reach the focal point.
-                    const convergence = Math.min(0.95, weight * BORDER_PULL * 0.18);
-
-                    // Lerp: vertex moves from base position toward focal point.
-                    // This is geometrically guaranteed to never overshoot.
-                    borderPullX = (focalX - baseX) * convergence;
-                    borderPullY = (focalY - baseY) * convergence;
+                    // Push in border direction — same direction for all vertices
+                    borderPullX = borderNx * bPull;
+                    borderPullY = borderNy * bPull;
                     pullX += borderPullX;
-                    pullY += borderPullY;
                     pullY += borderPullY;
                 }
             }
 
             // Store debug vectors
             if (debugMode) {
-                const focalDist = rBase * BORDER_FOCUS;
                 this._debugPulls.push({
                     bx: baseX, by: baseY,
                     cpx: cellPullX, cpy: cellPullY,
                     bpx: borderPullX, bpy: borderPullY,
                     px: pullX, py: pullY,
                     borderNx, borderNy, borderPx, borderPy,
-                    focalX: this.x + borderNx * focalDist,
-                    focalY: this.y + borderNy * focalDist,
                 });
             }
 
@@ -432,25 +426,24 @@ function enforceConvexity(poly, cx, cy) {
 
     // ── Aspect ratio clamp ─────────────────────────────
     // Prevent hyper-elongation. Compute bounding box, if aspect
-    // exceeds MAX_ASPECT, compress the long axis toward center.
+    // exceeds MAX_ASPECT, compress the long axis toward CELL CENTER.
+    // All shape operations use cell center as the invariant point
+    // to prevent polygon drift that drags centers.
     const MAX_ASPECT = 2.5;
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    let pcx = 0, pcy = 0;
     for (const p of poly) {
         minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]);
         minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]);
-        pcx += p[0]; pcy += p[1];
     }
-    pcx /= n; pcy /= n;
     const extW = maxX - minX, extH = maxY - minY;
     if (extW > extH * MAX_ASPECT && extH > 1) {
         const target = extH * MAX_ASPECT;
         const scale = target / extW;
-        for (const p of poly) p[0] = pcx + (p[0] - pcx) * scale;
+        for (const p of poly) p[0] = cx + (p[0] - cx) * scale;
     } else if (extH > extW * MAX_ASPECT && extW > 1) {
         const target = extW * MAX_ASPECT;
         const scale = target / extH;
-        for (const p of poly) p[1] = pcy + (p[1] - pcy) * scale;
+        for (const p of poly) p[1] = cy + (p[1] - cy) * scale;
     }
 
     // ── Convex hull ────────────────────────────────────
@@ -479,14 +472,13 @@ function enforceConvexity(poly, cx, cy) {
     if (hull.length < 3) return;
 
     // ── Resample onto hull ─────────────────────────────
-    // Use hull centroid — guaranteed inside the hull.
-    let hcx = 0, hcy = 0;
-    for (const p of hull) { hcx += p.x; hcy += p.y; }
-    hcx /= hull.length; hcy /= hull.length;
-
+    // Use CELL CENTER (cx, cy) as ray origin. Non-border-facing
+    // vertices always stay on the base circle around the cell
+    // center, so the cell center is always inside the hull.
+    // Using hull centroid caused polygon drift.
     const hLen = hull.length;
     for (let i = 0; i < n; i++) {
-        const angle = Math.atan2(poly[i][1] - hcy, poly[i][0] - hcx);
+        const angle = Math.atan2(poly[i][1] - cy, poly[i][0] - cx);
         const rdx = Math.cos(angle), rdy = Math.sin(angle);
 
         let bestT = Infinity;
@@ -496,7 +488,7 @@ function enforceConvexity(poly, cx, cy) {
             const denom = rdx * ey - rdy * ex;
             if (Math.abs(denom) < 0.0001) continue;
 
-            const fx = hull[j].x - hcx, fy = hull[j].y - hcy;
+            const fx = hull[j].x - cx, fy = hull[j].y - cy;
             const t = (fx * ey - fy * ex) / denom;
             const s = (fx * rdy - fy * rdx) / denom;
 
@@ -506,8 +498,8 @@ function enforceConvexity(poly, cx, cy) {
         }
 
         if (bestT < Infinity) {
-            poly[i][0] = hcx + rdx * bestT;
-            poly[i][1] = hcy + rdy * bestT;
+            poly[i][0] = cx + rdx * bestT;
+            poly[i][1] = cy + rdy * bestT;
         }
     }
 }
@@ -914,15 +906,6 @@ function renderDebug(cells) {
             ctx.fillStyle = 'yellow';
             ctx.fill();
 
-            // Mark focal point (magenta diamond)
-            if (d0.focalX !== undefined) {
-                ctx.save();
-                ctx.translate(d0.focalX, d0.focalY);
-                ctx.rotate(Math.PI / 4);
-                ctx.fillStyle = 'magenta';
-                ctx.fillRect(-4, -4, 8, 8);
-                ctx.restore();
-            }
         }
 
         // Draw per-vertex vectors
