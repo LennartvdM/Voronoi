@@ -326,11 +326,9 @@ class Cell {
         // midpoint of its neighbors. Excess volume that would
         // squeeze past the focal bottleneck redistributes into the
         // cell body. Multiple passes handle cascading fixes.
-        enforceConvexity(poly);
+        enforceConvexity(poly, this.x, this.y);
 
         // Area normalization: stretch redistributes area, doesn't add it.
-        // Scale the stretched polygon back to match the cell's target area.
-        // This ensures cells reach toward neighbors but pull in on free sides.
         const stretchedArea = polygonArea(poly);
         if (stretchedArea > 1 && Math.abs(stretchedArea - this.area) > this.area * 0.01) {
             const correction = Math.sqrt(this.area / stretchedArea);
@@ -339,6 +337,10 @@ class Cell {
                 poly[i][1] = this.y + (poly[i][1] - this.y) * correction;
             }
         }
+
+        // Enforce convexity AGAIN after area normalization —
+        // scaling a thin convex shape can create self-intersection
+        enforceConvexity(poly, this.x, this.y);
 
         return poly;
     }
@@ -430,50 +432,95 @@ function copyPoly(poly) {
     return poly.map(p => [p[0], p[1]]);
 }
 
-// Enforce convexity on a polygon — HARD constraint.
-// Recomputes winding each pass (handles self-intersecting polygons).
-// Projects concave vertices onto the line between their neighbors.
-// Iterates until fully convex or max passes.
-function enforceConvexity(poly) {
+// Enforce convexity — NUCLEAR OPTION.
+// Computes the convex hull of the polygon vertices, then
+// resamples the original N vertices onto the hull boundary
+// at their original angles from the cell center. This is
+// GUARANTEED to produce a convex polygon regardless of how
+// severely the input is distorted or self-intersecting.
+function enforceConvexity(poly, cx, cy) {
     const n = poly.length;
     if (n < 3) return;
 
-    for (let pass = 0; pass < n * 2; pass++) {
-        // Recompute winding direction each pass — critical for
-        // self-intersecting polygons where winding can flip
-        let signedArea = 0;
-        for (let i = 0; i < n; i++) {
-            const j = (i + 1) % n;
-            signedArea += poly[i][0] * poly[j][1] - poly[j][0] * poly[i][1];
+    // Quick check: is it already convex?
+    let signedArea = 0;
+    for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        signedArea += poly[i][0] * poly[j][1] - poly[j][0] * poly[i][1];
+    }
+    const convexSign = signedArea > 0 ? 1 : -1;
+    let isConvex = true;
+    for (let i = 0; i < n; i++) {
+        const prev = poly[(i - 1 + n) % n];
+        const curr = poly[i];
+        const next = poly[(i + 1) % n];
+        const cross = (curr[0] - prev[0]) * (next[1] - curr[1])
+                    - (curr[1] - prev[1]) * (next[0] - curr[0]);
+        if (cross * convexSign < -0.1) { isConvex = false; break; }
+    }
+    if (isConvex) return;
+
+    // Compute convex hull (Andrew's monotone chain)
+    const pts = poly.map(p => ({ x: p[0], y: p[1] }));
+    pts.sort((a, b) => a.x - b.x || a.y - b.y);
+    const hull = [];
+    for (const p of pts) {
+        while (hull.length >= 2) {
+            const a = hull[hull.length - 2], b = hull[hull.length - 1];
+            if ((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x) <= 0) hull.pop();
+            else break;
         }
-        const convexSign = signedArea > 0 ? 1 : -1;
+        hull.push(p);
+    }
+    const lower = hull.length + 1;
+    for (let i = pts.length - 2; i >= 0; i--) {
+        const p = pts[i];
+        while (hull.length >= lower) {
+            const a = hull[hull.length - 2], b = hull[hull.length - 1];
+            if ((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x) <= 0) hull.pop();
+            else break;
+        }
+        hull.push(p);
+    }
+    hull.pop(); // remove duplicate end
+    if (hull.length < 3) return;
 
-        let anyFixed = false;
-        for (let i = 0; i < n; i++) {
-            const prev = poly[(i - 1 + n) % n];
-            const curr = poly[i];
-            const next = poly[(i + 1) % n];
-            const ax = curr[0] - prev[0], ay = curr[1] - prev[1];
-            const bx = next[0] - curr[0], by = next[1] - curr[1];
-            const cross = ax * by - ay * bx;
+    // Use cell center as reference (cx, cy). If not provided, use hull centroid.
+    if (cx === undefined) {
+        cx = 0; cy = 0;
+        for (const p of hull) { cx += p.x; cy += p.y; }
+        cx /= hull.length; cy /= hull.length;
+    }
 
-            if (cross * convexSign < -0.01) {
-                // Project onto the line between prev and next
-                const dx = next[0] - prev[0], dy = next[1] - prev[1];
-                const len2 = dx * dx + dy * dy;
-                if (len2 > 0.001) {
-                    let t = ((curr[0] - prev[0]) * dx + (curr[1] - prev[1]) * dy) / len2;
-                    t = Math.max(0.05, Math.min(0.95, t));
-                    curr[0] = prev[0] + dx * t;
-                    curr[1] = prev[1] + dy * t;
-                } else {
-                    curr[0] = (prev[0] + next[0]) / 2;
-                    curr[1] = (prev[1] + next[1]) / 2;
-                }
-                anyFixed = true;
+    // Resample: for each original vertex, cast a ray from (cx,cy)
+    // at the vertex's angle and find where it intersects the hull.
+    const hLen = hull.length;
+    for (let i = 0; i < n; i++) {
+        const angle = Math.atan2(poly[i][1] - cy, poly[i][0] - cx);
+        const rdx = Math.cos(angle), rdy = Math.sin(angle);
+
+        let bestT = Infinity;
+        for (let j = 0; j < hLen; j++) {
+            const k = (j + 1) % hLen;
+            // Ray: (cx, cy) + t * (rdx, rdy)
+            // Edge: hull[j] + s * (hull[k] - hull[j])
+            const ex = hull[k].x - hull[j].x, ey = hull[k].y - hull[j].y;
+            const denom = rdx * ey - rdy * ex;
+            if (Math.abs(denom) < 0.0001) continue;
+
+            const fx = hull[j].x - cx, fy = hull[j].y - cy;
+            const t = (fx * ey - fy * ex) / denom;
+            const s = (fx * rdy - fy * rdx) / denom;
+
+            if (t > 0.001 && s >= -0.001 && s <= 1.001 && t < bestT) {
+                bestT = t;
             }
         }
-        if (!anyFixed) break;
+
+        if (bestT < Infinity) {
+            poly[i][0] = cx + rdx * bestT;
+            poly[i][1] = cy + rdy * bestT;
+        }
     }
 }
 
@@ -550,7 +597,7 @@ function solveCells(cells, dt) {
         // Enforce convexity AFTER temporal smoothing — the blend
         // can create concavity even if both inputs were convex.
         // This is the final gate: nothing past here is ever concave.
-        enforceConvexity(freshPoly);
+        enforceConvexity(freshPoly, c.x, c.y);
 
         c._prevRestPoly = freshPoly.map(p => [p[0], p[1]]);
         c.restPoly = freshPoly;
