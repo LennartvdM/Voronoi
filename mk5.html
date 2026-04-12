@@ -115,6 +115,11 @@
             <input type="number" id="voidPullNum" min="0" max="10" step="0.05" value="0">
         </div>
         <div class="slider-group">
+            <label>Fill</label>
+            <input type="range" id="fillSlider" min="1" max="3" step="0.1" value="2.0">
+            <input type="number" id="fillNum" min="1" max="5" step="0.1" value="2.0">
+        </div>
+        <div class="slider-group">
             <label>Gravity</label>
             <input type="range" id="gravSlider" min="0" max="5" step="0.1" value="0">
             <input type="number" id="gravNum" min="0" max="10" step="0.1" value="0">
@@ -164,6 +169,7 @@ let GRAVITY_REACH = 0.35; // how much cells stretch toward neighbors (cosmetic o
 let BORDER_PULL = 0;      // how much cells stretch toward viewport borders (angle only, distance irrelevant)
 let BORDER_FOCUS = 1;     // taper curve for border push (0.3=sharp teardrop, 1=linear, 5=wide capsule)
 let VOID_PULL = 0;        // how much cells stretch toward void objects (like border pull)
+let FILL_FACTOR = 2.0;    // rest poly inflation for space-filling (1=circle, 2+=fills gaps via bisector)
 
 // ─── Void objects ────────────────────────────────────────────
 // Rigid shapes that cells incline toward but must settle outside.
@@ -277,6 +283,7 @@ class Cell {
     generateRestPoly(nVerts, neighbors) {
         const r = Math.sqrt(this.area / Math.PI);
         const rBase = Math.sqrt(this.baseArea / Math.PI);
+        const rFill = r * FILL_FACTOR;  // inflated radius — overlaps neighbors for bisector clipping
         const poly = [];
         if (debugMode) this._debugPulls = [];
 
@@ -306,8 +313,8 @@ class Cell {
         for (let i = 0; i < nVerts; i++) {
             const a = (i / nVerts) * Math.PI * 2;
             const cosA = Math.cos(a), sinA = Math.sin(a);
-            const baseX = this.x + cosA * r;
-            const baseY = this.y + sinA * r;
+            const baseX = this.x + cosA * rFill;
+            const baseY = this.y + sinA * rFill;
             let pullX = 0, pullY = 0;
             let borderPullX = 0, borderPullY = 0;
             let cellPullX = 0, cellPullY = 0;
@@ -467,10 +474,12 @@ class Cell {
         // cell body. Multiple passes handle cascading fixes.
         enforceConvexity(poly, this.x, this.y);
 
-        // Area normalization: stretch redistributes area, doesn't add it.
+        // Area normalization: normalize to inflated area (FILL_FACTOR²).
+        // The inflated rest poly gets clipped by bisectors to the real area.
+        const targetRestArea = this.area * FILL_FACTOR * FILL_FACTOR;
         const stretchedArea = polygonArea(poly);
-        if (stretchedArea > 1 && Math.abs(stretchedArea - this.area) > this.area * 0.01) {
-            const correction = Math.sqrt(this.area / stretchedArea);
+        if (stretchedArea > 1 && Math.abs(stretchedArea - targetRestArea) > targetRestArea * 0.01) {
+            const correction = Math.sqrt(targetRestArea / stretchedArea);
             for (let i = 0; i < poly.length; i++) {
                 poly[i][0] = this.x + (poly[i][0] - this.x) * correction;
                 poly[i][1] = this.y + (poly[i][1] - this.y) * correction;
@@ -963,7 +972,7 @@ function solveCells(cells, dt) {
                 const rB = b.effectiveRadius();
 
                 // Skip if too far apart — range accounts for gravitational stretch
-                const interactionRange = (rA + rB) * (1.6 + GRAVITY_REACH * 0.5) + GAP;
+                const interactionRange = (rA + rB) * Math.max(1.6, FILL_FACTOR) * (1 + GRAVITY_REACH * 0.3) + GAP;
                 if (dist > interactionRange) continue;
                 if (dist < 0.001) continue;
 
@@ -1000,7 +1009,7 @@ function solveCells(cells, dt) {
                 const actual = polygonArea(c.polygon);
                 if (actual < c.area * 0.97) {
                     const scale = Math.sqrt(c.area / Math.max(actual, 1));
-                    scalePoly(c.restPoly, c.x, c.y, Math.min(scale, 1.4));
+                    scalePoly(c.restPoly, c.x, c.y, Math.min(scale, 2.0));
                 }
             }
         }
@@ -1119,6 +1128,21 @@ function solveCells(cells, dt) {
                     // the cell (outward from void), so we NEGATE it.
                     c.polygon = clipByHalfPlane(c.polygon, bp.x, bp.y, -bp.nx, -bp.ny);
                 }
+            }
+        }
+    }
+
+    // ── Phase 4c: Area cap — prevent oversized cells ────────
+    // Inflated rest polys may produce oversized cells where
+    // few neighbors clip. Scale polygon to target area maximum.
+    for (const c of cells) {
+        if (c.polygon.length < 3) continue;
+        const actual = polygonArea(c.polygon);
+        if (actual > c.area * 1.05) {
+            const scale = Math.sqrt(c.area / actual);
+            for (let i = 0; i < c.polygon.length; i++) {
+                c.polygon[i][0] = c.x + (c.polygon[i][0] - c.x) * scale;
+                c.polygon[i][1] = c.y + (c.polygon[i][1] - c.y) * scale;
             }
         }
     }
@@ -1657,8 +1681,8 @@ function animate(time) {
     // ── Solve contacts ───────────────────────────────
     solveCells(cells, dt);
 
-    // ── Simplify to 5-point polygon ────────────────────
-    // Reduce solver output to exactly 5 corners — the sharpest
+    // ── Simplify to 7-corner polygon ────────────────────
+    // Reduce solver output to exactly 7 corners — the sharpest
     // angular deviations. Proper polygon, not a sampled circle.
     for (const c of cells) {
         if (!c.polygon || c.polygon.length < 3) {
@@ -1759,6 +1783,17 @@ document.getElementById('voidBtn').addEventListener('click', () => {
 document.getElementById('clearVoidsBtn').addEventListener('click', () => {
     voidObjects = [];
 });
+
+// Fill factor
+const fillSlider = document.getElementById('fillSlider');
+const fillNum = document.getElementById('fillNum');
+function setFill(val) {
+    FILL_FACTOR = val;
+    fillSlider.value = Math.min(val, parseFloat(fillSlider.max));
+    fillNum.value = val;
+}
+fillSlider.addEventListener('input', () => setFill(parseFloat(fillSlider.value)));
+fillNum.addEventListener('input', () => setFill(parseFloat(fillNum.value) || 1));
 
 // Gravity controls
 const gravSlider = document.getElementById('gravSlider');
