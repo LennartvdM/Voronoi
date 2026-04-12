@@ -380,9 +380,27 @@ function solveCells(cells, dt) {
     // ── Phase 1: Generate rest polygons ──────────────────────
     // Pass all OTHER cells as neighbors so the rest shape stretches
     // toward them. This is purely cosmetic — centers don't move.
+    //
+    // Temporal smoothing: blend each vertex of the new rest poly
+    // toward the previous frame's rest poly. This prevents the
+    // stretch from snapping on/off at boundary distances, which
+    // caused cells to flicker between "sharp" and "relaxed."
+    // The rest poly always has exactly VERTS vertices, so the
+    // blend is 1:1 per vertex — no count mismatch.
+    const SMOOTH_RATE = 0.25; // per-frame blend toward new rest poly
     for (const c of cells) {
         const neighbors = cells.filter(o => o !== c);
-        c.restPoly = c.generateRestPoly(VERTS, neighbors);
+        const freshPoly = c.generateRestPoly(VERTS, neighbors);
+
+        if (c._prevRestPoly && c._prevRestPoly.length === VERTS) {
+            for (let i = 0; i < VERTS; i++) {
+                freshPoly[i][0] = c._prevRestPoly[i][0] + (freshPoly[i][0] - c._prevRestPoly[i][0]) * SMOOTH_RATE;
+                freshPoly[i][1] = c._prevRestPoly[i][1] + (freshPoly[i][1] - c._prevRestPoly[i][1]) * SMOOTH_RATE;
+            }
+        }
+
+        c._prevRestPoly = freshPoly.map(p => [p[0], p[1]]);
+        c.restPoly = freshPoly;
         c.polygon = copyPoly(c.restPoly);
     }
 
