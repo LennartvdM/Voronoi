@@ -73,9 +73,14 @@
     <a href="index.html" class="back-link">&larr; Back</a>
     <canvas id="canvas"></canvas>
     <div class="info" id="info">mk5 &middot; voroboids &middot; chunk 0</div>
-    <div class="controls">
-        <button class="ctrl-btn" id="addBtn">+ Cell</button>
-        <button class="ctrl-btn" id="removeBtn">&minus; Cell</button>
+    <div class="controls" style="flex-wrap: wrap; max-width: 700px; justify-content: center;">
+        <button class="ctrl-btn layout-btn active" data-layout="circle">Circle</button>
+        <button class="ctrl-btn layout-btn" data-layout="hero">Hero</button>
+        <button class="ctrl-btn layout-btn" data-layout="bento">Bento</button>
+        <button class="ctrl-btn layout-btn" data-layout="sidebar">Sidebar</button>
+        <button class="ctrl-btn layout-btn" data-layout="spiral">Spiral</button>
+        <button class="ctrl-btn" id="addBtn">+</button>
+        <button class="ctrl-btn" id="removeBtn">&minus;</button>
         <button class="ctrl-btn" id="resetBtn">Reset</button>
         <button class="ctrl-btn" id="gapBtn">Gap: 4</button>
         <button class="ctrl-btn" id="debugBtn">Debug</button>
@@ -142,24 +147,33 @@ const COLORS = [
 // ─── Cell class ──────────────────────────────────────────────
 // The atom. Self-contained. Independently movable. Separable.
 class Cell {
-    constructor(id, x, y, radius) {
+    constructor(id, x, y, weight, color) {
         this.id = id;
         this.x = x;
         this.y = y;
-        this.radius = radius;
-        this.area = Math.PI * radius * radius;
-        this.color = COLORS[id % COLORS.length];
+        this.weight = weight || 1;   // relative size (1=normal, 2=4x area, 0.5=0.25x)
+        this.color = color || COLORS[id % COLORS.length];
 
-        // Current rendered polygon — updated each frame by solver
+        // Area is computed from weight in updateAreas()
+        this.area = 100;
+        this.baseArea = 100;
+
+        // Target position/weight from layout (for transitions)
+        this.targetX = x;
+        this.targetY = y;
+        this.targetWeight = this.weight;
+
+        // Current rendered polygon
         this.polygon = null;
-        // Debug: per-vertex pull vectors
-        this._debugPulls = null; // [{px, py, bx, by, nx, ny}] per vertex
-        // Rest polygon before contact clipping (for area correction)
+        this._debugPulls = null;
         this.restPoly = null;
 
         // Hover state
         this.hoverMix = 0;
-        this.baseArea = this.area;
+
+        // Role: 'content' | 'hero' | 'carousel' | 'void'
+        this.role = 'content';
+        this.visible = true;
     }
 
     // Generate rest-shape polygon, stretched toward nearby neighbors.
@@ -502,6 +516,150 @@ function enforceConvexity(poly, cx, cy) {
             poly[i][1] = cy + rdy * bestT;
         }
     }
+}
+
+// ─── Area computation ────────────────────────────────────────
+// Distributes viewport area among cells proportional to weight².
+// Total claimable area = viewport * fillFraction / cellCount,
+// then each cell gets its share proportional to w².
+function updateAreas(cells) {
+    if (cells.length === 0) return;
+    const viewportArea = W * H;
+    const fillFraction = 0.5; // cells claim ~50% of viewport
+    const totalBudget = viewportArea * fillFraction;
+
+    // Sum of w² for all visible cells
+    let totalW2 = 0;
+    for (const c of cells) {
+        if (c.visible) totalW2 += c.weight * c.weight;
+    }
+    if (totalW2 < 0.001) totalW2 = 1;
+
+    for (const c of cells) {
+        const w2 = c.weight * c.weight;
+        c.baseArea = (w2 / totalW2) * totalBudget;
+        // Hover boost on top of base
+        c.area = c.baseArea * (1 + c.hoverMix * 0.6);
+    }
+}
+
+// ─── Layout system ───────────────────────────────────────────
+// Layouts are functions that return per-cell specs:
+//   [{x, y, weight, role, visible}]
+// The flock mind applies these as targets.
+
+const LAYOUTS = {
+    // Circle (default) — equal weights, arranged in a ring
+    circle(cells, W, H) {
+        const cx = W / 2, cy = H / 2;
+        const n = cells.length;
+        const spread = Math.min(W, H) * 0.25;
+        return cells.map((_, i) => ({
+            x: cx + Math.cos((i / n) * Math.PI * 2) * spread,
+            y: cy + Math.sin((i / n) * Math.PI * 2) * spread,
+            weight: 1, role: 'content', visible: true,
+        }));
+    },
+
+    // Hero + grid — one big cell, rest small
+    hero(cells, W, H) {
+        const n = cells.length;
+        const specs = [];
+        for (let i = 0; i < n; i++) {
+            if (i === 0) {
+                specs.push({
+                    x: W * 0.35, y: H * 0.45,
+                    weight: 2.2, role: 'hero', visible: true,
+                });
+            } else {
+                const col = (i - 1) % 3;
+                const row = Math.floor((i - 1) / 3);
+                specs.push({
+                    x: W * 0.65 + (col - 1) * W * 0.12,
+                    y: H * 0.25 + row * H * 0.2,
+                    weight: 0.7, role: 'carousel', visible: true,
+                });
+            }
+        }
+        return specs;
+    },
+
+    // Bento — varied sizes in a grid-like arrangement
+    bento(cells, W, H) {
+        const n = cells.length;
+        const weights = [1.8, 1.2, 1.0, 1.4, 0.8, 1.1, 0.9, 1.3, 1.0, 0.7, 1.1, 0.8];
+        const cols = Math.ceil(Math.sqrt(n * (W / H)));
+        const rows = Math.ceil(n / cols);
+        const specs = [];
+        for (let i = 0; i < n; i++) {
+            const col = i % cols;
+            const row = Math.floor(i / cols);
+            const margin = 0.08;
+            specs.push({
+                x: W * (margin + (col + 0.5) * (1 - 2 * margin) / cols),
+                y: H * (margin + (row + 0.5) * (1 - 2 * margin) / rows),
+                weight: weights[i % weights.length],
+                role: 'content', visible: true,
+            });
+        }
+        return specs;
+    },
+
+    // Sidebar — cells on left strip, right side empty
+    sidebar(cells, W, H) {
+        const n = cells.length;
+        const specs = [];
+        for (let i = 0; i < n; i++) {
+            const row = i;
+            specs.push({
+                x: W * 0.12,
+                y: H * (0.08 + (row + 0.5) * 0.84 / n),
+                weight: 0.8, role: 'carousel', visible: true,
+            });
+        }
+        return specs;
+    },
+
+    // Spiral — golden angle from center, decreasing weights
+    spiral(cells, W, H) {
+        const n = cells.length;
+        const cx = W / 2, cy = H / 2;
+        const golden = Math.PI * (3 - Math.sqrt(5));
+        const maxR = Math.min(W, H) * 0.38;
+        const specs = [];
+        for (let i = 0; i < n; i++) {
+            const r = maxR * Math.sqrt((i + 0.5) / n);
+            const a = i * golden;
+            specs.push({
+                x: cx + Math.cos(a) * r,
+                y: cy + Math.sin(a) * r,
+                weight: 1.5 - (i / n) * 0.8,
+                role: i === 0 ? 'hero' : 'content', visible: true,
+            });
+        }
+        return specs;
+    },
+};
+
+let currentLayout = 'circle';
+
+function applyLayout(name) {
+    const gen = LAYOUTS[name];
+    if (!gen) return;
+    currentLayout = name;
+    const specs = gen(cells, W, H);
+    for (let i = 0; i < cells.length && i < specs.length; i++) {
+        const s = specs[i];
+        cells[i].targetX = s.x;
+        cells[i].targetY = s.y;
+        cells[i].targetWeight = s.weight;
+        cells[i].role = s.role || 'content';
+        cells[i].visible = s.visible !== false;
+    }
+    // Update layout bar active state
+    document.querySelectorAll('.layout-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.layout === name);
+    });
 }
 
 // ─── Contact solver ──────────────────────────────────────────
@@ -875,9 +1033,10 @@ let debugMode = false;
 
 function render(cells) {
     ctx.clearRect(0, 0, W, H);
-    // Draw non-hovered first, hovered last
-    const hovered = cells.filter(c => c.hoverMix > 0.5);
-    const rest = cells.filter(c => c.hoverMix <= 0.5);
+    // Draw non-hovered first, hovered last. Skip invisible (void) cells.
+    const visible = cells.filter(c => c.visible);
+    const hovered = visible.filter(c => c.hoverMix > 0.5);
+    const rest = visible.filter(c => c.hoverMix <= 0.5);
     for (const c of rest) drawCell(c);
     for (const c of hovered) drawCell(c);
 
@@ -1020,15 +1179,15 @@ canvas.addEventListener('pointerleave', () => { mouseX = -999; mouseY = -999; })
 function initCells(count) {
     cells = [];
     const cx = W / 2, cy = H / 2;
-    const baseRadius = Math.min(W, H) * 0.06;
+    const spread = Math.min(W, H) * 0.25;
     for (let i = 0; i < count; i++) {
         const angle = (i / count) * Math.PI * 2;
-        const spread = Math.min(W, H) * 0.25;
         const x = cx + Math.cos(angle) * spread;
         const y = cy + Math.sin(angle) * spread;
-        const r = baseRadius * (0.8 + Math.random() * 0.4);
-        cells.push(new Cell(i, x, y, r));
+        cells.push(new Cell(i, x, y, 1));
     }
+    applyLayout(currentLayout);
+    updateAreas(cells);
 }
 
 let lastTime = 0;
@@ -1036,16 +1195,28 @@ function animate(time) {
     const dt = Math.min((time - lastTime) / 16, 3);
     lastTime = time;
 
-    // Update hover
-    const newHovered = dragCell || findCellAt(mouseX, mouseY);
+    // ── Move toward targets (layout transition) ────────
+    const posRate = 1 - Math.exp(-dt * 0.12);  // ~8 frames to 90%
+    const weightRate = 1 - Math.exp(-dt * 0.08); // ~12 frames to 90%
     for (const c of cells) {
-        const target = (c === newHovered) ? 1 : 0;
-        c.hoverMix += (target - c.hoverMix) * (1 - Math.exp(-dt * (target > 0.5 ? 0.3 : 0.08)));
-        // Hover area boost
-        c.area = c.baseArea * (1 + c.hoverMix * 0.6);
+        if (!c._dragging) {
+            c.x += (c.targetX - c.x) * posRate;
+            c.y += (c.targetY - c.y) * posRate;
+        }
+        c.weight += (c.targetWeight - c.weight) * weightRate;
     }
 
-    // Solve contacts
+    // ── Update hover ─────────────────────────────────
+    const newHovered = dragCell || findCellAt(mouseX, mouseY);
+    for (const c of cells) {
+        const target = (c === newHovered && c.visible) ? 1 : 0;
+        c.hoverMix += (target - c.hoverMix) * (1 - Math.exp(-dt * (target > 0.5 ? 0.3 : 0.08)));
+    }
+
+    // ── Compute areas from weights ───────────────────
+    updateAreas(cells);
+
+    // ── Solve contacts ───────────────────────────────
     solveCells(cells, dt);
 
     // Render
@@ -1061,11 +1232,10 @@ function animate(time) {
 
 document.getElementById('addBtn').addEventListener('click', () => {
     const id = cells.length;
-    const r = Math.min(W, H) * 0.06 * (0.8 + Math.random() * 0.4);
     const x = W / 2 + (Math.random() - 0.5) * 200;
     const y = H / 3;
-    const c = new Cell(id, x, y, r);
-    cells.push(c);
+    cells.push(new Cell(id, x, y, 1));
+    applyLayout(currentLayout);
 });
 
 document.getElementById('removeBtn').addEventListener('click', () => {
@@ -1077,7 +1247,7 @@ document.getElementById('removeBtn').addEventListener('click', () => {
 
 document.getElementById('resetBtn').addEventListener('click', () => {
     pairBias.clear();
-    initCells(8);
+    initCells(10);
 });
 
 document.getElementById('gapBtn').addEventListener('click', () => {
@@ -1120,6 +1290,16 @@ function setFocus(val) {
 focusSlider.addEventListener('input', () => setFocus(parseFloat(focusSlider.value)));
 focusNum.addEventListener('input', () => setFocus(parseFloat(focusNum.value) || 1));
 
+// Layout buttons
+document.querySelectorAll('.layout-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const name = btn.dataset.layout;
+        if (name && LAYOUTS[name]) {
+            applyLayout(name);
+        }
+    });
+});
+
 // Debug toggle
 document.getElementById('debugBtn').addEventListener('click', () => {
     debugMode = !debugMode;
@@ -1127,7 +1307,7 @@ document.getElementById('debugBtn').addEventListener('click', () => {
 });
 
 // ─── Start ───────────────────────────────────────────────────
-initCells(8);
+initCells(10);
 requestAnimationFrame(animate);
 
 </script>
