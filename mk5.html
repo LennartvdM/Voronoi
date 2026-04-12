@@ -398,20 +398,23 @@ function solveCells(cells, dt) {
                 const rA = a.effectiveRadius();
                 const rB = b.effectiveRadius();
 
-                // Skip if too far apart
-                if (dist > (rA + rB) * 1.6 + GAP) continue;
+                // Skip if too far apart — range accounts for gravitational stretch
+                const interactionRange = (rA + rB) * (1.6 + GRAVITY_REACH * 0.5) + GAP;
+                if (dist > interactionRange) continue;
                 if (dist < 0.001) continue;
 
                 // Weighted bisector position
                 // bias shifts it: positive bias favors A (pushes bisector toward B)
+                // BUT bias is suppressed when either cell is hovered — hover
+                // expansion is intentional and neighbors should yield.
                 const wA = Math.sqrt(a.area);
                 const wB = Math.sqrt(b.area);
                 const biasKey = Math.min(a.id, b.id) * 10000 + Math.max(a.id, b.id);
                 if (!pairBias.has(biasKey)) pairBias.set(biasKey, 0);
-                const bias = pairBias.get(biasKey);
+                const eitherHovered = a.hoverMix > 0.1 || b.hoverMix > 0.1;
+                const bias = eitherHovered ? 0 : pairBias.get(biasKey);
 
                 const t = wA / (wA + wB);
-                // Bias shifts bisector point along the A→B axis
                 const biasShift = bias * dist * 0.5;
                 const mx = a.x + dx * t + (dx / dist) * biasShift;
                 const my = a.y + dy * t + (dy / dist) * biasShift;
@@ -458,13 +461,20 @@ function solveCells(cells, dt) {
             const ratioB = areaRatios.get(b.id) || 0;
 
             let bias = pairBias.get(biasKey);
-            // If A is undersized, push bisector toward B (positive bias)
-            // If B is undersized, push bisector toward A (negative bias)
-            if (ratioA < MIN_AREA_FRAC) bias += BIAS_RATE * (MIN_AREA_FRAC - ratioA);
-            if (ratioB < MIN_AREA_FRAC) bias -= BIAS_RATE * (MIN_AREA_FRAC - ratioB);
 
-            // Decay bias toward zero when both cells are happy
-            if (ratioA > 0.95 && ratioB > 0.95) bias *= 0.9;
+            // If either cell is hovered, fast-decay bias — hover expansion
+            // is intentional and neighbors should yield, not fight back.
+            if (a.hoverMix > 0.1 || b.hoverMix > 0.1) {
+                bias *= 0.5;
+            } else {
+                // If A is undersized, push bisector toward B (positive bias)
+                // If B is undersized, push bisector toward A (negative bias)
+                if (ratioA < MIN_AREA_FRAC) bias += BIAS_RATE * (MIN_AREA_FRAC - ratioA);
+                if (ratioB < MIN_AREA_FRAC) bias -= BIAS_RATE * (MIN_AREA_FRAC - ratioB);
+
+                // Decay bias toward zero when both cells are happy
+                if (ratioA > 0.95 && ratioB > 0.95) bias *= 0.9;
+            }
 
             // Clamp bias
             bias = Math.max(-0.4, Math.min(0.4, bias));
