@@ -1006,21 +1006,22 @@ function solveCells(cells, dt) {
 
                 if (atCornerX && atCornerY) {
                     // CORNER: single diagonal clip for a gentle bend.
-                    // The diagonal bisects the corner angle, creating
-                    // a chamfer that drawRoundedPolygon curves smoothly.
                     const cornerX = bp.x, cornerY = bp.y;
-                    // Outward diagonal from void center through corner
+                    // Direction from void center through corner (outward)
                     const dx = cornerX - v.x, dy = cornerY - v.y;
                     const d = Math.hypot(dx, dy) || 1;
-                    const nx = dx / d, ny = dy / d;
-                    // Offset the clip slightly outward for a gentler bend
+                    // NEGATE: clip normal must point INTO the void
+                    // so clipByHalfPlane keeps the OUTSIDE
+                    const nx = -dx / d, ny = -dy / d;
                     const offset = r * 0.15;
                     c.polygon = clipByHalfPlane(c.polygon,
-                        cornerX + nx * offset, cornerY + ny * offset,
+                        cornerX - nx * offset, cornerY - ny * offset,
                         nx, ny);
                 } else {
-                    // EDGE: single half-plane clip along that edge
-                    c.polygon = clipByHalfPlane(c.polygon, bp.x, bp.y, bp.nx, bp.ny);
+                    // EDGE: clip normal must point INTO the void.
+                    // nearestBoundaryPoint returns normal pointing TOWARD
+                    // the cell (outward from void), so we NEGATE it.
+                    c.polygon = clipByHalfPlane(c.polygon, bp.x, bp.y, -bp.nx, -bp.ny);
                 }
             }
         }
