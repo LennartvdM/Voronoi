@@ -1,0 +1,3289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>mk4 — Mesh Morph</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0f;
+            color: #fff;
+            min-height: 100vh;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        canvas { display: block; width: 100%; height: 100vh; cursor: default; }
+
+        .back-link {
+            position: fixed; top: 1rem; left: 1rem;
+            color: #666; text-decoration: none; font-size: 0.9rem; z-index: 100;
+        }
+        .back-link:hover { color: #aaa; }
+
+        .layout-bar {
+            position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 6px; z-index: 100;
+            background: rgba(20, 20, 35, 0.9);
+            backdrop-filter: blur(12px);
+            padding: 8px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+
+        .layout-sep {
+            width: 1px;
+            background: rgba(255,255,255,0.12);
+            margin: 2px 4px;
+        }
+
+        .layout-btn {
+            padding: 8px 16px;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            font-size: 12px; font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.7);
+        }
+        .layout-btn:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.3);
+        }
+        .layout-btn.active {
+            background: linear-gradient(135deg, rgba(99,102,241,0.4), rgba(139,92,246,0.4));
+            border-color: rgba(139,92,246,0.6);
+            color: #fff;
+            box-shadow: 0 2px 10px rgba(99,102,241,0.3);
+        }
+
+        .info-label {
+            position: fixed; top: 1rem; right: 1rem;
+            color: #444; font-size: 0.75rem; z-index: 100;
+            font-family: ui-monospace, monospace;
+            text-align: right;
+        }
+
+        /* Chunk 5: vertex editor panel */
+        .edit-panel {
+            position: fixed;
+            top: 3rem;
+            right: 1rem;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: stretch;
+            min-width: 130px;
+        }
+        .edit-panel .layout-btn {
+            text-align: left;
+            width: 100%;
+        }
+        .edit-controls {
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            padding: 8px;
+            background: rgba(20, 20, 35, 0.9);
+            backdrop-filter: blur(12px);
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .edit-controls.visible { display: flex; }
+        .layout-btn.flash {
+            background: rgba(111, 202, 143, 0.3);
+            border-color: rgba(111, 202, 143, 0.6);
+            color: #6fca8f;
+        }
+
+        /* Chunk 18: live tunables panel */
+        .tunables-panel {
+            position: fixed;
+            top: 3rem;
+            left: 1rem;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 220px;
+        }
+        .tunables-panel .layout-btn {
+            text-align: left;
+            width: 100%;
+        }
+        .tunables-controls {
+            display: none;
+            padding: 10px 12px;
+            background: rgba(20, 20, 35, 0.9);
+            backdrop-filter: blur(12px);
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            font-size: 11px;
+            color: rgba(255,255,255,0.7);
+        }
+        .tunables-controls.visible { display: block; }
+        .tunable-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 7px;
+        }
+        .tunable-row:last-child { margin-bottom: 0; }
+        .tunable-row label {
+            flex: 0 0 70px;
+            font-family: ui-monospace, monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: rgba(255,255,255,0.6);
+        }
+        .tunable-row input[type="range"] {
+            flex: 1;
+            min-width: 60px;
+            accent-color: #8b5cf6;
+        }
+        .tunable-value {
+            flex: 0 0 38px;
+            text-align: right;
+            font-family: ui-monospace, monospace;
+            color: rgba(255,255,255,0.85);
+        }
+
+        /* Chunk 21: keyboard shortcut help overlay */
+        .help-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .help-overlay.visible { display: flex; }
+        .help-content {
+            background: rgba(20, 20, 35, 0.96);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            padding: 24px 32px;
+            max-width: 480px;
+            color: rgba(255,255,255,0.92);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            cursor: default;
+        }
+        .help-content h3 {
+            margin-bottom: 16px;
+            font-weight: 500;
+            font-size: 18px;
+        }
+        .help-content table { width: 100%; border-collapse: collapse; }
+        .help-content td { padding: 5px 0; vertical-align: top; font-size: 13px; }
+        .help-content td:first-child {
+            font-family: ui-monospace, monospace;
+            font-size: 11px;
+            color: #b59cff;
+            width: 130px;
+        }
+        .help-dismiss {
+            margin-top: 16px;
+            color: rgba(255,255,255,0.4);
+            font-size: 11px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">&larr; Back</a>
+    <canvas id="canvas"></canvas>
+
+    <div class="tunables-panel">
+        <button class="layout-btn" id="tunablesToggle">Tune &#9660;</button>
+        <div class="tunables-controls" id="tunablesControls">
+            <div class="tunable-row">
+                <label>Relax</label>
+                <input type="range" id="tuneRelaxGain" min="0.10" max="1.00" step="0.05" value="0.6">
+                <span class="tunable-value" id="tuneRelaxGainVal">0.60</span>
+            </div>
+            <div class="tunable-row">
+                <label>Slack</label>
+                <input type="range" id="tuneSlack" min="0.05" max="0.50" step="0.01" value="0.25">
+                <span class="tunable-value" id="tuneSlackVal">0.25</span>
+            </div>
+            <div class="tunable-row">
+                <label>Hover</label>
+                <input type="range" id="tuneHover" min="1.00" max="3.00" step="0.05" value="1.8">
+                <span class="tunable-value" id="tuneHoverVal">1.80</span>
+            </div>
+            <div class="tunable-row">
+                <label>Breath</label>
+                <input type="range" id="tuneBreath" min="0.00" max="0.10" step="0.005" value="0.02">
+                <span class="tunable-value" id="tuneBreathVal">0.020</span>
+            </div>
+            <div class="tunable-row">
+                <label>Trans ms</label>
+                <input type="range" id="tuneDuration" min="200" max="3000" step="50" value="1200">
+                <span class="tunable-value" id="tuneDurationVal">1200</span>
+            </div>
+            <div class="tunable-row" style="margin-top: 4px;">
+                <button class="layout-btn" id="tunablesReset" style="width: 100%;">Reset to defaults</button>
+            </div>
+        </div>
+    </div>
+    <div class="info-label" id="info">mk4 &middot; chunk 24 &middot; choreographed transitions</div>
+
+    <div class="help-overlay" id="helpOverlay">
+        <div class="help-content">
+            <h3>Keyboard shortcuts</h3>
+            <table>
+                <tr><td>Tab / &#8679;Tab</td><td>Cycle focus through cells</td></tr>
+                <tr><td>Enter</td><td>Pin the focused cell (toggle)</td></tr>
+                <tr><td>Escape</td><td>Clear pin / focus / play</td></tr>
+                <tr><td>1 .. 7</td><td>Switch to layout L1..L7</td></tr>
+                <tr><td>S</td><td>Cycle container shape</td></tr>
+                <tr><td>L</td><td>Toggle cell labels</td></tr>
+                <tr><td>T</td><td>Toggle tunables panel</td></tr>
+                <tr><td>E</td><td>Toggle vertex editor</td></tr>
+                <tr><td>Space / P</td><td>Toggle auto-play</td></tr>
+                <tr><td>?</td><td>Show / hide this help</td></tr>
+            </table>
+            <p class="help-dismiss">Click anywhere or press Esc to dismiss</p>
+        </div>
+    </div>
+
+    <div class="edit-panel">
+        <button class="layout-btn" id="shapeToggle">Shape: rect</button>
+        <button class="layout-btn" id="labelToggle">Labels: on</button>
+        <button class="layout-btn" id="editToggle">Edit</button>
+        <div class="edit-controls" id="editControls">
+            <button class="layout-btn" data-save="L1">Save &rarr; Canonical</button>
+            <button class="layout-btn" data-save="L2">Save &rarr; Hex</button>
+            <button class="layout-btn" data-save="L3">Save &rarr; Spiral</button>
+            <button class="layout-btn" data-save="L4">Save &rarr; Sidebar</button>
+            <button class="layout-btn" data-save="L5">Save &rarr; Diagonal</button>
+            <button class="layout-btn" data-save="L6">Save &rarr; Bento</button>
+            <button class="layout-btn" data-save="L7">Save &rarr; Hollow</button>
+            <button class="layout-btn" id="exportBtn">Export JSON</button>
+            <button class="layout-btn" id="resetLayoutsBtn">Reset all slots</button>
+        </div>
+    </div>
+
+    <div class="layout-bar" id="layoutBar">
+        <button class="layout-btn active" data-layout="L1">Canonical</button>
+        <button class="layout-btn" data-layout="L2">Hex</button>
+        <button class="layout-btn" data-layout="L3">Spiral</button>
+        <button class="layout-btn" data-layout="L4">Sidebar</button>
+        <button class="layout-btn" data-layout="L5">Diagonal</button>
+        <button class="layout-btn" data-layout="L6">Bento</button>
+        <button class="layout-btn" data-layout="L7">Hollow</button>
+        <div class="layout-sep"></div>
+        <button class="layout-btn" id="playToggle">&#9654; Play</button>
+    </div>
+
+    <script>
+    (function() {
+        'use strict';
+
+        // =======================================================================
+        //  mk4 — MESH MORPH
+        //
+        //  Architecture:
+        //
+        //    A half-edge mesh with FIXED TOPOLOGY is the source of truth.
+        //    Layouts are different positionings of the same vertices, plus
+        //    a per-layout rest area for each face. Transitions linearly
+        //    interpolate vertex positions and rest areas. A per-frame
+        //    soft-body relaxation pass keeps each cell within its comfort
+        //    range (water balloon, not over-hydrated pizza).
+        //
+        //    Topology never changes → no pops, no vertex correspondence
+        //    problem, no assignment problem, no Voronoi at runtime.
+        //
+        //  Chunk plan (this file is chunk 0):
+        //
+        //    [0] Scaffold — page chrome, no-op buttons, empty animate loop.
+        //    [1] Half-edge mesh + Voronoi seed. Implement HEM. Use a
+        //        one-shot Voronoi computation to populate the canonical
+        //        mesh from a seed config. Render faces statically.
+        //    [2] Layouts as vertex arrays. Float32Array(2*V) per layout.
+        //        Two hard-coded layouts. Instant teleport on button click.
+        //    [3] Linear interpolation. Lerp vertex positions over ~1200ms.
+        //        Topology stays clean by construction; motion still slidey.
+        //    [3.5] Rest area plumbing. Add restArea / slack / min / max to
+        //        each face. Lerp rest areas alongside vertex positions.
+        //        No forces yet.
+        //    [4] Soft-body relaxation. Per-frame area-correction forces.
+        //        This is where the water-balloon feel arrives.
+        //    [5] Vertex editor. Drag vertices, save layouts, export JSON.
+        //    [6] Author 4 real layouts using the editor.
+        //    [7] Polish — colors, borders, hover, arrival ramp,
+        //        per-cell slack tuning, easing.
+        // =======================================================================
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const info = document.getElementById('info');
+
+        let W = 0, H = 0, dpr = 1;
+        function resize() {
+            dpr = window.devicePixelRatio || 1;
+            W = window.innerWidth;
+            H = window.innerHeight;
+            canvas.width = W * dpr;
+            canvas.height = H * dpr;
+            canvas.style.width = W + 'px';
+            canvas.style.height = H + 'px';
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Layout switching — chunk 0 is no-op, just toggles the active class.
+        // Chunks 2+ wire this up to actual layout transitions.
+        let currentLayout = 'L1';
+        const buttons = document.querySelectorAll('.layout-btn');
+        buttons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentLayout = btn.dataset.layout;
+                buttons.forEach(b => b.classList.toggle('active', b === btn));
+            });
+        });
+
+        // ========================= CHUNK 1: HALF-EDGE MESH ====================
+        //
+        // The HEM is the source of truth: vertices, half-edges, faces with
+        // twin/next pointers, and one outer face wrapping the boundary.
+        // Built from a one-shot Voronoi computation seeded by canonicalSeeds.
+        // Topology of this mesh is FIXED for the lifetime of the page —
+        // every layout and every transition shares it.
+        //
+        //   Vertex   { x, y, id, outHE }
+        //   HalfEdge { origin, twin, next, face, id }
+        //   Face     { id, halfEdge, isOuter }
+        //
+        // Convention: cell polygons are wound in screen-CW order (matches the
+        // bounding-box winding [(0,0),(W,0),(W,H),(0,H)]). Each interior
+        // half-edge has its face on the right when walking origin→dest. The
+        // outer face's half-edges run the opposite way around the perimeter.
+
+        function clipPolygonByHalfPlane(poly, mx, my, nx, ny) {
+            // Sutherland-Hodgman: keep points where (P - (mx,my)) · (nx,ny) <= 0.
+            const out = [];
+            const n = poly.length;
+            if (n === 0) return out;
+            for (let i = 0; i < n; i++) {
+                const p = poly[i];
+                const q = poly[(i + 1) % n];
+                const dp = (p[0] - mx) * nx + (p[1] - my) * ny;
+                const dq = (q[0] - mx) * nx + (q[1] - my) * ny;
+                if (dp <= 0) out.push(p);
+                if ((dp <= 0) !== (dq <= 0)) {
+                    const t = dp / (dp - dq);
+                    out.push([p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])]);
+                }
+            }
+            return out;
+        }
+
+        function computeVoronoiPolygons(seeds, W, H) {
+            // For each seed, clip the canvas rect by the perpendicular bisector
+            // with every other seed. O(n²) per cell, fine at n=12.
+            const cells = [];
+            for (let i = 0; i < seeds.length; i++) {
+                let poly = [[0, 0], [W, 0], [W, H], [0, H]];
+                for (let j = 0; j < seeds.length; j++) {
+                    if (i === j) continue;
+                    const dx = seeds[j].x - seeds[i].x;
+                    const dy = seeds[j].y - seeds[i].y;
+                    const mx = (seeds[i].x + seeds[j].x) / 2;
+                    const my = (seeds[i].y + seeds[j].y) / 2;
+                    poly = clipPolygonByHalfPlane(poly, mx, my, dx, dy);
+                    if (poly.length === 0) break;
+                }
+                cells.push(poly);
+            }
+            return cells;
+        }
+
+        function buildHEM(cellPolygons) {
+            // Builds a half-edge mesh from a list of cell polygons. Cells share
+            // vertices via spatial-snap dedup; an outer face wraps the boundary.
+            const hem = {
+                vertices: [],
+                halfEdges: [],
+                faces: [],
+                outerFace: null,
+            };
+
+            // Snap-to-grid vertex dedup. Voronoi vertices computed from
+            // different cells differ by float noise; snap to 0.01 px.
+            const SNAP = 100;
+            const vertMap = new Map();
+            function getVertex(x, y) {
+                const key = Math.round(x * SNAP) + ',' + Math.round(y * SNAP);
+                let v = vertMap.get(key);
+                if (v) return v;
+                v = { x, y, id: hem.vertices.length, outHE: null };
+                hem.vertices.push(v);
+                vertMap.set(key, v);
+                return v;
+            }
+
+            const heByOriginDest = new Map();  // 'origId,destId' → halfEdge
+            for (let i = 0; i < cellPolygons.length; i++) {
+                const poly = cellPolygons[i];
+                if (poly.length < 3) continue;
+
+                // Resolve and dedup the polygon's vertex list.
+                const verts = [];
+                for (const p of poly) {
+                    const v = getVertex(p[0], p[1]);
+                    if (verts.length === 0 || verts[verts.length - 1] !== v) {
+                        verts.push(v);
+                    }
+                }
+                while (verts.length > 1 && verts[0] === verts[verts.length - 1]) {
+                    verts.pop();
+                }
+                if (verts.length < 3) continue;
+
+                const face = { id: hem.faces.length, halfEdge: null, isOuter: false };
+                hem.faces.push(face);
+
+                const n = verts.length;
+                const ring = [];
+                for (let k = 0; k < n; k++) {
+                    const v0 = verts[k];
+                    const he = {
+                        origin: v0,
+                        twin: null,
+                        next: null,
+                        face: face,
+                        id: hem.halfEdges.length,
+                    };
+                    hem.halfEdges.push(he);
+                    ring.push(he);
+                    if (!v0.outHE) v0.outHE = he;
+                }
+                for (let k = 0; k < n; k++) {
+                    ring[k].next = ring[(k + 1) % n];
+                    const destId = verts[(k + 1) % n].id;
+                    heByOriginDest.set(verts[k].id + ',' + destId, ring[k]);
+                }
+                face.halfEdge = ring[0];
+            }
+
+            // Wire twins; create outer half-edges for unmatched boundary edges.
+            const outerHEs = [];
+            const interiorHEs = hem.halfEdges.slice();
+            for (const he of interiorHEs) {
+                if (he.twin) continue;
+                const v0 = he.origin;
+                const v1 = he.next.origin;
+                const twin = heByOriginDest.get(v1.id + ',' + v0.id);
+                if (twin) {
+                    he.twin = twin;
+                    twin.twin = he;
+                } else {
+                    const outerHE = {
+                        origin: v1,
+                        twin: he,
+                        next: null,
+                        face: null,
+                        id: hem.halfEdges.length,
+                    };
+                    hem.halfEdges.push(outerHE);
+                    outerHEs.push(outerHE);
+                    he.twin = outerHE;
+                }
+            }
+
+            // Outer face. Its half-edges loop around the perimeter in the
+            // opposite winding to the interior cells.
+            const outerFace = { id: -1, halfEdge: null, isOuter: true };
+            hem.faces.push(outerFace);
+            hem.outerFace = outerFace;
+            for (const he of outerHEs) he.face = outerFace;
+
+            // Each outer HE goes from v_a to v_b along the boundary; its next
+            // is the unique outer HE whose origin is v_b.
+            const outerByOrigin = new Map();
+            for (const he of outerHEs) outerByOrigin.set(he.origin.id, he);
+            for (const he of outerHEs) {
+                const dest = he.twin.origin;
+                he.next = outerByOrigin.get(dest.id) || null;
+            }
+            if (outerHEs.length > 0) outerFace.halfEdge = outerHEs[0];
+
+            return hem;
+        }
+
+        function facePolygon(face) {
+            // Walk a face's half-edges, return its vertex list.
+            const verts = [];
+            let he = face.halfEdge;
+            if (!he) return verts;
+            do {
+                verts.push(he.origin);
+                he = he.next;
+                if (!he) break;
+            } while (he !== face.halfEdge);
+            return verts;
+        }
+
+        // Hand-picked canonical seed configuration: 12 seeds in a jittered
+        // 4×3 grid as fractions of (W, H). The Voronoi tessellation of these
+        // seeds defines the canonical mesh's topology — fixed for life.
+        function canonicalSeeds(W, H) {
+            return [
+                { x: W * 0.15, y: H * 0.20 },
+                { x: W * 0.40, y: H * 0.18 },
+                { x: W * 0.65, y: H * 0.22 },
+                { x: W * 0.88, y: H * 0.20 },
+                { x: W * 0.13, y: H * 0.50 },
+                { x: W * 0.38, y: H * 0.48 },
+                { x: W * 0.62, y: H * 0.52 },
+                { x: W * 0.87, y: H * 0.50 },
+                { x: W * 0.18, y: H * 0.80 },
+                { x: W * 0.42, y: H * 0.82 },
+                { x: W * 0.66, y: H * 0.78 },
+                { x: W * 0.90, y: H * 0.80 },
+            ];
+        }
+
+        let canonicalMesh = null;
+        function buildCanonicalMesh() {
+            const seeds = canonicalSeeds(W, H);
+            const polys = computeVoronoiPolygons(seeds, W, H);
+            canonicalMesh = buildHEM(polys);
+        }
+        // Build now and rebuild on resize. Chunk 0's resize() runs first
+        // (updates W/H), then this listener rebuilds the mesh.
+        window.addEventListener('resize', buildCanonicalMesh);
+        buildCanonicalMesh();
+
+        // Distinct color per face — golden-angle hue, dark-theme palette.
+        // Chunk 9: bumped saturation + lightness slightly for richer reads.
+        // Chunk 23: takes a stress parameter [0,1] that bumps saturation
+        // and lightness, so cells visibly warm up when boosted by hover,
+        // pin, or ripple.
+        function faceColor(id, stress) {
+            const s = (typeof stress === 'number') ? Math.max(0, Math.min(1, stress)) : 0;
+            const hue   = (id * 137.508) % 360;
+            const sat   = 50 + s * 28;   // 50 → 78
+            const light = 42 + s * 14;   // 42 → 56
+            return 'hsl(' + hue.toFixed(1) + ', ' + sat.toFixed(1) + '%, ' + light.toFixed(1) + '%)';
+        }
+
+        function renderMesh(mesh) {
+            // Chunk 13: clip to the current container shape (kept as a
+            // safety net even with chunk 14 warping — the warp puts
+            // cells inside the shape, but the clip catches any AA
+            // bleed at the boundary).
+            // Chunk 14: warp each vertex at draw time so cells visibly
+            // fit the container. The mesh state stays in unwarped rect
+            // coordinates throughout.
+            // Chunk 15: focused cell (hovered or pinned) drawn LAST
+            // with a slightly bolder border, so it sits on top of
+            // neighboring cells visually.
+            // Chunk 16: skip clipping during transitions — the
+            // blended shape isn't easily expressible as a Path2D, and
+            // the warp ensures cells are inside the visible region.
+            // We only clip when fully settled at a non-rect shape.
+            const shape = (typeof containerShape !== 'undefined') ? containerShape : 'rect';
+            const settled = (typeof shapeT === 'undefined') || shapeT >= 1;
+            const needsClip = settled && (shape !== 'rect');
+            if (needsClip) {
+                ctx.save();
+                const path = buildContainerPath(W, H, shape);
+                ctx.clip(path);
+            }
+
+            // Identify the focused face for z-order (chunk 15).
+            // Chunk 20: include keyboard focus, with priority order
+            // hover > pin > keyboard so the most recent intent wins.
+            let focusedFace = null;
+            if (typeof editMode === 'undefined' || !editMode) {
+                if (hoveredFace) {
+                    focusedFace = hoveredFace;
+                } else if (typeof pinnedCellId !== 'undefined' && pinnedCellId != null) {
+                    for (const f of mesh.faces) {
+                        if (f.id === pinnedCellId) { focusedFace = f; break; }
+                    }
+                } else if (typeof keyboardFocusedCellId !== 'undefined' && keyboardFocusedCellId != null) {
+                    for (const f of mesh.faces) {
+                        if (f.id === keyboardFocusedCellId) { focusedFace = f; break; }
+                    }
+                }
+            }
+
+            const drawFace = (face, isFocused) => {
+                const vis = (face.visibility != null) ? face.visibility : 1;
+                const effectiveVis = (typeof editMode !== 'undefined' && editMode) ? 1 : vis;
+                if (effectiveVis < 0.005) return;
+
+                const verts = facePolygon(face);
+                if (verts.length < 3) return;
+
+                ctx.beginPath();
+                // Chunk 16: warpVertex now reads containerShape /
+                // containerPrevShape / shapeT internally.
+                const w0 = warpVertex(verts[0].x, verts[0].y, W, H);
+                ctx.moveTo(w0.x, w0.y);
+                for (let i = 1; i < verts.length; i++) {
+                    const wi = warpVertex(verts[i].x, verts[i].y, W, H);
+                    ctx.lineTo(wi.x, wi.y);
+                }
+                ctx.closePath();
+                ctx.globalAlpha = effectiveVis;
+                // Chunk 23: stress glow — saturation/lightness bumped
+                // for cells boosted by hover, pin, or ripple.
+                const stress = (typeof computeStress === 'function') ? computeStress(face) : 0;
+                ctx.fillStyle = faceColor(face.id, stress);
+                ctx.fill();
+                if (isFocused) {
+                    // Brighter, slightly thicker border for the focused cell.
+                    ctx.strokeStyle = 'rgba(255,255,255,0.32)';
+                    ctx.lineWidth = 2.0;
+                } else {
+                    ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+                    ctx.lineWidth = 1.5;
+                }
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+                // Chunk 17: cell label drawn at the warped centroid.
+                if (typeof drawFaceLabel === 'function') {
+                    drawFaceLabel(face, isFocused);
+                }
+            };
+
+            for (const face of mesh.faces) {
+                if (face.isOuter) continue;
+                if (face === focusedFace) continue;  // draw last
+                drawFace(face, false);
+            }
+            if (focusedFace) {
+                drawFace(focusedFace, true);
+            }
+
+            // Chunk 13: restore the unclipped state and stroke the
+            // container outline so the user can see the edge.
+            if (needsClip) {
+                ctx.restore();
+                if (typeof strokeContainerOutline === 'function') {
+                    strokeContainerOutline(ctx, W, H, shape);
+                }
+            }
+        }
+
+        // ========================= CHUNK 2: LAYOUTS AS VERTEX ARRAYS ==========
+        //
+        // A Layout is a Float32Array(2 * V) of vertex positions, indexed
+        // by vertex.id (so layout[2i] = x, layout[2i+1] = y of vertex i).
+        // Switching layouts overwrites the mesh's vertex positions and the
+        // next animate frame renders the new arrangement. The half-edge
+        // structure is untouched — same vertex objects, same twin/next
+        // pointers, same faces. Only positions move.
+        //
+        // The four layouts here (L2..L4) are deterministic transforms of
+        // L1, kept temporarily as test fixtures so we can verify the
+        // teleport mechanism and cell-identity preservation. They get
+        // replaced by hand-authored layouts in chunk 6.
+
+        function captureLayout(mesh) {
+            const arr = new Float32Array(mesh.vertices.length * 2);
+            for (let i = 0; i < mesh.vertices.length; i++) {
+                arr[i * 2]     = mesh.vertices[i].x;
+                arr[i * 2 + 1] = mesh.vertices[i].y;
+            }
+            return arr;
+        }
+
+        function applyLayout(mesh, layout) {
+            for (let i = 0; i < mesh.vertices.length; i++) {
+                mesh.vertices[i].x = layout[i * 2];
+                mesh.vertices[i].y = layout[i * 2 + 1];
+            }
+        }
+
+        const layouts = {};
+        // Chunk 8: parallel dict of cell-id arrays — cells listed here are
+        // hidden when the named layout is the transition target. Populated
+        // by chunk 7's procedural defaults.
+        const layoutHidden = {};
+        // Chunk 9: parallel dict of per-cell slack overrides per layout.
+        // layoutSlack[name] = { cellId: slackValue, ... }. Cells not in
+        // the override map use DEFAULT_SLACK. Used to make hero cells
+        // tighter (assert themselves) and rim cells looser (yield).
+        const layoutSlack = {};
+        function buildLayouts() {
+            // L1: canonical positions, captured straight from the mesh.
+            layouts.L1 = captureLayout(canonicalMesh);
+
+            const N = canonicalMesh.vertices.length;
+            const cx = W / 2, cy = H / 2;
+
+            // L2: uniform shrink toward center (cells huddle in, leaves
+            // a margin around the edges).
+            layouts.L2 = new Float32Array(N * 2);
+            for (let i = 0; i < N; i++) {
+                const x = layouts.L1[i * 2], y = layouts.L1[i * 2 + 1];
+                layouts.L2[i * 2]     = cx + (x - cx) * 0.65;
+                layouts.L2[i * 2 + 1] = cy + (y - cy) * 0.65;
+            }
+
+            // L3: horizontal squeeze (cells become tall and narrow,
+            // bunched in a vertical column at center).
+            layouts.L3 = new Float32Array(N * 2);
+            for (let i = 0; i < N; i++) {
+                const x = layouts.L1[i * 2], y = layouts.L1[i * 2 + 1];
+                layouts.L3[i * 2]     = cx + (x - cx) * 0.5;
+                layouts.L3[i * 2 + 1] = y;
+            }
+
+            // L4: small rotation about center (12°). Rigid transform —
+            // guaranteed to preserve cell validity.
+            const ang = 12 * Math.PI / 180;
+            const cs = Math.cos(ang), sn = Math.sin(ang);
+            layouts.L4 = new Float32Array(N * 2);
+            for (let i = 0; i < N; i++) {
+                const dx = layouts.L1[i * 2] - cx;
+                const dy = layouts.L1[i * 2 + 1] - cy;
+                layouts.L4[i * 2]     = cx + dx * cs - dy * sn;
+                layouts.L4[i * 2 + 1] = cy + dx * sn + dy * cs;
+            }
+        }
+        buildLayouts();
+
+        // Rebuild layouts after each resize-driven mesh rebuild, then
+        // re-apply the user's current selection so resize doesn't snap
+        // them back to L1. Order matters: buildLayouts must run after
+        // chunk 1's buildCanonicalMesh (registration order is preserved).
+        window.addEventListener('resize', () => {
+            buildLayouts();
+            if (layouts[currentLayout]) {
+                applyLayout(canonicalMesh, layouts[currentLayout]);
+            }
+        });
+
+        // Wire the layout buttons. Chunk 0 already added a handler that
+        // updates `currentLayout` and toggles .active; this adds a second
+        // handler that goes to the layout. `goToLayout` starts as instant
+        // teleport (chunk 2) and gets reassigned by chunk 3 to a smooth
+        // lerp transition.
+        let goToLayout = (name) => {
+            if (layouts[name]) applyLayout(canonicalMesh, layouts[name]);
+        };
+        buttons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                goToLayout(btn.dataset.layout);
+            });
+        });
+
+        // ========================= CHUNK 3: LINEAR INTERPOLATION ==============
+        //
+        // Replaces chunk 2's instant teleport with a timed lerp from
+        // wherever the mesh is right now to the target layout. Topology
+        // stays clean by construction (no Voronoi recompute, no vertex
+        // reassignment, no per-frame tessellation — every vertex just
+        // slides from its start position to its target). Motion is still
+        // slidey because there are no rest areas / cell forces yet —
+        // that's chunks 3.5 and 4.
+        //
+        // Re-clicking mid-transition is interruptible: it snapshots the
+        // current (interpolated) positions as the new start and lerps to
+        // the new target from there. No jump, no double-back.
+
+        let TRANSITION_DURATION = 1200;  // ms — chunk 18: tunable
+        let transitionStart = null;        // Float32Array snapshot
+        let transitionTarget = null;       // Float32Array (one of layouts.*)
+        let transitionStartTime = 0;
+        let transitioning = false;
+        // Chunk 8: per-face visibility lerp state. Float32Array(F) each.
+        let transitionVisStart = null;
+        let transitionVisTarget = null;
+        // Chunk 24: per-face choreography (start/end times within the
+        // overall transition, plus the lead face id for debug).
+        // Map<face.id, { start, end }>. Computed in startTransition.
+        let transitionChoreo = null;
+
+        function easeInOutCubic(t) {
+            return t < 0.5
+                ? 4 * t * t * t
+                : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        }
+
+        // Chunk 24: per-cell easing curve. Fast start, slow finish, with
+        // a small overshoot at the end so cells "land" with a tactile
+        // settling beat instead of stopping cold. Overshoot magnitude
+        // tunable via the c1 constant; 1.0 gives ~6% past-target peak.
+        function easeOutBack(t) {
+            const c1 = 1.0;
+            const c3 = c1 + 1;
+            return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+        }
+
+        function startTransition(name) {
+            // Chunk 8: signature changed from (target Float32Array) to
+            // (name string) so we can look up layoutHidden[name] for the
+            // visibility lerp target.
+            const target = layouts[name];
+            if (!target) return;
+            transitionStart = captureLayout(canonicalMesh);
+            transitionTarget = target;
+            // Chunk 3.5: snapshot rest-area endpoints alongside positions.
+            // captureRestAreas reads current f.restArea (mid-lerp safe);
+            // captureRestAreasFromLayout computes the area each face would
+            // have at the target without mutating anything.
+            transitionRestStart = captureRestAreas(canonicalMesh);
+            transitionRestTarget = captureRestAreasFromLayout(canonicalMesh, target);
+            // Chunk 8: snapshot current per-face visibility, compute target
+            // visibility from layoutHidden[name]. Cells in the hidden list
+            // get target=0 (fade out); others get target=1 (fade in if they
+            // were hidden in the previous layout).
+            transitionVisStart = captureVisibilities(canonicalMesh);
+            transitionVisTarget = computeTargetVisibilities(name);
+            // Chunk 9: switch slack to the new layout's overrides
+            // immediately. The relax pass smooths the transition.
+            if (typeof applyLayoutSlack === 'function') applyLayoutSlack(name);
+            // Chunk 24: compute the per-face choreography (which cells
+            // start/end at which fraction of the overall transition).
+            if (typeof computeChoreography === 'function') {
+                transitionChoreo = computeChoreography(canonicalMesh, target);
+            } else {
+                transitionChoreo = null;  // fallback to uniform timing
+            }
+            transitionStartTime = performance.now();
+            transitioning = true;
+        }
+
+        function updateTransition(now) {
+            if (!transitioning) return;
+            const elapsed = now - transitionStartTime;
+            const tRaw = Math.min(1, elapsed / TRANSITION_DURATION);
+            // Chunk 24: tEased is the GLOBAL fallback when there's no
+            // choreography. With choreography, each face has its own
+            // (start, end) and the eased value is computed per face.
+            const tEasedGlobal = easeOutBack(tRaw);
+
+            // Per-face eased progress map. Built once per frame and
+            // reused for vertex lerp + rest-area lerp + visibility lerp.
+            // If transitionChoreo is null (fallback), every face uses
+            // tEasedGlobal.
+            const easedByFace = new Map();
+            for (const f of canonicalMesh.faces) {
+                if (f.isOuter) continue;
+                let tCellEased;
+                if (transitionChoreo) {
+                    const ch = transitionChoreo.get(f.id);
+                    if (ch) {
+                        const span = ch.end - ch.start;
+                        const tCellRaw = (span > 0)
+                            ? Math.max(0, Math.min(1, (tRaw - ch.start) / span))
+                            : (tRaw >= ch.end ? 1 : 0);
+                        tCellEased = easeOutBack(tCellRaw);
+                    } else {
+                        tCellEased = tEasedGlobal;
+                    }
+                } else {
+                    tCellEased = tEasedGlobal;
+                }
+                easedByFace.set(f.id, tCellEased);
+            }
+
+            // Chunk 24: per-vertex eased progress = average of incident
+            // faces' tCellEased values. A vertex shared between a "fast"
+            // and a "slow" cell moves at the compromise rate. Same
+            // averaging principle as buildLayoutFromCellSpecs and the
+            // relax pass — neighboring cells negotiate shared vertices.
+            const start = transitionStart;
+            const target = transitionTarget;
+            const verts = canonicalMesh.vertices;
+            for (let i = 0; i < verts.length; i++) {
+                const v = verts[i];
+                let sum = 0, count = 0;
+                const incident = getIncidentFaces(v);
+                for (const f of incident) {
+                    const e = easedByFace.get(f.id);
+                    if (e != null) { sum += e; count++; }
+                }
+                const tEasedV = (count > 0) ? (sum / count) : tEasedGlobal;
+                const sx = start[i * 2],     sy = start[i * 2 + 1];
+                const tx = target[i * 2],    ty = target[i * 2 + 1];
+                v.x = sx + (tx - sx) * tEasedV;
+                v.y = sy + (ty - sy) * tEasedV;
+            }
+
+            // Chunk 3.5 + 24: per-face rest area lerp uses each face's
+            // own tCellEased. Same for visibility.
+            const rs = transitionRestStart;
+            const rt = transitionRestTarget;
+            const vs = transitionVisStart;
+            const vt = transitionVisTarget;
+            for (const f of canonicalMesh.faces) {
+                if (f.isOuter) continue;
+                const tFace = easedByFace.get(f.id);
+                const a0 = rs[f.id];
+                const a1 = rt[f.id];
+                f.restArea = a0 + (a1 - a0) * tFace;
+                f.minArea = f.restArea * (1 - f.slack);
+                f.maxArea = f.restArea * (1 + f.slack);
+                const v0 = vs[f.id];
+                const v1 = vt[f.id];
+                f.visibility = v0 + (v1 - v0) * tFace;
+            }
+
+            if (tRaw >= 1) {
+                transitioning = false;
+                transitionStart = null;
+                transitionTarget = null;
+                transitionRestStart = null;
+                transitionRestTarget = null;
+                transitionVisStart = null;
+                transitionVisTarget = null;
+                transitionChoreo = null;
+            }
+        }
+
+        // Replace chunk 2's teleport with smooth transitions.
+        goToLayout = (name) => {
+            if (layouts[name]) startTransition(name);
+        };
+
+        // ========================= CHUNK 3.5: REST AREA PLUMBING =============
+        //
+        // Each interior face gains a `restArea`: the natural size that
+        // face "wants" to be right now. At steady state, restArea matches
+        // the face's actual geometric area, so the comfort range is
+        // centered on where the cell already is. Each face also gets a
+        // `slack` (default ±25%) and derived `minArea` / `maxArea`.
+        //
+        // During a transition, restArea lerps alongside vertex positions
+        // toward the area the face would have in the target layout. This
+        // is the "magic water" piece — natural size is itself animatable,
+        // so a cell that's small in one layout and large in another is
+        // genuinely small or large in each (not stretched or compressed).
+        //
+        // No forces yet — the fields are populated but not consulted.
+        // Chunk 4 lights up the relaxation pass that uses (restArea,
+        // minArea, maxArea) to push back when a cell is squashed or
+        // stretched outside its comfort range.
+
+        let DEFAULT_SLACK = 0.25;  // ±25% comfort range — chunk 18: tunable
+
+        function signedFaceArea(face) {
+            // Geometric area from current mesh vertex positions.
+            let a = 0;
+            let he = face.halfEdge;
+            do {
+                const v0 = he.origin;
+                const v1 = he.next.origin;
+                a += v0.x * v1.y - v1.x * v0.y;
+                he = he.next;
+            } while (he !== face.halfEdge);
+            return a / 2;
+        }
+
+        function faceAreaInLayout(face, layout) {
+            // Geometric area as if the mesh's vertices were placed at
+            // `layout` positions. Pure read — does not mutate the mesh.
+            let a = 0;
+            let he = face.halfEdge;
+            do {
+                const v0 = he.origin;
+                const v1 = he.next.origin;
+                const x0 = layout[v0.id * 2],     y0 = layout[v0.id * 2 + 1];
+                const x1 = layout[v1.id * 2],     y1 = layout[v1.id * 2 + 1];
+                a += x0 * y1 - x1 * y0;
+                he = he.next;
+            } while (he !== face.halfEdge);
+            return a / 2;
+        }
+
+        function initFaceRestAreas(mesh) {
+            // Set each interior face's restArea to its current geometric
+            // area. Default slack, derived comfort bounds. Chunk 8 also
+            // initializes visibility to 1 if it hasn't been set yet (so
+            // existing visibility from the current layout survives the
+            // re-init triggered by edit-mode toggles, etc.). Chunk 12
+            // initializes the breath phase once per face (golden-angle
+            // distribution so cells aren't synchronized).
+            for (const f of mesh.faces) {
+                if (f.isOuter) continue;
+                f.restArea = signedFaceArea(f);
+                f.slack = DEFAULT_SLACK;
+                f.minArea = f.restArea * (1 - f.slack);
+                f.maxArea = f.restArea * (1 + f.slack);
+                if (f.visibility == null) f.visibility = 1;
+                if (f.breathPhase == null) {
+                    f.breathPhase = (f.id * 137.508 * Math.PI / 180) % (Math.PI * 2);
+                }
+                if (f.breathMul == null) f.breathMul = 1;
+            }
+        }
+        initFaceRestAreas(canonicalMesh);
+        // After resize: chunks 0/1/2 listeners run first (W/H, mesh,
+        // layouts, currentLayout reapply), then this fires last so
+        // restArea matches the post-resize layout the user is sitting on.
+        window.addEventListener('resize', () => initFaceRestAreas(canonicalMesh));
+
+        function captureRestAreas(mesh) {
+            // Snapshot current rest areas indexed by face.id.
+            const interior = mesh.faces.filter(f => !f.isOuter);
+            const arr = new Float32Array(interior.length);
+            for (const f of interior) arr[f.id] = f.restArea;
+            return arr;
+        }
+
+        function captureRestAreasFromLayout(mesh, layout) {
+            // Compute the rest areas each face would have if its vertices
+            // were placed according to `layout`. Used at startTransition
+            // to fix the target rest areas for the lerp.
+            const interior = mesh.faces.filter(f => !f.isOuter);
+            const arr = new Float32Array(interior.length);
+            for (const f of interior) arr[f.id] = faceAreaInLayout(f, layout);
+            return arr;
+        }
+
+        // Transient transition state for the rest-area lerp. Populated at
+        // startTransition, used by updateTransition, released on completion.
+        let transitionRestStart = null;
+        let transitionRestTarget = null;
+
+        // ========================= CHUNK 4: SOFT-BODY RELAXATION =============
+        //
+        // Per-frame relaxation pass that pushes back when a cell's
+        // current geometric area drifts outside its comfort range
+        // [minArea, maxArea]. This is the water-balloon mechanism:
+        // cells resist being squashed or stretched past their natural
+        // size, and the resistance reads as "settling" rather than
+        // "sliding."
+        //
+        // Algorithm (per iteration, per face):
+        //   1. Compute current area A and geometric centroid C in
+        //      one walk over the face's half-edges.
+        //   2. Pick target area = nearest comfort-range edge:
+        //        if A > maxArea: target = maxArea  (must shrink)
+        //        if A < minArea: target = minArea  (must grow)
+        //        else: no force, the cell is comfortable.
+        //   3. The uniform radial scale that achieves the target is
+        //      sqrt(target / A) (since area scales with scale²).
+        //   4. Damp by gain α to avoid over-correction across the
+        //      coupled mesh: effectiveScale = 1 + α * (scale - 1).
+        //   5. For each boundary vertex v of the face, accumulate
+        //      a displacement of (v - C) * (effectiveScale - 1).
+        //   6. After all faces processed, sum displacements at each
+        //      vertex (shared vertices receive contributions from
+        //      every incident cell) and apply.
+        //
+        // RELAX_ITERS iterations per frame so corrections propagate a
+        // bit through the mesh. With α = 0.5 and 2 iters, mild stress
+        // is smoothed within a single frame; severe stress takes a
+        // few frames to settle but the system never explodes.
+        //
+        // No memory across frames. updateTransition overwrites vertex
+        // positions every frame to the pure lerp output, so relaxation
+        // is always a fresh per-frame correction layered on the lerp
+        // trajectory — never an accumulating drift.
+        //
+        // Endpoints (t=0 and t=1): cells are exactly at restArea by
+        // construction, so the relaxation is a strict no-op. No drift,
+        // no force ramping needed at the boundaries of the transition.
+
+        const RELAX_ITERS = 4;    // chunk 9: bumped from 2 for visible feel
+        let RELAX_GAIN  = 0.6;    // chunk 9: bumped from 0.5; chunk 18: tunable
+
+        // Reusable per-vertex displacement accumulators (avoid GC).
+        let _relaxDX = null;
+        let _relaxDY = null;
+        function _ensureRelaxBuffers(n) {
+            if (!_relaxDX || _relaxDX.length < n) {
+                _relaxDX = new Float32Array(n);
+                _relaxDY = new Float32Array(n);
+            }
+        }
+
+        function relaxMesh(mesh) {
+            const V = mesh.vertices.length;
+            _ensureRelaxBuffers(V);
+            const dx = _relaxDX, dy = _relaxDY;
+
+            for (let iter = 0; iter < RELAX_ITERS; iter++) {
+                for (let i = 0; i < V; i++) { dx[i] = 0; dy[i] = 0; }
+
+                for (const f of mesh.faces) {
+                    if (f.isOuter) continue;
+
+                    // Area + centroid in one walk.
+                    let area = 0, cx = 0, cy = 0, n = 0;
+                    let he = f.halfEdge;
+                    do {
+                        const v0 = he.origin;
+                        const v1 = he.next.origin;
+                        area += v0.x * v1.y - v1.x * v0.y;
+                        cx += v0.x;
+                        cy += v0.y;
+                        n++;
+                        he = he.next;
+                    } while (he !== f.halfEdge);
+                    area *= 0.5;
+                    cx /= n;
+                    cy /= n;
+
+                    // Chunk 9: effective rest area modulated by hoverMul.
+                    // Chunk 12: composes breathMul for idle breathing.
+                    // Chunk 23: composes rippleMul for click-propagated
+                    // wave boosts. All four multipliers default to 1
+                    // (no effect) at rest.
+                    const hover  = (f.hoverMul  != null) ? f.hoverMul  : 1;
+                    const breath = (f.breathMul != null) ? f.breathMul : 1;
+                    const ripple = (f.rippleMul != null) ? f.rippleMul : 1;
+                    const effRest = f.restArea * hover * breath * ripple;
+                    const slack   = (f.slack != null) ? f.slack : DEFAULT_SLACK;
+                    const effMin  = effRest * (1 - slack);
+                    const effMax  = effRest * (1 + slack);
+
+                    // Chunk 12: target = effRest at all times (no deadband).
+                    // Outside comfort range: hard force toward the bound.
+                    // Inside comfort range: soft pull toward effRest so
+                    // breath produces visible motion.
+                    // Chunk 24: skip the soft pull during active layout
+                    // transitions so the per-cell easeOutBack overshoot
+                    // isn't cancelled by the relax. Hard bounds still
+                    // enforce the water-balloon resistance from chunk 4.
+                    // After the transition completes, soft pull resumes
+                    // and breath modulation works again.
+                    const inLayoutTransition = (typeof transitioning !== 'undefined' && transitioning);
+                    let target;
+                    if (area > effMax)      target = effMax;
+                    else if (area < effMin) target = effMin;
+                    else if (!inLayoutTransition) target = effRest;
+                    else                     continue;  // in comfort + transitioning → no force
+
+                    if (area <= 0) continue;  // degenerate guard
+
+                    const targetScale    = Math.sqrt(target / area);
+                    const effectiveScale = 1 + RELAX_GAIN * (targetScale - 1);
+                    const k = effectiveScale - 1;
+                    if (k === 0) continue;
+
+                    // Push every boundary vertex radially from the centroid.
+                    he = f.halfEdge;
+                    do {
+                        const v = he.origin;
+                        dx[v.id] += (v.x - cx) * k;
+                        dy[v.id] += (v.y - cy) * k;
+                        he = he.next;
+                    } while (he !== f.halfEdge);
+                }
+
+                const verts = mesh.vertices;
+                for (let i = 0; i < V; i++) {
+                    verts[i].x += dx[i];
+                    verts[i].y += dy[i];
+                }
+            }
+        }
+
+        // ========================= CHUNK 5: VERTEX EDITOR ====================
+        //
+        // In-page authoring: drag vertices to position them, save to a
+        // layout slot, export all layouts as JSON to paste back into
+        // chunk 6's hard-coded layouts.
+        //
+        // Edit mode disables transitions and the relaxation pass so the
+        // user has direct control over vertex positions. Layout buttons
+        // in edit mode become instant teleport (load that slot for
+        // editing). Outside edit mode, everything is back to chunk 4
+        // behavior.
+        //
+        // Persistence: localStorage caches in-progress work as fractions
+        // of (W, H), so refresh AND resize don't lose anything. The
+        // Export button copies the same fraction-form JSON to clipboard
+        // for committing into chunk 6.
+
+        const STORAGE_KEY = 'mk4-layouts-v1';
+        const HANDLE_RADIUS = 5;
+        const HIT_RADIUS = 12;
+
+        let editMode = false;
+        let draggedVertex = null;
+        let hoveredVertex = null;
+
+        // ---- Persistence (fractions of W,H, not pixels) ----
+
+        function saveLayoutsToStorage() {
+            try {
+                const data = {};
+                for (const name of Object.keys(layouts)) {
+                    const arr = layouts[name];
+                    const frac = new Array(arr.length);
+                    for (let i = 0; i < arr.length; i += 2) {
+                        frac[i]     = arr[i]     / W;
+                        frac[i + 1] = arr[i + 1] / H;
+                    }
+                    data[name] = frac;
+                }
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            } catch (e) {
+                console.warn('mk4: failed to save layouts to localStorage', e);
+            }
+        }
+
+        function loadLayoutsFromStorage() {
+            // Reads stored fractions and rehydrates as Float32Array(2*V).
+            // Resize-safe: stored values are scaled to current (W, H).
+            try {
+                const json = localStorage.getItem(STORAGE_KEY);
+                if (!json) return false;
+                const data = JSON.parse(json);
+                const expected = canonicalMesh.vertices.length * 2;
+                let any = false;
+                for (const name of Object.keys(data)) {
+                    const frac = data[name];
+                    if (!Array.isArray(frac) || frac.length !== expected) continue;
+                    const arr = new Float32Array(expected);
+                    for (let i = 0; i < frac.length; i += 2) {
+                        arr[i]     = frac[i]     * W;
+                        arr[i + 1] = frac[i + 1] * H;
+                    }
+                    layouts[name] = arr;
+                    any = true;
+                }
+                if (any && layouts[currentLayout]) {
+                    applyLayout(canonicalMesh, layouts[currentLayout]);
+                    initFaceRestAreas(canonicalMesh);
+                }
+                return any;
+            } catch (e) {
+                console.warn('mk4: failed to load layouts from localStorage', e);
+                return false;
+            }
+        }
+
+        function saveCurrentToSlot(name) {
+            layouts[name] = captureLayout(canonicalMesh);
+            saveLayoutsToStorage();
+        }
+
+        function exportLayoutsJSON() {
+            // Same fraction form as storage; rounded to 4 decimals.
+            const data = {};
+            for (const name of Object.keys(layouts)) {
+                const arr = layouts[name];
+                const frac = [];
+                for (let i = 0; i < arr.length; i += 2) {
+                    frac.push(+(arr[i]     / W).toFixed(4));
+                    frac.push(+(arr[i + 1] / H).toFixed(4));
+                }
+                data[name] = frac;
+            }
+            return JSON.stringify(data, null, 2);
+        }
+
+        // ---- Hit-test, drag, hover ----
+
+        function vertexAtPoint(x, y) {
+            // Chunk 14/16: (x, y) is in screen-space; unwarp once and
+            // compare against unwarped vertex positions.
+            let qx = x, qy = y;
+            if (typeof unwarpVertex === 'function') {
+                const u = unwarpVertex(x, y, W, H);
+                qx = u.x; qy = u.y;
+            }
+            let closest = null;
+            let bestDist = HIT_RADIUS;
+            for (const v of canonicalMesh.vertices) {
+                const d = Math.hypot(qx - v.x, qy - v.y);
+                if (d < bestDist) {
+                    bestDist = d;
+                    closest = v;
+                }
+            }
+            return closest;
+        }
+
+        function updateCursor() {
+            if (!editMode) { canvas.style.cursor = 'default'; return; }
+            if (draggedVertex)      canvas.style.cursor = 'grabbing';
+            else if (hoveredVertex) canvas.style.cursor = 'grab';
+            else                    canvas.style.cursor = 'crosshair';
+        }
+
+        function canvasPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (!editMode) return;
+            const p = canvasPos(e);
+            draggedVertex = vertexAtPoint(p.x, p.y);
+            updateCursor();
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!editMode) return;
+            const p = canvasPos(e);
+            if (draggedVertex) {
+                // Chunk 14/16: unwarp cursor before writing to vertex.
+                let qx = p.x, qy = p.y;
+                if (typeof unwarpVertex === 'function') {
+                    const u = unwarpVertex(p.x, p.y, W, H);
+                    qx = u.x; qy = u.y;
+                }
+                draggedVertex.x = qx;
+                draggedVertex.y = qy;
+            } else {
+                hoveredVertex = vertexAtPoint(p.x, p.y);
+            }
+            updateCursor();
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            if (!editMode) return;
+            draggedVertex = null;
+            updateCursor();
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            draggedVertex = null;
+            hoveredVertex = null;
+            updateCursor();
+        });
+
+        // ---- Render handles (called from animate when editMode) ----
+
+        function renderHandles() {
+            // Chunk 14/16: warp each vertex to its visible (screen-space)
+            // position before drawing the handle.
+            const useWarp = (typeof warpVertex === 'function');
+            for (const v of canonicalMesh.vertices) {
+                const isActive  = v === draggedVertex;
+                const isHovered = v === hoveredVertex && !draggedVertex;
+                const r = (isActive || isHovered) ? HANDLE_RADIUS * 1.6 : HANDLE_RADIUS;
+                let dx = v.x, dy = v.y;
+                if (useWarp) {
+                    const w = warpVertex(v.x, v.y, W, H);
+                    dx = w.x; dy = w.y;
+                }
+                ctx.beginPath();
+                ctx.arc(dx, dy, r, 0, Math.PI * 2);
+                ctx.fillStyle = isActive
+                    ? '#fff'
+                    : isHovered ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.85)';
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+        }
+
+        // ---- Edit panel UI wiring ----
+
+        const editToggle  = document.getElementById('editToggle');
+        const editControls = document.getElementById('editControls');
+
+        function setEditMode(on) {
+            editMode = on;
+            editToggle.classList.toggle('active', on);
+            editControls.classList.toggle('visible', on);
+            if (on) {
+                // Stop any in-flight transition immediately and capture
+                // wherever the mesh is RIGHT NOW as the new "rest" so
+                // editing starts from a comfortable, force-free state.
+                transitioning = false;
+                initFaceRestAreas(canonicalMesh);
+            }
+            updateCursor();
+        }
+        editToggle.addEventListener('click', () => setEditMode(!editMode));
+
+        document.querySelectorAll('[data-save]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                saveCurrentToSlot(btn.dataset.save);
+                btn.classList.add('flash');
+                setTimeout(() => btn.classList.remove('flash'), 600);
+            });
+        });
+
+        const exportBtn = document.getElementById('exportBtn');
+        exportBtn.addEventListener('click', () => {
+            const json = exportLayoutsJSON();
+            const flash = () => {
+                exportBtn.classList.add('flash');
+                setTimeout(() => exportBtn.classList.remove('flash'), 600);
+            };
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(json).then(flash, () => {
+                    console.log(json); flash();
+                });
+            } else {
+                console.log(json); flash();
+            }
+        });
+
+        // ---- Override goToLayout: teleport in edit mode, transition out ----
+
+        const _chunk3GoToLayout = goToLayout;
+        goToLayout = (name) => {
+            if (editMode) {
+                if (layouts[name]) {
+                    applyLayout(canonicalMesh, layouts[name]);
+                    initFaceRestAreas(canonicalMesh);
+                    // Chunk 8: sync visibilities to the new layout on
+                    // edit-mode teleport. (Edit mode renders all cells
+                    // visibly anyway, but we keep visibility data
+                    // accurate so exiting edit mode is consistent.)
+                    if (typeof applyLayoutVisibilities === 'function') {
+                        applyLayoutVisibilities(name);
+                    }
+                    // Chunk 9: same for slack overrides.
+                    if (typeof applyLayoutSlack === 'function') {
+                        applyLayoutSlack(name);
+                    }
+                }
+            } else {
+                _chunk3GoToLayout(name);
+            }
+        };
+
+        // ---- Initial load + resize-driven reload from storage ----
+
+        loadLayoutsFromStorage();
+        // Runs after chunks 0/1/2/3.5's resize listeners, so the mesh has
+        // been rebuilt and rest areas reset before we re-rehydrate stored
+        // layouts and re-apply currentLayout.
+        window.addEventListener('resize', loadLayoutsFromStorage);
+
+        // ========================= CHUNK 7: PROCEDURAL LAYOUTS ==============
+        //
+        // Procedural layout generators ported from morph.html. Each
+        // generator returns 12 cell specs in canonical-id order (cell 0
+        // is the canonical top-left of the 4×3 grid, cell 11 the
+        // bottom-right). buildLayoutFromCellSpecs then converts the
+        // specs to vertex positions by averaging each vertex's
+        // contribution from its incident cells.
+        //
+        // Note on the averaging method: a cell's "own" scale gets
+        // partially overridden by its neighbors' scales at shared
+        // vertices. This means uniform-scale layouts (hex, spiral,
+        // sidebar, diagonal) work cleanly, while mixed-scale layouts
+        // (bento with one big hero) get diluted: the hero is bigger
+        // than its neighbors but not as much as the bare scale would
+        // imply. Acceptable trade-off for procedural generation.
+        //
+        // Layouts that need true hidden cells (rim with hollow center,
+        // sidebar with void claiming the right side) are deferred to a
+        // future chunk that adds per-face visibility lerping. The mk4
+        // versions of sidebar and diagonal use natural whitespace from
+        // packing cells into one part of the canvas, leaving the rest
+        // visually empty without hiding anything.
+        //
+        // localStorage takes precedence: if you've saved real layouts
+        // via the chunk 5 editor, those win on init AND on resize.
+        //
+        // Cell id → canonical centroid (as fraction of W, H):
+        //   0 (0.16, 0.20)   1 (0.42, 0.20)   2 (0.67, 0.22)   3 (0.88, 0.17)
+        //   4 (0.13, 0.50)   5 (0.35, 0.49)   6 (0.59, 0.50)   7 (0.84, 0.50)
+        //   8 (0.17, 0.80)   9 (0.44, 0.80)  10 (0.68, 0.80)  11 (0.89, 0.82)
+
+        function buildLayoutFromCellSpecs(specs, mesh, canonicalLayout, W, H) {
+            // For each interior face, compute its canonical centroid, then
+            // accumulate (target_centroid + offset_from_canonical * scale)
+            // at each boundary vertex. Shared vertices average across all
+            // incident cells, so neighboring cells negotiate the position.
+            const V = mesh.vertices.length;
+            const arr = new Float32Array(V * 2);
+            const counts = new Int32Array(V);
+
+            for (const f of mesh.faces) {
+                if (f.isOuter) continue;
+                const spec = specs[f.id];
+                if (!spec) continue;
+
+                // Canonical centroid of this face.
+                let ccx = 0, ccy = 0, n = 0;
+                let he = f.halfEdge;
+                do {
+                    const v = he.origin;
+                    ccx += canonicalLayout[v.id * 2];
+                    ccy += canonicalLayout[v.id * 2 + 1];
+                    n++;
+                    he = he.next;
+                } while (he !== f.halfEdge);
+                ccx /= n;
+                ccy /= n;
+
+                const tX = spec.tx * W;
+                const tY = spec.ty * H;
+                const sx = spec.sx, sy = spec.sy;
+                he = f.halfEdge;
+                do {
+                    const v = he.origin;
+                    const ox = canonicalLayout[v.id * 2]     - ccx;
+                    const oy = canonicalLayout[v.id * 2 + 1] - ccy;
+                    arr[v.id * 2]     += tX + ox * sx;
+                    arr[v.id * 2 + 1] += tY + oy * sy;
+                    counts[v.id]++;
+                    he = he.next;
+                } while (he !== f.halfEdge);
+            }
+
+            for (let i = 0; i < V; i++) {
+                if (counts[i] > 0) {
+                    arr[i * 2]     /= counts[i];
+                    arr[i * 2 + 1] /= counts[i];
+                }
+            }
+            return arr;
+        }
+
+        // ---- Procedural generators ----
+        //
+        // Each function returns an array of 12 { tx, ty, sx, sy } specs
+        // in canonical-id order. tx/ty are fractions of (W, H); sx/sy
+        // are scales relative to the canonical centroid offset.
+
+        // HEX — hexagonal close-packing, 4×3 with row-offset.
+        // Even rows aligned to columns; odd row shifted half a column.
+        function hexLayout(W, H) {
+            const r = [];
+            for (let row = 0; row < 3; row++) {
+                const yFrac = 0.20 + row * 0.30;
+                const xOff  = (row % 2) * 0.11;
+                for (let col = 0; col < 4; col++) {
+                    r.push({
+                        tx: 0.105 + col * 0.22 + xOff,
+                        ty: yFrac,
+                        sx: 0.85, sy: 0.95,
+                    });
+                }
+            }
+            return r;
+        }
+
+        // SPIRAL — true Fermat / golden-angle spiral from the center
+        // outward. Returns 12 specs in spiral order (innermost first).
+        // Used WITH assignSpecsToCanonical (chunk 10): the canonical cell
+        // closest to the canvas center gets assigned to the innermost
+        // spiral position, the next-closest cell to the next, etc. This
+        // preserves canonical adjacency through the radical re-arrangement,
+        // so topology stays clean. (The pre-chunk-10 row-major assignment
+        // produced flipped cells.)
+        function spiralLayout(W, H) {
+            const r = [];
+            const goldenAngle = Math.PI * (3 - Math.sqrt(5));  // ≈ 137.5°
+            const cx = W / 2, cy = H / 2;
+            const minR = Math.min(W, H) * 0.05;
+            const maxR = Math.min(W, H) * 0.42;
+            for (let i = 0; i < 12; i++) {
+                const t = i / 11;
+                const radius = minR + Math.sqrt(t) * (maxR - minR);
+                const angle  = i * goldenAngle;
+                const px = cx + radius * Math.cos(angle);
+                const py = cy + radius * Math.sin(angle);
+                r.push({
+                    tx: px / W,
+                    ty: py / H,
+                    sx: 0.85, sy: 0.85,
+                });
+            }
+            return r;
+        }
+
+        // SIDEBAR — cells condensed into a narrow vertical strip on
+        // the left, the right ~75% naturally empty. No void cell
+        // needed: just compress the x range and let whitespace happen.
+        function sidebarLayout(W, H) {
+            const r = [];
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < 4; col++) {
+                    r.push({
+                        tx: 0.05 + col * 0.05,   // x in [0.05, 0.20]
+                        ty: 0.16 + row * 0.34,
+                        sx: 0.30, sy: 0.95,
+                    });
+                }
+            }
+            return r;
+        }
+
+        // DIAGONAL — cells packed into the upper-left triangular half,
+        // the lower-right naturally empty. Each cell's target is its
+        // canonical position, scaled toward (0, 0).
+        function diagonalLayout(W, H) {
+            const r = [];
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < 4; col++) {
+                    const cx = 0.125 + col * 0.25;
+                    const cy = 0.20  + row * 0.30;
+                    r.push({
+                        tx: cx * 0.55,
+                        ty: cy * 0.55,
+                        sx: 0.55, sy: 0.55,
+                    });
+                }
+            }
+            return r;
+        }
+
+        // BENTO — cell 6 grows as a central hero; the others stay near
+        // canonical positions at slightly reduced scale. Mixed scales
+        // get diluted by the averaging method, so the hero is visibly
+        // bigger but not as dramatic as the bare 1.5 scale would imply.
+        function bentoLayout(W, H) {
+            const r = [];
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < 4; col++) {
+                    const i = row * 4 + col;
+                    if (i === 6) {
+                        r.push({ tx: 0.55, ty: 0.50, sx: 1.50, sy: 1.50 });
+                    } else {
+                        r.push({
+                            tx: 0.125 + col * 0.25,
+                            ty: 0.20  + row * 0.30,
+                            sx: 0.85, sy: 0.85,
+                        });
+                    }
+                }
+            }
+            return r;
+        }
+
+        // HOLLOW — cells around the perimeter, cells 5 and 6 hidden in
+        // the center to create a true hollow ring (the chunk 8 visibility
+        // subsystem fades them out during the transition into this layout).
+        // Cells 5 and 6 keep canonical-ish positions so the visible
+        // perimeter cells' inner edges form a clean inner boundary around
+        // the hidden cells. The visible 10 cells are pushed slightly
+        // toward the canvas edges.
+        function hollowLayout(W, H) {
+            return [
+                { tx: 0.10, ty: 0.13, sx: 0.85, sy: 0.85 },  //  0
+                { tx: 0.34, ty: 0.10, sx: 0.85, sy: 0.85 },  //  1
+                { tx: 0.66, ty: 0.10, sx: 0.85, sy: 0.85 },  //  2
+                { tx: 0.90, ty: 0.13, sx: 0.85, sy: 0.85 },  //  3
+                { tx: 0.07, ty: 0.50, sx: 0.85, sy: 0.85 },  //  4
+                { tx: 0.35, ty: 0.49, sx: 0.85, sy: 0.85 },  //  5  hidden, holds center
+                { tx: 0.59, ty: 0.50, sx: 0.85, sy: 0.85 },  //  6  hidden, holds center
+                { tx: 0.93, ty: 0.50, sx: 0.85, sy: 0.85 },  //  7
+                { tx: 0.10, ty: 0.87, sx: 0.85, sy: 0.85 },  //  8
+                { tx: 0.34, ty: 0.90, sx: 0.85, sy: 0.85 },  //  9
+                { tx: 0.66, ty: 0.90, sx: 0.85, sy: 0.85 },  // 10
+                { tx: 0.90, ty: 0.87, sx: 0.85, sy: 0.85 },  // 11
+            ];
+        }
+
+        // Chunk 10: greedy topology-aware assignment of canonical cells
+        // to spec positions by spatial proximity.
+        //
+        // The procedural generators above return a list of 12 specs in
+        // some natural order (e.g. spiral order from center outward).
+        // Without assignment, spec[i] is forced onto canonical cell i,
+        // which can scramble adjacencies for layouts that radically
+        // rearrange — most visibly the Fermat spiral, which produced a
+        // flipped cell with the row-major mapping.
+        //
+        // The fix: greedily match each canonical cell to the closest
+        // unused spec, iterating cells in order of distance from the
+        // canvas center (so cells nearest the middle get first pick at
+        // the most-central specs). The result is then reordered into
+        // canonical id order so buildLayoutFromCellSpecs can index it
+        // by face.id as before.
+        //
+        // For layouts that already have specs in canonical-friendly
+        // order (hex, sidebar, diagonal, bento, hollow), the assignment
+        // is approximately a no-op. For spiral, it transforms a broken
+        // layout into a working one.
+
+        function assignSpecsToCanonical(specs, mesh, canonicalLayout, W, H) {
+            const interior = mesh.faces.filter(f => !f.isOuter);
+
+            // Canonical centroid of each interior face, in pixel space.
+            const centroids = new Map();
+            for (const f of interior) {
+                let cx = 0, cy = 0, n = 0;
+                let he = f.halfEdge;
+                do {
+                    const v = he.origin;
+                    cx += canonicalLayout[v.id * 2];
+                    cy += canonicalLayout[v.id * 2 + 1];
+                    n++;
+                    he = he.next;
+                } while (he !== f.halfEdge);
+                centroids.set(f.id, { x: cx / n, y: cy / n });
+            }
+
+            // Iterate cells in order of distance from canvas center
+            // (closest first). The cell nearest the middle picks its
+            // best spec first, getting the most-central spec available.
+            const cellOrder = [...interior].sort((a, b) => {
+                const ca = centroids.get(a.id);
+                const cb = centroids.get(b.id);
+                const da = (ca.x - W / 2) ** 2 + (ca.y - H / 2) ** 2;
+                const db = (cb.x - W / 2) ** 2 + (cb.y - H / 2) ** 2;
+                return da - db;
+            });
+
+            const targets = specs.map(s => ({ x: s.tx * W, y: s.ty * H, spec: s }));
+            const used = new Array(targets.length).fill(false);
+            const result = new Array(specs.length);
+
+            for (const cell of cellOrder) {
+                const cc = centroids.get(cell.id);
+                let bestIdx = -1, bestDist = Infinity;
+                for (let i = 0; i < targets.length; i++) {
+                    if (used[i]) continue;
+                    const dx = targets[i].x - cc.x;
+                    const dy = targets[i].y - cc.y;
+                    const d = dx * dx + dy * dy;
+                    if (d < bestDist) { bestDist = d; bestIdx = i; }
+                }
+                if (bestIdx >= 0) {
+                    used[bestIdx] = true;
+                    result[cell.id] = targets[bestIdx].spec;
+                }
+            }
+            return result;
+        }
+
+        // Convenience wrappers. makeLayout uses canonical-id row-major
+        // (spec[i] → cell i), which works cleanly for layouts where the
+        // spec list is already in canonical row-major order (hex,
+        // sidebar, diagonal, bento, hollow). makeLayoutAssigned applies
+        // the proximity-based assignment first; only used for layouts
+        // where the spec order doesn't naturally match canonical
+        // adjacency (spiral).
+        //
+        // NOTE on why this isn't universal: assignment optimizes total
+        // distance, which is the right objective for layouts that
+        // redistribute cells across the canvas (spiral), but the WRONG
+        // objective for layouts that COMPRESS cells into a sub-region
+        // (sidebar, diagonal). In compressed layouts, "minimize total
+        // distance" causes cells to leap-frog each other and lose the
+        // relative ordering that keeps shared vertices coherent. Hex,
+        // bento, etc. happen to work both ways.
+        function makeLayout(generator) {
+            return buildLayoutFromCellSpecs(
+                generator(W, H), canonicalMesh, layouts.L1, W, H);
+        }
+        function makeLayoutAssigned(generator) {
+            const rawSpecs = generator(W, H);
+            const assignedSpecs = assignSpecsToCanonical(
+                rawSpecs, canonicalMesh, layouts.L1, W, H);
+            return buildLayoutFromCellSpecs(
+                assignedSpecs, canonicalMesh, layouts.L1, W, H);
+        }
+
+        function applyProceduralDefaults() {
+            // Storage takes precedence — only fill slots NOT saved by
+            // the chunk 5 editor. L1 is always the canonical mesh.
+            let stored = {};
+            try {
+                stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+            } catch (e) {}
+
+            // Chunk 10: spiral uses topology-aware assignment so a true
+            // Fermat spiral can land cleanly on the fixed mesh. The other
+            // layouts already work with canonical row-major and would
+            // break under assignment (see notes on makeLayout).
+            if (!stored.L2) layouts.L2 = makeLayout(hexLayout);
+            if (!stored.L3) layouts.L3 = makeLayoutAssigned(spiralLayout);
+            if (!stored.L4) layouts.L4 = makeLayout(sidebarLayout);
+            if (!stored.L5) layouts.L5 = makeLayout(diagonalLayout);
+            if (!stored.L6) layouts.L6 = makeLayout(bentoLayout);
+            if (!stored.L7) layouts.L7 = makeLayout(hollowLayout);
+
+            // Chunk 8: populate per-layout hidden lists. Only Hollow has
+            // hidden cells; the rest are all-visible. Storage doesn't
+            // override the hidden list (editor saves preserve hidden).
+            layoutHidden.L1 = [];
+            layoutHidden.L2 = [];
+            layoutHidden.L3 = [];
+            layoutHidden.L4 = [];
+            layoutHidden.L5 = [];
+            layoutHidden.L6 = [];
+            layoutHidden.L7 = [5, 6];
+
+            // Chunk 9: per-layout slack overrides. Bento's hero (cell 6)
+            // gets tight slack so it actually asserts its size against
+            // its neighbors during transit. Hollow's hidden cells get
+            // very loose slack so they yield freely to whatever the
+            // visible perimeter cells need.
+            layoutSlack.L1 = {};
+            layoutSlack.L2 = {};
+            layoutSlack.L3 = {};
+            layoutSlack.L4 = {};
+            layoutSlack.L5 = {};
+            layoutSlack.L6 = { 6: 0.10 };
+            layoutSlack.L7 = { 5: 0.50, 6: 0.50 };
+
+            if (layouts[currentLayout]) {
+                applyLayout(canonicalMesh, layouts[currentLayout]);
+                initFaceRestAreas(canonicalMesh);
+                // Chunk 8: sync visibility state to the current layout.
+                if (typeof applyLayoutVisibilities === 'function') {
+                    applyLayoutVisibilities(currentLayout);
+                }
+                // Chunk 9: sync slack overrides for the current layout.
+                if (typeof applyLayoutSlack === 'function') {
+                    applyLayoutSlack(currentLayout);
+                }
+            }
+        }
+        applyProceduralDefaults();
+        window.addEventListener('resize', applyProceduralDefaults);
+
+        // ========================= CHUNK 8: HIDDEN / VOID CELLS =============
+        //
+        // Per-face visibility lerping. Each face has a `visibility` value
+        // in [0, 1]; rendered alpha = visibility, and faces with visibility
+        // below ~0.005 are skipped entirely. Layouts can declare a list of
+        // hidden cells via the `layoutHidden[name]` parallel dict; cells
+        // listed there fade out during the transition INTO that layout
+        // and fade back in during the transition OUT.
+        //
+        // The hidden cells are still topologically present — they have
+        // vertices, share edges with neighbors, get pushed by relaxation
+        // — they just aren't drawn. This is exactly the "void cell"
+        // mechanism from morph.html, used to create layouts where parts
+        // of the canvas read as empty (rim, hollow center, sidebar+void).
+        //
+        // Where the helpers are wired in:
+        //   - chunk 1 renderMesh    : alpha + skip
+        //   - chunk 3 startTransition: snapshot/compute viz endpoints
+        //   - chunk 3 updateTransition: lerp viz alongside restArea
+        //   - chunk 3.5 initFaceRestAreas: default visibility = 1
+        //   - chunk 5 goToLayout    : sync viz on edit-mode teleport
+        //   - chunk 7 applyProceduralDefaults: populate layoutHidden + sync
+
+        function captureVisibilities(mesh) {
+            const interior = mesh.faces.filter(f => !f.isOuter);
+            const arr = new Float32Array(interior.length);
+            for (const f of interior) arr[f.id] = (f.visibility != null) ? f.visibility : 1;
+            return arr;
+        }
+
+        function computeTargetVisibilities(name) {
+            // Returns a Float32Array(F) with 0 for hidden cells, 1 for visible.
+            const interior = canonicalMesh.faces.filter(f => !f.isOuter);
+            const arr = new Float32Array(interior.length);
+            const hidden = layoutHidden[name] || [];
+            const hiddenSet = new Set(hidden);
+            for (const f of interior) arr[f.id] = hiddenSet.has(f.id) ? 0 : 1;
+            return arr;
+        }
+
+        function applyLayoutVisibilities(name) {
+            // Snap visibility to the layout's hidden list. Used by teleport
+            // paths (edit mode, init, resize) — transition paths use the
+            // lerp in updateTransition instead.
+            const hidden = layoutHidden[name] || [];
+            const hiddenSet = new Set(hidden);
+            for (const f of canonicalMesh.faces) {
+                if (f.isOuter) continue;
+                f.visibility = hiddenSet.has(f.id) ? 0 : 1;
+            }
+        }
+
+        // Initial sync (chunk 7's applyProceduralDefaults already called
+        // applyLayoutVisibilities through the typeof guard, so this is a
+        // belt-and-suspenders pass for cases where chunk 7 ran before
+        // this function existed).
+        applyLayoutVisibilities(currentLayout);
+
+        // ========================= CHUNK 9: HOVER + POLISH ===================
+        //
+        // Five polish items in one chunk:
+        //
+        //   1. RELAX_ITERS / RELAX_GAIN bumped (chunk 4 constants)
+        //      from (2, 0.5) to (4, 0.6). The conservative defaults
+        //      from chunk 4 made the water-balloon resistance nearly
+        //      invisible against the chunk-2 fixtures; with the
+        //      aggressive chunk-7 procedural layouts (sidebar,
+        //      diagonal, hollow) the higher tunables actually
+        //      produce visible push-back.
+        //
+        //   2. HOVER. Mouse-over a cell makes it grow via the same
+        //      restArea mechanism we already have: hovered cell's
+        //      hoverMul ramps to 1.4, the relax pass uses
+        //      effectiveRest = restArea * hoverMul, so the cell
+        //      naturally pushes outward and squeezes neighbors.
+        //      No new physics — the existing relax handles it.
+        //
+        //      Hit-test uses point-in-polygon against the actual
+        //      rendered face polygon (chunk 1's facePolygon walk).
+        //      This also fixes audit item #20 from the original
+        //      audit (hit-test against inset-less polygon).
+        //
+        //      The lerp toward target hoverMul is gradual (~7
+        //      frames at 60fps), so chunk 4's audit-item #11
+        //      "hover snap at end of transition" never happens —
+        //      hover blends in smoothly whenever it's set.
+        //
+        //   3. PER-CELL SLACK via layoutSlack[name][cellId]. Bento
+        //      sets cell 6 (hero) to slack=0.10 so it asserts its
+        //      target size against neighbors. Hollow sets cells
+        //      5, 6 (hidden) to slack=0.50 so they yield freely.
+        //      Other cells use DEFAULT_SLACK (0.25).
+        //
+        //   4. VISUAL polish — bolder borders (1.5 px, 14% alpha),
+        //      faceColor saturation 42→50, lightness 38→42 for
+        //      richer reads against the dark background. (See
+        //      chunks 1 / 4 for the actual values.)
+        //
+        //   5. HIT-TEST FIX — see (2). Comes free with hover.
+
+        let HOVER_BOOST      = 1.8;   // hovered cell wants 1.8x area; with the
+                                      // default 0.25 slack the relax pulls
+                                      // the cell to effMin = boost*0.75 =
+                                      // 1.35x its rest area (visible 35%
+                                      // growth). Lower boost = barely visible.
+                                      // Chunk 18: tunable.
+        // Chunk 15: asymmetric ramp — fast snap on hover, slow ease off.
+        // The asymmetry makes the hover feel tactile (cell crisply takes
+        // focus when you arrive, then relaxes gently when you leave).
+        const HOVER_LERP_ON  = 0.30;  // ~3 frames to focus
+        const HOVER_LERP_OFF = 0.06;  // ~17 frames to relax
+
+        let hoveredFace = null;
+
+        function pointInPolygon(px, py, verts) {
+            // Standard ray-casting test for point-in-polygon.
+            let inside = false;
+            const n = verts.length;
+            for (let i = 0, j = n - 1; i < n; j = i++) {
+                const xi = verts[i].x, yi = verts[i].y;
+                const xj = verts[j].x, yj = verts[j].y;
+                if (((yi > py) !== (yj > py)) &&
+                    (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+                    inside = !inside;
+                }
+            }
+            return inside;
+        }
+
+        function faceAtPoint(mesh, px, py) {
+            // Walks all interior faces; returns the one containing
+            // (px, py), or null. Skips faces with visibility < 0.5
+            // so fading-out cells don't catch hover.
+            //
+            // Chunk 14: (px, py) is in screen-space (warped). Unwarp
+            // it once to get the underlying mesh-space point, then
+            // hit-test against the unwarped polygons.
+            // Chunk 16: unwarpVertex reads containerShape state
+            // internally, including any in-flight shape transition.
+            let qx = px, qy = py;
+            if (typeof unwarpVertex === 'function') {
+                const u = unwarpVertex(px, py, W, H);
+                qx = u.x; qy = u.y;
+            }
+            for (const f of mesh.faces) {
+                if (f.isOuter) continue;
+                const vis = (f.visibility != null) ? f.visibility : 1;
+                if (vis < 0.5) continue;
+                const verts = facePolygon(f);
+                if (verts.length < 3) continue;
+                if (pointInPolygon(qx, qy, verts)) return f;
+            }
+            return null;
+        }
+
+        // Hover mouse handlers — only fire in non-edit mode (chunk 5
+        // owns the mouse in edit mode for vertex dragging). Both sets
+        // of handlers can coexist on the canvas because each filters
+        // by the editMode flag.
+        canvas.addEventListener('mousemove', (e) => {
+            if (editMode) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            hoveredFace = faceAtPoint(canonicalMesh, x, y);
+        });
+        canvas.addEventListener('mouseleave', () => {
+            if (editMode) return;
+            hoveredFace = null;
+        });
+
+        function updateHover() {
+            // Each frame, ramp every face's hoverMul toward its target
+            // (1.0 normally, HOVER_BOOST when hovered, pinned, OR
+            // keyboard-focused). Asymmetric ramp: fast snap toward
+            // focus, slow ease back. Chunk 11 added pinning, chunk 15
+            // added asymmetry, chunk 20 adds keyboard focus.
+            for (const f of canonicalMesh.faces) {
+                if (f.isOuter) continue;
+                const isFocused = (f === hoveredFace) ||
+                                  (typeof pinnedCellId           !== 'undefined' && f.id === pinnedCellId) ||
+                                  (typeof keyboardFocusedCellId !== 'undefined' && f.id === keyboardFocusedCellId);
+                const target  = isFocused ? HOVER_BOOST : 1;
+                const current = (f.hoverMul != null) ? f.hoverMul : 1;
+                const lerp    = (target > current) ? HOVER_LERP_ON : HOVER_LERP_OFF;
+                f.hoverMul = current + (target - current) * lerp;
+            }
+        }
+
+        function applyLayoutSlack(name) {
+            // Snap each face's slack to the layout's per-cell override
+            // (or DEFAULT_SLACK if not overridden). Used by teleport
+            // paths; transitions don't lerp slack — it switches at the
+            // moment of click, with the relax pass smoothing the result.
+            const overrides = layoutSlack[name] || {};
+            for (const f of canonicalMesh.faces) {
+                if (f.isOuter) continue;
+                const v = overrides[f.id];
+                f.slack = (v != null) ? v : DEFAULT_SLACK;
+            }
+        }
+
+        // Initial sync — chunk 7's applyProceduralDefaults guarded the
+        // call with typeof, so this catches the case where the function
+        // didn't exist at init time.
+        applyLayoutSlack(currentLayout);
+
+        // ========================= CHUNK 11: CLICK-TO-PIN =====================
+        //
+        // Clicking a cell in non-edit mode "pins" it — the cell stays at
+        // HOVER_BOOST size permanently until you click somewhere else.
+        // Click the same cell again to release. Click empty space (or a
+        // hidden cell) to release.
+        //
+        // The pinning shares the chunk 9 hover machinery: pinned cells
+        // are treated as if they were hovered. The updateHover modification
+        // above ORs the pin into the focus check — one symmetric ramp,
+        // no double-stacking.
+        //
+        // Pin survives layout transitions (cell identity is the persistent
+        // thing, not position). Pin is independent of edit mode (chunk 5
+        // takes over the cursor in edit mode and click events are
+        // edit-mode-filtered).
+
+        let pinnedCellId = null;
+
+        canvas.addEventListener('click', (e) => {
+            if (editMode) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const face = faceAtPoint(canonicalMesh, x, y);
+            if (face) {
+                // Toggle: clicking the pinned cell unpins it.
+                pinnedCellId = (pinnedCellId === face.id) ? null : face.id;
+            } else {
+                // Click on empty space (or a hidden cell) releases.
+                pinnedCellId = null;
+            }
+        });
+
+        // Chunk 15: touch input. touchstart is used for both edit-mode
+        // drag-vertex and non-edit-mode tap-to-pin. touchmove updates
+        // the drag in edit mode. touchend releases the drag. We track
+        // touch start position to distinguish a tap from a drag in
+        // non-edit mode (so a brief touch becomes a pin click, not a
+        // pan).
+        let _touchStartId = null;
+        let _touchStartX = 0, _touchStartY = 0;
+        let _touchMoved = false;
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length !== 1) return;
+            const t = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = t.clientX - rect.left;
+            const y = t.clientY - rect.top;
+            _touchStartId = t.identifier;
+            _touchStartX = x; _touchStartY = y;
+            _touchMoved = false;
+            if (editMode) {
+                // Equivalent to mousedown in edit mode.
+                draggedVertex = vertexAtPoint(x, y);
+                updateCursor();
+            }
+            e.preventDefault();
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            const t = Array.from(e.touches).find(tt => tt.identifier === _touchStartId);
+            if (!t) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = t.clientX - rect.left;
+            const y = t.clientY - rect.top;
+            const dx = x - _touchStartX, dy = y - _touchStartY;
+            if (Math.hypot(dx, dy) > 6) _touchMoved = true;
+            if (editMode && draggedVertex) {
+                // Equivalent to chunk 5's mousemove drag.
+                let qx = x, qy = y;
+                if (typeof unwarpVertex === 'function') {
+                    const u = unwarpVertex(x, y, W, H);
+                    qx = u.x; qy = u.y;
+                }
+                draggedVertex.x = qx;
+                draggedVertex.y = qy;
+            }
+            e.preventDefault();
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            const ended = Array.from(e.changedTouches).find(tt => tt.identifier === _touchStartId);
+            if (!ended) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = ended.clientX - rect.left;
+            const y = ended.clientY - rect.top;
+            if (editMode) {
+                draggedVertex = null;
+                updateCursor();
+            } else if (!_touchMoved) {
+                // Tap (no drag) → pin toggle, equivalent to click handler.
+                const face = faceAtPoint(canonicalMesh, x, y);
+                if (face) {
+                    pinnedCellId = (pinnedCellId === face.id) ? null : face.id;
+                } else {
+                    pinnedCellId = null;
+                }
+            }
+            _touchStartId = null;
+            _touchMoved = false;
+        });
+
+        canvas.addEventListener('touchcancel', () => {
+            if (editMode) draggedVertex = null;
+            _touchStartId = null;
+            _touchMoved = false;
+            updateCursor();
+        });
+
+        // ========================= CHUNK 12: IDLE BREATHING ===================
+        //
+        // Subtle per-cell sinusoidal modulation of restArea, so the
+        // mesh "breathes" when idle. Recovers some of the live feel
+        // that morph.html had via its per-frame pressure loop, without
+        // the chaos that loop produced during transitions.
+        //
+        // Each cell has a phase offset (set once at init, golden-angle
+        // distributed so cells aren't synchronized). Each frame:
+        //
+        //   breathMul = 1 + BREATH_AMP * sin(time * BREATH_FREQ + phase)
+        //
+        // The relax pass (chunk 4) composes this as a third multiplier
+        // alongside hoverMul (chunk 9): effRest = restArea * hover * breath.
+        //
+        // BREATH_AMP = 0.02 means ±2% area variation. With default slack
+        // 0.25, this is well within the comfort range, so the relax
+        // doesn't fire forces against the breath — cells just glide
+        // through their cycle. Only when stacked on a stressed cell
+        // (mid-transition or hovered) does the breath visibly compose.
+        //
+        // Skipped in edit mode (vertex positions are user-controlled).
+
+        let BREATH_AMP  = 0.02;     // ±2% area variation per cell — chunk 18: tunable
+        const BREATH_FREQ = 0.0015; // rad/ms = 1.5 rad/s → period ≈ 4.2s
+                                    // Bump to 0.003 for ~2s, 0.004 for ~1.5s.
+
+        function updateBreath(now) {
+            // Per-frame sinusoidal modulation, golden-angle phase offset
+            // so cells breathe out of sync.
+            for (const f of canonicalMesh.faces) {
+                if (f.isOuter) continue;
+                const phase = (f.breathPhase != null) ? f.breathPhase : 0;
+                f.breathMul = 1 + BREATH_AMP * Math.sin(now * BREATH_FREQ + phase);
+            }
+        }
+
+        // ========================= CHUNK 13: CONTAINER SHAPES =================
+        //
+        // The mesh is computed and rendered against the full rectangular
+        // canvas. This chunk adds visual clipping to a non-rectangular
+        // container shape: cells extend slightly past the container in
+        // some places, but only the inside is drawn (Tier A — visual
+        // clipping only). The mesh topology and vertex positions are
+        // unchanged; the relax / hover / breath / transitions all run
+        // unchanged. Only the renderer wraps face drawing in a clip.
+        //
+        // Container shapes:
+        //   rect    — default; no clip; identical to chunks 1-12
+        //   rounded — rounded rectangle, corner radius = min(W,H) * 0.04
+        //   circle  — inscribed circle, radius = min(W,H) * 0.45
+        //
+        // The shape outline is rendered AFTER the cells, as a thin
+        // border, so the user can see the container edge.
+        //
+        // Tier B (geometric mesh fitting onto container shape) is
+        // deferred. If clipping looks too harsh on circle/rounded,
+        // we'd need to generalize chunk 1's Sutherland-Hodgman from
+        // rect-clipping to arbitrary-polygon-clipping.
+
+        const CONTAINER_SHAPES = ['rect', 'rounded', 'circle'];
+        let containerShape = 'rect';
+        // Chunk 16: shape transitions. shapeT = 1 means we're at
+        // containerShape; shapeT < 1 means we're partway from
+        // containerPrevShape to containerShape.
+        let containerPrevShape = 'rect';
+        let shapeT = 1;
+        let shapeStartTime = 0;
+        let SHAPE_TRANSITION_DURATION = 700;  // ms — chunk 21: tunable for reduced motion
+
+        function buildContainerPath(W, H, shape) {
+            // Returns a Path2D for the current shape, sized to (W, H).
+            const p = new Path2D();
+            if (shape === 'rounded') {
+                const r = Math.min(W, H) * 0.04;
+                // Manual rounded rect (broader browser support than
+                // ctx.roundRect, which is recent).
+                p.moveTo(r, 0);
+                p.lineTo(W - r, 0);
+                p.quadraticCurveTo(W, 0, W, r);
+                p.lineTo(W, H - r);
+                p.quadraticCurveTo(W, H, W - r, H);
+                p.lineTo(r, H);
+                p.quadraticCurveTo(0, H, 0, H - r);
+                p.lineTo(0, r);
+                p.quadraticCurveTo(0, 0, r, 0);
+                p.closePath();
+            } else if (shape === 'circle') {
+                const cx = W / 2, cy = H / 2;
+                const radius = Math.min(W, H) * 0.45;
+                p.arc(cx, cy, radius, 0, Math.PI * 2);
+                p.closePath();
+            } else {
+                // rect — full canvas
+                p.rect(0, 0, W, H);
+            }
+            return p;
+        }
+
+        function strokeContainerOutline(ctx, W, H, shape) {
+            // Draws the container edge as a thin border so the user
+            // can see where the clip is. Skipped for 'rect' since the
+            // canvas edge is already the container edge.
+            if (shape === 'rect') return;
+            const p = buildContainerPath(W, H, shape);
+            ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke(p);
+        }
+
+        // Shape toggle button — cycles through CONTAINER_SHAPES.
+        // Chunk 16: starts a smooth transition from the current shape
+        // to the next, instead of an instant snap.
+        const shapeToggle = document.getElementById('shapeToggle');
+        shapeToggle.addEventListener('click', () => {
+            const idx = CONTAINER_SHAPES.indexOf(containerShape);
+            // Start the new transition from wherever we are RIGHT NOW.
+            // If we're mid-transition, the previous shape is the
+            // currently-rendered effective shape. We approximate this
+            // by snapping to the current shape (containerShape) and
+            // starting fresh — visually fine since shapeT becomes 0.
+            // Re-clicks during transit therefore "redirect" smoothly
+            // because the warp blends from where we are to the new
+            // target via shapeT.
+            containerPrevShape = containerShape;
+            containerShape = CONTAINER_SHAPES[(idx + 1) % CONTAINER_SHAPES.length];
+            shapeT = 0;
+            shapeStartTime = performance.now();
+            shapeToggle.textContent = 'Shape: ' + containerShape;
+        });
+
+        function updateShapeBlend(now) {
+            if (shapeT >= 1) return;
+            const elapsed = now - shapeStartTime;
+            const tRaw = Math.min(1, elapsed / SHAPE_TRANSITION_DURATION);
+            // easeInOutCubic, same shape as the layout transition
+            shapeT = tRaw < 0.5
+                ? 4 * tRaw * tRaw * tRaw
+                : 1 - Math.pow(-2 * tRaw + 2, 3) / 2;
+            if (tRaw >= 1) shapeT = 1;
+        }
+
+        // ========================= CHUNK 14: RENDER-TIME WARPING ==============
+        //
+        // Tier B for chunk 13 — actually fit cells to the container shape
+        // instead of just clipping. The mesh STATE stays in unwarped rect
+        // coordinates throughout (so relax / lerp / hover / breath all
+        // run unchanged on the rect mesh); the renderer applies a per-
+        // vertex warp at draw time so cells are visibly inside the shape.
+        // Hit-test for hover/click unwarps the cursor before testing.
+        //
+        // The warp: for each vertex P, compute offset D = P - C from
+        // canvas center. The "rect radius" along direction D is dRect
+        // (distance from center to rect perimeter along D). The "shape
+        // radius" along the same direction is dShape (constant for
+        // circle, equal to dRect for rect, geometric for rounded). Then
+        //   P' = C + D * (dShape / dRect)
+        // Center → center; rect perimeter → shape perimeter; intermediate
+        // points scale linearly along their ray.
+        //
+        // Identity warp for shape='rect' (dShape == dRect). For circle,
+        // the whole mesh shrinks toward center to fit inside the
+        // inscribed circle. For rounded, only points near the corners
+        // get nudged inward.
+
+        function rectRadiusAlong(dx, dy, W, H) {
+            // Distance from canvas center to the rect perimeter along
+            // the direction (dx, dy). Smallest positive parameter s
+            // such that (cx + s*dx, cy + s*dy) hits a rect edge,
+            // multiplied by the input direction's magnitude.
+            const cx = W / 2, cy = H / 2;
+            let s = Infinity;
+            if (dx > 0) s = Math.min(s, (W - cx) / dx);
+            if (dx < 0) s = Math.min(s, -cx / dx);
+            if (dy > 0) s = Math.min(s, (H - cy) / dy);
+            if (dy < 0) s = Math.min(s, -cy / dy);
+            return s * Math.hypot(dx, dy);
+        }
+
+        function shapeRadiusAlong(dx, dy, W, H, shape) {
+            // The container shape's radius (distance from center to
+            // perimeter) along direction (dx, dy).
+            if (shape === 'circle') {
+                return Math.min(W, H) * 0.45;
+            }
+            if (shape === 'rounded') {
+                // Rounded rect with corner radius r. The perimeter along
+                // a ray from center is the rect perimeter MINUS the
+                // amount cut off by the rounding at the nearest corner.
+                // For rays that exit through a flat edge, identical to
+                // rect. For rays that exit through a rounded corner,
+                // solve a small quadratic for the ray-circle intersection
+                // with the corner arc.
+                const cx = W / 2, cy = H / 2;
+                const r = Math.min(W, H) * 0.04;
+                // First find where the ray hits the rect-minus-corners.
+                // Parametric: ray = (cx + t*dx, cy + t*dy). Find smallest
+                // positive t where this is on a flat edge (not in a
+                // rounded corner region). If the closest hit is in a
+                // corner, do the arc intersection instead.
+                let t = Infinity;
+                let exitX, exitY;
+                if (dx > 0) { const tt = (W - cx) / dx; if (tt < t) { t = tt; exitX = W; exitY = cy + t*dy; } }
+                if (dx < 0) { const tt = -cx / dx;       if (tt < t) { t = tt; exitX = 0; exitY = cy + t*dy; } }
+                if (dy > 0) { const tt = (H - cy) / dy; if (tt < t) { t = tt; exitX = cx + t*dx; exitY = H; } }
+                if (dy < 0) { const tt = -cy / dy;       if (tt < t) { t = tt; exitX = cx + t*dx; exitY = 0; } }
+                // Determine if the exit point is in a corner region:
+                // within r of both a horizontal and vertical edge.
+                const nearLeft   = exitX < r;
+                const nearRight  = exitX > W - r;
+                const nearTop    = exitY < r;
+                const nearBottom = exitY > H - r;
+                const inCorner   = (nearLeft || nearRight) && (nearTop || nearBottom);
+                if (!inCorner) {
+                    return t * Math.hypot(dx, dy);
+                }
+                // Ray hits a corner arc. Corner center:
+                const ccx = nearLeft ? r : (W - r);
+                const ccy = nearTop  ? r : (H - r);
+                // Find intersection of ray (cx + t*dx, cy + t*dy) with
+                // circle of radius r centered at (ccx, ccy).
+                // (cx + t*dx - ccx)^2 + (cy + t*dy - ccy)^2 = r^2
+                const ex = cx - ccx, ey = cy - ccy;
+                const a = dx*dx + dy*dy;
+                const b = 2 * (ex*dx + ey*dy);
+                const c = ex*ex + ey*ey - r*r;
+                const disc = b*b - 4*a*c;
+                if (disc < 0) return t * Math.hypot(dx, dy);  // shouldn't happen
+                const sqd = Math.sqrt(disc);
+                const t1 = (-b - sqd) / (2*a);
+                const t2 = (-b + sqd) / (2*a);
+                // Choose the larger positive (the exit, not the entry)
+                const tArc = (t2 > 0) ? t2 : t1;
+                return tArc * Math.hypot(dx, dy);
+            }
+            // rect — return rect radius (identity warp)
+            return rectRadiusAlong(dx, dy, W, H);
+        }
+
+        // Chunk 16: warpVertex / unwarpVertex now read containerShape,
+        // containerPrevShape, shapeT directly so callers don't need to
+        // know about the blend state. dShape blends between the prev
+        // shape and the current shape via the eased shapeT.
+
+        function _effectiveDShape(dx, dy, W, H) {
+            const sCur  = shapeRadiusAlong(dx, dy, W, H, containerShape);
+            if (shapeT >= 1 || containerPrevShape === containerShape) return sCur;
+            const sPrev = shapeRadiusAlong(dx, dy, W, H, containerPrevShape);
+            // shapeT is already eased by the caller (updateShapeBlend).
+            return sPrev + (sCur - sPrev) * shapeT;
+        }
+
+        function warpVertex(x, y, W, H) {
+            // Identity if we're not in a non-rect shape AND not in a
+            // transition involving a non-rect shape.
+            const idle = (shapeT >= 1);
+            if (idle && containerShape === 'rect') return { x, y };
+            if (idle && containerShape === 'rect' && containerPrevShape === 'rect') return { x, y };
+            const cx = W / 2, cy = H / 2;
+            const dx = x - cx;
+            const dy = y - cy;
+            if (dx === 0 && dy === 0) return { x: cx, y: cy };
+            const dRect  = rectRadiusAlong(dx, dy, W, H);
+            const dShape = _effectiveDShape(dx, dy, W, H);
+            const scale  = dShape / dRect;
+            return { x: cx + dx * scale, y: cy + dy * scale };
+        }
+
+        function unwarpVertex(x, y, W, H) {
+            // Inverse of warpVertex; same blend handling.
+            const idle = (shapeT >= 1);
+            if (idle && containerShape === 'rect') return { x, y };
+            const cx = W / 2, cy = H / 2;
+            const dx = x - cx;
+            const dy = y - cy;
+            if (dx === 0 && dy === 0) return { x: cx, y: cy };
+            const dRect  = rectRadiusAlong(dx, dy, W, H);
+            const dShape = _effectiveDShape(dx, dy, W, H);
+            const scale  = dRect / dShape;  // inverted ratio
+            return { x: cx + dx * scale, y: cy + dy * scale };
+        }
+
+        // ========================= CHUNK 17: CELL LABELS / CONTENT ============
+        //
+        // Each cell can have a label drawn at its (warped) centroid. The
+        // labels make the cells read as UI elements rather than just
+        // colored shapes. Also lays the groundwork for richer per-cell
+        // content (icons, images, custom colors).
+        //
+        // cellLabels is indexed by face.id and defaults to two-digit
+        // strings ("01" through "12"). The label visibility is global
+        // (Labels: on / off button in the upper right). Hidden cells
+        // (visibility < 0.5) don't get labels regardless.
+        //
+        // Font size scales with sqrt(unwarped area) so larger cells
+        // get more prominent labels. Focused (hovered/pinned) cells
+        // get a slight bump and brighter alpha. In edit mode the label
+        // is the raw face id so the user can match cells to specs.
+
+        let labelsVisible = true;
+
+        const cellLabels = [];
+        for (let i = 0; i < 12; i++) {
+            cellLabels.push((i + 1).toString().padStart(2, '0'));
+        }
+
+        function drawFaceLabel(face, isFocused) {
+            if (!labelsVisible) return;
+            const vis = (face.visibility != null) ? face.visibility : 1;
+            const inEdit = (typeof editMode !== 'undefined' && editMode);
+            if (vis < 0.5 && !inEdit) return;
+
+            // Centroid in unwarped space, then warp for display.
+            let cx = 0, cy = 0, n = 0;
+            let he = face.halfEdge;
+            do {
+                cx += he.origin.x;
+                cy += he.origin.y;
+                n++;
+                he = he.next;
+            } while (he !== face.halfEdge);
+            cx /= n; cy /= n;
+
+            const w = warpVertex(cx, cy, W, H);
+
+            // Edit mode: raw face id (helps when hand-tuning specs).
+            // Normal: cellLabels[id], default "01".."12".
+            const label = inEdit
+                ? face.id.toString()
+                : (cellLabels[face.id] || '');
+            if (!label) return;
+
+            // Font size proportional to sqrt(area). Clamped.
+            const area = Math.abs(signedFaceArea(face));
+            const baseSize = Math.max(11, Math.min(28, Math.sqrt(area) * 0.085));
+            const fontSize = isFocused ? baseSize * 1.15 : baseSize;
+
+            ctx.font = '500 ' + fontSize.toFixed(1) + 'px ui-monospace, ui-sans-serif, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // Subtle shadow for legibility against varied cell colors.
+            const alphaText = isFocused ? 0.96 : 0.72;
+            ctx.globalAlpha = (vis < 1) ? vis : 1;
+            ctx.fillStyle = 'rgba(0,0,0,0.45)';
+            ctx.fillText(label, w.x + 0.6, w.y + 0.6);
+            ctx.fillStyle = 'rgba(255,255,255,' + alphaText + ')';
+            ctx.fillText(label, w.x, w.y);
+            ctx.globalAlpha = 1;
+        }
+
+        // Labels toggle button.
+        const labelToggle = document.getElementById('labelToggle');
+        labelToggle.addEventListener('click', () => {
+            labelsVisible = !labelsVisible;
+            labelToggle.textContent = 'Labels: ' + (labelsVisible ? 'on' : 'off');
+        });
+
+        // ========================= CHUNK 18: LIVE TUNABLES PANEL ==============
+        //
+        // Range sliders bound to the live constants that control the
+        // feel of the demo. Drag a slider; the mesh responds in real
+        // time. Useful both as a dev tool and as a way to communicate
+        // what each subsystem actually does.
+        //
+        // The chunk converts five constants from `const` to `let` so
+        // they can be reassigned:
+        //   RELAX_GAIN          (chunk 4)
+        //   DEFAULT_SLACK       (chunk 3.5)
+        //   HOVER_BOOST         (chunk 9)
+        //   BREATH_AMP          (chunk 12)
+        //   TRANSITION_DURATION (chunk 3)
+        //
+        // RELAX_ITERS, BREATH_FREQ, HOVER_LERP_ON/OFF stay constants
+        // (less commonly tuned, more numerically delicate).
+        //
+        // For DEFAULT_SLACK changes, we walk the faces and re-apply
+        // applyLayoutSlack(currentLayout) so the new default takes
+        // effect on cells that aren't in layoutSlack[currentLayout]
+        // overrides. The other constants are read each frame, so
+        // their changes take effect immediately without further work.
+
+        const tunablesToggle  = document.getElementById('tunablesToggle');
+        const tunablesControls = document.getElementById('tunablesControls');
+        let tunablesVisible = false;
+        tunablesToggle.addEventListener('click', () => {
+            tunablesVisible = !tunablesVisible;
+            tunablesControls.classList.toggle('visible', tunablesVisible);
+            tunablesToggle.textContent = 'Tune ' + (tunablesVisible ? '\u25B2' : '\u25BC');
+        });
+
+        function bindSlider(id, valId, format, onChange) {
+            const slider = document.getElementById(id);
+            const valSpan = document.getElementById(valId);
+            slider.addEventListener('input', () => {
+                const v = parseFloat(slider.value);
+                valSpan.textContent = format(v);
+                onChange(v);
+            });
+        }
+
+        bindSlider('tuneRelaxGain', 'tuneRelaxGainVal',
+            v => v.toFixed(2),
+            v => { RELAX_GAIN = v; });
+
+        bindSlider('tuneSlack', 'tuneSlackVal',
+            v => v.toFixed(2),
+            v => {
+                DEFAULT_SLACK = v;
+                // Re-apply layout slack so faces without per-layout
+                // overrides pick up the new default immediately.
+                if (typeof applyLayoutSlack === 'function') {
+                    applyLayoutSlack(currentLayout);
+                }
+            });
+
+        bindSlider('tuneHover', 'tuneHoverVal',
+            v => v.toFixed(2),
+            v => { HOVER_BOOST = v; });
+
+        bindSlider('tuneBreath', 'tuneBreathVal',
+            v => v.toFixed(3),
+            v => { BREATH_AMP = v; });
+
+        bindSlider('tuneDuration', 'tuneDurationVal',
+            v => v.toFixed(0),
+            v => { TRANSITION_DURATION = v; });
+
+        // ========================= CHUNK 19: AUTO-CYCLE PLAY MODE =============
+        //
+        // A "Play" button in the layout bar walks through layouts on
+        // an interval, plus an occasional shape toggle for variety.
+        // Useful for embedding mk4 in a landing page where viewers
+        // just watch the cells morph.
+        //
+        // Stops on:
+        //   - Pressing Play again
+        //   - Clicking any layout button (the user is taking over)
+        //   - Entering edit mode (don't fight the user)
+        //
+        // Hovering and pinning don't stop play. (Hover is read-only,
+        // pinning is a deliberate "I want to watch this cell" act
+        // that's compatible with the auto-cycle.)
+
+        const PLAY_INTERVAL_MS = 2400;       // ms between layout switches
+        const PLAY_SHAPE_EVERY = 4;          // toggle shape every N layouts
+        const PLAY_LAYOUTS = ['L1','L2','L3','L4','L5','L6','L7'];
+
+        let playMode = false;
+        let playIntervalHandle = null;
+        let playStep = 0;
+
+        const playToggle = document.getElementById('playToggle');
+
+        function setPlayMode(on) {
+            playMode = on;
+            if (on) {
+                playToggle.textContent = '\u25A0 Stop';
+                playToggle.classList.add('active');
+                // Pick the next layout that isn't the current one to
+                // get an immediate visible transition.
+                const tick = () => {
+                    if (!playMode) return;
+                    playStep++;
+                    // Cycle layouts
+                    let next = PLAY_LAYOUTS[playStep % PLAY_LAYOUTS.length];
+                    if (next === currentLayout) {
+                        next = PLAY_LAYOUTS[(playStep + 1) % PLAY_LAYOUTS.length];
+                        playStep++;
+                    }
+                    // Update currentLayout + active class via a simulated
+                    // button click on the matching button.
+                    const btn = document.querySelector('.layout-bar .layout-btn[data-layout="' + next + '"]');
+                    if (btn) {
+                        currentLayout = next;
+                        document.querySelectorAll('.layout-bar .layout-btn').forEach(b =>
+                            b.classList.toggle('active', b === btn));
+                    }
+                    goToLayout(next);
+                    // Occasional shape cycle for variety.
+                    if (playStep % PLAY_SHAPE_EVERY === 0) {
+                        shapeToggle.click();
+                    }
+                };
+                tick();  // immediate first transition
+                playIntervalHandle = setInterval(tick, PLAY_INTERVAL_MS);
+            } else {
+                playToggle.textContent = '\u25B6 Play';
+                playToggle.classList.remove('active');
+                if (playIntervalHandle != null) {
+                    clearInterval(playIntervalHandle);
+                    playIntervalHandle = null;
+                }
+            }
+        }
+        playToggle.addEventListener('click', () => setPlayMode(!playMode));
+
+        // Stop play mode when the user takes over (clicks a layout
+        // button explicitly, or enters edit mode). We piggy-back on
+        // the existing chunk 0 layout-button click handlers by
+        // adding a separate listener that runs first.
+        document.querySelectorAll('.layout-bar .layout-btn[data-layout]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (playMode) setPlayMode(false);
+            });
+        });
+        // And on edit mode entry (chunk 5's setEditMode runs after
+        // the click handler on the editToggle button).
+        editToggle.addEventListener('click', () => {
+            if (editMode && playMode) setPlayMode(false);
+        });
+
+        // ========================= CHUNK 20: KEYBOARD NAVIGATION ==============
+        //
+        // Document-level keydown handler. Composes with the existing
+        // hover/pin/edit/play machinery without architectural changes:
+        //
+        //   Tab / Shift+Tab     cycle keyboard focus to next/prev visible cell
+        //   Enter               pin the keyboard-focused cell (toggle)
+        //   Escape              clear pin AND keyboard focus
+        //   1..7                switch to layout L1..L7
+        //   S                   cycle container shape
+        //   L                   toggle labels
+        //   T                   toggle tunables panel
+        //   E                   toggle edit mode
+        //   Space / P           toggle play mode
+        //
+        // Keyboard focus uses the same hoverMul boost as mouse hover
+        // and pin (added to updateHover above). Keyboard-focused cells
+        // also get the chunk 15 z-order treatment so they sit on top
+        // with the brighter border.
+        //
+        // Edit mode swallows most keys (so the user can use Tab/Enter
+        // for normal browser interactions if any text fields are added
+        // later). Only Escape and E work in edit mode.
+
+        let keyboardFocusedCellId = null;
+
+        function visibleFaceIds() {
+            // Sorted list of currently-visible face ids (visibility >= 0.5).
+            const ids = [];
+            for (const f of canonicalMesh.faces) {
+                if (f.isOuter) continue;
+                const vis = (f.visibility != null) ? f.visibility : 1;
+                if (vis < 0.5) continue;
+                ids.push(f.id);
+            }
+            ids.sort((a, b) => a - b);
+            return ids;
+        }
+
+        function cycleKeyboardFocus(delta) {
+            const ids = visibleFaceIds();
+            if (ids.length === 0) { keyboardFocusedCellId = null; return; }
+            if (keyboardFocusedCellId == null) {
+                keyboardFocusedCellId = (delta > 0) ? ids[0] : ids[ids.length - 1];
+                return;
+            }
+            const idx = ids.indexOf(keyboardFocusedCellId);
+            if (idx < 0) {
+                keyboardFocusedCellId = ids[0];
+            } else {
+                const next = (idx + delta + ids.length) % ids.length;
+                keyboardFocusedCellId = ids[next];
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            // Don't intercept while the user is typing in any text input
+            // (none currently in mk4, but be defensive).
+            const tag = (e.target && e.target.tagName) || '';
+            if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+            // Edit mode: only Escape and E work; everything else falls
+            // through to the browser.
+            if (editMode) {
+                if (e.key === 'Escape') {
+                    setEditMode(false);
+                    e.preventDefault();
+                } else if (e.key === 'e' || e.key === 'E') {
+                    setEditMode(false);
+                    e.preventDefault();
+                }
+                return;
+            }
+
+            // Tab / Shift+Tab: cycle keyboard focus.
+            if (e.key === 'Tab') {
+                cycleKeyboardFocus(e.shiftKey ? -1 : 1);
+                e.preventDefault();
+                return;
+            }
+
+            // Enter: pin (toggle) the keyboard-focused cell.
+            // Chunk 23: also trigger a ripple from the focused cell.
+            if (e.key === 'Enter') {
+                if (keyboardFocusedCellId != null) {
+                    pinnedCellId = (pinnedCellId === keyboardFocusedCellId) ? null : keyboardFocusedCellId;
+                    if (typeof triggerRipple === 'function') {
+                        for (const f of canonicalMesh.faces) {
+                            if (f.id === keyboardFocusedCellId) { triggerRipple(f); break; }
+                        }
+                    }
+                }
+                e.preventDefault();
+                return;
+            }
+
+            // Escape: clear all focus.
+            if (e.key === 'Escape') {
+                pinnedCellId = null;
+                keyboardFocusedCellId = null;
+                if (playMode) setPlayMode(false);
+                e.preventDefault();
+                return;
+            }
+
+            // 1..7: layout switch.
+            if (e.key >= '1' && e.key <= '7') {
+                const idx = parseInt(e.key, 10);
+                const name = 'L' + idx;
+                if (layouts[name]) {
+                    currentLayout = name;
+                    document.querySelectorAll('.layout-bar .layout-btn').forEach(b => {
+                        b.classList.toggle('active', b.dataset && b.dataset.layout === name);
+                    });
+                    goToLayout(name);
+                    if (playMode) setPlayMode(false);
+                }
+                e.preventDefault();
+                return;
+            }
+
+            // S: cycle shape.
+            if (e.key === 's' || e.key === 'S') {
+                shapeToggle.click();
+                e.preventDefault();
+                return;
+            }
+
+            // L: toggle labels.
+            if (e.key === 'l' || e.key === 'L') {
+                labelToggle.click();
+                e.preventDefault();
+                return;
+            }
+
+            // T: toggle tunables panel.
+            if (e.key === 't' || e.key === 'T') {
+                tunablesToggle.click();
+                e.preventDefault();
+                return;
+            }
+
+            // E: toggle edit mode.
+            if (e.key === 'e' || e.key === 'E') {
+                editToggle.click();
+                e.preventDefault();
+                return;
+            }
+
+            // Space or P: toggle play.
+            if (e.key === ' ' || e.key === 'p' || e.key === 'P') {
+                setPlayMode(!playMode);
+                e.preventDefault();
+                return;
+            }
+
+            // Chunk 21: ? or H toggles help overlay.
+            if (e.key === '?' || e.key === 'h' || e.key === 'H') {
+                if (typeof toggleHelp === 'function') toggleHelp();
+                e.preventDefault();
+                return;
+            }
+        });
+
+        // ========================= CHUNK 21: REDUCED MOTION + HELP ============
+        //
+        // Two small accessibility wins:
+        //
+        // 1. PREFERS-REDUCED-MOTION. On init (and on media query
+        //    change), check the OS preference. If reduced is set,
+        //    soften the constants: shorter transitions, no breath,
+        //    shorter shape transitions. Hover boost stays — that's
+        //    interactive feedback, not vestibular motion.
+        //
+        // 2. HELP OVERLAY. Press '?' or 'h' to show a list of all
+        //    keyboard shortcuts (chunk 20 added several but they
+        //    weren't discoverable without reading the source).
+        //    Click anywhere or press Escape to dismiss.
+
+        const helpOverlay = document.getElementById('helpOverlay');
+        function toggleHelp() {
+            const visible = helpOverlay.classList._toggleSet
+                ? helpOverlay.classList._toggleSet.has('visible')  // node test stub
+                : helpOverlay.classList.contains('visible');
+            if (visible) helpOverlay.classList.remove('visible');
+            else helpOverlay.classList.add('visible');
+        }
+        helpOverlay.addEventListener('click', () => {
+            helpOverlay.classList.remove('visible');
+        });
+
+        // Reduced motion handling. Sliders sync via dispatchEvent so
+        // the val span text and the let constants both update through
+        // the chunk 18 bindSlider machinery.
+        function setSliderTo(id, value) {
+            const slider = document.getElementById(id);
+            if (!slider) return;
+            slider.value = value.toString();
+            // Trigger the bindSlider input handler.
+            if (typeof Event !== 'undefined') {
+                slider.dispatchEvent(new Event('input'));
+            } else if (slider._listeners && slider._listeners.input) {
+                // Fallback for environments without Event constructor (test stubs)
+                for (const cb of slider._listeners.input) cb();
+            }
+        }
+
+        function applyReducedMotion() {
+            setSliderTo('tuneDuration', 200);
+            setSliderTo('tuneBreath', 0);
+            SHAPE_TRANSITION_DURATION = 200;
+        }
+
+        if (typeof window.matchMedia === 'function') {
+            const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+            if (mq && mq.matches) applyReducedMotion();
+            // Live re-check if the OS preference changes.
+            if (mq && typeof mq.addEventListener === 'function') {
+                mq.addEventListener('change', (e) => {
+                    if (e.matches) applyReducedMotion();
+                    // We don't auto-restore "full motion" — the user
+                    // may have tweaked sliders manually since.
+                });
+            }
+        }
+
+        // ========================= CHUNK 22: PERSISTENCE + RESET ==============
+        //
+        // Tunables persist across reloads (like chunk 5's layouts already
+        // do). Reset buttons restore defaults for both subsystems so the
+        // user can experiment freely and revert.
+        //
+        //   tunables → localStorage('mk4-tunables-v1')
+        //              auto-saved on every slider input
+        //              loaded on init
+        //              "Reset to defaults" button restores TUNABLE_DEFAULTS
+        //
+        //   layouts  → localStorage('mk4-layouts-v1') [from chunk 5]
+        //              "Reset all slots" button removes the storage key
+        //              and re-runs applyProceduralDefaults
+
+        const TUNABLES_KEY = 'mk4-tunables-v1';
+        const TUNABLE_DEFAULTS = {
+            relaxGain: 0.6,
+            slack: 0.25,
+            hoverBoost: 1.8,
+            breathAmp: 0.02,
+            transitionDuration: 1200,
+        };
+
+        function saveTunables() {
+            try {
+                const data = {
+                    relaxGain:          parseFloat(document.getElementById('tuneRelaxGain').value),
+                    slack:              parseFloat(document.getElementById('tuneSlack').value),
+                    hoverBoost:         parseFloat(document.getElementById('tuneHover').value),
+                    breathAmp:          parseFloat(document.getElementById('tuneBreath').value),
+                    transitionDuration: parseFloat(document.getElementById('tuneDuration').value),
+                };
+                localStorage.setItem(TUNABLES_KEY, JSON.stringify(data));
+            } catch (e) {
+                console.warn('mk4: failed to save tunables', e);
+            }
+        }
+
+        function loadTunables() {
+            try {
+                const json = localStorage.getItem(TUNABLES_KEY);
+                if (!json) return;
+                const data = JSON.parse(json);
+                if (typeof data.relaxGain          === 'number') setSliderTo('tuneRelaxGain', data.relaxGain);
+                if (typeof data.slack              === 'number') setSliderTo('tuneSlack',     data.slack);
+                if (typeof data.hoverBoost         === 'number') setSliderTo('tuneHover',     data.hoverBoost);
+                if (typeof data.breathAmp          === 'number') setSliderTo('tuneBreath',    data.breathAmp);
+                if (typeof data.transitionDuration === 'number') setSliderTo('tuneDuration',  data.transitionDuration);
+            } catch (e) {
+                console.warn('mk4: failed to load tunables', e);
+            }
+        }
+
+        function resetTunables() {
+            setSliderTo('tuneRelaxGain', TUNABLE_DEFAULTS.relaxGain);
+            setSliderTo('tuneSlack',     TUNABLE_DEFAULTS.slack);
+            setSliderTo('tuneHover',     TUNABLE_DEFAULTS.hoverBoost);
+            setSliderTo('tuneBreath',    TUNABLE_DEFAULTS.breathAmp);
+            setSliderTo('tuneDuration',  TUNABLE_DEFAULTS.transitionDuration);
+            // Also clear storage so the next reload starts clean.
+            try { localStorage.removeItem(TUNABLES_KEY); } catch (e) {}
+        }
+
+        // Auto-save on every slider change. The chunk 18 bindSlider
+        // listeners run first (they update the let-bound constant);
+        // this listener runs after and reads back the (now-updated)
+        // slider value into storage.
+        ['tuneRelaxGain', 'tuneSlack', 'tuneHover', 'tuneBreath', 'tuneDuration'].forEach(id => {
+            const slider = document.getElementById(id);
+            if (slider) slider.addEventListener('input', saveTunables);
+        });
+
+        // Reset buttons.
+        const tunablesResetBtn = document.getElementById('tunablesReset');
+        if (tunablesResetBtn) {
+            tunablesResetBtn.addEventListener('click', resetTunables);
+        }
+
+        const resetLayoutsBtn = document.getElementById('resetLayoutsBtn');
+        if (resetLayoutsBtn) {
+            resetLayoutsBtn.addEventListener('click', () => {
+                try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+                if (typeof applyProceduralDefaults === 'function') {
+                    applyProceduralDefaults();
+                }
+                // Visual feedback
+                resetLayoutsBtn.classList.add('flash');
+                setTimeout(() => resetLayoutsBtn.classList.remove('flash'), 600);
+            });
+        }
+
+        // Load persisted tunables on init (must run AFTER chunk 18 has
+        // wired up the sliders).
+        loadTunables();
+
+        // ========================= CHUNK 23: RIPPLES + STRESS GLOW ============
+        //
+        // Click any cell and a wave of growth propagates outward through
+        // the mesh — distance 0 (the clicked cell) pulses first, then
+        // its direct topological neighbors, then THEIR neighbors, until
+        // the wave reaches the far corners. Each cell briefly puffs up
+        // and brightens as the front passes through.
+        //
+        // Mechanics:
+        //   - BFS over the half-edge mesh from the clicked face computes
+        //     the topology distance from the source to every other face
+        //   - Per frame, advance the wave front: front = elapsed * speed
+        //   - For each face, boost = AMP * cos²((|dist - front|)/THICKNESS
+        //                                       * π/2) * (1 - elapsed/duration)
+        //   - The boost lands in f.rippleMul, which composes into the
+        //     relax pass as a third multiplier alongside hoverMul and
+        //     breathMul. The water-balloon mechanism then visibly grows
+        //     the cell, and the stress glow visibly brightens it.
+        //
+        // Multiple ripples coexist additively (clicking rapidly produces
+        // interfering waves crossing each other).
+        //
+        // Stress glow:
+        //   computeStress(f) reads f.hoverMul and f.rippleMul, normalizes
+        //   each by its maximum range, and returns max(hover, ripple)
+        //   clamped to [0, 1]. The faceColor function then bumps
+        //   saturation and lightness proportional to stress.
+        //
+        // Wired into:
+        //   - chunk 4 relaxMesh (rippleMul as third multiplier)
+        //   - chunk 1 renderMesh / faceColor (stress glow)
+        //   - chunk 11 click handler (trigger ripple on click)
+        //   - chunk 15 touchend tap path (trigger ripple on tap)
+        //   - chunk 20 keyboard Enter handler (trigger ripple on Enter)
+        //   - animate() between updateBreath and relaxMesh
+
+        const RIPPLE_SPEED     = 0.005;  // distance units per ms
+        const RIPPLE_THICKNESS = 1.5;    // wave front width in distance units
+        const RIPPLE_AMP       = 0.20;   // peak boost per ripple (1 + AMP = 1.2)
+        const RIPPLE_DURATION  = 1500;   // ms before the ripple expires
+
+        const ripples = [];
+
+        function bfsFromFace(mesh, sourceFace) {
+            // Returns a Map(face.id → topology distance from sourceFace).
+            // Walks the half-edge twin pointers; outer face is the boundary.
+            const distances = new Map();
+            distances.set(sourceFace.id, 0);
+            const queue = [sourceFace];
+            while (queue.length) {
+                const f = queue.shift();
+                const d = distances.get(f.id);
+                let he = f.halfEdge;
+                do {
+                    if (he.twin && he.twin.face && !he.twin.face.isOuter) {
+                        const nf = he.twin.face;
+                        if (!distances.has(nf.id)) {
+                            distances.set(nf.id, d + 1);
+                            queue.push(nf);
+                        }
+                    }
+                    he = he.next;
+                } while (he !== f.halfEdge);
+            }
+            return distances;
+        }
+
+        function triggerRipple(sourceFace) {
+            if (!sourceFace || sourceFace.isOuter) return;
+            ripples.push({
+                sourceFaceId: sourceFace.id,
+                distances: bfsFromFace(canonicalMesh, sourceFace),
+                startTime: performance.now(),
+                speed: RIPPLE_SPEED,
+                thickness: RIPPLE_THICKNESS,
+                amplitude: RIPPLE_AMP,
+                duration: RIPPLE_DURATION,
+            });
+        }
+
+        function updateRipples(now) {
+            // Reset rippleMul on every face (ripples are entirely
+            // recomputed each frame from the active list).
+            for (const f of canonicalMesh.faces) {
+                if (!f.isOuter) f.rippleMul = 1;
+            }
+            // Walk active ripples in reverse so we can splice expired ones.
+            for (let i = ripples.length - 1; i >= 0; i--) {
+                const r = ripples[i];
+                const elapsed = now - r.startTime;
+                if (elapsed > r.duration) {
+                    ripples.splice(i, 1);
+                    continue;
+                }
+                const front = elapsed * r.speed;
+                const decay = 1 - elapsed / r.duration;  // linear fade
+                for (const f of canonicalMesh.faces) {
+                    if (f.isOuter) continue;
+                    const d = r.distances.get(f.id);
+                    if (d == null) continue;
+                    const dist = Math.abs(d - front);
+                    if (dist > r.thickness) continue;
+                    const fade = Math.cos(dist / r.thickness * Math.PI / 2);
+                    const boost = r.amplitude * fade * fade * decay;
+                    f.rippleMul += boost;
+                }
+            }
+        }
+
+        function computeStress(f) {
+            // Returns [0, 1] from how far the cell is being boosted.
+            // Hover and ripple are normalized by their respective maxes
+            // and the larger of the two wins (so a heavily-hovered cell
+            // looks the same as a peak-rippled cell at full brightness).
+            const hNorm = HOVER_BOOST - 1;
+            const rNorm = RIPPLE_AMP;
+            const h = (f.hoverMul  != null && hNorm > 0)
+                ? Math.max(0, (f.hoverMul  - 1)) / hNorm
+                : 0;
+            const r = (f.rippleMul != null && rNorm > 0)
+                ? Math.max(0, (f.rippleMul - 1)) / rNorm
+                : 0;
+            return Math.min(1, Math.max(h, r));
+        }
+
+        // Click → ripple. Runs in addition to chunk 11's pin handler;
+        // both listeners coexist.
+        canvas.addEventListener('click', (e) => {
+            if (editMode) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const face = faceAtPoint(canonicalMesh, x, y);
+            if (face) triggerRipple(face);
+        });
+
+        // Touch tap → ripple. We track our own touchstart since the
+        // chunk 15 _touchMoved is in a different closure.
+        let _ripStartId = null, _ripStartX = 0, _ripStartY = 0;
+        canvas.addEventListener('touchstart', (e) => {
+            if (editMode || e.touches.length !== 1) return;
+            const t = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            _ripStartId = t.identifier;
+            _ripStartX = t.clientX - rect.left;
+            _ripStartY = t.clientY - rect.top;
+        });
+        canvas.addEventListener('touchend', (e) => {
+            if (editMode) return;
+            const t = Array.from(e.changedTouches).find(tt => tt.identifier === _ripStartId);
+            if (!t) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = t.clientX - rect.left;
+            const y = t.clientY - rect.top;
+            if (Math.hypot(x - _ripStartX, y - _ripStartY) <= 6) {
+                const face = faceAtPoint(canonicalMesh, x, y);
+                if (face) triggerRipple(face);
+            }
+            _ripStartId = null;
+        });
+
+        // ========================= CHUNK 24: CHOREOGRAPHED TRANSITIONS ========
+        //
+        // The single biggest improvement to the core morphing experience.
+        // Until this chunk, every vertex used the same eased progress
+        // value during a transition (uniform easeInOutCubic over the full
+        // duration). Cells started moving in lockstep, ended in lockstep,
+        // and the motion had no narrative — just translation.
+        //
+        // Now each cell has its own (start, end) timing within the
+        // transition, computed via BFS from a "lead" cell. The lead is
+        // the cell with the largest area in the TARGET layout — typically
+        // the hero, the focus of the new arrangement. The lead starts
+        // first and finishes early; cells farther from the lead start
+        // later and arrive at t=1.
+        //
+        // The result: the transition has order, weight, and a settling
+        // beat. The hero establishes itself first, then the supporting
+        // cells fill in around it. The eye is drawn to the hero because
+        // it's the slowest, most deliberate mover.
+        //
+        // Plus a per-cell easeOutBack curve that overshoots ~6% past
+        // target before settling — cells "land" with a tactile beat
+        // instead of stopping cold.
+        //
+        // Plus chunk 4 modification: relax skips the soft pull during
+        // transitions so the easeOutBack overshoot isn't cancelled.
+        // Hard bounds (water-balloon resistance) still enforced.
+        //
+        // Shared vertices average their incident faces' eased values —
+        // a vertex on the boundary between a fast cell and a slow cell
+        // moves at the compromise rate. Same averaging principle as
+        // the chunk-6 buildLayoutFromCellSpecs and the relax pass.
+        //
+        // Reuses chunk 23's bfsFromFace to compute topology distances
+        // from the lead.
+
+        const CHOREO_LEAD_END    = 0.65;  // lead cell finishes at this fraction
+        const CHOREO_LATE_START  = 0.20;  // farthest cells start at this fraction
+
+        function getIncidentFaces(v) {
+            // Lazily computes and caches the list of interior faces
+            // incident to a vertex by walking outgoing half-edges via
+            // the half-edge twin/next pattern. Resize rebuilds the
+            // mesh, creating new vertex objects, so the cache is
+            // automatically invalidated.
+            if (v._incidentFaces) return v._incidentFaces;
+            const faces = [];
+            let he = v.outHE;
+            if (he) {
+                let safety = 0;
+                do {
+                    if (he.face && !he.face.isOuter) faces.push(he.face);
+                    if (!he.twin || !he.twin.next) break;
+                    he = he.twin.next;
+                    if (++safety > 16) break;  // guard against malformed mesh
+                } while (he !== v.outHE);
+            }
+            v._incidentFaces = faces;
+            return faces;
+        }
+
+        function computeChoreography(mesh, targetLayout) {
+            // Find the lead face: the interior face with the largest
+            // area in the target layout. (Falls back to the canonical
+            // center cell if all areas are equal.)
+            const interior = mesh.faces.filter(f => !f.isOuter);
+            if (interior.length === 0) return null;
+            let leadFace = interior[0];
+            let leadArea = -Infinity;
+            for (const f of interior) {
+                const a = faceAreaInLayout(f, targetLayout);
+                if (a > leadArea) { leadArea = a; leadFace = f; }
+            }
+
+            // BFS topology distances from the lead.
+            const distances = bfsFromFace(mesh, leadFace);
+            let maxD = 0;
+            for (const d of distances.values()) if (d > maxD) maxD = d;
+
+            // Per-face start/end times. Lead has start=0, end=LEAD_END.
+            // Far cells have start=LATE_START, end=1. Linear in BFS
+            // distance between the two.
+            const choreo = new Map();
+            for (const f of interior) {
+                const d = distances.get(f.id);
+                if (d == null) {
+                    // Disconnected face — uniform timing fallback
+                    choreo.set(f.id, { start: 0, end: 1 });
+                    continue;
+                }
+                const fNorm = (maxD > 0) ? (d / maxD) : 0;
+                const start = fNorm * CHOREO_LATE_START;
+                const end   = CHOREO_LEAD_END + fNorm * (1 - CHOREO_LEAD_END);
+                choreo.set(f.id, { start, end });
+            }
+            return choreo;
+        }
+
+        // ========================= CHUNK 7 LANDS HERE =========================
+        // Polish — colors, hover, easing, arrival ramp.
+
+        // Animation loop. requestAnimationFrame passes a high-resolution
+        // timestamp; we forward it to updateTransition for the lerp clock.
+        // Chunk 1:   renders the static canonical mesh.
+        // Chunk 3:   ticks the active transition (lerps vertex positions).
+        // Chunk 3.5: lerps per-face rest areas alongside positions.
+        // Chunk 4:   relaxes the mesh — pushes back when a cell drifts
+        //            outside its comfort range. No-op when all cells
+        //            are at restArea.
+        // Chunk 5:   in edit mode, skip transition + relax (user has
+        //            direct vertex control), and overlay drag handles.
+        function animate(now) {
+            if (now == null) now = performance.now();
+            ctx.clearRect(0, 0, W, H);
+            if (canonicalMesh) {
+                if (!editMode) {
+                    updateTransition(now);
+                    if (typeof updateHover   === 'function') updateHover();
+                    if (typeof updateBreath  === 'function') updateBreath(now);
+                    if (typeof updateRipples === 'function') updateRipples(now);
+                    relaxMesh(canonicalMesh);
+                }
+                if (typeof updateShapeBlend === 'function') updateShapeBlend(now);
+                renderMesh(canonicalMesh);
+                if (editMode) renderHandles();
+            }
+            requestAnimationFrame(animate);
+        }
+        animate();
+    })();
+    </script>
+</body>
+</html>
