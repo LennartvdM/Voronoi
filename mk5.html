@@ -313,6 +313,9 @@ class Cell {
             let cellPullX = 0, cellPullY = 0;
 
             // ── Cell-to-cell gravitational stretch ───────────
+            // Pull toward neighbor CORNERS (from previous frame),
+            // not centers. Creates interlocking shapes like puzzle
+            // pieces rather than blobs leaning at each other.
             if (neighbors && neighbors.length > 0) {
                 for (const nb of neighbors) {
                     const dx = nb.x - this.x;
@@ -323,15 +326,40 @@ class Cell {
 
                     if (dist > rSum * 2.5) continue;
 
-                    const ndx = dx / dist, ndy = dy / dist;
-                    const facing = cosA * ndx + sinA * ndy;
-                    if (facing <= 0) continue;
+                    // Find nearest corner of neighbor to this vertex
+                    const corners = nb._displayPoly;
+                    if (corners && corners.length >= 3) {
+                        let bestDist = Infinity, bestDx = 0, bestDy = 0;
+                        for (const cp of corners) {
+                            const cdx = cp[0] - baseX;
+                            const cdy = cp[1] - baseY;
+                            const cd = cdx * cdx + cdy * cdy;
+                            if (cd < bestDist) {
+                                bestDist = cd;
+                                bestDx = cdx;
+                                bestDy = cdy;
+                            }
+                        }
+                        bestDist = Math.sqrt(bestDist) || 1;
+                        const ndx = bestDx / bestDist, ndy = bestDy / bestDist;
+                        const facing = cosA * ndx + sinA * ndy;
+                        if (facing <= 0) continue;
 
-                    const proximity = 1 - Math.min(dist / (rSum * 2), 1);
-                    const strength = facing * facing * proximity * GRAVITY_REACH;
+                        const proximity = 1 - Math.min(bestDist / (rSum * 2), 1);
+                        const strength = facing * facing * proximity * GRAVITY_REACH;
+                        cellPullX += ndx * strength * rBase;
+                        cellPullY += ndy * strength * rBase;
+                    } else {
+                        // Fallback to center if no corners yet
+                        const ndx = dx / dist, ndy = dy / dist;
+                        const facing = cosA * ndx + sinA * ndy;
+                        if (facing <= 0) continue;
 
-                    cellPullX += ndx * strength * rBase;
-                    cellPullY += ndy * strength * rBase;
+                        const proximity = 1 - Math.min(dist / (rSum * 2), 1);
+                        const strength = facing * facing * proximity * GRAVITY_REACH;
+                        cellPullX += ndx * strength * rBase;
+                        cellPullY += ndy * strength * rBase;
+                    }
                 }
             }
             pullX += cellPullX;
