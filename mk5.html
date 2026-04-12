@@ -99,6 +99,16 @@
             <input type="range" id="focusSlider" min="0.1" max="5" step="0.1" value="1">
             <input type="number" id="focusNum" min="0.1" max="10" step="0.1" value="1">
         </div>
+        <div class="slider-group">
+            <label>Gravity</label>
+            <input type="range" id="gravSlider" min="0" max="5" step="0.1" value="0">
+            <input type="number" id="gravNum" min="0" max="10" step="0.1" value="0">
+        </div>
+        <div class="slider-group">
+            <label>Angle</label>
+            <input type="range" id="gravAngleSlider" min="0" max="6.28" step="0.1" value="1.57">
+            <input type="number" id="gravAngleNum" min="0" max="6.28" step="0.1" value="1.57">
+        </div>
     </div>
 <script>
 'use strict';
@@ -144,6 +154,12 @@ const COLORS = [
     '#06b6d4', '#3b82f6', '#a78bfa', '#fb923c',
 ];
 
+// Gravity: pulls cell centers without affecting size.
+// Cells settle under gravity, contact solver prevents compression.
+let GRAVITY_STRENGTH = 0;    // pixels/frame²
+let GRAVITY_ANGLE = Math.PI / 2; // radians (default: downward)
+const VELOCITY_DAMPING = 0.92;   // per-frame velocity decay
+
 // ─── Cell class ──────────────────────────────────────────────
 // The atom. Self-contained. Independently movable. Separable.
 class Cell {
@@ -157,6 +173,10 @@ class Cell {
         // Area is computed from weight in updateAreas()
         this.area = 100;
         this.baseArea = 100;
+
+        // Velocity for gravity-driven physics
+        this.vx = 0;
+        this.vy = 0;
 
         // Target position/weight from layout (for transitions)
         this.targetX = x;
@@ -1195,14 +1215,42 @@ function animate(time) {
     const dt = Math.min((time - lastTime) / 16, 3);
     lastTime = time;
 
-    // ── Move toward targets (layout transition) ────────
-    const posRate = 1 - Math.exp(-dt * 0.12);  // ~8 frames to 90%
-    const weightRate = 1 - Math.exp(-dt * 0.08); // ~12 frames to 90%
-    for (const c of cells) {
-        if (!c._dragging) {
-            c.x += (c.targetX - c.x) * posRate;
-            c.y += (c.targetY - c.y) * posRate;
+    // ── Gravity: pull cell centers, don't affect size ───
+    if (GRAVITY_STRENGTH > 0) {
+        const gx = Math.cos(GRAVITY_ANGLE) * GRAVITY_STRENGTH;
+        const gy = Math.sin(GRAVITY_ANGLE) * GRAVITY_STRENGTH;
+        for (const c of cells) {
+            if (c._dragging) continue;
+            c.vx += gx * dt;
+            c.vy += gy * dt;
+            c.vx *= VELOCITY_DAMPING;
+            c.vy *= VELOCITY_DAMPING;
+            c.x += c.vx * dt;
+            c.y += c.vy * dt;
+            // Keep inside viewport
+            const r = c.effectiveRadius();
+            if (c.x < r) { c.x = r; c.vx = Math.abs(c.vx) * 0.3; }
+            if (c.x > W - r) { c.x = W - r; c.vx = -Math.abs(c.vx) * 0.3; }
+            if (c.y < r) { c.y = r; c.vy = Math.abs(c.vy) * 0.3; }
+            if (c.y > H - r) { c.y = H - r; c.vy = -Math.abs(c.vy) * 0.3; }
         }
+    }
+
+    // ── Move toward targets (layout transition) ────────
+    // Only when gravity is off — gravity replaces target seeking
+    if (GRAVITY_STRENGTH === 0) {
+        const posRate = 1 - Math.exp(-dt * 0.12);
+        for (const c of cells) {
+            if (!c._dragging) {
+                c.x += (c.targetX - c.x) * posRate;
+                c.y += (c.targetY - c.y) * posRate;
+            }
+        }
+    }
+
+    // Weight always interpolates toward target
+    const weightRate = 1 - Math.exp(-dt * 0.08);
+    for (const c of cells) {
         c.weight += (c.targetWeight - c.weight) * weightRate;
     }
 
@@ -1289,6 +1337,27 @@ function setFocus(val) {
 }
 focusSlider.addEventListener('input', () => setFocus(parseFloat(focusSlider.value)));
 focusNum.addEventListener('input', () => setFocus(parseFloat(focusNum.value) || 1));
+
+// Gravity controls
+const gravSlider = document.getElementById('gravSlider');
+const gravNum = document.getElementById('gravNum');
+function setGrav(val) {
+    GRAVITY_STRENGTH = val;
+    gravSlider.value = Math.min(val, parseFloat(gravSlider.max));
+    gravNum.value = val;
+}
+gravSlider.addEventListener('input', () => setGrav(parseFloat(gravSlider.value)));
+gravNum.addEventListener('input', () => setGrav(parseFloat(gravNum.value) || 0));
+
+const gravAngleSlider = document.getElementById('gravAngleSlider');
+const gravAngleNum = document.getElementById('gravAngleNum');
+function setGravAngle(val) {
+    GRAVITY_ANGLE = val;
+    gravAngleSlider.value = Math.min(val, parseFloat(gravAngleSlider.max));
+    gravAngleNum.value = val;
+}
+gravAngleSlider.addEventListener('input', () => setGravAngle(parseFloat(gravAngleSlider.value)));
+gravAngleNum.addEventListener('input', () => setGravAngle(parseFloat(gravAngleNum.value) || 0));
 
 // Layout buttons
 document.querySelectorAll('.layout-btn').forEach(btn => {
