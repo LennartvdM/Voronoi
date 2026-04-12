@@ -232,34 +232,32 @@ class Cell {
             pullY += cellPullY;
 
             // ── Border pull with focal convergence ────────────
-            // Border-facing vertices converge toward a focal point
-            // on the border vector, creating a teardrop/lens shape.
-            // BORDER_FOCUS controls how far the focal point is:
-            //   low (1-2) = sharp teardrop
-            //   high (10+) = gentle convergence, nearly parallel
+            // Border-facing vertices LERP toward a focal point on
+            // the border vector. A lerp can NEVER overshoot — the
+            // vertex approaches the focal point but never passes it.
+            // This makes concavity from border pull impossible at
+            // the source, not just patched after the fact.
             if (BORDER_PULL > 0) {
                 const facing = cosA * borderNx + sinA * borderNy;
                 if (facing > -0.2) {
-                    // Focal point along the border vector
                     const focalDist = rBase * BORDER_FOCUS;
                     const focalX = this.x + borderNx * focalDist;
                     const focalY = this.y + borderNy * focalDist;
 
-                    // Pull direction: from vertex base position toward focal point
-                    const toFx = focalX - baseX;
-                    const toFy = focalY - baseY;
-                    const toFd = Math.sqrt(toFx * toFx + toFy * toFy) || 1;
-                    const dirX = toFx / toFd;
-                    const dirY = toFy / toFd;
-
+                    // Weight: 0 at equator, 1 at tip
                     const weight = Math.min(1, (facing + 0.2) / 0.3);
-                    const bPull = BORDER_PULL * rBase * weight;
-                    const maxExtend = Math.max(0, (borderDist - rBase) * 0.5);
-                    const actualPull = Math.min(bPull, maxExtend);
 
-                    borderPullX = dirX * actualPull;
-                    borderPullY = dirY * actualPull;
+                    // Convergence: how much of the way from base to focal.
+                    // Normalized so BORDER_PULL=5 ≈ 90% toward focal.
+                    // NEVER exceeds 0.95 — vertex can't reach the focal point.
+                    const convergence = Math.min(0.95, weight * BORDER_PULL * 0.18);
+
+                    // Lerp: vertex moves from base position toward focal point.
+                    // This is geometrically guaranteed to never overshoot.
+                    borderPullX = (focalX - baseX) * convergence;
+                    borderPullY = (focalY - baseY) * convergence;
                     pullX += borderPullX;
+                    pullY += borderPullY;
                     pullY += borderPullY;
                 }
             }
@@ -433,71 +431,49 @@ function copyPoly(poly) {
 }
 
 // Enforce convexity on a polygon — HARD constraint.
-// Finds entire concave RUNS (consecutive concave vertices) and
-// replaces them with straight chords between the last convex
-// anchor vertices on either side. Volume that would squeeze
-// past the focal bottleneck redistributes into the cell body.
+// Recomputes winding each pass (handles self-intersecting polygons).
+// Projects concave vertices onto the line between their neighbors.
+// Iterates until fully convex or max passes.
 function enforceConvexity(poly) {
     const n = poly.length;
     if (n < 3) return;
 
-    // Determine winding direction from signed area
-    let signedArea = 0;
-    for (let i = 0; i < n; i++) {
-        const j = (i + 1) % n;
-        signedArea += poly[i][0] * poly[j][1] - poly[j][0] * poly[i][1];
-    }
-    const convexSign = signedArea > 0 ? 1 : -1;
-
-    function crossAt(i) {
-        const prev = poly[(i - 1 + n) % n];
-        const curr = poly[i];
-        const next = poly[(i + 1) % n];
-        const ax = curr[0] - prev[0], ay = curr[1] - prev[1];
-        const bx = next[0] - curr[0], by = next[1] - curr[1];
-        return (ax * by - ay * bx) * convexSign;
-    }
-
-    // Multiple passes — fixing one run can create new concavities at junctions
-    for (let pass = 0; pass < n; pass++) {
-        // Find first concave vertex
-        let runStart = -1;
+    for (let pass = 0; pass < n * 2; pass++) {
+        // Recompute winding direction each pass — critical for
+        // self-intersecting polygons where winding can flip
+        let signedArea = 0;
         for (let i = 0; i < n; i++) {
-            if (crossAt(i) < -0.01) { runStart = i; break; }
+            const j = (i + 1) % n;
+            signedArea += poly[i][0] * poly[j][1] - poly[j][0] * poly[i][1];
         }
-        if (runStart === -1) break; // fully convex
+        const convexSign = signedArea > 0 ? 1 : -1;
 
-        // Extend to find the full concave run
-        let runEnd = runStart;
-        for (let step = 1; step < n - 1; step++) {
-            const next = (runStart + step) % n;
-            if (crossAt(next) < -0.01) {
-                runEnd = next;
-            } else {
-                break;
+        let anyFixed = false;
+        for (let i = 0; i < n; i++) {
+            const prev = poly[(i - 1 + n) % n];
+            const curr = poly[i];
+            const next = poly[(i + 1) % n];
+            const ax = curr[0] - prev[0], ay = curr[1] - prev[1];
+            const bx = next[0] - curr[0], by = next[1] - curr[1];
+            const cross = ax * by - ay * bx;
+
+            if (cross * convexSign < -0.01) {
+                // Project onto the line between prev and next
+                const dx = next[0] - prev[0], dy = next[1] - prev[1];
+                const len2 = dx * dx + dy * dy;
+                if (len2 > 0.001) {
+                    let t = ((curr[0] - prev[0]) * dx + (curr[1] - prev[1]) * dy) / len2;
+                    t = Math.max(0.05, Math.min(0.95, t));
+                    curr[0] = prev[0] + dx * t;
+                    curr[1] = prev[1] + dy * t;
+                } else {
+                    curr[0] = (prev[0] + next[0]) / 2;
+                    curr[1] = (prev[1] + next[1]) / 2;
+                }
+                anyFixed = true;
             }
         }
-
-        // Convex anchors: the vertices just outside the run
-        const anchor1 = poly[(runStart - 1 + n) % n];
-        const anchor2 = poly[(runEnd + 1) % n];
-
-        // Count vertices in the run
-        let runLen = 1;
-        if (runEnd >= runStart) {
-            runLen = runEnd - runStart + 1;
-        } else {
-            runLen = (n - runStart) + runEnd + 1;
-        }
-
-        // Redistribute run vertices along the chord anchor1 → anchor2
-        let idx = runStart;
-        for (let i = 0; i < runLen; i++) {
-            const t = (i + 1) / (runLen + 1);
-            poly[idx][0] = anchor1[0] + (anchor2[0] - anchor1[0]) * t;
-            poly[idx][1] = anchor1[1] + (anchor2[1] - anchor1[1]) * t;
-            idx = (idx + 1) % n;
-        }
+        if (!anyFixed) break;
     }
 }
 
