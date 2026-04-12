@@ -196,36 +196,40 @@ class Cell {
             }
 
             // ── Border pull ──────────────────────────────────
-            // T-shaped analysis: for each viewport border, ALL
-            // vertices on the border-facing side get pulled in
-            // the border's NORMAL direction (perpendicular to
-            // the border). This creates a broad flat front, not
-            // a tentacle. Distance is irrelevant — only the
-            // facing angle matters.
+            // T-shaped analysis: each vertex finds its nearest
+            // border and pulls toward it in the border's normal
+            // direction. The ENTIRE border-facing side of the cell
+            // pulls uniformly — creating a flat front (the T
+            // crossbar), not a tentacle. Each vertex only pulls
+            // toward ONE border, preventing diagonal combines.
+            // Distance is irrelevant — strength is constant.
             if (BORDER_PULL > 0) {
-                const borders = [
-                    { nx: -1, ny:  0, dist: this.x },       // left
-                    { nx:  1, ny:  0, dist: W - this.x },    // right
-                    { nx:  0, ny: -1, dist: this.y },        // top
-                    { nx:  0, ny:  1, dist: H - this.y },    // bottom
+                // Find nearest border to this vertex's base position
+                const vx = this.x + cosA * rBase;
+                const vy = this.y + sinA * rBase;
+                const dists = [
+                    { nx: -1, ny:  0, d: vx },           // left
+                    { nx:  1, ny:  0, d: W - vx },        // right
+                    { nx:  0, ny: -1, d: vy },             // top
+                    { nx:  0, ny:  1, d: H - vy },         // bottom
                 ];
+                dists.sort((a, b) => a.d - b.d);
+                const nearest = dists[0];
 
-                for (const b of borders) {
-                    // How much does this vertex face this border?
-                    const facing = cosA * b.nx + sinA * b.ny;
-                    if (facing <= 0) continue;
+                // Only pull if vertex faces the border (is on the border side)
+                const facing = cosA * nearest.nx + sinA * nearest.ny;
+                if (facing > -0.2) {
+                    // Uniform pull — no facing scaling.
+                    // Soft ramp at the equator to prevent hard crease.
+                    const weight = Math.min(1, (facing + 0.2) / 0.3);
+                    const bPull = BORDER_PULL * rBase * weight;
 
-                    // Pull in the border's normal direction, not the vertex's radial direction.
-                    // Strength scales with facing: direct = full, glancing = partial.
-                    // Distance is irrelevant — constant pull regardless of how far the border is.
-                    const bPull = BORDER_PULL * rBase * facing;
-
-                    // Cap: don't extend past 50% of distance from cell edge to border
-                    const maxExtend = Math.max(0, (b.dist - rBase) * 0.5);
+                    // Cap: don't extend past 50% of distance to border
+                    const maxExtend = Math.max(0, nearest.d * 0.5);
                     const actualPull = Math.min(bPull, maxExtend);
 
-                    pullX += b.nx * actualPull;
-                    pullY += b.ny * actualPull;
+                    pullX += nearest.nx * actualPull;
+                    pullY += nearest.ny * actualPull;
                 }
             }
 
