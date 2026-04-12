@@ -1457,20 +1457,30 @@ function animate(time) {
         c.weight += (c.targetWeight - c.weight) * weightRate;
     }
 
-    // ── Void settling drift ─────────────────────────
-    // No hard centroid expulsion — centers can pass through voids
-    // freely. But when a cell's center IS inside a void, add a
-    // gentle velocity nudge outward. The settling is emergent:
-    // the polygon gets clipped by the void (in the solver), area
-    // loss creates pressure, and this drift helps it resolve.
-    const SETTLE_DRIFT = 1.5;
+    // ── Void settling ─────────────────────────────────
+    // Centers can pass through voids during motion, but must
+    // settle outside. Two forces:
+    // 1. Velocity push (proportional to depth inside void)
+    // 2. Direct position correction (teleport toward boundary)
+    // Combined, these overcome gravity and any other force.
     for (const c of cells) {
         if (c._dragging) continue;
         for (const v of voidObjects) {
             if (v.contains(c.x, c.y)) {
                 const bp = v.nearestBoundaryPoint(c.x, c.y);
-                c.vx += bp.nx * SETTLE_DRIFT * dt;
-                c.vy += bp.ny * SETTLE_DRIFT * dt;
+                const depth = Math.hypot(c.x - bp.x, c.y - bp.y);
+
+                // Direct position push: move 20% toward boundary per frame
+                // This always wins regardless of opposing forces
+                c.x += (bp.x - c.x) * 0.2;
+                c.y += (bp.y - c.y) * 0.2;
+
+                // Also zero out velocity component INTO the void
+                const vDot = c.vx * (-bp.nx) + c.vy * (-bp.ny);
+                if (vDot > 0) {
+                    c.vx -= (-bp.nx) * vDot;
+                    c.vy -= (-bp.ny) * vDot;
+                }
             }
         }
     }
