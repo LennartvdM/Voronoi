@@ -219,6 +219,19 @@ class Cell {
 
             poly.push([baseX + pullX, baseY + pullY]);
         }
+
+        // Area normalization: stretch redistributes area, doesn't add it.
+        // Scale the stretched polygon back to match the cell's target area.
+        // This ensures cells reach toward neighbors but pull in on free sides.
+        const stretchedArea = polygonArea(poly);
+        if (stretchedArea > 1 && Math.abs(stretchedArea - this.area) > this.area * 0.01) {
+            const correction = Math.sqrt(this.area / stretchedArea);
+            for (let i = 0; i < poly.length; i++) {
+                poly[i][0] = this.x + (poly[i][0] - this.x) * correction;
+                poly[i][1] = this.y + (poly[i][1] - this.y) * correction;
+            }
+        }
+
         return poly;
     }
 
