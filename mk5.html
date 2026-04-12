@@ -80,7 +80,7 @@
         <button class="ctrl-btn" id="gapBtn">Gap: 4</button>
         <div class="slider-group">
             <label>Pull</label>
-            <input type="range" id="pullSlider" min="0" max="1" step="0.01" value="0.35">
+            <input type="range" id="pullSlider" min="0" max="5" step="0.05" value="0.35">
             <input type="number" id="pullNum" min="0" max="5" step="0.05" value="0.35">
         </div>
     </div>
@@ -150,33 +150,32 @@ class Cell {
     // Generate rest-shape polygon, stretched toward nearby neighbors.
     // Each vertex is pulled toward nearby cell centers — cells "reach"
     // into gaps and create natural tension at boundaries.
+    // IMPORTANT: pull is capped so the vertex never extends past
+    // the midpoint to any neighbor. This keeps the stretch self-limiting
+    // even at extreme GRAVITY_REACH values.
     generateRestPoly(nVerts, neighbors) {
         const r = Math.sqrt(this.area / Math.PI);
         const poly = [];
         for (let i = 0; i < nVerts; i++) {
             const a = (i / nVerts) * Math.PI * 2;
-            let vx = this.x + Math.cos(a) * r;
-            let vy = this.y + Math.sin(a) * r;
+            const baseX = this.x + Math.cos(a) * r;
+            const baseY = this.y + Math.sin(a) * r;
+            let pullX = 0, pullY = 0;
 
             // Gravitational stretch toward neighbors
             if (neighbors && neighbors.length > 0) {
-                let pullX = 0, pullY = 0;
                 for (const nb of neighbors) {
                     const dx = nb.x - this.x;
                     const dy = nb.y - this.y;
                     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
                     const rSum = r + nb.effectiveRadius();
 
-                    // Only pull toward cells that are close enough to matter
                     if (dist > rSum * 2.5) continue;
 
                     // How much does this vertex face the neighbor?
-                    // Dot product of vertex direction with neighbor direction
                     const vdx = Math.cos(a), vdy = Math.sin(a);
                     const ndx = dx / dist, ndy = dy / dist;
                     const facing = vdx * ndx + vdy * ndy;
-
-                    // Only stretch vertices that face the neighbor
                     if (facing <= 0) continue;
 
                     // Strength: stronger when closer, fades with distance
@@ -186,11 +185,39 @@ class Cell {
                     pullX += ndx * strength * r;
                     pullY += ndy * strength * r;
                 }
-                vx += pullX;
-                vy += pullY;
+
+                // Cap: vertex must not extend past 40% of the way from
+                // cell center to the nearest neighbor in the pull direction.
+                // This prevents overshoot no matter how high GRAVITY_REACH is.
+                const pullMag = Math.sqrt(pullX * pullX + pullY * pullY);
+                if (pullMag > 0.01) {
+                    const pullDirX = pullX / pullMag;
+                    const pullDirY = pullY / pullMag;
+
+                    // Find the nearest neighbor in the pull direction
+                    let minReach = Infinity;
+                    for (const nb of neighbors) {
+                        const dx = nb.x - this.x;
+                        const dy = nb.y - this.y;
+                        const dot = dx * pullDirX + dy * pullDirY;
+                        if (dot > 0) {
+                            // Max reach: from circle edge to 40% of the gap
+                            const gapToNb = dot - r - nb.effectiveRadius();
+                            const maxStretch = r + Math.max(gapToNb * 0.4, 0);
+                            minReach = Math.min(minReach, maxStretch);
+                        }
+                    }
+
+                    // Clamp total pull magnitude
+                    if (minReach < Infinity && pullMag > minReach) {
+                        const scale = minReach / pullMag;
+                        pullX *= scale;
+                        pullY *= scale;
+                    }
+                }
             }
 
-            poly.push([vx, vy]);
+            poly.push([baseX + pullX, baseY + pullY]);
         }
         return poly;
     }
