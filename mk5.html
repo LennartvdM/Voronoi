@@ -571,6 +571,11 @@ function solveCells(cells, dt) {
             }
         }
 
+        // Enforce convexity AFTER temporal smoothing — the blend
+        // can create concavity even if both inputs were convex.
+        // This is the final gate: nothing past here is ever concave.
+        enforceConvexity(freshPoly);
+
         c._prevRestPoly = freshPoly.map(p => [p[0], p[1]]);
         c.restPoly = freshPoly;
         c.polygon = copyPoly(c.restPoly);
