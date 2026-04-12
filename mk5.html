@@ -81,7 +81,12 @@
         <div class="slider-group">
             <label>Pull</label>
             <input type="range" id="pullSlider" min="0" max="5" step="0.05" value="0.35">
-            <input type="number" id="pullNum" min="0" max="5" step="0.05" value="0.35">
+            <input type="number" id="pullNum" min="0" max="10" step="0.05" value="0.35">
+        </div>
+        <div class="slider-group">
+            <label>Border</label>
+            <input type="range" id="borderSlider" min="0" max="5" step="0.05" value="0">
+            <input type="number" id="borderNum" min="0" max="10" step="0.05" value="0">
         </div>
     </div>
 <script>
@@ -120,6 +125,7 @@ let GAP = 4;           // minimum pixel gap between cell surfaces
 const CORNER_RADIUS = 12;
 const AREA_ITERS = 3;  // area-correction iterations
 let GRAVITY_REACH = 0.35; // how much cells stretch toward neighbors (cosmetic only)
+let BORDER_PULL = 0;      // how much cells stretch toward viewport borders (angle only, distance irrelevant)
 const COLORS = [
     '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e',
     '#f97316', '#eab308', '#22c55e', '#14b8a6',
@@ -155,19 +161,19 @@ class Cell {
     // even at extreme GRAVITY_REACH values.
     generateRestPoly(nVerts, neighbors) {
         const r = Math.sqrt(this.area / Math.PI);
+        const rBase = Math.sqrt(this.baseArea / Math.PI);
         const poly = [];
         for (let i = 0; i < nVerts; i++) {
             const a = (i / nVerts) * Math.PI * 2;
-            const baseX = this.x + Math.cos(a) * r;
-            const baseY = this.y + Math.sin(a) * r;
+            const cosA = Math.cos(a), sinA = Math.sin(a);
+            const baseX = this.x + cosA * r;
+            const baseY = this.y + sinA * r;
             let pullX = 0, pullY = 0;
 
-            // Gravitational stretch toward neighbors.
-            // Uses BASE radii only — hover inflation of any cell
-            // must not affect the pull. Centers haven't moved,
-            // so the pull shouldn't change.
+            // ── Cell-to-cell gravitational stretch ───────────
+            // Uses BASE radii only — hover inflation must not
+            // affect the pull. Centers haven't moved.
             if (neighbors && neighbors.length > 0) {
-                const rBase = Math.sqrt(this.baseArea / Math.PI);
                 for (const nb of neighbors) {
                     const dx = nb.x - this.x;
                     const dy = nb.y - this.y;
@@ -177,50 +183,81 @@ class Cell {
 
                     if (dist > rSum * 2.5) continue;
 
-                    // How much does this vertex face the neighbor?
-                    const vdx = Math.cos(a), vdy = Math.sin(a);
                     const ndx = dx / dist, ndy = dy / dist;
-                    const facing = vdx * ndx + vdy * ndy;
+                    const facing = cosA * ndx + sinA * ndy;
                     if (facing <= 0) continue;
 
-                    // Strength: stronger when closer, fades with distance
                     const proximity = 1 - Math.min(dist / (rSum * 2), 1);
                     const strength = facing * facing * proximity * GRAVITY_REACH;
 
                     pullX += ndx * strength * rBase;
                     pullY += ndy * strength * rBase;
                 }
+            }
 
-                // Cap: vertex must not extend past 40% of the way from
-                // cell center to the nearest neighbor in the pull direction.
-                // This prevents overshoot no matter how high GRAVITY_REACH is.
-                const pullMag = Math.sqrt(pullX * pullX + pullY * pullY);
-                if (pullMag > 0.01) {
-                    const pullDirX = pullX / pullMag;
-                    const pullDirY = pullY / pullMag;
+            // ── Border pull ──────────────────────────────────
+            // Each vertex stretches toward the viewport border it
+            // faces. Distance is irrelevant — only angle matters.
+            // This makes cells fill toward edges like a tessellation.
+            if (BORDER_PULL > 0) {
+                // Ray-cast from cell center in vertex direction to find border
+                let borderT = Infinity;
+                if (cosA > 0.001)  borderT = Math.min(borderT, (W - this.x) / cosA);
+                if (cosA < -0.001) borderT = Math.min(borderT, -this.x / cosA);
+                if (sinA > 0.001)  borderT = Math.min(borderT, (H - this.y) / sinA);
+                if (sinA < -0.001) borderT = Math.min(borderT, -this.y / sinA);
 
-                    // Find the nearest neighbor in the pull direction
-                    const rBase = Math.sqrt(this.baseArea / Math.PI);
-                    let minReach = Infinity;
+                if (borderT > 0 && borderT < Infinity) {
+                    // Constant pull — doesn't depend on distance
+                    const bPull = BORDER_PULL * rBase;
+                    // Cap: don't extend past 50% of distance from cell edge to border
+                    const maxExtend = Math.max(0, (borderT - rBase) * 0.5);
+                    const actualPull = Math.min(bPull, maxExtend);
+
+                    pullX += cosA * actualPull;
+                    pullY += sinA * actualPull;
+                }
+            }
+
+            // ── Cap: combined pull must not overshoot ────────
+            // Vertex can't extend past 40% of the gap to nearest
+            // neighbor in the pull direction, OR past 50% of the
+            // distance to the border.
+            const pullMag = Math.sqrt(pullX * pullX + pullY * pullY);
+            if (pullMag > 0.01) {
+                const pullDirX = pullX / pullMag;
+                const pullDirY = pullY / pullMag;
+
+                let maxReach = Infinity;
+
+                // Cap against neighbors
+                if (neighbors) {
                     for (const nb of neighbors) {
                         const dx = nb.x - this.x;
                         const dy = nb.y - this.y;
                         const dot = dx * pullDirX + dy * pullDirY;
                         if (dot > 0) {
-                            // Max reach: from circle edge to 40% of the gap
                             const rNbBase = Math.sqrt(nb.baseArea / Math.PI);
                             const gapToNb = dot - rBase - rNbBase;
-                            const maxStretch = rBase + Math.max(gapToNb * 0.4, 0);
-                            minReach = Math.min(minReach, maxStretch);
+                            maxReach = Math.min(maxReach, rBase + Math.max(gapToNb * 0.4, 0));
                         }
                     }
+                }
 
-                    // Clamp total pull magnitude
-                    if (minReach < Infinity && pullMag > minReach) {
-                        const scale = minReach / pullMag;
-                        pullX *= scale;
-                        pullY *= scale;
-                    }
+                // Cap against border
+                let borderT = Infinity;
+                if (pullDirX > 0.001)  borderT = Math.min(borderT, (W - this.x) / pullDirX);
+                if (pullDirX < -0.001) borderT = Math.min(borderT, -this.x / pullDirX);
+                if (pullDirY > 0.001)  borderT = Math.min(borderT, (H - this.y) / pullDirY);
+                if (pullDirY < -0.001) borderT = Math.min(borderT, -this.y / pullDirY);
+                if (borderT < Infinity) {
+                    maxReach = Math.min(maxReach, (borderT - rBase) * 0.5 + rBase);
+                }
+
+                if (maxReach < Infinity && pullMag > maxReach) {
+                    const scale = maxReach / pullMag;
+                    pullX *= scale;
+                    pullY *= scale;
                 }
             }
 
@@ -828,6 +865,17 @@ function setPull(val) {
 }
 pullSlider.addEventListener('input', () => setPull(parseFloat(pullSlider.value)));
 pullNum.addEventListener('input', () => setPull(parseFloat(pullNum.value) || 0));
+
+// Border pull — slider + number field stay in sync
+const borderSlider = document.getElementById('borderSlider');
+const borderNum = document.getElementById('borderNum');
+function setBorder(val) {
+    BORDER_PULL = val;
+    borderSlider.value = Math.min(val, parseFloat(borderSlider.max));
+    borderNum.value = val;
+}
+borderSlider.addEventListener('input', () => setBorder(parseFloat(borderSlider.value)));
+borderNum.addEventListener('input', () => setBorder(parseFloat(borderNum.value) || 0));
 
 // ─── Start ───────────────────────────────────────────────────
 initCells(8);
