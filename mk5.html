@@ -994,17 +994,30 @@ function solveCells(cells, dt) {
                     c.polygon = clipByHalfPlane(c.polygon, v.x, v.y + v.h, 0, -1);
                 }
             } else {
-                // Center outside void: find the NEAREST boundary point
-                // and clip against that ONE edge only. This prevents
-                // double-clipping at corners (which created right-angle
-                // shadow cuts).
-                const bp = v.nearestBoundaryPoint(c.x, c.y);
-                const distToBoundary = Math.sqrt(
-                    (c.x - bp.x) * (c.x - bp.x) + (c.y - bp.y) * (c.y - bp.y)
-                );
-                // Only clip if the cell actually reaches the void boundary
-                if (distToBoundary < r) {
-                    c.polygon = clipByHalfPlane(c.polygon, bp.x, bp.y, bp.nx, bp.ny);
+                // Center outside void: clip against every void edge
+                // that the polygon ACTUALLY crosses. At edges this is
+                // one clip. At corners this is two clips, which makes
+                // the cell wrap around the corner. No shadow artifacts
+                // because we check actual polygon vertex penetration,
+                // not axis-aligned proximity.
+                const edges = [
+                    { mx: v.x - v.w, my: v.y, nx: 1, ny: 0 },  // left (keep left)
+                    { mx: v.x + v.w, my: v.y, nx: -1, ny: 0 },  // right (keep right)
+                    { mx: v.x, my: v.y - v.h, nx: 0, ny: 1 },   // top (keep above)
+                    { mx: v.x, my: v.y + v.h, nx: 0, ny: -1 },  // bottom (keep below)
+                ];
+                for (const e of edges) {
+                    // Does the polygon actually cross this edge?
+                    // Check if any vertex is on the void-interior side
+                    let crosses = false;
+                    for (const p of c.polygon) {
+                        if ((p[0] - e.mx) * e.nx + (p[1] - e.my) * e.ny > 0.1) {
+                            crosses = true; break;
+                        }
+                    }
+                    if (crosses) {
+                        c.polygon = clipByHalfPlane(c.polygon, e.mx, e.my, e.nx, e.ny);
+                    }
                 }
             }
         }
