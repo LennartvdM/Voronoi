@@ -86,6 +86,14 @@
         <button class="ctrl-btn" id="voidBtn">Void</button>
         <button class="ctrl-btn" id="clearVoidsBtn">Clear</button>
         <button class="ctrl-btn" id="debugBtn">Debug</button>
+        <span id="debugToggles" style="display:none;">
+            <button class="ctrl-btn active" data-layer="corners" style="font-size:10px;padding:4px 8px;">Corners</button>
+            <button class="ctrl-btn active" data-layer="cellPull" style="font-size:10px;padding:4px 8px;">CellPull</button>
+            <button class="ctrl-btn active" data-layer="borderPull" style="font-size:10px;padding:4px 8px;">Border</button>
+            <button class="ctrl-btn active" data-layer="combined" style="font-size:10px;padding:4px 8px;">Combined</button>
+            <button class="ctrl-btn active" data-layer="restPoly" style="font-size:10px;padding:4px 8px;">RestPoly</button>
+            <button class="ctrl-btn active" data-layer="borderLine" style="font-size:10px;padding:4px 8px;">BdrLine</button>
+        </span>
         <div class="slider-group">
             <label>Pull</label>
             <input type="range" id="pullSlider" min="0" max="5" step="0.05" value="0.35">
@@ -1288,6 +1296,14 @@ function drawCell(cell) {
 }
 
 let debugMode = false;
+const debugLayers = {
+    corners: true,      // orange corner vectors + dots
+    borderPull: true,    // yellow border pull vectors
+    cellPull: true,      // cyan cell-to-cell pull vectors
+    combined: true,      // white combined pull vectors
+    restPoly: true,      // red dashed rest poly outline
+    borderLine: true,    // yellow dashed line to border point
+};
 
 function render(cells) {
     ctx.clearRect(0, 0, W, H);
@@ -1331,11 +1347,10 @@ function render(cells) {
 
 function renderDebug(cells) {
     for (const c of cells) {
-        if (!c._debugPulls) continue;
 
-        // Draw line from cell center to nearest border point
-        const d0 = c._debugPulls[0];
-        if (d0) {
+        // Border line (yellow dashed to border point)
+        if (debugLayers.borderLine && c._debugPulls && c._debugPulls[0]) {
+            const d0 = c._debugPulls[0];
             ctx.beginPath();
             ctx.moveTo(c.x, c.y);
             ctx.lineTo(d0.borderPx, d0.borderPy);
@@ -1344,56 +1359,51 @@ function renderDebug(cells) {
             ctx.setLineDash([6, 4]);
             ctx.stroke();
             ctx.setLineDash([]);
-
-            // Mark nearest border point
             ctx.beginPath();
             ctx.arc(d0.borderPx, d0.borderPy, 5, 0, Math.PI * 2);
             ctx.fillStyle = 'yellow';
             ctx.fill();
-
         }
 
-        // Draw per-vertex vectors
-        for (const d of c._debugPulls) {
-            // Cell-to-cell pull (cyan)
-            if (Math.abs(d.cpx) > 0.5 || Math.abs(d.cpy) > 0.5) {
-                ctx.beginPath();
-                ctx.moveTo(d.bx, d.by);
-                ctx.lineTo(d.bx + d.cpx, d.by + d.cpy);
-                ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
-                ctx.lineWidth = 1;
-                ctx.stroke();
-            }
-
-            // Border pull (yellow)
-            if (Math.abs(d.bpx) > 0.5 || Math.abs(d.bpy) > 0.5) {
-                ctx.beginPath();
-                ctx.moveTo(d.bx, d.by);
-                ctx.lineTo(d.bx + d.bpx, d.by + d.bpy);
-                ctx.strokeStyle = 'rgba(255, 255, 0, 0.7)';
-                ctx.lineWidth = 1.5;
-                ctx.stroke();
-            }
-
-            // Combined pull (white)
-            if (Math.abs(d.px) > 0.5 || Math.abs(d.py) > 0.5) {
-                ctx.beginPath();
-                ctx.moveTo(d.bx, d.by);
-                ctx.lineTo(d.bx + d.px, d.by + d.py);
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-                ctx.lineWidth = 1;
-                ctx.stroke();
-
-                // Arrowhead
-                ctx.beginPath();
-                ctx.arc(d.bx + d.px, d.by + d.py, 2, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-                ctx.fill();
+        // Per-vertex pull vectors
+        if (c._debugPulls) {
+            for (const d of c._debugPulls) {
+                // Cell-to-cell pull (cyan)
+                if (debugLayers.cellPull && (Math.abs(d.cpx) > 0.5 || Math.abs(d.cpy) > 0.5)) {
+                    ctx.beginPath();
+                    ctx.moveTo(d.bx, d.by);
+                    ctx.lineTo(d.bx + d.cpx, d.by + d.cpy);
+                    ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+                // Border pull (yellow vectors)
+                if (debugLayers.borderPull && (Math.abs(d.bpx) > 0.5 || Math.abs(d.bpy) > 0.5)) {
+                    ctx.beginPath();
+                    ctx.moveTo(d.bx, d.by);
+                    ctx.lineTo(d.bx + d.bpx, d.by + d.bpy);
+                    ctx.strokeStyle = 'rgba(255, 255, 0, 0.7)';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                }
+                // Combined pull (white)
+                if (debugLayers.combined && (Math.abs(d.px) > 0.5 || Math.abs(d.py) > 0.5)) {
+                    ctx.beginPath();
+                    ctx.moveTo(d.bx, d.by);
+                    ctx.lineTo(d.bx + d.px, d.by + d.py);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(d.bx + d.px, d.by + d.py, 2, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.fill();
+                }
             }
         }
 
-        // Draw rest poly outline (before clipping)
-        if (c.restPoly && c.restPoly.length > 2) {
+        // Rest poly outline (red dashed)
+        if (debugLayers.restPoly && c.restPoly && c.restPoly.length > 2) {
             ctx.beginPath();
             ctx.moveTo(c.restPoly[0][0], c.restPoly[0][1]);
             for (let i = 1; i < c.restPoly.length; i++)
@@ -1406,17 +1416,18 @@ function renderDebug(cells) {
             ctx.setLineDash([]);
         }
 
-        // Cell center dot
+        // Cell center dot (always shown when debug is on)
         ctx.beginPath();
         ctx.arc(c.x, c.y, 3, 0, Math.PI * 2);
         ctx.fillStyle = 'white';
         ctx.fill();
 
-        // Corner vectors: lines from centroid to each display corner
-        const dp = c._displayPoly;
-        if (dp && dp.length >= 3) {
-            const cent = polygonCentroid(dp);
-            for (const p of dp) {
+        // Corner vectors (orange)
+        if (debugLayers.corners) {
+            const dp = c._displayPoly;
+            if (dp && dp.length >= 3) {
+                const cent = polygonCentroid(dp);
+                for (const p of dp) {
                 // Line from centroid to corner
                 ctx.beginPath();
                 ctx.moveTo(cent.x, cent.y);
@@ -1437,6 +1448,7 @@ function renderDebug(cells) {
             ctx.arc(cent.x, cent.y, 4, 0, Math.PI * 2);
             ctx.fillStyle = 'orange';
             ctx.fill();
+            }
         }
     }
 }
@@ -1747,10 +1759,18 @@ document.querySelectorAll('.layout-btn').forEach(btn => {
     });
 });
 
-// Debug toggle
+// Debug toggle + layer toggles
 document.getElementById('debugBtn').addEventListener('click', () => {
     debugMode = !debugMode;
     document.getElementById('debugBtn').classList.toggle('active', debugMode);
+    document.getElementById('debugToggles').style.display = debugMode ? '' : 'none';
+});
+document.querySelectorAll('[data-layer]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const layer = btn.dataset.layer;
+        debugLayers[layer] = !debugLayers[layer];
+        btn.classList.toggle('active', debugLayers[layer]);
+    });
 });
 
 // ─── Start ───────────────────────────────────────────────────
