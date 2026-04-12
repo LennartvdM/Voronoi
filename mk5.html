@@ -995,18 +995,26 @@ function solveCells(cells, dt) {
                 }
             } else {
                 // Center outside void: clip against each void edge
-                // the polygon might overlap. Normals point OUTWARD
-                // from the void to keep everything OUTSIDE.
-                if (c.x < v.x && c.x + r > v.x - v.w) {
+                // the polygon might overlap. BOTH axes must be checked
+                // to prevent "shadow" clipping along the void's axes.
+                // Left edge: cell is left of void AND vertically overlaps
+                if (c.x < v.x && c.x + r > v.x - v.w &&
+                    c.y + r > v.y - v.h && c.y - r < v.y + v.h) {
                     c.polygon = clipByHalfPlane(c.polygon, v.x - v.w, v.y, 1, 0);
                 }
-                if (c.x > v.x && c.x - r < v.x + v.w) {
+                // Right edge
+                if (c.x > v.x && c.x - r < v.x + v.w &&
+                    c.y + r > v.y - v.h && c.y - r < v.y + v.h) {
                     c.polygon = clipByHalfPlane(c.polygon, v.x + v.w, v.y, -1, 0);
                 }
-                if (c.y < v.y && c.y + r > v.y - v.h) {
+                // Top edge
+                if (c.y < v.y && c.y + r > v.y - v.h &&
+                    c.x + r > v.x - v.w && c.x - r < v.x + v.w) {
                     c.polygon = clipByHalfPlane(c.polygon, v.x, v.y - v.h, 0, 1);
                 }
-                if (c.y > v.y && c.y - r < v.y + v.h) {
+                // Bottom edge
+                if (c.y > v.y && c.y - r < v.y + v.h &&
+                    c.x + r > v.x - v.w && c.x - r < v.x + v.w) {
                     c.polygon = clipByHalfPlane(c.polygon, v.x, v.y + v.h, 0, -1);
                 }
             }
