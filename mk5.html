@@ -89,6 +89,11 @@
             <input type="range" id="borderSlider" min="0" max="5" step="0.05" value="0">
             <input type="number" id="borderNum" min="0" max="10" step="0.05" value="0">
         </div>
+        <div class="slider-group">
+            <label>Focus</label>
+            <input type="range" id="focusSlider" min="1" max="20" step="0.5" value="3">
+            <input type="number" id="focusNum" min="0.5" max="50" step="0.5" value="3">
+        </div>
     </div>
 <script>
 'use strict';
@@ -127,6 +132,7 @@ const CORNER_RADIUS = 12;
 const AREA_ITERS = 3;  // area-correction iterations
 let GRAVITY_REACH = 0.35; // how much cells stretch toward neighbors (cosmetic only)
 let BORDER_PULL = 0;      // how much cells stretch toward viewport borders (angle only, distance irrelevant)
+let BORDER_FOCUS = 3;     // focal distance for border convergence (multiplier of rBase: 1=sharp, 10+=gentle)
 const COLORS = [
     '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e',
     '#f97316', '#eab308', '#22c55e', '#14b8a6',
@@ -225,24 +231,34 @@ class Cell {
             pullX += cellPullX;
             pullY += cellPullY;
 
-            // ── Border pull ──────────────────────────────────
-            // T-shaped: the stem is the line from cell center to
-            // nearest border point. ALL vertices on the border-
-            // facing side get pulled in the border normal direction.
-            // Uniform strength — the entire T crossbar moves.
+            // ── Border pull with focal convergence ────────────
+            // Border-facing vertices converge toward a focal point
+            // on the border vector, creating a teardrop/lens shape.
+            // BORDER_FOCUS controls how far the focal point is:
+            //   low (1-2) = sharp teardrop
+            //   high (10+) = gentle convergence, nearly parallel
             if (BORDER_PULL > 0) {
-                // Is this vertex on the border-facing side?
                 const facing = cosA * borderNx + sinA * borderNy;
                 if (facing > -0.2) {
-                    // Soft ramp at equator
+                    // Focal point along the border vector
+                    const focalDist = rBase * BORDER_FOCUS;
+                    const focalX = this.x + borderNx * focalDist;
+                    const focalY = this.y + borderNy * focalDist;
+
+                    // Pull direction: from vertex base position toward focal point
+                    const toFx = focalX - baseX;
+                    const toFy = focalY - baseY;
+                    const toFd = Math.sqrt(toFx * toFx + toFy * toFy) || 1;
+                    const dirX = toFx / toFd;
+                    const dirY = toFy / toFd;
+
                     const weight = Math.min(1, (facing + 0.2) / 0.3);
                     const bPull = BORDER_PULL * rBase * weight;
-                    // Cap: don't extend past 50% of distance to border
                     const maxExtend = Math.max(0, (borderDist - rBase) * 0.5);
                     const actualPull = Math.min(bPull, maxExtend);
 
-                    borderPullX = borderNx * actualPull;
-                    borderPullY = borderNy * actualPull;
+                    borderPullX = dirX * actualPull;
+                    borderPullY = dirY * actualPull;
                     pullX += borderPullX;
                     pullY += borderPullY;
                 }
@@ -250,12 +266,15 @@ class Cell {
 
             // Store debug vectors
             if (debugMode) {
+                const focalDist = rBase * BORDER_FOCUS;
                 this._debugPulls.push({
                     bx: baseX, by: baseY,
                     cpx: cellPullX, cpy: cellPullY,
                     bpx: borderPullX, bpy: borderPullY,
                     px: pullX, py: pullY,
                     borderNx, borderNy, borderPx, borderPy,
+                    focalX: this.x + borderNx * focalDist,
+                    focalY: this.y + borderNy * focalDist,
                 });
             }
 
@@ -802,6 +821,16 @@ function renderDebug(cells) {
             ctx.arc(d0.borderPx, d0.borderPy, 5, 0, Math.PI * 2);
             ctx.fillStyle = 'yellow';
             ctx.fill();
+
+            // Mark focal point (magenta diamond)
+            if (d0.focalX !== undefined) {
+                ctx.save();
+                ctx.translate(d0.focalX, d0.focalY);
+                ctx.rotate(Math.PI / 4);
+                ctx.fillStyle = 'magenta';
+                ctx.fillRect(-4, -4, 8, 8);
+                ctx.restore();
+            }
         }
 
         // Draw per-vertex vectors
@@ -1004,6 +1033,17 @@ function setBorder(val) {
 }
 borderSlider.addEventListener('input', () => setBorder(parseFloat(borderSlider.value)));
 borderNum.addEventListener('input', () => setBorder(parseFloat(borderNum.value) || 0));
+
+// Focus (focal distance) — slider + number field
+const focusSlider = document.getElementById('focusSlider');
+const focusNum = document.getElementById('focusNum');
+function setFocus(val) {
+    BORDER_FOCUS = val;
+    focusSlider.value = Math.min(val, parseFloat(focusSlider.max));
+    focusNum.value = val;
+}
+focusSlider.addEventListener('input', () => setFocus(parseFloat(focusSlider.value)));
+focusNum.addEventListener('input', () => setFocus(parseFloat(focusNum.value) || 1));
 
 // Debug toggle
 document.getElementById('debugBtn').addEventListener('click', () => {
