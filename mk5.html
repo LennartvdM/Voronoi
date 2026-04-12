@@ -222,87 +222,194 @@ function copyPoly(poly) {
 
 // ─── Contact solver ──────────────────────────────────────────
 // The heart of MK5. Pairwise bisector clipping.
-// For each pair of close cells, compute weighted bisector,
-// clip both cells to their side. Area correction afterwards.
+//
+// Key rule: CELLS DON'T SHRINK. When a cell can't achieve its
+// target area through rest-poly expansion alone, it pushes back
+// by shifting bisectors outward (per-pair bias) and by physically
+// repelling overlapping neighbors. Minimum area is enforced hard.
 
-function solveCells(cells) {
+const VERTS = 24;          // circle vertex resolution
+const MIN_AREA_FRAC = 0.8; // cell never goes below 80% of target area
+const BIAS_RATE = 0.15;    // how fast bisector bias adapts per frame
+const REPEL_STRENGTH = 8;  // pixels/frame of repulsion force
+
+function solveCells(cells, dt) {
     const n = cells.length;
-    const VERTS = 24; // circle resolution
 
-    // Phase 1: Generate rest polygons
+    // ── Phase 0: Repulsion ───────────────────────────────────
+    // If two cells are closer than their combined radii, push
+    // them apart BEFORE clipping. This prevents the bisector
+    // from landing inside a cell's center.
+    for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+            const a = cells[i], b = cells[j];
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 0.001) { b.x += 1; continue; }
+
+            const rA = a.effectiveRadius();
+            const rB = b.effectiveRadius();
+            const minDist = (rA + rB) * 0.45 + GAP;
+
+            if (dist < minDist) {
+                const overlap = minDist - dist;
+                const push = overlap * REPEL_STRENGTH * dt * 0.1;
+                const nx = dx / dist, ny = dy / dist;
+
+                // Weight pushback by inverse area — smaller cells are lighter
+                const totalArea = a.area + b.area;
+                const ratioA = b.area / totalArea; // A moves more if B is bigger
+                const ratioB = a.area / totalArea;
+
+                if (!a._dragging) { a.x -= nx * push * ratioA; a.y -= ny * push * ratioA; }
+                if (!b._dragging) { b.x += nx * push * ratioB; b.y += ny * push * ratioB; }
+            }
+        }
+    }
+
+    // ── Phase 1: Generate rest polygons ──────────────────────
     for (const c of cells) {
         c.restPoly = c.generateRestPoly(VERTS);
         c.polygon = copyPoly(c.restPoly);
     }
 
-    // Phase 2+3: Pairwise bisector clip (with area correction loop)
+    // ── Phase 2: Pairwise bisector clip with bias ────────────
+    // Each pair has a bias value that shifts the bisector when
+    // one cell is being compressed too much. Bias persists
+    // across frames (stored on cell pairs via a map).
     for (let iter = 0; iter < AREA_ITERS; iter++) {
         // Reset polygons to (potentially scaled) rest polys
         for (const c of cells) {
             c.polygon = copyPoly(c.restPoly);
         }
 
-        // For each pair, compute bisector and clip both
         for (let i = 0; i < n; i++) {
             for (let j = i + 1; j < n; j++) {
                 const a = cells[i], b = cells[j];
                 const dx = b.x - a.x;
                 const dy = b.y - a.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
-                const rSum = a.effectiveRadius() + b.effectiveRadius() + GAP;
+                const rA = a.effectiveRadius();
+                const rB = b.effectiveRadius();
 
-                // Skip if too far apart to interact
-                if (dist > rSum * 1.5) continue;
+                // Skip if too far apart
+                if (dist > (rA + rB) * 1.6 + GAP) continue;
                 if (dist < 0.001) continue;
 
-                // Weighted bisector point (power-diagram style)
+                // Weighted bisector position
+                // bias shifts it: positive bias favors A (pushes bisector toward B)
                 const wA = Math.sqrt(a.area);
                 const wB = Math.sqrt(b.area);
-                const t = wA / (wA + wB);
-                const mx = a.x + dx * t;
-                const my = a.y + dy * t;
+                const biasKey = Math.min(a.id, b.id) * 10000 + Math.max(a.id, b.id);
+                if (!pairBias.has(biasKey)) pairBias.set(biasKey, 0);
+                const bias = pairBias.get(biasKey);
 
-                // Bisector normal: points from A toward B
+                const t = wA / (wA + wB);
+                // Bias shifts bisector point along the A→B axis
+                const biasShift = bias * dist * 0.5;
+                const mx = a.x + dx * t + (dx / dist) * biasShift;
+                const my = a.y + dy * t + (dy / dist) * biasShift;
+
                 const nx = dx / dist;
                 const ny = dy / dist;
 
-                // Clip A: keep the A-side (offset bisector by gap/2 toward A)
                 a.polygon = clipByHalfPlane(a.polygon,
-                    mx - nx * GAP / 2, my - ny * GAP / 2,
-                    nx, ny);
-
-                // Clip B: keep the B-side (offset bisector by gap/2 toward B)
+                    mx - nx * GAP / 2, my - ny * GAP / 2, nx, ny);
                 b.polygon = clipByHalfPlane(b.polygon,
-                    mx + nx * GAP / 2, my + ny * GAP / 2,
-                    -nx, -ny);
+                    mx + nx * GAP / 2, my + ny * GAP / 2, -nx, -ny);
             }
         }
 
-        // Area correction: if clipping reduced area, expand rest poly
+        // Area correction: expand rest poly if clipped too small
         if (iter < AREA_ITERS - 1) {
             for (const c of cells) {
                 if (c.polygon.length < 3) continue;
                 const actual = polygonArea(c.polygon);
                 if (actual < c.area * 0.97) {
                     const scale = Math.sqrt(c.area / Math.max(actual, 1));
-                    // Don't over-correct — clamp
-                    const clampedScale = Math.min(scale, 1.3);
-                    scalePoly(c.restPoly, c.x, c.y, clampedScale);
+                    scalePoly(c.restPoly, c.x, c.y, Math.min(scale, 1.4));
                 }
             }
         }
     }
 
-    // Clip all cells to viewport bounds
+    // ── Phase 3: Update pair biases ──────────────────────────
+    // After all clipping, check each cell's achieved area.
+    // If undersized, shift biases on all its contacts to favor it.
+    const areaRatios = new Map();
+    for (const c of cells) {
+        if (c.polygon.length < 3) { areaRatios.set(c.id, 0); continue; }
+        areaRatios.set(c.id, polygonArea(c.polygon) / c.area);
+    }
+
+    for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+            const a = cells[i], b = cells[j];
+            const biasKey = Math.min(a.id, b.id) * 10000 + Math.max(a.id, b.id);
+            if (!pairBias.has(biasKey)) continue;
+
+            const ratioA = areaRatios.get(a.id) || 0;
+            const ratioB = areaRatios.get(b.id) || 0;
+
+            let bias = pairBias.get(biasKey);
+            // If A is undersized, push bisector toward B (positive bias)
+            // If B is undersized, push bisector toward A (negative bias)
+            if (ratioA < MIN_AREA_FRAC) bias += BIAS_RATE * (MIN_AREA_FRAC - ratioA);
+            if (ratioB < MIN_AREA_FRAC) bias -= BIAS_RATE * (MIN_AREA_FRAC - ratioB);
+
+            // Decay bias toward zero when both cells are happy
+            if (ratioA > 0.95 && ratioB > 0.95) bias *= 0.9;
+
+            // Clamp bias
+            bias = Math.max(-0.4, Math.min(0.4, bias));
+            pairBias.set(biasKey, bias);
+        }
+    }
+
+    // ── Phase 4: Viewport clip ───────────────────────────────
     for (const c of cells) {
         if (c.polygon.length < 3) continue;
         const margin = 2;
-        c.polygon = clipByHalfPlane(c.polygon, margin, 0, -1, 0);     // left
-        c.polygon = clipByHalfPlane(c.polygon, W - margin, 0, 1, 0);  // right
-        c.polygon = clipByHalfPlane(c.polygon, 0, margin, 0, -1);     // top
-        c.polygon = clipByHalfPlane(c.polygon, 0, H - margin, 0, 1);  // bottom
+        c.polygon = clipByHalfPlane(c.polygon, margin, 0, -1, 0);
+        c.polygon = clipByHalfPlane(c.polygon, W - margin, 0, 1, 0);
+        c.polygon = clipByHalfPlane(c.polygon, 0, margin, 0, -1);
+        c.polygon = clipByHalfPlane(c.polygon, 0, H - margin, 0, 1);
+    }
+
+    // ── Phase 5: Hard minimum area enforcement ───────────────
+    // If after everything a cell is still too small, push it
+    // away from the densest direction. Last resort.
+    for (const c of cells) {
+        if (c.polygon.length < 3) continue;
+        const actual = polygonArea(c.polygon);
+        const minArea = c.area * MIN_AREA_FRAC;
+        if (actual < minArea && !c._dragging) {
+            // Find average direction to nearby cells, flee from it
+            let fleeDx = 0, fleeDy = 0;
+            for (const other of cells) {
+                if (other === c) continue;
+                const dx = c.x - other.x;
+                const dy = c.y - other.y;
+                const d = Math.sqrt(dx * dx + dy * dy) || 1;
+                const rSum = c.effectiveRadius() + other.effectiveRadius();
+                if (d < rSum * 2) {
+                    fleeDx += (dx / d) * (rSum / d);
+                    fleeDy += (dy / d) * (rSum / d);
+                }
+            }
+            const fleeDist = Math.sqrt(fleeDx * fleeDx + fleeDy * fleeDy);
+            if (fleeDist > 0.01) {
+                const push = REPEL_STRENGTH * dt * (1 - actual / minArea);
+                c.x += (fleeDx / fleeDist) * push;
+                c.y += (fleeDy / fleeDist) * push;
+            }
+        }
     }
 }
+
+// Persistent per-pair bisector bias (survives across frames)
+const pairBias = new Map();
 
 // ─── Rendering ───────────────────────────────────────────────
 
@@ -476,6 +583,7 @@ canvas.addEventListener('pointerdown', e => {
     const cell = findCellAt(px, py);
     if (cell) {
         dragCell = cell;
+        dragCell._dragging = true;
         dragOffX = cell.x - px;
         dragOffY = cell.y - py;
         canvas.setPointerCapture(e.pointerId);
@@ -492,7 +600,10 @@ canvas.addEventListener('pointermove', e => {
     }
 });
 
-canvas.addEventListener('pointerup', () => { dragCell = null; });
+canvas.addEventListener('pointerup', () => {
+    if (dragCell) dragCell._dragging = false;
+    dragCell = null;
+});
 canvas.addEventListener('pointerleave', () => { mouseX = -999; mouseY = -999; });
 
 // ─── Init & Loop ─────────────────────────────────────────────
@@ -526,29 +637,15 @@ function animate(time) {
     }
 
     // Solve contacts
-    solveCells(cells);
+    solveCells(cells, dt);
 
     // Render
     render(cells);
 
     // Info
-    const contactCount = countContacts(cells);
-    info.textContent = `mk5 · voroboids · ${cells.length} cells · ${contactCount} contacts · gap ${GAP}px`;
+    info.textContent = `mk5 · voroboids · ${cells.length} cells · ${pairBias.size} contacts · gap ${GAP}px`;
 
     requestAnimationFrame(animate);
-}
-
-function countContacts(cells) {
-    let count = 0;
-    for (let i = 0; i < cells.length; i++) {
-        for (let j = i + 1; j < cells.length; j++) {
-            const a = cells[i], b = cells[j];
-            const dist = Math.hypot(b.x - a.x, b.y - a.y);
-            const rSum = a.effectiveRadius() + b.effectiveRadius() + GAP;
-            if (dist < rSum * 1.5) count++;
-        }
-    }
-    return count;
 }
 
 // ─── Controls ────────────────────────────────────────────────
@@ -563,10 +660,14 @@ document.getElementById('addBtn').addEventListener('click', () => {
 });
 
 document.getElementById('removeBtn').addEventListener('click', () => {
-    if (cells.length > 1) cells.pop();
+    if (cells.length > 1) {
+        cells.pop();
+        pairBias.clear(); // stale pairs
+    }
 });
 
 document.getElementById('resetBtn').addEventListener('click', () => {
+    pairBias.clear();
     initCells(8);
 });
 
