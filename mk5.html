@@ -95,6 +95,7 @@ resize();
 let GAP = 4;           // minimum pixel gap between cell surfaces
 const CORNER_RADIUS = 12;
 const AREA_ITERS = 3;  // area-correction iterations
+const GRAVITY_REACH = 0.35; // how much cells stretch toward neighbors (cosmetic only)
 const COLORS = [
     '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e',
     '#f97316', '#eab308', '#22c55e', '#14b8a6',
@@ -122,13 +123,50 @@ class Cell {
         this.baseArea = this.area;
     }
 
-    // Generate rest-shape polygon (circle) at current area, centered at (x,y)
-    generateRestPoly(nVerts) {
+    // Generate rest-shape polygon, stretched toward nearby neighbors.
+    // Each vertex is pulled toward nearby cell centers — cells "reach"
+    // into gaps and create natural tension at boundaries.
+    generateRestPoly(nVerts, neighbors) {
         const r = Math.sqrt(this.area / Math.PI);
         const poly = [];
         for (let i = 0; i < nVerts; i++) {
             const a = (i / nVerts) * Math.PI * 2;
-            poly.push([this.x + Math.cos(a) * r, this.y + Math.sin(a) * r]);
+            let vx = this.x + Math.cos(a) * r;
+            let vy = this.y + Math.sin(a) * r;
+
+            // Gravitational stretch toward neighbors
+            if (neighbors && neighbors.length > 0) {
+                let pullX = 0, pullY = 0;
+                for (const nb of neighbors) {
+                    const dx = nb.x - this.x;
+                    const dy = nb.y - this.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                    const rSum = r + nb.effectiveRadius();
+
+                    // Only pull toward cells that are close enough to matter
+                    if (dist > rSum * 2.5) continue;
+
+                    // How much does this vertex face the neighbor?
+                    // Dot product of vertex direction with neighbor direction
+                    const vdx = Math.cos(a), vdy = Math.sin(a);
+                    const ndx = dx / dist, ndy = dy / dist;
+                    const facing = vdx * ndx + vdy * ndy;
+
+                    // Only stretch vertices that face the neighbor
+                    if (facing <= 0) continue;
+
+                    // Strength: stronger when closer, fades with distance
+                    const proximity = 1 - Math.min(dist / (rSum * 2), 1);
+                    const strength = facing * facing * proximity * GRAVITY_REACH;
+
+                    pullX += ndx * strength * r;
+                    pullY += ndy * strength * r;
+                }
+                vx += pullX;
+                vy += pullY;
+            }
+
+            poly.push([vx, vy]);
         }
         return poly;
     }
@@ -269,8 +307,11 @@ function solveCells(cells, dt) {
     }
 
     // ── Phase 1: Generate rest polygons ──────────────────────
+    // Pass all OTHER cells as neighbors so the rest shape stretches
+    // toward them. This is purely cosmetic — centers don't move.
     for (const c of cells) {
-        c.restPoly = c.generateRestPoly(VERTS);
+        const neighbors = cells.filter(o => o !== c);
+        c.restPoly = c.generateRestPoly(VERTS, neighbors);
         c.polygon = copyPoly(c.restPoly);
     }
 
