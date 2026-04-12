@@ -1539,7 +1539,7 @@ function animate(time) {
     // count and lerp toward solver output. This prevents jarring
     // frame-to-frame shape changes while keeping the physics accurate.
     const DISPLAY_VERTS = 36;
-    const DISPLAY_SMOOTH = 0.25; // per-frame blend (0.25 = ~10 frame settle)
+    const DISPLAY_SMOOTH = 0.08; // per-frame blend — extremely mellow (~30 frame settle)
     for (const c of cells) {
         if (!c.polygon || c.polygon.length < 3) {
             c._displayPoly = null;
