@@ -168,7 +168,13 @@ window.addEventListener('resize', resize);
 resize();
 
 // ─── Config ──────────────────────────────────────────────────
-let GAP = 4;           // minimum pixel gap between cell surfaces
+let GAP = 4;              // minimum pixel gap between cell surfaces
+let FILL_FACTOR = 2.0;    // used in area computation (fillFraction scaling)
+let GRAVITY_REACH = 0.35; // (MK5 legacy — slider still wired)
+let BORDER_PULL = 0;      // (MK5 legacy — slider still wired)
+let BORDER_FOCUS = 1;     // (MK5 legacy — slider still wired)
+let VOID_PULL = 0;        // (MK5 legacy — slider still wired)
+let TARGET_PULL = 1.0;    // (MK5 legacy — slider still wired)
 
 // ─── Void objects ────────────────────────────────────────────
 // Rigid shapes that cells incline toward but must settle outside.
