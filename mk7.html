@@ -435,14 +435,18 @@ function computeScaffolding(cells, W, H) {
             if (poly.length < 3) break;
         }
 
-        // Maximum reach: cell can't claim territory beyond this radius.
-        // Prevents outer cells from spiking toward viewport edges.
-        // Inner cells are unaffected (neighbors clip them first).
+        // ── Intrinsic size ("skin") ─────────────────────────
+        // The cell's own sense of how big it is. The Voronoi says
+        // where neighbors are. The skin says how far the cell can
+        // reach. The actual shape = intersection of both.
+        // At Fill=1.0: cell bounded to its natural area-based radius.
+        // At Fill=2.0: can extend to 2× that (fills gaps between neighbors).
+        // A dragged-away cell stays at this size, not viewport-sized.
         const rCell = Math.sqrt(cell.area / Math.PI);
-        const maxReach = rCell * FILL_FACTOR * 1.2;
-        const CLIP_SIDES = 16;
-        for (let i = 0; i < CLIP_SIDES; i++) {
-            const a = (i / CLIP_SIDES) * Math.PI * 2;
+        const maxReach = rCell * FILL_FACTOR;
+        const SKIN_SIDES = 24; // smooth circular bound
+        for (let i = 0; i < SKIN_SIDES; i++) {
+            const a = (i / SKIN_SIDES) * Math.PI * 2;
             const cx = Math.cos(a), cy = Math.sin(a);
             poly = clipByHalfPlane(poly,
                 cell.x + cx * maxReach,
