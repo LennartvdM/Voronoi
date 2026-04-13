@@ -377,32 +377,46 @@ class Cell {
                     }
                 }
             }
-            // ── Triple-target pull ────────────────────────
-            // Candidate triple-points (bisector intersections) tell
-            // us where corners SHOULD meet. Pull rest poly vertices
-            // toward them — creating pseudopods that reach toward
-            // meeting points. Bisector clipping then carves corners
-            // at those positions. Sharp taper (facing^4) so only
-            // vertices near the target direction get pulled.
-            if (TARGET_PULL > 0) {
-                const myTargets = cellTripleTargets.get(this.id) || [];
-                for (const tt of myTargets) {
-                    const tdx = tt.x - this.x, tdy = tt.y - this.y;
-                    const tDist = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
-                    const tndx = tdx / tDist, tndy = tdy / tDist;
-
-                    const facing = cosA * tndx + sinA * tndy;
-                    if (facing <= 0) continue;
-
-                    const taper = facing * facing * facing * facing; // facing^4
-                    const strength = taper * rBase * GRAVITY_REACH * TARGET_PULL;
-                    cellPullX += tndx * strength;
-                    cellPullY += tndy * strength;
-                }
-            }
-
             pullX += cellPullX;
             pullY += cellPullY;
+
+            // ── Triple-target pull (computed separately, added AFTER cap) ──
+            // Pull toward bisector-intersection meeting points.
+            // NOT subject to neighbor-gap cap — targets sit at the
+            // boundary between cells, not inside a neighbor.
+            // facing² taper (wider than facing⁴) + reachability factor.
+            let tripleX = 0, tripleY = 0;
+
+            if (TARGET_PULL > 0 && cellTripleTargets) {
+                const myTargets = cellTripleTargets.get(this.id);
+                if (myTargets) {
+                    for (const target of myTargets) {
+                        const tdx = target.x - baseX;
+                        const tdy = target.y - baseY;
+                        const tDist = Math.hypot(tdx, tdy);
+                        if (tDist < 1) continue;
+
+                        const tndx = tdx / tDist;
+                        const tndy = tdy / tDist;
+
+                        const facing = cosA * tndx + sinA * tndy;
+                        if (facing <= 0) continue;
+
+                        // facing² taper — reaches ~60° off-axis
+                        const taper = facing * facing;
+
+                        // Reachability: stronger when target is near rFill distance
+                        const distFromCenter = Math.hypot(target.x - this.x, target.y - this.y);
+                        const gap = Math.max(0, distFromCenter - rFill);
+                        const reachability = Math.exp(-gap / (rBase * 0.5));
+
+                        const strength = taper * rBase * GRAVITY_REACH * TARGET_PULL * reachability;
+
+                        tripleX += tndx * strength;
+                        tripleY += tndy * strength;
+                    }
+                }
+            }
 
             // ── Border pull — directional push with taper ─────
             // Each border-facing vertex gets pushed in the border
@@ -494,6 +508,19 @@ class Cell {
                     pullX *= scale;
                     pullY *= scale;
                 }
+            }
+
+            // Add triple-target pull AFTER the cap — it targets the
+            // boundary between cells, not the interior of a neighbor
+            pullX += tripleX;
+            pullY += tripleY;
+
+            // Secondary cap: total pull can't exceed 2 × rBase
+            // (prevents runaway in degenerate configurations)
+            const totalPull = Math.hypot(pullX, pullY);
+            if (totalPull > rBase * 2) {
+                pullX *= (rBase * 2) / totalPull;
+                pullY *= (rBase * 2) / totalPull;
             }
 
             poly.push([baseX + pullX, baseY + pullY]);
@@ -621,19 +648,15 @@ function simplifyToN(poly, targetN, myStars) {
         const lenB = Math.sqrt(bx * bx + by * by) || 1;
         let deviation = cross / (lenA * lenB);
 
-        // Bonus: vertices near a northstar get proportional boost.
-        // Since northstars are derived from actual corners, they're
-        // always close — this just prevents simplification from
-        // discarding the corner that anchors a triple-point.
+        // Northstar bonus: proportional to proximity AND cluster confidence
         if (myStars) {
             for (const ns of myStars) {
                 const d = Math.hypot(ns.x - curr[0], ns.y - curr[1]);
-                if (d < 40) {
-                    const proximity = 1 - d / 40;
-                    const confidence = ns.spread !== undefined
-                        ? Math.max(0, 1 - ns.spread / CLUSTER_RADIUS)
-                        : 1;
-                    deviation += 10 * proximity * (0.3 + 0.7 * confidence);
+                if (d < 60) {
+                    const proximity = 1 - d / 60;
+                    const confidence = Math.max(0, 1 - (ns.spread || 0) / 60);
+                    // Minimum bonus of 3 even for loose clusters
+                    deviation += (3 + 7 * confidence) * proximity;
                     break;
                 }
             }
@@ -681,75 +704,94 @@ function computeTripleTargets(cells) {
 
     for (let i = 0; i < n; i++) {
         const a = cells[i];
-        const ra = a.effectiveRadius();
+        if (!a.visible) continue;
+        const rA = Math.sqrt(a.area / Math.PI);
+        const wA = Math.sqrt(a.area);
+
         for (let j = i + 1; j < n; j++) {
             const b = cells[j];
-            const rb = b.effectiveRadius();
-            const dij = Math.hypot(b.x - a.x, b.y - a.y);
-            if (dij > (ra + rb) * FILL_FACTOR * 1.5) continue;
+            if (!b.visible) continue;
+            const rB = Math.sqrt(b.area / Math.PI);
+            const wB = Math.sqrt(b.area);
+
+            const distAB = Math.hypot(b.x - a.x, b.y - a.y);
+            if (distAB > (rA + rB) * FILL_FACTOR * 1.5) continue;
 
             for (let k = j + 1; k < n; k++) {
                 const c = cells[k];
-                const rc = c.effectiveRadius();
-                const dik = Math.hypot(c.x - a.x, c.y - a.y);
-                const djk = Math.hypot(c.x - b.x, c.y - b.y);
-                if (dik > (ra + rc) * FILL_FACTOR * 1.5) continue;
-                if (djk > (rb + rc) * FILL_FACTOR * 1.5) continue;
+                if (!c.visible) continue;
+                const rC = Math.sqrt(c.area / Math.PI);
+                const wC = Math.sqrt(c.area);
 
-                const wA = Math.sqrt(a.area), wB = Math.sqrt(b.area), wC = Math.sqrt(c.area);
+                const distAC = Math.hypot(c.x - a.x, c.y - a.y);
+                const distBC = Math.hypot(c.x - b.x, c.y - b.y);
+                if (distAC > (rA + rC) * FILL_FACTOR * 1.5) continue;
+                if (distBC > (rB + rC) * FILL_FACTOR * 1.5) continue;
 
-                // Bisector(A,B): weighted midpoint, perpendicular to AB
+                // Bisector(A,B)
                 const dxAB = b.x - a.x, dyAB = b.y - a.y;
-                const lenAB = Math.sqrt(dxAB * dxAB + dyAB * dyAB);
-                if (lenAB < 0.01) continue;
+                const lenAB = Math.hypot(dxAB, dyAB) || 1;
                 const tAB = wA / (wA + wB);
-                const mxAB = a.x + dxAB * tAB, myAB = a.y + dyAB * tAB;
+                const mxAB = a.x + dxAB * tAB;
+                const myAB = a.y + dyAB * tAB;
+                const pxAB = -dyAB / lenAB, pyAB = dxAB / lenAB;
 
-                // Bisector(A,C): weighted midpoint, perpendicular to AC
+                // Bisector(A,C)
                 const dxAC = c.x - a.x, dyAC = c.y - a.y;
-                const lenAC = Math.sqrt(dxAC * dxAC + dyAC * dyAC);
-                if (lenAC < 0.01) continue;
+                const lenAC = Math.hypot(dxAC, dyAC) || 1;
                 const tAC = wA / (wA + wC);
-                const mxAC = a.x + dxAC * tAC, myAC = a.y + dyAC * tAC;
+                const mxAC = a.x + dxAC * tAC;
+                const myAC = a.y + dyAC * tAC;
+                const pxAC = -dyAC / lenAC, pyAC = dxAC / lenAC;
 
-                const pt = lineIntersect(
-                    mxAB, myAB, -dyAB / lenAB, dxAB / lenAB,
-                    mxAC, myAC, -dyAC / lenAC, dxAC / lenAC
-                );
-                if (!pt) continue;
+                // Intersect
+                const cross = pxAB * pyAC - pyAB * pxAC;
+                if (Math.abs(cross) < 0.0001) continue;
 
-                // Skip if far outside viewport
+                const dmx = mxAC - mxAB, dmy = myAC - myAB;
+                const s = (dmx * pyAC - dmy * pxAC) / cross;
+                const px = mxAB + s * pxAB;
+                const py = myAB + s * pyAB;
+
+                // Viewport check
                 const margin = Math.max(W, H) * 0.3;
-                if (pt.x < -margin || pt.x > W + margin ||
-                    pt.y < -margin || pt.y > H + margin) continue;
+                if (px < -margin || px > W + margin || py < -margin || py > H + margin) continue;
 
-                // Weighted Delaunay check (power diagram)
-                const distA = Math.hypot(pt.x - a.x, pt.y - a.y);
-                const ref = distA / wA;
+                // Weighted Delaunay check
+                const distPA = Math.hypot(px - a.x, py - a.y);
+                const ref = distPA / wA;
                 let valid = true;
                 for (let m = 0; m < n; m++) {
                     if (m === i || m === j || m === k) continue;
-                    const distM = Math.hypot(pt.x - cells[m].x, pt.y - cells[m].y);
+                    if (!cells[m].visible) continue;
+                    const distPM = Math.hypot(px - cells[m].x, py - cells[m].y);
                     const wM = Math.sqrt(cells[m].area);
-                    if (distM / wM < ref - 0.01) { valid = false; break; }
+                    if (distPM / wM < ref - 0.01) { valid = false; break; }
                 }
+                if (!valid) continue;
 
-                if (valid) {
-                    targets.push({ x: pt.x, y: pt.y, cells: [a.id, b.id, c.id] });
-                }
+                targets.push({
+                    x: px, y: py,
+                    cells: [a.id, b.id, c.id],
+                    cellDists: [
+                        Math.hypot(px - a.x, py - a.y),
+                        Math.hypot(px - b.x, py - b.y),
+                        Math.hypot(px - c.x, py - c.y)
+                    ],
+                    cellRadii: [rA, rB, rC]
+                });
             }
         }
     }
+
     return targets;
 }
-const CLUSTER_RADIUS = 35; // max distance between corners to form a cluster
+const CLUSTER_RADIUS = 60; // max distance between corners to form a cluster
 
 function computeNorthstars(cells) {
     const stars = [];
 
-    // Collect all polygon corners with their cell ownership.
-    // Use the CLIPPED polygon (after bisector + viewport clipping),
-    // not the rest poly — we want where corners actually ARE.
+    // Collect all clipped polygon corners with cell ownership
     const allCorners = [];
     for (const c of cells) {
         if (!c.polygon || c.polygon.length < 3 || !c.visible) continue;
@@ -757,31 +799,24 @@ function computeNorthstars(cells) {
             allCorners.push({
                 x: c.polygon[i][0],
                 y: c.polygon[i][1],
-                cellId: c.id,
-                vertIdx: i
+                cellId: c.id
             });
         }
     }
 
-    // Spatial bucket for efficiency (grid cells of CLUSTER_RADIUS size)
+    // Spatial bucketing
     const bucketSize = CLUSTER_RADIUS;
     const buckets = new Map();
 
     for (const corner of allCorners) {
         const bx = Math.floor(corner.x / bucketSize);
         const by = Math.floor(corner.y / bucketSize);
-        for (let dx = -1; dx <= 1; dx++) {
-            for (let dy = -1; dy <= 1; dy++) {
-                const key = (bx + dx) + ',' + (by + dy);
-                if (!buckets.has(key)) buckets.set(key, []);
-            }
-        }
         const key = bx + ',' + by;
+        if (!buckets.has(key)) buckets.set(key, []);
         buckets.get(key).push(corner);
     }
 
-    // Find triples: for each corner, find corners from 2 OTHER cells nearby.
-    const usedTriples = new Set();
+    const usedTriples = new Map(); // cellTriple -> best star
 
     for (const corner of allCorners) {
         const bx = Math.floor(corner.x / bucketSize);
@@ -804,61 +839,53 @@ function computeNorthstars(cells) {
             }
         }
 
-        // Look for pairs from two different cells (both different from corner's cell)
         for (let a = 0; a < nearby.length; a++) {
             for (let b = a + 1; b < nearby.length; b++) {
                 if (nearby[a].cellId === nearby[b].cellId) continue;
 
-                const ids = [corner.cellId, nearby[a].cellId, nearby[b].cellId].sort((x, y) => x - y);
-                const tripleKey = ids.join(',');
-                if (usedTriples.has(tripleKey)) continue;
-
-                // Check that all three are mutually within CLUSTER_RADIUS
                 const dAB = Math.hypot(nearby[a].x - nearby[b].x, nearby[a].y - nearby[b].y);
                 if (dAB >= CLUSTER_RADIUS) continue;
 
-                usedTriples.add(tripleKey);
+                const ids = [corner.cellId, nearby[a].cellId, nearby[b].cellId].sort((x, y) => x - y);
+                const tripleKey = ids.join(',');
 
-                // Northstar position = centroid of the three actual corners
-                const nx = (corner.x + nearby[a].x + nearby[b].x) / 3;
-                const ny = (corner.y + nearby[a].y + nearby[b].y) / 3;
+                const spread = Math.max(
+                    Math.hypot(corner.x - nearby[a].x, corner.y - nearby[a].y),
+                    Math.hypot(corner.x - nearby[b].x, corner.y - nearby[b].y),
+                    dAB
+                );
 
-                stars.push({
-                    x: nx,
-                    y: ny,
-                    cells: ids,
-                    spread: Math.max(
-                        Math.hypot(corner.x - nearby[a].x, corner.y - nearby[a].y),
-                        Math.hypot(corner.x - nearby[b].x, corner.y - nearby[b].y),
-                        dAB
-                    )
-                });
+                // Weighted centroid: tighter corners contribute more
+                const d0a = Math.hypot(corner.x - nearby[a].x, corner.y - nearby[a].y);
+                const d0b = Math.hypot(corner.x - nearby[b].x, corner.y - nearby[b].y);
+                const w0 = 1 / (1 + d0a + d0b);
+                const wa = 1 / (1 + d0a + dAB);
+                const wb = 1 / (1 + d0b + dAB);
+                const wSum = w0 + wa + wb;
+
+                const nx = (corner.x * w0 + nearby[a].x * wa + nearby[b].x * wb) / wSum;
+                const ny = (corner.y * w0 + nearby[a].y * wa + nearby[b].y * wb) / wSum;
+
+                const candidate = { x: nx, y: ny, cells: ids, spread: spread };
+
+                if (!usedTriples.has(tripleKey) || spread < usedTriples.get(tripleKey).spread) {
+                    usedTriples.set(tripleKey, candidate);
+                }
             }
         }
     }
 
-    // Deduplicate: if same 3 cells produced multiple northstars, keep tightest
-    const bestByTriple = new Map();
-    for (const star of stars) {
-        const key = star.cells.join(',');
-        if (!bestByTriple.has(key) || star.spread < bestByTriple.get(key).spread) {
-            bestByTriple.set(key, star);
-        }
-    }
-
-    return Array.from(bestByTriple.values());
+    return Array.from(usedTriples.values());
 }
 
 // Snap display polygon corners to nearby northstars.
-// Two-tier: hard snap within 8px (exact alignment),
-// soft cubic pull within 30px (graduated convergence).
+// Snap strength modulated by cluster spread (confidence).
+// Tight clusters = firm lock. Loose clusters = gentle pull.
 function snapToNorthstars(displayPoly, myStars) {
     if (!displayPoly || displayPoly.length < 3 || !myStars || myStars.length === 0) return;
-    const HARD_SNAP = 8;
-    const SOFT_RADIUS = 30;
 
     for (let i = 0; i < displayPoly.length; i++) {
-        let bestDist = SOFT_RADIUS, bestStar = null;
+        let bestDist = Infinity, bestStar = null;
         for (const ns of myStars) {
             const d = Math.hypot(ns.x - displayPoly[i][0], ns.y - displayPoly[i][1]);
             if (d < bestDist) {
@@ -866,18 +893,26 @@ function snapToNorthstars(displayPoly, myStars) {
                 bestStar = ns;
             }
         }
-        if (bestStar) {
-            if (bestDist < HARD_SNAP) {
-                // Hard snap — all 3 cells get the exact same point
-                displayPoly[i][0] = bestStar.x;
-                displayPoly[i][1] = bestStar.y;
-            } else {
-                // Soft pull — cubic falloff, snappier than quadratic
-                const t = (bestDist - HARD_SNAP) / (SOFT_RADIUS - HARD_SNAP);
-                const pull = (1 - t) * (1 - t) * (1 - t);
-                displayPoly[i][0] += (bestStar.x - displayPoly[i][0]) * pull;
-                displayPoly[i][1] += (bestStar.y - displayPoly[i][1]) * pull;
-            }
+
+        if (!bestStar || bestDist > 50) continue;
+
+        // Confidence from cluster tightness: spread=0 → 1.0, spread=60 → 0.0
+        const confidence = Math.max(0, 1 - bestStar.spread / 60);
+
+        // Hard snap radius scales with confidence
+        const hardRadius = 5 + confidence * 15;  // 5px min, 20px for perfect clusters
+        const softRadius = hardRadius + 30;
+
+        if (bestDist > softRadius) continue;
+
+        if (bestDist < hardRadius) {
+            displayPoly[i][0] = bestStar.x;
+            displayPoly[i][1] = bestStar.y;
+        } else {
+            const t = (bestDist - hardRadius) / (softRadius - hardRadius);
+            const pull = (1 - t) * (1 - t) * (1 - t) * confidence;
+            displayPoly[i][0] += (bestStar.x - displayPoly[i][0]) * pull;
+            displayPoly[i][1] += (bestStar.y - displayPoly[i][1]) * pull;
         }
     }
 }
