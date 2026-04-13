@@ -662,6 +662,13 @@ function simplifyToN(poly, targetN, myStars) {
             }
         }
 
+        // Impasse vertex: MUST be included — this vertex was injected
+        // specifically to resolve a three-way edge-convergence gap.
+        // Score higher than any northstar bonus.
+        if (curr._impasse) {
+            deviation += 20;
+        }
+
         scored.push({ idx: i, deviation });
     }
 
@@ -913,6 +920,113 @@ function snapToNorthstars(displayPoly, myStars) {
             const pull = (1 - t) * (1 - t) * (1 - t) * confidence;
             displayPoly[i][0] += (bestStar.x - displayPoly[i][0]) * pull;
             displayPoly[i][1] += (bestStar.y - displayPoly[i][1]) * pull;
+        }
+    }
+}
+
+// ─── Impasse detection ───────────────────────────────────────
+// Impasses are triple targets where NO participating cell has a
+// corner nearby. Three edges converge toward a meeting point but
+// all cells have spent their 7 corners elsewhere. The northstar
+// system is blind to these because it only clusters existing corners.
+
+function detectImpasses(tripleTargets, cells, radius) {
+    const IMPASSE_RADIUS = radius || 50;
+    const impasses = [];
+
+    for (const tt of tripleTargets) {
+        let hasCorner = false;
+
+        for (const cid of tt.cells) {
+            const cell = cells.find(c => c.id === cid);
+            if (!cell || !cell.polygon) continue;
+
+            for (const vert of cell.polygon) {
+                if (Math.hypot(vert[0] - tt.x, vert[1] - tt.y) < IMPASSE_RADIUS) {
+                    hasCorner = true;
+                    break;
+                }
+            }
+            if (hasCorner) break;
+        }
+
+        if (!hasCorner) {
+            impasses.push(tt);
+        }
+    }
+
+    return impasses;
+}
+
+// Also detect partial impasses: a northstar exists but one of its
+// three cells is missing a corner near it (presenting a flat edge).
+function detectPartialImpasses(northstars, cells) {
+    const partials = [];
+
+    for (const ns of northstars) {
+        for (const cid of ns.cells) {
+            const cell = cells.find(c => c.id === cid);
+            if (!cell || !cell.polygon) continue;
+
+            let hasCorner = false;
+            for (const vert of cell.polygon) {
+                if (Math.hypot(vert[0] - ns.x, vert[1] - ns.y) < 25) {
+                    hasCorner = true;
+                    break;
+                }
+            }
+
+            if (!hasCorner) {
+                partials.push({ x: ns.x, y: ns.y, cells: [cid] });
+            }
+        }
+    }
+
+    return partials;
+}
+
+// Inject a vertex into the cell's clipped polygon at the closest
+// point on its edge to each impasse. The injected vertex gets
+// _impasse = true so simplifyToN gives it maximum priority.
+function injectImpasseVertices(cell, impasses) {
+    if (!cell.polygon || cell.polygon.length < 3 || !impasses || impasses.length === 0) return;
+
+    const myImpasses = impasses.filter(imp => imp.cells.includes(cell.id));
+    if (myImpasses.length === 0) return;
+
+    for (const imp of myImpasses) {
+        let bestDist = Infinity;
+        let bestPoint = null;
+        let bestEdgeIdx = -1;
+
+        const poly = cell.polygon;
+        const n = poly.length;
+
+        for (let i = 0; i < n; i++) {
+            const ax = poly[i][0], ay = poly[i][1];
+            const bx = poly[(i + 1) % n][0], by = poly[(i + 1) % n][1];
+
+            const edx = bx - ax, edy = by - ay;
+            const edLen2 = edx * edx + edy * edy;
+            if (edLen2 < 1) continue;
+
+            let t = ((imp.x - ax) * edx + (imp.y - ay) * edy) / edLen2;
+            t = Math.max(0.05, Math.min(0.95, t)); // clamp away from existing vertices
+
+            const px = ax + edx * t;
+            const py = ay + edy * t;
+            const d = Math.hypot(px - imp.x, py - imp.y);
+
+            if (d < bestDist) {
+                bestDist = d;
+                bestPoint = [px, py];
+                bestEdgeIdx = i;
+            }
+        }
+
+        if (bestPoint && bestDist < 100) {
+            bestPoint._impasse = true;
+            cell.polygon.splice(bestEdgeIdx + 1, 0, bestPoint);
         }
     }
 }
@@ -2045,10 +2159,29 @@ function animate(time) {
         }
     }
 
+    // ── Detect impasses ────────────────────────────────
+    // Find triple targets where NO cell has a corner nearby (full
+    // impasses) and northstars where one cell is missing a corner
+    // (partial impasses). These are edge-convergence gaps — three
+    // edges meeting where no cell has budgeted a corner.
+    const fullImpasses = detectImpasses(currentTripleTargets, cells, 50);
+    const partialImpasses = detectPartialImpasses(currentNorthstars, cells);
+    const allImpasses = fullImpasses.concat(partialImpasses);
+
+    // ── Inject impasse vertices ──────────────────────
+    // For each impasse, insert a vertex into the participating
+    // cells' clipped polygons at the closest edge point. Marked
+    // with _impasse=true so simplifyToN gives it max priority.
+    // Frame 1: injected. Frame 2: northstar forms. Frame 3: locked.
+    for (const c of cells) {
+        injectImpasseVertices(c, allImpasses);
+    }
+
     // ── Simplify to 7-corner polygon ────────────────────
     // Reduce solver output to exactly 7 corners — the sharpest
     // angular deviations. Northstar vertices get bonus score
-    // so they're always kept. Then snap to exact northstar positions.
+    // so they're always kept. Impasse vertices get max priority.
+    // Then snap to exact northstar positions.
     for (const c of cells) {
         if (!c.polygon || c.polygon.length < 3) {
             c._displayPoly = null;
@@ -2063,7 +2196,7 @@ function animate(time) {
     render(cells);
 
     // Info
-    info.textContent = `mk6 · voroboids · ${cells.length} cells · ${currentTripleTargets.length} targets · ${currentNorthstars.length} stars · gap ${GAP}px`;
+    info.textContent = `mk6 · voroboids · ${cells.length} cells · ${currentTripleTargets.length} targets · ${currentNorthstars.length} stars · ${allImpasses.length} impasses · gap ${GAP}px`;
 
     requestAnimationFrame(animate);
 }
