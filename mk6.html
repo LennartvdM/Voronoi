@@ -140,13 +140,13 @@
 'use strict';
 
 // ═══════════════════════════════════════════════════════════════
-//  MK5 — VOROBOIDS — Chunk 0
+//  MK6 — VOROBOIDS — Edge-First Architecture
 //
-//  Core proof: atomic cells with pairwise bisector contact.
-//  Each cell is an independent body (position, area, circle).
-//  When two cells overlap, a bisector clips both.
-//  When they separate, each reverts to its rest shape.
-//  No global tessellation. No shared mesh. Just atoms + contact.
+//  Edges are primary. Voronoi scaffolding provides exact edges
+//  and vertices. Cells assemble their shape from surrounding
+//  edges. Engaged edges conform to bisectors. Disengaged edges
+//  revert to the cell's own default shape. Vertices are where
+//  two edges meet — exact by construction.
 // ═══════════════════════════════════════════════════════════════
 
 const canvas = document.getElementById('canvas');
@@ -169,14 +169,6 @@ resize();
 
 // ─── Config ──────────────────────────────────────────────────
 let GAP = 4;           // minimum pixel gap between cell surfaces
-const CORNER_RADIUS = 12;
-const AREA_ITERS = 3;  // area-correction iterations
-let GRAVITY_REACH = 0.35; // how much cells stretch toward neighbors (cosmetic only)
-let BORDER_PULL = 0;      // how much cells stretch toward viewport borders (angle only, distance irrelevant)
-let BORDER_FOCUS = 1;     // taper curve for border push (0.3=sharp teardrop, 1=linear, 5=wide capsule)
-let VOID_PULL = 0;        // how much cells stretch toward void objects (like border pull)
-let FILL_FACTOR = 2.0;    // rest poly inflation for space-filling (1=circle, 2+=fills gaps via bisector)
-let TARGET_PULL = 1.0;    // triple-target attraction strength (0=off, 1=normal, 10+=extreme)
 
 // ─── Void objects ────────────────────────────────────────────
 // Rigid shapes that cells incline toward but must settle outside.
@@ -281,265 +273,6 @@ class Cell {
         this.visible = true;
     }
 
-    // Generate rest-shape polygon, stretched toward nearby neighbors.
-    // Each vertex is pulled toward nearby cell centers — cells "reach"
-    // into gaps and create natural tension at boundaries.
-    // IMPORTANT: pull is capped so the vertex never extends past
-    // the midpoint to any neighbor. This keeps the stretch self-limiting
-    // even at extreme GRAVITY_REACH values.
-    generateRestPoly(nVerts, neighbors) {
-        const r = Math.sqrt(this.area / Math.PI);
-        const rBase = Math.sqrt(this.baseArea / Math.PI);
-        const rFill = r * FILL_FACTOR;  // inflated radius — overlaps neighbors for bisector clipping
-        const poly = [];
-        if (debugMode) this._debugPulls = [];
-
-        // ── Find border direction: radial from viewport center ──
-        // Vector from viewport center through cell center, projected
-        // to where it hits the border. This gives each cell a natural
-        // "outward" direction: top-left cells push top-left, right
-        // cells push right, etc.
-        const vcx = W / 2, vcy = H / 2;
-        let odx = this.x - vcx, ody = this.y - vcy;
-        const odist = Math.sqrt(odx * odx + ody * ody);
-        if (odist < 1) { odx = 0; ody = -1; } // center fallback: push up
-        else { odx /= odist; ody /= odist; }
-
-        // Ray-cast from cell center in outward direction to find border hit
-        let borderT = Infinity;
-        if (odx > 0.001)  borderT = Math.min(borderT, (W - this.x) / odx);
-        if (odx < -0.001) borderT = Math.min(borderT, -this.x / odx);
-        if (ody > 0.001)  borderT = Math.min(borderT, (H - this.y) / ody);
-        if (ody < -0.001) borderT = Math.min(borderT, -this.y / ody);
-
-        const borderNx = odx, borderNy = ody;
-        const borderDist = borderT;
-        const borderPx = this.x + odx * borderT;
-        const borderPy = this.y + ody * borderT;
-
-        for (let i = 0; i < nVerts; i++) {
-            const a = (i / nVerts) * Math.PI * 2;
-            const cosA = Math.cos(a), sinA = Math.sin(a);
-
-            const baseX = this.x + cosA * rFill;
-            const baseY = this.y + sinA * rFill;
-            let pullX = 0, pullY = 0;
-            let borderPullX = 0, borderPullY = 0;
-            let cellPullX = 0, cellPullY = 0;
-
-            // ── Cell-to-cell gravitational stretch ───────────
-            // Pull toward neighbor CORNERS (from previous frame),
-            // not centers. Creates interlocking shapes like puzzle
-            // pieces rather than blobs leaning at each other.
-            if (neighbors && neighbors.length > 0) {
-                for (const nb of neighbors) {
-                    const dx = nb.x - this.x;
-                    const dy = nb.y - this.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                    const rNbBase = Math.sqrt(nb.baseArea / Math.PI);
-                    const rSum = rBase + rNbBase;
-
-                    if (dist > rSum * 2.5) continue;
-
-                    // Find nearest corner of neighbor to this vertex
-                    const corners = nb._displayPoly;
-                    if (corners && corners.length >= 3) {
-                        let bestDist = Infinity, bestDx = 0, bestDy = 0;
-                        for (const cp of corners) {
-                            const cdx = cp[0] - baseX;
-                            const cdy = cp[1] - baseY;
-                            const cd = cdx * cdx + cdy * cdy;
-                            if (cd < bestDist) {
-                                bestDist = cd;
-                                bestDx = cdx;
-                                bestDy = cdy;
-                            }
-                        }
-                        bestDist = Math.sqrt(bestDist) || 1;
-                        const ndx = bestDx / bestDist, ndy = bestDy / bestDist;
-                        const facing = cosA * ndx + sinA * ndy;
-                        if (facing <= 0) continue;
-
-                        const proximity = 1 - Math.min(bestDist / (rSum * 2), 1);
-                        const strength = facing * facing * proximity * GRAVITY_REACH;
-                        cellPullX += ndx * strength * rBase;
-                        cellPullY += ndy * strength * rBase;
-                    } else {
-                        // Fallback to center if no corners yet
-                        const ndx = dx / dist, ndy = dy / dist;
-                        const facing = cosA * ndx + sinA * ndy;
-                        if (facing <= 0) continue;
-
-                        const proximity = 1 - Math.min(dist / (rSum * 2), 1);
-                        const strength = facing * facing * proximity * GRAVITY_REACH;
-                        cellPullX += ndx * strength * rBase;
-                        cellPullY += ndy * strength * rBase;
-                    }
-                }
-            }
-            pullX += cellPullX;
-            pullY += cellPullY;
-
-            // ── Triple-target pull (computed separately, added AFTER cap) ──
-            // Pull toward bisector-intersection meeting points.
-            // NOT subject to neighbor-gap cap — targets sit at the
-            // boundary between cells, not inside a neighbor.
-            // facing² taper (wider than facing⁴) + reachability factor.
-            let tripleX = 0, tripleY = 0;
-
-            if (TARGET_PULL > 0 && cellTripleTargets) {
-                const myTargets = cellTripleTargets.get(this.id);
-                if (myTargets) {
-                    for (const target of myTargets) {
-                        const tdx = target.x - baseX;
-                        const tdy = target.y - baseY;
-                        const tDist = Math.hypot(tdx, tdy);
-                        if (tDist < 1) continue;
-
-                        const tndx = tdx / tDist;
-                        const tndy = tdy / tDist;
-
-                        const facing = cosA * tndx + sinA * tndy;
-                        if (facing <= 0) continue;
-
-                        // facing² taper — reaches ~60° off-axis
-                        const taper = facing * facing;
-
-                        // Reachability: stronger when target is near rFill distance
-                        const distFromCenter = Math.hypot(target.x - this.x, target.y - this.y);
-                        const gap = Math.max(0, distFromCenter - rFill);
-                        const reachability = Math.exp(-gap / (rBase * 0.5));
-
-                        const strength = taper * rBase * GRAVITY_REACH * TARGET_PULL * reachability;
-
-                        tripleX += tndx * strength;
-                        tripleY += tndy * strength;
-                    }
-                }
-            }
-
-            // ── Border pull — directional push with taper ─────
-            // Each border-facing vertex gets pushed in the border
-            // direction. Push magnitude tapers from full at the tip
-            // to zero at the equator. The taper is always monotonic,
-            // so the shape is CONVEX BY CONSTRUCTION — no focal
-            // point, no convergence, no possibility of concavity.
-            //
-            // BORDER_FOCUS controls the taper curve:
-            //   0.3 = sharp teardrop (power taper, narrow tip)
-            //   1   = linear taper (cone-like)
-            //   2   = quadratic (rounder teardrop)
-            //   5+  = wide, approaching capsule
-            if (BORDER_PULL > 0) {
-                const facing = cosA * borderNx + sinA * borderNy;
-                if (facing > 0) {
-                    // Taper: facing^(1/BORDER_FOCUS)
-                    // Monotonic from 0 (equator) to 1 (tip).
-                    const taper = Math.pow(facing, 1 / Math.max(0.1, BORDER_FOCUS));
-                    const bPull = BORDER_PULL * rBase * 0.5 * taper;
-
-                    // Push in border direction — same direction for all vertices
-                    borderPullX = borderNx * bPull;
-                    borderPullY = borderNy * bPull;
-                    pullX += borderPullX;
-                    pullY += borderPullY;
-                }
-            }
-
-            // ── Void object pull ──────────────────────────────
-            // Cells stretch toward void objects the same way they
-            // stretch toward borders — directional push with taper.
-            if (VOID_PULL > 0 && voidObjects.length > 0) {
-                for (const v of voidObjects) {
-                    const bp = v.nearestBoundaryPoint(this.x, this.y);
-                    const dx = bp.x - this.x, dy = bp.y - this.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                    const vnx = dx / dist, vny = dy / dist;
-
-                    // Facing: how much does this vertex point toward the void?
-                    const facing = cosA * vnx + sinA * vny;
-                    if (facing > 0) {
-                        const taper = Math.pow(facing, 1 / Math.max(0.1, BORDER_FOCUS));
-                        const vPull = VOID_PULL * rBase * 0.5 * taper;
-                        pullX += vnx * vPull;
-                        pullY += vny * vPull;
-                    }
-                }
-            }
-
-            // Store debug vectors
-            if (debugMode) {
-                this._debugPulls.push({
-                    bx: baseX, by: baseY,
-                    cpx: cellPullX, cpy: cellPullY,
-                    bpx: borderPullX, bpy: borderPullY,
-                    px: pullX, py: pullY,
-                    borderNx, borderNy, borderPx, borderPy,
-                });
-            }
-
-            // ── Cap: combined pull must not overshoot ────────
-            // Vertex can't extend past 40% of the gap to nearest
-            // neighbor in the pull direction. Border distance is
-            // IRRELEVANT — the lerp already prevents focal overshoot.
-            const pullMag = Math.sqrt(pullX * pullX + pullY * pullY);
-            if (pullMag > 0.01) {
-                const pullDirX = pullX / pullMag;
-                const pullDirY = pullY / pullMag;
-
-                let maxReach = Infinity;
-
-                // Cap against neighbors only
-                if (neighbors) {
-                    for (const nb of neighbors) {
-                        const dx = nb.x - this.x;
-                        const dy = nb.y - this.y;
-                        const dot = dx * pullDirX + dy * pullDirY;
-                        if (dot > 0) {
-                            const rNbBase = Math.sqrt(nb.baseArea / Math.PI);
-                            const gapToNb = dot - rBase - rNbBase;
-                            maxReach = Math.min(maxReach, rBase + Math.max(gapToNb * 0.4, 0));
-                        }
-                    }
-                }
-
-                if (maxReach < Infinity && pullMag > maxReach) {
-                    const scale = maxReach / pullMag;
-                    pullX *= scale;
-                    pullY *= scale;
-                }
-            }
-
-            // Add triple-target pull AFTER the cap — it targets the
-            // boundary between cells, not the interior of a neighbor
-            pullX += tripleX;
-            pullY += tripleY;
-
-            // Secondary cap: total pull can't exceed 2 × rBase
-            // (prevents runaway in degenerate configurations)
-            const totalPull = Math.hypot(pullX, pullY);
-            if (totalPull > rBase * 2) {
-                pullX *= (rBase * 2) / totalPull;
-                pullY *= (rBase * 2) / totalPull;
-            }
-
-            poly.push([baseX + pullX, baseY + pullY]);
-        }
-
-        // ── Enforce convexity — HARD constraint ─────────────
-        // Any vertex creating a concave angle gets snapped to the
-        // midpoint of its neighbors. Excess volume that would
-        // squeeze past the focal bottleneck redistributes into the
-        // cell body. Multiple passes handle cascading fixes.
-        enforceConvexity(poly, this.x, this.y);
-
-        // No area normalization — the rest poly is intentionally oversized.
-        // Bisector clipping + viewport clipping determine the final shape
-        // and area. This ensures cells fill their full Voronoi regions.
-
-        return poly;
-    }
-
     effectiveRadius() {
         return Math.sqrt(this.area / Math.PI);
     }
@@ -631,6 +364,11 @@ function copyPoly(poly) {
 // ═══════════════════════════════════════════════════════════════
 //  MK6 — EDGE-FIRST GEOMETRY PIPELINE
 //
+
+// Debug compat: these were MK5 concepts. Empty stubs for debug renderer.
+let currentTripleTargets = [];
+let currentNorthstars = [];
+let cellTripleTargets = new Map();
 //  Edges are primary. The Voronoi scaffolding (from cell centers)
 //  provides exact edges and vertices. Cells assemble their shape
 //  from the edges that surround them. Engaged edges conform to
@@ -641,7 +379,7 @@ function copyPoly(poly) {
 
 const MK6_ENGAGE_FULL = 0.8;    // dist/rSum ratio → full engagement
 const MK6_ENGAGE_ZERO = 2.5;    // dist/rSum ratio → full disengagement
-const MK6_ENGAGE_SMOOTH = 0.15; // temporal smoothing for engagement
+const MK6_ENGAGE_SMOOTH = 0.25; // temporal smoothing for engagement
 const MK6_DEFAULT_CORNERS = 12; // default shape resolution
 
 function smoothstep(edge0, edge1, x) {
@@ -1221,303 +959,6 @@ function applyLayout(name) {
     });
 }
 
-// ─── Contact solver ──────────────────────────────────────────
-// The heart of MK5. Pairwise bisector clipping.
-//
-// Key rule: CELLS DON'T SHRINK. When a cell can't achieve its
-// target area through rest-poly expansion alone, it pushes back
-// by shifting bisectors outward (per-pair bias) and by physically
-// repelling overlapping neighbors. Minimum area is enforced hard.
-
-const VERTS = 24;          // circle vertex resolution
-const MIN_AREA_FRAC = 0.8; // cell never goes below 80% of target area
-const BIAS_RATE = 0.15;    // how fast bisector bias adapts per frame
-const REPEL_STRENGTH = 8;  // pixels/frame of repulsion force
-
-function solveCells(cells, dt) {
-    const n = cells.length;
-
-    // ── Phase 0: Repulsion ───────────────────────────────────
-    // If two cells are closer than their combined radii, push
-    // them apart BEFORE clipping. This prevents the bisector
-    // from landing inside a cell's center.
-    for (let i = 0; i < n; i++) {
-        for (let j = i + 1; j < n; j++) {
-            const a = cells[i], b = cells[j];
-            const dx = b.x - a.x;
-            const dy = b.y - a.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < 0.001) { b.x += 1; continue; }
-
-            const rA = a.effectiveRadius();
-            const rB = b.effectiveRadius();
-            const minDist = (rA + rB) * 0.45 + GAP;
-
-            if (dist < minDist) {
-                const overlap = minDist - dist;
-                const push = overlap * REPEL_STRENGTH * dt * 0.1;
-                const nx = dx / dist, ny = dy / dist;
-
-                // Weight pushback by inverse area — smaller cells are lighter
-                const totalArea = a.area + b.area;
-                const ratioA = b.area / totalArea; // A moves more if B is bigger
-                const ratioB = a.area / totalArea;
-
-                if (!a._dragging) { a.x -= nx * push * ratioA; a.y -= ny * push * ratioA; }
-                if (!b._dragging) { b.x += nx * push * ratioB; b.y += ny * push * ratioB; }
-            }
-        }
-    }
-
-    // ── Phase 1: Generate rest polygons ──────────────────────
-    // Pass all OTHER cells as neighbors so the rest shape stretches
-    // toward them. This is purely cosmetic — centers don't move.
-    //
-    // Temporal smoothing: blend each vertex of the new rest poly
-    // toward the previous frame's rest poly. This prevents the
-    // stretch from snapping on/off at boundary distances, which
-    // caused cells to flicker between "sharp" and "relaxed."
-    // The rest poly always has exactly VERTS vertices, so the
-    // blend is 1:1 per vertex — no count mismatch.
-    const SMOOTH_RATE = 0.25; // per-frame blend toward new rest poly
-    for (const c of cells) {
-        const neighbors = cells.filter(o => o !== c);
-        const freshPoly = c.generateRestPoly(VERTS, neighbors);
-
-        if (c._prevRestPoly && c._prevRestPoly.length === VERTS) {
-            for (let i = 0; i < VERTS; i++) {
-                freshPoly[i][0] = c._prevRestPoly[i][0] + (freshPoly[i][0] - c._prevRestPoly[i][0]) * SMOOTH_RATE;
-                freshPoly[i][1] = c._prevRestPoly[i][1] + (freshPoly[i][1] - c._prevRestPoly[i][1]) * SMOOTH_RATE;
-            }
-        }
-
-        // Enforce convexity AFTER temporal smoothing — the blend
-        // can create concavity even if both inputs were convex.
-        // This is the final gate: nothing past here is ever concave.
-        enforceConvexity(freshPoly, c.x, c.y);
-
-        c._prevRestPoly = freshPoly.map(p => [p[0], p[1]]);
-        c.restPoly = freshPoly;
-        c.polygon = copyPoly(c.restPoly);
-    }
-
-    // ── Phase 2: Pairwise bisector clip with bias ────────────
-    // Each pair has a bias value that shifts the bisector when
-    // one cell is being compressed too much. Bias persists
-    // across frames (stored on cell pairs via a map).
-    for (let iter = 0; iter < AREA_ITERS; iter++) {
-        // Reset polygons to (potentially scaled) rest polys
-        for (const c of cells) {
-            c.polygon = copyPoly(c.restPoly);
-        }
-
-        for (let i = 0; i < n; i++) {
-            for (let j = i + 1; j < n; j++) {
-                const a = cells[i], b = cells[j];
-                const dx = b.x - a.x;
-                const dy = b.y - a.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                const rA = a.effectiveRadius();
-                const rB = b.effectiveRadius();
-
-                // Skip if too far apart — range accounts for gravitational stretch
-                const interactionRange = (rA + rB) * Math.max(1.6, FILL_FACTOR) * (1 + GRAVITY_REACH * 0.3) + GAP;
-                if (dist > interactionRange) continue;
-                if (dist < 0.001) continue;
-
-                // Weighted bisector position
-                // bias shifts it: positive bias favors A (pushes bisector toward B)
-                // BUT bias is suppressed when either cell is hovered — hover
-                // expansion is intentional and neighbors should yield.
-                const wA = Math.sqrt(a.area);
-                const wB = Math.sqrt(b.area);
-                const biasKey = Math.min(a.id, b.id) * 10000 + Math.max(a.id, b.id);
-                if (!pairBias.has(biasKey)) pairBias.set(biasKey, 0);
-                const eitherHovered = a.hoverMix > 0.1 || b.hoverMix > 0.1;
-                const bias = eitherHovered ? 0 : pairBias.get(biasKey);
-
-                const t = wA / (wA + wB);
-                const biasShift = bias * dist * 0.5;
-                const mx = a.x + dx * t + (dx / dist) * biasShift;
-                const my = a.y + dy * t + (dy / dist) * biasShift;
-
-                const nx = dx / dist;
-                const ny = dy / dist;
-
-                a.polygon = clipByHalfPlane(a.polygon,
-                    mx - nx * GAP / 2, my - ny * GAP / 2, nx, ny);
-                b.polygon = clipByHalfPlane(b.polygon,
-                    mx + nx * GAP / 2, my + ny * GAP / 2, -nx, -ny);
-            }
-        }
-
-        // Area correction: expand rest poly if clipped too small
-        if (iter < AREA_ITERS - 1) {
-            for (const c of cells) {
-                if (c.polygon.length < 3) continue;
-                const actual = polygonArea(c.polygon);
-                if (actual < c.area * 0.97) {
-                    const scale = Math.sqrt(c.area / Math.max(actual, 1));
-                    scalePoly(c.restPoly, c.x, c.y, Math.min(scale, 2.0));
-                }
-            }
-        }
-    }
-
-    // ── Phase 3: Update pair biases ──────────────────────────
-    // After all clipping, check each cell's achieved area.
-    // If undersized, shift biases on all its contacts to favor it.
-    const areaRatios = new Map();
-    for (const c of cells) {
-        if (c.polygon.length < 3) { areaRatios.set(c.id, 0); continue; }
-        areaRatios.set(c.id, polygonArea(c.polygon) / c.area);
-    }
-
-    for (let i = 0; i < n; i++) {
-        for (let j = i + 1; j < n; j++) {
-            const a = cells[i], b = cells[j];
-            const biasKey = Math.min(a.id, b.id) * 10000 + Math.max(a.id, b.id);
-            if (!pairBias.has(biasKey)) continue;
-
-            const ratioA = areaRatios.get(a.id) || 0;
-            const ratioB = areaRatios.get(b.id) || 0;
-
-            let bias = pairBias.get(biasKey);
-
-            // If either cell is hovered, fast-decay bias — hover expansion
-            // is intentional and neighbors should yield, not fight back.
-            if (a.hoverMix > 0.1 || b.hoverMix > 0.1) {
-                bias *= 0.5;
-            } else {
-                // If A is undersized, push bisector toward B (positive bias)
-                // If B is undersized, push bisector toward A (negative bias)
-                if (ratioA < MIN_AREA_FRAC) bias += BIAS_RATE * (MIN_AREA_FRAC - ratioA);
-                if (ratioB < MIN_AREA_FRAC) bias -= BIAS_RATE * (MIN_AREA_FRAC - ratioB);
-
-                // Decay bias toward zero when both cells are happy
-                if (ratioA > 0.95 && ratioB > 0.95) bias *= 0.9;
-            }
-
-            // Clamp bias
-            bias = Math.max(-0.4, Math.min(0.4, bias));
-            pairBias.set(biasKey, bias);
-        }
-    }
-
-    // ── Phase 4: Viewport clip ───────────────────────────────
-    for (const c of cells) {
-        if (c.polygon.length < 3) continue;
-        const margin = 2;
-        c.polygon = clipByHalfPlane(c.polygon, margin, 0, -1, 0);
-        c.polygon = clipByHalfPlane(c.polygon, W - margin, 0, 1, 0);
-        c.polygon = clipByHalfPlane(c.polygon, 0, margin, 0, -1);
-        c.polygon = clipByHalfPlane(c.polygon, 0, H - margin, 0, 1);
-    }
-
-    // ── Phase 4b: Void object clip ─────────────────────────────
-    // Clip cell polygons against void boundaries. The polygon is
-    // cut so no part of it overlaps any void. For each cell/void
-    // pair, clip against the void edge nearest to the cell center.
-    // This removes the part of the cell extending into the void.
-    for (const c of cells) {
-        if (c.polygon.length < 3) continue;
-        for (const v of voidObjects) {
-            // Find which void edge is nearest to cell center
-            const dLeft = c.x - (v.x - v.w);
-            const dRight = (v.x + v.w) - c.x;
-            const dTop = c.y - (v.y - v.h);
-            const dBot = (v.y + v.h) - c.y;
-
-            // Only clip if the cell is close enough to the void
-            const r = c.effectiveRadius();
-            if (c.x < v.x - v.w - r || c.x > v.x + v.w + r ||
-                c.y < v.y - v.h - r || c.y > v.y + v.h + r) continue;
-
-            if (v.contains(c.x, c.y)) {
-                // Center inside void: clip against nearest edge.
-                // Normal points OUTWARD (away from void center)
-                // to keep the polygon slice on the OUTSIDE.
-                const dMin = Math.min(dLeft, dRight, dTop, dBot);
-                if (dMin === dLeft) {
-                    c.polygon = clipByHalfPlane(c.polygon, v.x - v.w, v.y, 1, 0);
-                } else if (dMin === dRight) {
-                    c.polygon = clipByHalfPlane(c.polygon, v.x + v.w, v.y, -1, 0);
-                } else if (dMin === dTop) {
-                    c.polygon = clipByHalfPlane(c.polygon, v.x, v.y - v.h, 0, 1);
-                } else {
-                    c.polygon = clipByHalfPlane(c.polygon, v.x, v.y + v.h, 0, -1);
-                }
-            } else {
-                // Center outside void: use nearest boundary point to
-                // determine edge vs corner interaction.
-                const bp = v.nearestBoundaryPoint(c.x, c.y);
-                const dist = Math.hypot(c.x - bp.x, c.y - bp.y);
-                if (dist >= r) continue; // cell doesn't reach the void
-
-                // Is the nearest point at a CORNER or along an EDGE?
-                const atCornerX = Math.abs(bp.x - (v.x - v.w)) < 1 || Math.abs(bp.x - (v.x + v.w)) < 1;
-                const atCornerY = Math.abs(bp.y - (v.y - v.h)) < 1 || Math.abs(bp.y - (v.y + v.h)) < 1;
-
-                if (atCornerX && atCornerY) {
-                    // CORNER: single diagonal clip for a gentle bend.
-                    const cornerX = bp.x, cornerY = bp.y;
-                    // Direction from void center through corner (outward)
-                    const dx = cornerX - v.x, dy = cornerY - v.y;
-                    const d = Math.hypot(dx, dy) || 1;
-                    // NEGATE: clip normal must point INTO the void
-                    // so clipByHalfPlane keeps the OUTSIDE
-                    const nx = -dx / d, ny = -dy / d;
-                    const offset = r * 0.15;
-                    c.polygon = clipByHalfPlane(c.polygon,
-                        cornerX - nx * offset, cornerY - ny * offset,
-                        nx, ny);
-                } else {
-                    // EDGE: clip normal must point INTO the void.
-                    // nearestBoundaryPoint returns normal pointing TOWARD
-                    // the cell (outward from void), so we NEGATE it.
-                    c.polygon = clipByHalfPlane(c.polygon, bp.x, bp.y, -bp.nx, -bp.ny);
-                }
-            }
-        }
-    }
-
-    // ── Phase 5: Minimum area repulsion ─────────────────────
-    // If a cell is undersized, push it away from the densest
-    // direction. No polygon scaling (that creates overlaps and
-    // chaos). The display smoothing hides the undersized frames
-    // while the cell physically relocates.
-    for (const c of cells) {
-        if (c.polygon.length < 3 || c._dragging) continue;
-        const actual = polygonArea(c.polygon);
-        const minArea = c.area * MIN_AREA_FRAC;
-
-        if (actual < minArea) {
-            let fleeDx = 0, fleeDy = 0;
-            for (const other of cells) {
-                if (other === c) continue;
-                const dx = c.x - other.x;
-                const dy = c.y - other.y;
-                const d = Math.sqrt(dx * dx + dy * dy) || 1;
-                const rSum = c.effectiveRadius() + other.effectiveRadius();
-                if (d < rSum * 2) {
-                    fleeDx += (dx / d) * (rSum / d);
-                    fleeDy += (dy / d) * (rSum / d);
-                }
-            }
-            const fleeDist = Math.sqrt(fleeDx * fleeDx + fleeDy * fleeDy);
-            if (fleeDist > 0.01) {
-                const urgency = 1 - actual / minArea;
-                const push = REPEL_STRENGTH * 2 * dt * urgency;
-                c.vx += (fleeDx / fleeDist) * push;
-                c.vy += (fleeDy / fleeDist) * push;
-            }
-        }
-    }
-}
-
-// Persistent per-pair bisector bias (survives across frames)
-const pairBias = new Map();
-
 // ─── Rendering ───────────────────────────────────────────────
 
 function drawRoundedPolygon(ctx, polygon, radius) {
@@ -2070,9 +1511,51 @@ function animate(time) {
         if (!scaffold || scaffold.voronoiPoly.length < 3) continue;
 
         const eng = engagements.get(c.id) || new Map();
-        const defShape = computeDefaultShape(c);
+        // Cache default shape — only recompute when area changes
+        if (!c._defShape || Math.abs(c._defShapeArea - c.area) > 1) {
+            c._defShape = computeDefaultShape(c);
+            c._defShapeArea = c.area;
+        }
+        // Update default shape position (area may be cached but position moves)
+        const defR = Math.sqrt(c.area / Math.PI);
+        const defShape = c._defShape.map((p, i) => {
+            const a = (i / MK6_DEFAULT_CORNERS) * Math.PI * 2;
+            const seed = c.id * 31 + i * 7;
+            const wobble = 1.0 + 0.04 * Math.sin(seed * 0.73) + 0.03 * Math.cos(seed * 1.17);
+            return [c.x + Math.cos(a) * defR * wobble, c.y + Math.sin(a) * defR * wobble];
+        });
 
         c.polygon = assemblePolygon(c, scaffold, eng, defShape, GAP);
+    }
+
+    // 4. Void clipping — clip assembled polygons against void objects
+    for (const c of cells) {
+        if (!c.polygon || c.polygon.length < 3) continue;
+        for (const v of voidObjects) {
+            const r = c.effectiveRadius();
+            if (c.x < v.x - v.w - r || c.x > v.x + v.w + r ||
+                c.y < v.y - v.h - r || c.y > v.y + v.h + r) continue;
+
+            if (v.contains(c.x, c.y)) {
+                const dLeft = c.x - (v.x - v.w), dRight = (v.x + v.w) - c.x;
+                const dTop = c.y - (v.y - v.h), dBot = (v.y + v.h) - c.y;
+                const dMin = Math.min(dLeft, dRight, dTop, dBot);
+                if (dMin === dLeft) c.polygon = clipByHalfPlane(c.polygon, v.x - v.w, v.y, 1, 0);
+                else if (dMin === dRight) c.polygon = clipByHalfPlane(c.polygon, v.x + v.w, v.y, -1, 0);
+                else if (dMin === dTop) c.polygon = clipByHalfPlane(c.polygon, v.x, v.y - v.h, 0, 1);
+                else c.polygon = clipByHalfPlane(c.polygon, v.x, v.y + v.h, 0, -1);
+            } else {
+                const bp = v.nearestBoundaryPoint(c.x, c.y);
+                const dist = Math.hypot(c.x - bp.x, c.y - bp.y);
+                if (dist >= r) continue;
+                c.polygon = clipByHalfPlane(c.polygon, bp.x, bp.y, -bp.nx, -bp.ny);
+            }
+        }
+    }
+
+    // 5. Simplify for display
+    for (const c of cells) {
+        if (!c.polygon || c.polygon.length < 3) { c._displayPoly = null; continue; }
         c._displayPoly = simplifyForDisplay(c.polygon, 7);
     }
 
@@ -2104,12 +1587,12 @@ document.getElementById('addBtn').addEventListener('click', () => {
 document.getElementById('removeBtn').addEventListener('click', () => {
     if (cells.length > 1) {
         cells.pop();
-        pairBias.clear(); // stale pairs
+        // (MK5 dead code removed)
     }
 });
 
 document.getElementById('resetBtn').addEventListener('click', () => {
-    pairBias.clear();
+    // (MK5 dead code removed)
     initCells(10);
 });
 
