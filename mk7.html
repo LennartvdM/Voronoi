@@ -442,7 +442,9 @@ function computeScaffolding(cells, W, H) {
         // At Fill=1.0: cell bounded to its natural area-based radius.
         // At Fill=2.0: can extend to 2× that (fills gaps between neighbors).
         // A dragged-away cell stays at this size, not viewport-sized.
-        const rCell = Math.sqrt(cell.area / Math.PI);
+        // Uses baseArea (no hover boost) — hover expands bisector
+        // influence, not the cell's own skin.
+        const rCell = Math.sqrt(cell.baseArea / Math.PI);
         const maxReach = rCell * FILL_FACTOR;
         const SKIN_SIDES = 24; // smooth circular bound
         for (let i = 0; i < SKIN_SIDES; i++) {
@@ -570,7 +572,10 @@ function computeEngagements(cells, scaffolds, W, H) {
 
 // ── Default shape — cell's personality when disengaged ─────────
 function computeDefaultShape(cell) {
-    const r = Math.sqrt(cell.area / Math.PI);
+    // Use baseArea (no hover boost) and cap to skin radius.
+    // The cell can never be bigger disengaged than it would be engaged.
+    const rBase = Math.sqrt(cell.baseArea / Math.PI);
+    const r = rBase * Math.min(FILL_FACTOR, 1.0);
     const n = MK6_DEFAULT_CORNERS;
     const poly = [];
     for (let i = 0; i < n; i++) {
@@ -1538,13 +1543,14 @@ function animate(time) {
         if (!scaffold || scaffold.voronoiPoly.length < 3) continue;
 
         const eng = engagements.get(c.id) || new Map();
-        // Cache default shape — only recompute when area changes
-        if (!c._defShape || Math.abs(c._defShapeArea - c.area) > 1) {
+        // Cache default shape — only recompute when baseArea changes
+        if (!c._defShape || Math.abs(c._defShapeArea - c.baseArea) > 1) {
             c._defShape = computeDefaultShape(c);
-            c._defShapeArea = c.area;
+            c._defShapeArea = c.baseArea;
         }
-        // Update default shape position (area may be cached but position moves)
-        const defR = Math.sqrt(c.area / Math.PI);
+        // Update default shape position (baseArea cached but position moves)
+        const defRBase = Math.sqrt(c.baseArea / Math.PI);
+        const defR = defRBase * Math.min(FILL_FACTOR, 1.0);
         const defShape = c._defShape.map((p, i) => {
             const a = (i / MK6_DEFAULT_CORNERS) * Math.PI * 2;
             const seed = c.id * 31 + i * 7;
