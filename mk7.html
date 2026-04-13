@@ -1,0 +1,1760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>mk7 — Voroboids</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a0f;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            touch-action: none;
+        }
+        canvas { display: block; width: 100%; height: 100vh; cursor: default; }
+        .back-link {
+            position: fixed; top: 1rem; left: 1rem;
+            color: #666; text-decoration: none; font-size: 0.9rem; z-index: 100;
+        }
+        .back-link:hover { color: #aaa; }
+        .info {
+            position: fixed; top: 1rem; right: 1rem;
+            color: #444; font-size: 0.75rem; z-index: 100;
+            font-family: ui-monospace, monospace; text-align: right;
+        }
+        .controls {
+            position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 6px; z-index: 100;
+            background: rgba(20, 20, 35, 0.9);
+            backdrop-filter: blur(12px);
+            padding: 8px 12px; border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .ctrl-btn {
+            padding: 8px 16px;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px; font-size: 12px; font-weight: 500;
+            cursor: pointer; transition: all 0.2s;
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.7);
+        }
+        .ctrl-btn:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.3);
+        }
+        .ctrl-btn.active {
+            background: linear-gradient(135deg, rgba(99,102,241,0.4), rgba(139,92,246,0.4));
+            border-color: rgba(139,92,246,0.6); color: #fff;
+        }
+        .slider-group {
+            display: flex; align-items: center; gap: 6px;
+            color: rgba(255,255,255,0.5); font-size: 11px;
+            font-family: ui-monospace, monospace;
+        }
+        .slider-group label { white-space: nowrap; }
+        .slider-group input[type="range"] {
+            width: 90px; accent-color: #8b5cf6;
+        }
+        .slider-group input[type="number"] {
+            width: 48px; background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 4px; color: #fff; font-size: 11px;
+            padding: 4px; text-align: center;
+            font-family: ui-monospace, monospace;
+        }
+        .slider-group input[type="number"]:focus {
+            outline: none; border-color: rgba(139,92,246,0.6);
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">&larr; Back</a>
+    <canvas id="canvas"></canvas>
+    <div class="info" id="info">mk7 &middot; voroboids</div>
+    <div class="controls" style="flex-wrap: wrap; max-width: 700px; justify-content: center;">
+        <button class="ctrl-btn layout-btn active" data-layout="circle">Circle</button>
+        <button class="ctrl-btn layout-btn" data-layout="hero">Hero</button>
+        <button class="ctrl-btn layout-btn" data-layout="bento">Bento</button>
+        <button class="ctrl-btn layout-btn" data-layout="sidebar">Sidebar</button>
+        <button class="ctrl-btn layout-btn" data-layout="spiral">Spiral</button>
+        <button class="ctrl-btn" id="addBtn">+</button>
+        <button class="ctrl-btn" id="removeBtn">&minus;</button>
+        <button class="ctrl-btn" id="resetBtn">Reset</button>
+        <button class="ctrl-btn" id="gapBtn">Gap: 4</button>
+        <button class="ctrl-btn" id="voidBtn">Void</button>
+        <button class="ctrl-btn" id="clearVoidsBtn">Clear</button>
+        <button class="ctrl-btn" id="debugBtn">Debug</button>
+        <span id="debugToggles" style="display:none;">
+            <button class="ctrl-btn" data-layer="corners" style="font-size:10px;padding:4px 8px;">Corners</button>
+            <button class="ctrl-btn" data-layer="cellPull" style="font-size:10px;padding:4px 8px;">CellPull</button>
+            <button class="ctrl-btn" data-layer="borderPull" style="font-size:10px;padding:4px 8px;">Border</button>
+            <button class="ctrl-btn" data-layer="combined" style="font-size:10px;padding:4px 8px;">Combined</button>
+            <button class="ctrl-btn" data-layer="restPoly" style="font-size:10px;padding:4px 8px;">RestPoly</button>
+            <button class="ctrl-btn" data-layer="borderLine" style="font-size:10px;padding:4px 8px;">BdrLine</button>
+            <button class="ctrl-btn" data-layer="northstars" style="font-size:10px;padding:4px 8px;">Stars</button>
+        </span>
+        <div class="slider-group">
+            <label>Pull</label>
+            <input type="range" id="pullSlider" min="0" max="5" step="0.05" value="0.35">
+            <input type="number" id="pullNum" min="0" max="10" step="0.05" value="0.35">
+        </div>
+        <div class="slider-group">
+            <label>Border</label>
+            <input type="range" id="borderSlider" min="0" max="5" step="0.05" value="0">
+            <input type="number" id="borderNum" min="0" max="10" step="0.05" value="0">
+        </div>
+        <div class="slider-group">
+            <label>Focus</label>
+            <input type="range" id="focusSlider" min="0.1" max="5" step="0.1" value="1">
+            <input type="number" id="focusNum" min="0.1" max="10" step="0.1" value="1">
+        </div>
+        <div class="slider-group">
+            <label>Void</label>
+            <input type="range" id="voidPullSlider" min="0" max="5" step="0.05" value="0">
+            <input type="number" id="voidPullNum" min="0" max="10" step="0.05" value="0">
+        </div>
+        <div class="slider-group">
+            <label>Fill</label>
+            <input type="range" id="fillSlider" min="1" max="3" step="0.1" value="2.0">
+            <input type="number" id="fillNum" min="1" max="5" step="0.1" value="2.0">
+        </div>
+        <div class="slider-group">
+            <label>Stars</label>
+            <input type="range" id="starSlider" min="0" max="10" step="0.1" value="1">
+            <input type="number" id="starNum" min="0" max="50" step="0.1" value="1">
+        </div>
+        <div class="slider-group">
+            <label>Gravity</label>
+            <input type="range" id="gravSlider" min="0" max="5" step="0.1" value="0">
+            <input type="number" id="gravNum" min="0" max="10" step="0.1" value="0">
+        </div>
+        <div class="slider-group">
+            <label>Angle</label>
+            <input type="range" id="gravAngleSlider" min="0" max="6.28" step="0.1" value="1.57">
+            <input type="number" id="gravAngleNum" min="0" max="6.28" step="0.1" value="1.57">
+        </div>
+    </div>
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════
+//  MK6 — VOROBOIDS — Edge-First Architecture
+//
+//  Edges are primary. Voronoi scaffolding provides exact edges
+//  and vertices. Cells assemble their shape from surrounding
+//  edges. Engaged edges conform to bisectors. Disengaged edges
+//  revert to the cell's own default shape. Vertices are where
+//  two edges meet — exact by construction.
+// ═══════════════════════════════════════════════════════════════
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const info = document.getElementById('info');
+
+let W = 0, H = 0, dpr = 1;
+function resize() {
+    dpr = window.devicePixelRatio || 1;
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ─── Config ──────────────────────────────────────────────────
+let GAP = 4;              // minimum pixel gap between cell surfaces
+let FILL_FACTOR = 2.0;    // used in area computation (fillFraction scaling)
+let GRAVITY_REACH = 0.35; // (MK5 legacy — slider still wired)
+let BORDER_PULL = 0;      // (MK5 legacy — slider still wired)
+let BORDER_FOCUS = 1;     // (MK5 legacy — slider still wired)
+let VOID_PULL = 0;        // (MK5 legacy — slider still wired)
+let TARGET_PULL = 1.0;    // (MK5 legacy — slider still wired)
+
+// ─── Void objects ────────────────────────────────────────────
+// Rigid shapes that cells incline toward but must settle outside.
+// Permeable during motion, authoritative at rest.
+class VoidObject {
+    constructor(x, y, w, h) {
+        this.x = x;      // center x
+        this.y = y;       // center y
+        this.w = w;       // half-width
+        this.h = h;       // half-height
+    }
+
+    // Signed distance from point to box boundary.
+    // Negative = inside, positive = outside.
+    signedDist(px, py) {
+        const dx = Math.abs(px - this.x) - this.w;
+        const dy = Math.abs(py - this.y) - this.h;
+        if (dx > 0 && dy > 0) return Math.sqrt(dx * dx + dy * dy);
+        return Math.max(dx, dy);
+    }
+
+    // Nearest point on the box boundary from an external point
+    nearestBoundaryPoint(px, py) {
+        // Clamp to box, then project to nearest edge
+        const cx = Math.max(this.x - this.w, Math.min(this.x + this.w, px));
+        const cy = Math.max(this.y - this.h, Math.min(this.y + this.h, py));
+
+        // If clamped point equals input, point is inside — push to nearest edge
+        if (Math.abs(cx - px) < 0.01 && Math.abs(cy - py) < 0.01) {
+            const dLeft = px - (this.x - this.w);
+            const dRight = (this.x + this.w) - px;
+            const dTop = py - (this.y - this.h);
+            const dBot = (this.y + this.h) - py;
+            const dMin = Math.min(dLeft, dRight, dTop, dBot);
+            if (dMin === dLeft) return { x: this.x - this.w, y: py, nx: -1, ny: 0 };
+            if (dMin === dRight) return { x: this.x + this.w, y: py, nx: 1, ny: 0 };
+            if (dMin === dTop) return { x: px, y: this.y - this.h, nx: 0, ny: -1 };
+            return { x: px, y: this.y + this.h, nx: 0, ny: 1 };
+        }
+
+        // Outside — nearest point is the clamped point
+        const dx = px - cx, dy = py - cy;
+        const d = Math.sqrt(dx * dx + dy * dy) || 1;
+        return { x: cx, y: cy, nx: dx / d, ny: dy / d };
+    }
+
+    // Is point inside the box?
+    contains(px, py) {
+        return Math.abs(px - this.x) <= this.w && Math.abs(py - this.y) <= this.h;
+    }
+}
+
+let voidObjects = [];
+let placingVoid = false;
+let voidDragStart = null;
+
+const COLORS = [
+    '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e',
+    '#f97316', '#eab308', '#22c55e', '#14b8a6',
+    '#06b6d4', '#3b82f6', '#a78bfa', '#fb923c',
+];
+
+// Gravity: pulls cell centers without affecting size.
+// Cells settle under gravity, contact solver prevents compression.
+let GRAVITY_STRENGTH = 0;    // pixels/frame²
+let GRAVITY_ANGLE = Math.PI / 2; // radians (default: downward)
+const VELOCITY_DAMPING = 0.85;   // per-frame velocity decay (heavy, settles fast)
+
+// ─── Cell class ──────────────────────────────────────────────
+// The atom. Self-contained. Independently movable. Separable.
+class Cell {
+    constructor(id, x, y, weight, color) {
+        this.id = id;
+        this.x = x;
+        this.y = y;
+        this.weight = weight || 1;   // relative size (1=normal, 2=4x area, 0.5=0.25x)
+        this.color = color || COLORS[id % COLORS.length];
+
+        // Area is computed from weight in updateAreas()
+        this.area = 100;
+        this.baseArea = 100;
+
+        // Velocity for gravity-driven physics
+        this.vx = 0;
+        this.vy = 0;
+
+        // Target position/weight from layout (for transitions)
+        this.targetX = x;
+        this.targetY = y;
+        this.targetWeight = this.weight;
+
+        // Current rendered polygon
+        this.polygon = null;
+        this._debugPulls = null;
+        this.restPoly = null;
+
+        // Hover state
+        this.hoverMix = 0;
+
+        // Role: 'content' | 'hero' | 'carousel' | 'void'
+        this.role = 'content';
+        this.visible = true;
+    }
+
+    effectiveRadius() {
+        return Math.sqrt(this.area / Math.PI);
+    }
+
+    containsPoint(px, py) {
+        const poly = this._displayPoly || this.polygon;
+        if (!poly || poly.length < 3) return false;
+        return pointInPolygon(px, py, poly);
+    }
+}
+
+// ─── Geometry helpers ────────────────────────────────────────
+
+function pointInPolygon(px, py, poly) {
+    let inside = false;
+    const n = poly.length;
+    for (let i = 0, j = n - 1; i < n; j = i++) {
+        const xi = poly[i][0], yi = poly[i][1];
+        const xj = poly[j][0], yj = poly[j][1];
+        if (((yi > py) !== (yj > py)) &&
+            (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+            inside = !inside;
+        }
+    }
+    return inside;
+}
+
+function polygonArea(poly) {
+    let a = 0;
+    const n = poly.length;
+    for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        a += poly[i][0] * poly[j][1];
+        a -= poly[j][0] * poly[i][1];
+    }
+    return Math.abs(a) / 2;
+}
+
+function polygonCentroid(poly) {
+    let cx = 0, cy = 0, a = 0;
+    const n = poly.length;
+    for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        const cross = poly[i][0] * poly[j][1] - poly[j][0] * poly[i][1];
+        cx += (poly[i][0] + poly[j][0]) * cross;
+        cy += (poly[i][1] + poly[j][1]) * cross;
+        a += cross;
+    }
+    a /= 2;
+    if (Math.abs(a) < 1) return { x: poly[0][0], y: poly[0][1] };
+    cx /= (6 * a);
+    cy /= (6 * a);
+    return { x: cx, y: cy };
+}
+
+// Sutherland-Hodgman half-plane clip.
+// Keeps points where (P - M) · N <= 0.
+function clipByHalfPlane(poly, mx, my, nx, ny) {
+    const out = [];
+    const n = poly.length;
+    if (n === 0) return out;
+    for (let i = 0; i < n; i++) {
+        const p = poly[i];
+        const q = poly[(i + 1) % n];
+        const dp = (p[0] - mx) * nx + (p[1] - my) * ny;
+        const dq = (q[0] - mx) * nx + (q[1] - my) * ny;
+        if (dp <= 0) out.push(p);
+        if ((dp <= 0) !== (dq <= 0)) {
+            const t = dp / (dp - dq);
+            out.push([p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])]);
+        }
+    }
+    return out;
+}
+
+function scalePoly(poly, cx, cy, scale) {
+    for (let i = 0; i < poly.length; i++) {
+        poly[i] = [
+            cx + (poly[i][0] - cx) * scale,
+            cy + (poly[i][1] - cy) * scale,
+        ];
+    }
+}
+
+function copyPoly(poly) {
+    return poly.map(p => [p[0], p[1]]);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MK6 — EDGE-FIRST GEOMETRY PIPELINE
+//
+
+// Debug compat: these were MK5 concepts. Empty stubs for debug renderer.
+let currentTripleTargets = [];
+let currentNorthstars = [];
+let cellTripleTargets = new Map();
+//  Edges are primary. The Voronoi scaffolding (from cell centers)
+//  provides exact edges and vertices. Cells assemble their shape
+//  from the edges that surround them. Engaged edges conform to
+//  the Voronoi bisector. Disengaged edges revert to the cell's
+//  own default shape. Vertices are where two edges meet — exact
+//  by construction, no clustering or snapping needed.
+// ═══════════════════════════════════════════════════════════════
+
+const MK6_ENGAGE_FULL = 0.8;    // dist/rSum ratio → full engagement
+const MK6_ENGAGE_ZERO = 2.5;    // dist/rSum ratio → full disengagement
+const MK6_ENGAGE_SMOOTH = 0.25; // temporal smoothing for engagement
+const MK6_DEFAULT_CORNERS = 12; // default shape resolution
+
+function smoothstep(edge0, edge1, x) {
+    const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+    return t * t * (3 - 2 * t);
+}
+
+// ── Compute Voronoi scaffolding for all cells ──────────────────
+// For each cell: clip a large bounding rect by all weighted bisectors
+// + viewport edges. Result is the exact Voronoi region with tagged edges.
+function computeScaffolding(cells, W, H) {
+    const scaffolds = new Map();
+
+    for (const cell of cells) {
+        if (!cell.visible) continue;
+
+        const bisectors = [];
+
+        for (const other of cells) {
+            if (other.id === cell.id || !other.visible) continue;
+            const dx = other.x - cell.x, dy = other.y - cell.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < 0.001) continue;
+
+            const wA = Math.sqrt(cell.area), wB = Math.sqrt(other.area);
+            const t = wA / (wA + wB);
+
+            bisectors.push({
+                mx: cell.x + dx * t,
+                my: cell.y + dy * t,
+                nx: dx / dist,
+                ny: dy / dist,
+                otherId: other.id,
+                dist: dist
+            });
+        }
+
+        // Start with large bounding rect, clip by all bisectors
+        const M = Math.max(W, H) * 2;
+        let poly = [[-M, -M], [W + M, -M], [W + M, H + M], [-M, H + M]];
+
+        // Sort by distance — nearest neighbors first
+        bisectors.sort((a, b) => a.dist - b.dist);
+
+        for (const bis of bisectors) {
+            poly = clipByHalfPlane(poly, bis.mx, bis.my, bis.nx, bis.ny);
+            if (poly.length < 3) break;
+        }
+
+        // ── Intrinsic size ("skin") ─────────────────────────
+        // The cell's own sense of how big it is. The Voronoi says
+        // where neighbors are. The skin says how far the cell can
+        // reach. The actual shape = intersection of both.
+        // At Fill=1.0: cell bounded to its natural area-based radius.
+        // At Fill=2.0: can extend to 2× that (fills gaps between neighbors).
+        // A dragged-away cell stays at this size, not viewport-sized.
+        const rCell = Math.sqrt(cell.area / Math.PI);
+        const maxReach = rCell * FILL_FACTOR;
+        const SKIN_SIDES = 24; // smooth circular bound
+        for (let i = 0; i < SKIN_SIDES; i++) {
+            const a = (i / SKIN_SIDES) * Math.PI * 2;
+            const cx = Math.cos(a), cy = Math.sin(a);
+            poly = clipByHalfPlane(poly,
+                cell.x + cx * maxReach,
+                cell.y + cy * maxReach,
+                cx, cy
+            );
+            if (poly.length < 3) break;
+        }
+
+        // Viewport clip (catches anything the circular clip missed)
+        const VM = 2;
+        poly = clipByHalfPlane(poly, VM, 0, -1, 0);
+        poly = clipByHalfPlane(poly, W - VM, 0, 1, 0);
+        poly = clipByHalfPlane(poly, 0, VM, 0, -1);
+        poly = clipByHalfPlane(poly, 0, H - VM, 0, 1);
+
+        // Tag each edge with the neighbor that created it
+        const edgeNeighbors = identifyEdgeNeighbors(cell, poly, bisectors, W, H);
+
+        scaffolds.set(cell.id, {
+            voronoiPoly: poly,
+            bisectors: bisectors,
+            edgeNeighbors: edgeNeighbors
+        });
+    }
+
+    return scaffolds;
+}
+
+// ── Identify which neighbor each polygon edge belongs to ───────
+// After all clips, test each edge midpoint against all bisectors.
+// The closest bisector line is the one that created that edge.
+function identifyEdgeNeighbors(cell, poly, bisectors, W, H) {
+    const V = poly.length;
+    const tags = [];
+
+    const viewportBisectors = [
+        { mx: W / 2, my: 0, nx: 0, ny: 1, otherId: 'top' },
+        { mx: W / 2, my: H, nx: 0, ny: -1, otherId: 'bottom' },
+        { mx: 0, my: H / 2, nx: 1, ny: 0, otherId: 'left' },
+        { mx: W, my: H / 2, nx: -1, ny: 0, otherId: 'right' },
+    ];
+    const allBisectors = [...bisectors, ...viewportBisectors];
+
+    for (let i = 0; i < V; i++) {
+        const j = (i + 1) % V;
+        const emx = (poly[i][0] + poly[j][0]) / 2;
+        const emy = (poly[i][1] + poly[j][1]) / 2;
+
+        let bestDist = Infinity, bestNeighbor = null;
+
+        for (const bis of allBisectors) {
+            const d = Math.abs((emx - bis.mx) * bis.nx + (emy - bis.my) * bis.ny);
+            if (d < bestDist) {
+                bestDist = d;
+                bestNeighbor = bis.otherId;
+            }
+        }
+
+        tags.push(bestNeighbor);
+    }
+
+    return tags;
+}
+
+// ── Compute per-edge engagement strength ───────────────────────
+// Engagement controls how much a cell conforms to the Voronoi edge.
+// Based on proximity: close = engaged (straight bisector edge),
+// far = disengaged (cell's own default shape).
+function computeEngagements(cells, scaffolds, W, H) {
+    const allEngagements = new Map();
+
+    for (const cell of cells) {
+        if (!cell.visible) continue;
+        const scaffold = scaffolds.get(cell.id);
+        if (!scaffold) continue;
+
+        const eng = new Map();
+        const rA = Math.sqrt(cell.area / Math.PI);
+
+        for (const bis of scaffold.bisectors) {
+            const other = cells.find(c => c.id === bis.otherId);
+            if (!other) continue;
+
+            const rB = Math.sqrt(other.area / Math.PI);
+            const rSum = rA + rB;
+            const ratio = bis.dist / rSum;
+
+            let target = 1.0 - smoothstep(MK6_ENGAGE_FULL, MK6_ENGAGE_ZERO, ratio);
+
+            // Hover boost: hovered cell claims territory
+            if (cell.hoverMix > 0.1) {
+                target = Math.min(1.0, target + cell.hoverMix * 0.3);
+            }
+
+            // Temporal smoothing
+            const prev = cell._prevEngagements
+                ? (cell._prevEngagements.get(bis.otherId) ?? target)
+                : target;
+            eng.set(bis.otherId, prev + (target - prev) * MK6_ENGAGE_SMOOTH);
+        }
+
+        // Viewport edges: engaged when close to boundary
+        for (const tag of ['top', 'bottom', 'left', 'right']) {
+            let distToBound;
+            switch (tag) {
+                case 'top': distToBound = cell.y; break;
+                case 'bottom': distToBound = H - cell.y; break;
+                case 'left': distToBound = cell.x; break;
+                case 'right': distToBound = W - cell.x; break;
+            }
+            eng.set(tag, smoothstep(rA * 2.5, rA * 0.5, distToBound));
+        }
+
+        cell._prevEngagements = eng;
+        allEngagements.set(cell.id, eng);
+    }
+
+    return allEngagements;
+}
+
+// ── Default shape — cell's personality when disengaged ─────────
+function computeDefaultShape(cell) {
+    const r = Math.sqrt(cell.area / Math.PI);
+    const n = MK6_DEFAULT_CORNERS;
+    const poly = [];
+    for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        const seed = cell.id * 31 + i * 7;
+        const wobble = 1.0 + 0.04 * Math.sin(seed * 0.73) + 0.03 * Math.cos(seed * 1.17);
+        poly.push([
+            cell.x + Math.cos(a) * r * wobble,
+            cell.y + Math.sin(a) * r * wobble
+        ]);
+    }
+    return poly;
+}
+
+// ── Ray-polygon intersection ───────────────────────────────────
+// Returns distance from (ox,oy) along direction (dx,dy) to the
+// nearest polygon edge intersection. Infinity if no hit.
+function rayPolyDist(ox, oy, dx, dy, poly) {
+    const n = poly.length;
+    let bestT = Infinity;
+    for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        const ex = poly[j][0] - poly[i][0], ey = poly[j][1] - poly[i][1];
+        const denom = dx * ey - dy * ex;
+        if (Math.abs(denom) < 0.0001) continue;
+        const sx = poly[i][0] - ox, sy = poly[i][1] - oy;
+        const t = (sx * ey - sy * ex) / denom;
+        const u = (sx * dy - sy * dx) / denom;
+        if (t > 0.001 && u >= -0.001 && u <= 1.001 && t < bestT) bestT = t;
+    }
+    return bestT;
+}
+
+// ── Assemble polygon from scaffolding + engagement + default ───
+// Walk Voronoi edges. Engaged edges produce Voronoi vertices.
+// Disengaged edges produce default shape samples. Blended edges
+// interpolate. Vertices are exact where both adjacent edges engage.
+function assemblePolygon(cell, scaffold, engagements, defaultShape, gapSize) {
+    const voroPoly = scaffold.voronoiPoly;
+    const edgeNeighbors = scaffold.edgeNeighbors;
+    const V = voroPoly.length;
+    if (V < 3) return copyPoly(defaultShape);
+
+    // Per-edge engagement
+    const edgeStr = edgeNeighbors.map(nid => engagements.get(nid) || 0);
+
+    const result = [];
+
+    for (let i = 0; i < V; i++) {
+        const prevE = (i - 1 + V) % V;
+        const nextE = i;
+
+        // Vertex engagement = min of two adjacent edge engagements
+        const vStr = Math.min(edgeStr[prevE], edgeStr[nextE]);
+
+        // Voronoi vertex with gap inset
+        const vx = voroPoly[i][0], vy = voroPoly[i][1];
+        const toCx = cell.x - vx, toCy = cell.y - vy;
+        const dist = Math.hypot(toCx, toCy) || 1;
+        const inset = (gapSize / 2) * vStr;
+        const voroX = vx + (toCx / dist) * inset;
+        const voroY = vy + (toCy / dist) * inset;
+
+        // Default shape at same angle
+        const angle = Math.atan2(vy - cell.y, vx - cell.x);
+        const cosA = Math.cos(angle), sinA = Math.sin(angle);
+        const defDist = rayPolyDist(cell.x, cell.y, cosA, sinA, defaultShape);
+        const defR = defDist < Infinity ? defDist : Math.sqrt(cell.area / Math.PI);
+        const defX = cell.x + cosA * defR;
+        const defY = cell.y + sinA * defR;
+
+        // Blend
+        const s = vStr;
+        result.push([voroX * s + defX * (1 - s), voroY * s + defY * (1 - s)]);
+
+        // On low-engagement edges, add default shape samples for smooth curves
+        if (edgeStr[nextE] < 0.8) {
+            const nextI = (i + 1) % V;
+            const nextAngle = Math.atan2(voroPoly[nextI][1] - cell.y, voroPoly[nextI][0] - cell.x);
+            let dAngle = nextAngle - angle;
+            while (dAngle > Math.PI) dAngle -= Math.PI * 2;
+            while (dAngle < -Math.PI) dAngle += Math.PI * 2;
+
+            const steps = Math.max(1, Math.ceil(Math.abs(dAngle) / (Math.PI / 8)));
+            for (let si = 1; si < steps; si++) {
+                const midA = angle + dAngle * (si / steps);
+                const mc = Math.cos(midA), ms = Math.sin(midA);
+                const vD = rayPolyDist(cell.x, cell.y, mc, ms, voroPoly);
+                const dD = rayPolyDist(cell.x, cell.y, mc, ms, defaultShape);
+                const vR = vD < Infinity ? vD : dist;
+                const dR = dD < Infinity ? dD : defR;
+                const str = edgeStr[nextE];
+                const gInset = (gapSize / 2) * str;
+                const bR = (vR - gInset) * str + dR * (1 - str);
+                result.push([cell.x + mc * bR, cell.y + ms * bR]);
+            }
+        }
+    }
+
+    return result;
+}
+
+// ── Simplify for display ───────────────────────────────────────
+// Pick the N sharpest corners by angular deviation.
+function simplifyForDisplay(poly, targetN) {
+    if (!poly || poly.length <= targetN) return poly ? copyPoly(poly) : null;
+    const n = poly.length;
+    const scored = [];
+    for (let i = 0; i < n; i++) {
+        const prev = poly[(i - 1 + n) % n];
+        const curr = poly[i];
+        const next = poly[(i + 1) % n];
+        const ax = curr[0] - prev[0], ay = curr[1] - prev[1];
+        const bx = next[0] - curr[0], by = next[1] - curr[1];
+        const cross = Math.abs(ax * by - ay * bx);
+        const lenA = Math.sqrt(ax * ax + ay * ay) || 1;
+        const lenB = Math.sqrt(bx * bx + by * by) || 1;
+        scored.push({ idx: i, deviation: cross / (lenA * lenB) });
+    }
+    scored.sort((a, b) => b.deviation - a.deviation);
+    const kept = scored.slice(0, targetN).sort((a, b) => a.idx - b.idx);
+    return kept.map(k => [poly[k.idx][0], poly[k.idx][1]]);
+}
+
+// ── Physics: repulsion only (no bisector clipping) ─────────────
+function physicsStep(cells, dt) {
+    const n = cells.length;
+    for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+            const a = cells[i], b = cells[j];
+            const dx = b.x - a.x, dy = b.y - a.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 0.001) { b.x += 1; continue; }
+            const rA = a.effectiveRadius(), rB = b.effectiveRadius();
+            const minDist = (rA + rB) * 0.45 + GAP;
+            if (dist < minDist) {
+                const overlap = minDist - dist;
+                const push = overlap * 8 * dt * 0.1;
+                const nx = dx / dist, ny = dy / dist;
+                const totalArea = a.area + b.area;
+                const ratioA = b.area / totalArea;
+                const ratioB = a.area / totalArea;
+                if (!a._dragging) { a.x -= nx * push * ratioA; a.y -= ny * push * ratioA; }
+                if (!b._dragging) { b.x += nx * push * ratioB; b.y += ny * push * ratioB; }
+            }
+        }
+    }
+}
+
+// Resample a polygon to N evenly-spaced angular vertices around (cx,cy).
+// This gives a fixed vertex count for temporal smoothing.
+function resampleByAngle(poly, cx, cy, n) {
+    if (!poly || poly.length < 3) return null;
+    const result = [];
+    for (let i = 0; i < n; i++) {
+        const angle = (i / n) * Math.PI * 2;
+        const dx = Math.cos(angle), dy = Math.sin(angle);
+        let bestT = 0;
+        const pLen = poly.length;
+        for (let j = 0; j < pLen; j++) {
+            const k = (j + 1) % pLen;
+            const ex = poly[k][0] - poly[j][0], ey = poly[k][1] - poly[j][1];
+            const denom = dx * ey - dy * ex;
+            if (Math.abs(denom) < 0.0001) continue;
+            const fx = poly[j][0] - cx, fy = poly[j][1] - cy;
+            const t = (fx * ey - fy * ex) / denom;
+            const s = (fx * dy - fy * dx) / denom;
+            if (t > 0.001 && s >= -0.001 && s <= 1.001) {
+                if (bestT < 0.001 || t < bestT) bestT = t;
+            }
+        }
+        if (bestT > 0.001) {
+            result.push([cx + dx * bestT, cy + dy * bestT]);
+        } else {
+            // Fallback: use cell center (collapsed vertex)
+            result.push([cx, cy]);
+        }
+    }
+    return result;
+}
+
+// Enforce convexity via convex hull + aspect ratio clamp.
+// Always runs (no early-out). Uses hull centroid for ray casting.
+// Also clamps aspect ratio to prevent hyper-elongation from
+// area normalization amplifying thin shapes.
+function enforceConvexity(poly, cx, cy) {
+    const n = poly.length;
+    if (n < 3) return;
+
+    // ── Aspect ratio clamp ─────────────────────────────
+    // Prevent hyper-elongation. Compute bounding box, if aspect
+    // exceeds MAX_ASPECT, compress the long axis toward CELL CENTER.
+    // All shape operations use cell center as the invariant point
+    // to prevent polygon drift that drags centers.
+    const MAX_ASPECT = 2.5;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const p of poly) {
+        minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]);
+        minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]);
+    }
+    const extW = maxX - minX, extH = maxY - minY;
+    if (extW > extH * MAX_ASPECT && extH > 1) {
+        const target = extH * MAX_ASPECT;
+        const scale = target / extW;
+        for (const p of poly) p[0] = cx + (p[0] - cx) * scale;
+    } else if (extH > extW * MAX_ASPECT && extW > 1) {
+        const target = extW * MAX_ASPECT;
+        const scale = target / extH;
+        for (const p of poly) p[1] = cy + (p[1] - cy) * scale;
+    }
+
+    // ── Convex hull ────────────────────────────────────
+    const pts = poly.map(p => ({ x: p[0], y: p[1] }));
+    pts.sort((a, b) => a.x - b.x || a.y - b.y);
+    const hull = [];
+    for (const p of pts) {
+        while (hull.length >= 2) {
+            const a = hull[hull.length - 2], b = hull[hull.length - 1];
+            if ((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x) <= 0) hull.pop();
+            else break;
+        }
+        hull.push(p);
+    }
+    const lower = hull.length + 1;
+    for (let i = pts.length - 2; i >= 0; i--) {
+        const p = pts[i];
+        while (hull.length >= lower) {
+            const a = hull[hull.length - 2], b = hull[hull.length - 1];
+            if ((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x) <= 0) hull.pop();
+            else break;
+        }
+        hull.push(p);
+    }
+    hull.pop();
+    if (hull.length < 3) return;
+
+    // ── Resample onto hull ─────────────────────────────
+    // Use CELL CENTER (cx, cy) as ray origin. Non-border-facing
+    // vertices always stay on the base circle around the cell
+    // center, so the cell center is always inside the hull.
+    // Using hull centroid caused polygon drift.
+    const hLen = hull.length;
+    for (let i = 0; i < n; i++) {
+        const angle = Math.atan2(poly[i][1] - cy, poly[i][0] - cx);
+        const rdx = Math.cos(angle), rdy = Math.sin(angle);
+
+        let bestT = Infinity;
+        for (let j = 0; j < hLen; j++) {
+            const k = (j + 1) % hLen;
+            const ex = hull[k].x - hull[j].x, ey = hull[k].y - hull[j].y;
+            const denom = rdx * ey - rdy * ex;
+            if (Math.abs(denom) < 0.0001) continue;
+
+            const fx = hull[j].x - cx, fy = hull[j].y - cy;
+            const t = (fx * ey - fy * ex) / denom;
+            const s = (fx * rdy - fy * rdx) / denom;
+
+            if (t > 0.001 && s >= -0.001 && s <= 1.001 && t < bestT) {
+                bestT = t;
+            }
+        }
+
+        if (bestT < Infinity) {
+            poly[i][0] = cx + rdx * bestT;
+            poly[i][1] = cy + rdy * bestT;
+        }
+    }
+}
+
+// ─── Area computation ────────────────────────────────────────
+// Distributes viewport area among cells proportional to weight².
+// Total claimable area = viewport * fillFraction / cellCount,
+// then each cell gets its share proportional to w².
+function updateAreas(cells) {
+    if (cells.length === 0) return;
+    const viewportArea = W * H;
+    // Fill fraction scales with FILL_FACTOR: higher fill = cells claim more space.
+    // At FF=1.0 (circles), cells claim 70%. At FF=2.0, they claim 95%.
+    const fillFraction = Math.min(0.95, 0.7 + (FILL_FACTOR - 1.0) * 0.25);
+    const totalBudget = viewportArea * fillFraction;
+
+    // Sum of w² for all visible cells
+    let totalW2 = 0;
+    for (const c of cells) {
+        if (c.visible) totalW2 += c.weight * c.weight;
+    }
+    if (totalW2 < 0.001) totalW2 = 1;
+
+    for (const c of cells) {
+        const w2 = c.weight * c.weight;
+        c.baseArea = (w2 / totalW2) * totalBudget;
+        // Hover boost on top of base
+        c.area = c.baseArea * (1 + c.hoverMix * 0.6);
+    }
+}
+
+// ─── Layout system ───────────────────────────────────────────
+// Layouts are functions that return per-cell specs:
+//   [{x, y, weight, role, visible}]
+// The flock mind applies these as targets.
+
+const LAYOUTS = {
+    // Circle (default) — equal weights, arranged in a ring
+    circle(cells, W, H) {
+        const cx = W / 2, cy = H / 2;
+        const n = cells.length;
+        const spread = Math.min(W, H) * 0.25;
+        return cells.map((_, i) => ({
+            x: cx + Math.cos((i / n) * Math.PI * 2) * spread,
+            y: cy + Math.sin((i / n) * Math.PI * 2) * spread,
+            weight: 1, role: 'content', visible: true,
+        }));
+    },
+
+    // Hero + grid — one big cell, rest small
+    hero(cells, W, H) {
+        const n = cells.length;
+        const specs = [];
+        for (let i = 0; i < n; i++) {
+            if (i === 0) {
+                specs.push({
+                    x: W * 0.35, y: H * 0.45,
+                    weight: 2.2, role: 'hero', visible: true,
+                });
+            } else {
+                const col = (i - 1) % 3;
+                const row = Math.floor((i - 1) / 3);
+                specs.push({
+                    x: W * 0.65 + (col - 1) * W * 0.12,
+                    y: H * 0.25 + row * H * 0.2,
+                    weight: 0.7, role: 'carousel', visible: true,
+                });
+            }
+        }
+        return specs;
+    },
+
+    // Bento — varied sizes in a grid-like arrangement
+    bento(cells, W, H) {
+        const n = cells.length;
+        const weights = [1.8, 1.2, 1.0, 1.4, 0.8, 1.1, 0.9, 1.3, 1.0, 0.7, 1.1, 0.8];
+        const cols = Math.ceil(Math.sqrt(n * (W / H)));
+        const rows = Math.ceil(n / cols);
+        const specs = [];
+        for (let i = 0; i < n; i++) {
+            const col = i % cols;
+            const row = Math.floor(i / cols);
+            const margin = 0.08;
+            specs.push({
+                x: W * (margin + (col + 0.5) * (1 - 2 * margin) / cols),
+                y: H * (margin + (row + 0.5) * (1 - 2 * margin) / rows),
+                weight: weights[i % weights.length],
+                role: 'content', visible: true,
+            });
+        }
+        return specs;
+    },
+
+    // Sidebar — cells on left strip, right side empty
+    sidebar(cells, W, H) {
+        const n = cells.length;
+        const specs = [];
+        for (let i = 0; i < n; i++) {
+            const row = i;
+            specs.push({
+                x: W * 0.12,
+                y: H * (0.08 + (row + 0.5) * 0.84 / n),
+                weight: 0.8, role: 'carousel', visible: true,
+            });
+        }
+        return specs;
+    },
+
+    // Spiral — golden angle from center, decreasing weights
+    spiral(cells, W, H) {
+        const n = cells.length;
+        const cx = W / 2, cy = H / 2;
+        const golden = Math.PI * (3 - Math.sqrt(5));
+        const maxR = Math.min(W, H) * 0.38;
+        const specs = [];
+        for (let i = 0; i < n; i++) {
+            const r = maxR * Math.sqrt((i + 0.5) / n);
+            const a = i * golden;
+            specs.push({
+                x: cx + Math.cos(a) * r,
+                y: cy + Math.sin(a) * r,
+                weight: 1.5 - (i / n) * 0.8,
+                role: i === 0 ? 'hero' : 'content', visible: true,
+            });
+        }
+        return specs;
+    },
+};
+
+let currentLayout = 'circle';
+
+function applyLayout(name) {
+    const gen = LAYOUTS[name];
+    if (!gen) return;
+    currentLayout = name;
+    const specs = gen(cells, W, H);
+    for (let i = 0; i < cells.length && i < specs.length; i++) {
+        const s = specs[i];
+        cells[i].targetX = s.x;
+        cells[i].targetY = s.y;
+        cells[i].targetWeight = s.weight;
+        cells[i].role = s.role || 'content';
+        cells[i].visible = s.visible !== false;
+    }
+    // Update layout bar active state
+    document.querySelectorAll('.layout-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.layout === name);
+    });
+}
+
+// ─── Rendering ───────────────────────────────────────────────
+
+function drawRoundedPolygon(ctx, polygon, radius) {
+    if (!polygon || polygon.length < 3) return;
+
+    let area = 0;
+    for (let i = 0; i < polygon.length; i++) {
+        const j = (i + 1) % polygon.length;
+        area += polygon[i][0] * polygon[j][1];
+        area -= polygon[j][0] * polygon[i][1];
+    }
+    area = Math.abs(area) / 2;
+
+    if (area < 100 || radius <= 0) {
+        ctx.beginPath();
+        ctx.moveTo(polygon[0][0], polygon[0][1]);
+        for (let i = 1; i < polygon.length; i++)
+            ctx.lineTo(polygon[i][0], polygon[i][1]);
+        ctx.closePath();
+        return;
+    }
+
+    const n = polygon.length;
+    const radii = [];
+    for (let i = 0; i < n; i++) {
+        const prev = polygon[(i - 1 + n) % n];
+        const curr = polygon[i];
+        const next = polygon[(i + 1) % n];
+
+        const d1 = Math.hypot(prev[0] - curr[0], prev[1] - curr[1]);
+        const d2 = Math.hypot(next[0] - curr[0], next[1] - curr[1]);
+        const maxR = Math.min(d1, d2) * 0.5;
+
+        const v1x = prev[0] - curr[0], v1y = prev[1] - curr[1];
+        const v2x = next[0] - curr[0], v2y = next[1] - curr[1];
+        const len1 = Math.hypot(v1x, v1y) || 1;
+        const len2 = Math.hypot(v2x, v2y) || 1;
+        const dot = (v1x * v2x + v1y * v2y) / (len1 * len2);
+        const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
+        const maxByAngle = Math.min(d1, d2) * Math.tan(angle / 2);
+
+        radii[i] = Math.max(0, Math.min(radius, maxR, maxByAngle));
+    }
+
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i < n; i++) {
+        const prev = polygon[(i - 1 + n) % n];
+        const curr = polygon[i];
+        const next = polygon[(i + 1) % n];
+        const r = radii[i];
+
+        const d1 = Math.hypot(prev[0] - curr[0], prev[1] - curr[1]);
+        const d2 = Math.hypot(next[0] - curr[0], next[1] - curr[1]);
+
+        if (r < 0.5 || d1 < 0.5 || d2 < 0.5) {
+            if (!started) { ctx.moveTo(curr[0], curr[1]); started = true; }
+            else ctx.lineTo(curr[0], curr[1]);
+        } else {
+            const dx1 = (prev[0] - curr[0]) / d1, dy1 = (prev[1] - curr[1]) / d1;
+            const dx2 = (next[0] - curr[0]) / d2, dy2 = (next[1] - curr[1]) / d2;
+            const sx = curr[0] + dx1 * r, sy = curr[1] + dy1 * r;
+            const ex = curr[0] + dx2 * r, ey = curr[1] + dy2 * r;
+
+            if (!started) { ctx.moveTo(sx, sy); started = true; }
+            else ctx.lineTo(sx, sy);
+            ctx.arcTo(curr[0], curr[1], ex, ey, r);
+        }
+    }
+    ctx.closePath();
+}
+
+function darken(hex, f) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgb(${r * (1 - f)|0},${g * (1 - f)|0},${b * (1 - f)|0})`;
+}
+
+function lighten(hex, f) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgb(${Math.min(255, r + (255 - r) * f)|0},${Math.min(255, g + (255 - g) * f)|0},${Math.min(255, b + (255 - b) * f)|0})`;
+}
+
+// Draw a polygon path with straight edges.
+// Use with lineJoin='round' + thick stroke for softened corners.
+function drawStraightPoly(ctx, poly) {
+    if (!poly || poly.length < 3) return;
+    ctx.beginPath();
+    ctx.moveTo(poly[0][0], poly[0][1]);
+    for (let i = 1; i < poly.length; i++) {
+        ctx.lineTo(poly[i][0], poly[i][1]);
+    }
+    ctx.closePath();
+}
+
+function drawCell(cell) {
+    const poly = cell._displayPoly || cell.polygon;
+    if (!poly || poly.length < 3) return;
+
+    const c = polygonCentroid(poly);
+    const r = cell.effectiveRadius();
+    const softR = Math.min(r * 0.25, 20); // corner softness radius
+
+    ctx.save();
+    ctx.globalAlpha = 1.0;
+
+    // Soft polygon: thick stroke with round joins + fill.
+    // Stroke creates rounded corners, fill covers interior.
+    // Combined: polygon with softened corners, straight edges.
+    const grad = ctx.createRadialGradient(
+        c.x - r * 0.15, c.y - r * 0.15, 0,
+        c.x, c.y, r * 1.2
+    );
+    grad.addColorStop(0, lighten(cell.color, 0.2));
+    grad.addColorStop(0.6, cell.color);
+    grad.addColorStop(1, darken(cell.color, 0.3));
+
+    // Clip to polygon shape — everything renders INSIDE only
+    drawStraightPoly(ctx, poly);
+    ctx.save();
+    ctx.clip();
+
+    // Inner rounded stroke for soft corners (clipped to interior)
+    drawStraightPoly(ctx, poly);
+    ctx.lineWidth = softR * 4; // doubled — half clipped outside
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = grad;
+    ctx.stroke();
+
+    // Fill the interior
+    drawStraightPoly(ctx, poly);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Border — thin inner stroke
+    drawStraightPoly(ctx, poly);
+    const borderW = cell.hoverMix > 0.1 ? 2 : 1;
+    ctx.lineWidth = borderW * 2 + softR * 2;
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = `rgba(255,255,255,${0.15 + cell.hoverMix * 0.25})`;
+    ctx.stroke();
+
+    ctx.restore(); // release clip
+
+    // Hover glow
+    if (cell.hoverMix > 0.05) {
+        drawStraightPoly(ctx, poly);
+        ctx.shadowColor = cell.color;
+        ctx.shadowBlur = 20 * cell.hoverMix;
+        ctx.strokeStyle = `rgba(255,255,255,${0.1 * cell.hoverMix})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+    }
+
+    // Label
+    ctx.fillStyle = `rgba(255,255,255,${0.4 + cell.hoverMix * 0.4})`;
+    ctx.font = '600 11px ui-monospace, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(cell.id, c.x, c.y);
+
+    ctx.restore();
+}
+
+let debugMode = false;
+const debugLayers = {
+    corners: false,      // orange corner vectors + dots
+    borderPull: false,    // yellow border pull vectors
+    cellPull: false,      // cyan cell-to-cell pull vectors
+    combined: false,      // white combined pull vectors
+    restPoly: false,      // red dashed rest poly outline
+    borderLine: false,    // yellow dashed line to border point
+    northstars: false,   // gold star dots at triple-points
+};
+
+function render(cells) {
+    ctx.clearRect(0, 0, W, H);
+    // Draw non-hovered first, hovered last. Skip invisible (void) cells.
+    const visible = cells.filter(c => c.visible);
+    const hovered = visible.filter(c => c.hoverMix > 0.5);
+    const rest = visible.filter(c => c.hoverMix <= 0.5);
+    for (const c of rest) drawCell(c);
+    for (const c of hovered) drawCell(c);
+
+    // Draw void objects
+    for (const v of voidObjects) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(v.x - v.w, v.y - v.h, v.w * 2, v.h * 2);
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+        ctx.fillRect(v.x - v.w, v.y - v.h, v.w * 2, v.h * 2);
+        ctx.restore();
+    }
+
+    // Draw void placement preview
+    if (placingVoid && voidDragStart) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 200, 50, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        const sx = Math.min(voidDragStart.x, mouseX);
+        const sy = Math.min(voidDragStart.y, mouseY);
+        const sw = Math.abs(mouseX - voidDragStart.x);
+        const sh = Math.abs(mouseY - voidDragStart.y);
+        ctx.strokeRect(sx, sy, sw, sh);
+        ctx.setLineDash([]);
+        ctx.restore();
+    }
+
+    if (debugMode) renderDebug(cells);
+}
+
+function renderDebug(cells) {
+    for (const c of cells) {
+
+        // Border line (yellow dashed to border point)
+        if (debugLayers.borderLine && c._debugPulls && c._debugPulls[0]) {
+            const d0 = c._debugPulls[0];
+            ctx.beginPath();
+            ctx.moveTo(c.x, c.y);
+            ctx.lineTo(d0.borderPx, d0.borderPy);
+            ctx.strokeStyle = 'rgba(255, 255, 0, 0.6)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.arc(d0.borderPx, d0.borderPy, 5, 0, Math.PI * 2);
+            ctx.fillStyle = 'yellow';
+            ctx.fill();
+        }
+
+        // Per-vertex pull vectors
+        if (c._debugPulls) {
+            for (const d of c._debugPulls) {
+                // Cell-to-cell pull (cyan)
+                if (debugLayers.cellPull && (Math.abs(d.cpx) > 0.5 || Math.abs(d.cpy) > 0.5)) {
+                    ctx.beginPath();
+                    ctx.moveTo(d.bx, d.by);
+                    ctx.lineTo(d.bx + d.cpx, d.by + d.cpy);
+                    ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+                // Border pull (yellow vectors)
+                if (debugLayers.borderPull && (Math.abs(d.bpx) > 0.5 || Math.abs(d.bpy) > 0.5)) {
+                    ctx.beginPath();
+                    ctx.moveTo(d.bx, d.by);
+                    ctx.lineTo(d.bx + d.bpx, d.by + d.bpy);
+                    ctx.strokeStyle = 'rgba(255, 255, 0, 0.7)';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                }
+                // Combined pull (white)
+                if (debugLayers.combined && (Math.abs(d.px) > 0.5 || Math.abs(d.py) > 0.5)) {
+                    ctx.beginPath();
+                    ctx.moveTo(d.bx, d.by);
+                    ctx.lineTo(d.bx + d.px, d.by + d.py);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(d.bx + d.px, d.by + d.py, 2, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.fill();
+                }
+            }
+        }
+
+        // Rest poly outline (red dashed)
+        if (debugLayers.restPoly && c.restPoly && c.restPoly.length > 2) {
+            ctx.beginPath();
+            ctx.moveTo(c.restPoly[0][0], c.restPoly[0][1]);
+            for (let i = 1; i < c.restPoly.length; i++)
+                ctx.lineTo(c.restPoly[i][0], c.restPoly[i][1]);
+            ctx.closePath();
+            ctx.strokeStyle = 'rgba(255, 100, 100, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // Cell center dot (always shown when debug is on)
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+
+        // Corner vectors (orange)
+        if (debugLayers.corners) {
+            const dp = c._displayPoly;
+            if (dp && dp.length >= 3) {
+                const cent = polygonCentroid(dp);
+                for (const p of dp) {
+                // Line from centroid to corner
+                ctx.beginPath();
+                ctx.moveTo(cent.x, cent.y);
+                ctx.lineTo(p[0], p[1]);
+                ctx.strokeStyle = 'rgba(255, 150, 50, 0.6)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // Corner dot
+                ctx.beginPath();
+                ctx.arc(p[0], p[1], 3, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 150, 50, 0.9)';
+                ctx.fill();
+            }
+
+            // Centroid dot (distinct from cell center)
+            ctx.beginPath();
+            ctx.arc(cent.x, cent.y, 4, 0, Math.PI * 2);
+            ctx.fillStyle = 'orange';
+            ctx.fill();
+            }
+        }
+    }
+
+    // Triple targets (cyan diamonds — where corners SHOULD meet)
+    if (debugLayers.northstars && currentTripleTargets.length > 0) {
+        for (const tt of currentTripleTargets) {
+            ctx.save();
+            ctx.translate(tt.x, tt.y);
+            ctx.rotate(Math.PI / 4);
+            ctx.strokeStyle = 'rgba(100, 220, 255, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(-4, -4, 8, 8);
+            ctx.restore();
+        }
+    }
+
+    // Northstar dots (gold — where corners ARE meeting)
+    if (debugLayers.northstars && currentNorthstars.length > 0) {
+        for (const ns of currentNorthstars) {
+            // Lines to the 3 participating cells
+            for (const cid of ns.cells) {
+                const cell = cells.find(c => c.id === cid);
+                if (!cell) continue;
+                ctx.beginPath();
+                ctx.moveTo(ns.x, ns.y);
+                ctx.lineTo(cell.x, cell.y);
+                ctx.strokeStyle = 'rgba(255, 220, 50, 0.15)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+            // Star dot
+            ctx.beginPath();
+            ctx.arc(ns.x, ns.y, 4, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 220, 50, 0.9)';
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(ns.x, ns.y, 7, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 220, 50, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+    }
+}
+
+// ─── Interaction ─────────────────────────────────────────────
+
+let cells = [];
+let dragCell = null;
+let dragOffX = 0, dragOffY = 0;
+let hoveredCell = null;
+let mouseX = -999, mouseY = -999;
+
+function findCellAt(px, py) {
+    // Check in reverse (top cells first)
+    for (let i = cells.length - 1; i >= 0; i--) {
+        if (cells[i].containsPoint(px, py)) return cells[i];
+    }
+    return null;
+}
+
+canvas.addEventListener('pointerdown', e => {
+    const rect = canvas.getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+
+    // Void placement mode: start drawing rectangle
+    if (placingVoid) {
+        voidDragStart = { x: px, y: py };
+        canvas.setPointerCapture(e.pointerId);
+        return;
+    }
+
+    const cell = findCellAt(px, py);
+    if (cell) {
+        dragCell = cell;
+        dragCell._dragging = true;
+        dragOffX = cell.x - px;
+        dragOffY = cell.y - py;
+        canvas.setPointerCapture(e.pointerId);
+    }
+});
+
+canvas.addEventListener('pointermove', e => {
+    const rect = canvas.getBoundingClientRect();
+    mouseX = e.clientX - rect.left;
+    mouseY = e.clientY - rect.top;
+    if (dragCell) {
+        dragCell.x = mouseX + dragOffX;
+        dragCell.y = mouseY + dragOffY;
+    }
+});
+
+canvas.addEventListener('pointerup', e => {
+    // Finish void placement
+    if (placingVoid && voidDragStart) {
+        const rect = canvas.getBoundingClientRect();
+        const px = e.clientX - rect.left;
+        const py = e.clientY - rect.top;
+        const cx = (voidDragStart.x + px) / 2;
+        const cy = (voidDragStart.y + py) / 2;
+        const hw = Math.abs(px - voidDragStart.x) / 2;
+        const hh = Math.abs(py - voidDragStart.y) / 2;
+        if (hw > 10 && hh > 10) {
+            voidObjects.push(new VoidObject(cx, cy, hw, hh));
+        }
+        voidDragStart = null;
+        return;
+    }
+
+    if (dragCell) dragCell._dragging = false;
+    dragCell = null;
+});
+canvas.addEventListener('pointerleave', () => { mouseX = -999; mouseY = -999; });
+
+// ─── Init & Loop ─────────────────────────────────────────────
+
+function initCells(count) {
+    cells = [];
+    const cx = W / 2, cy = H / 2;
+    const spread = Math.min(W, H) * 0.25;
+    for (let i = 0; i < count; i++) {
+        const angle = (i / count) * Math.PI * 2;
+        const x = cx + Math.cos(angle) * spread;
+        const y = cy + Math.sin(angle) * spread;
+        cells.push(new Cell(i, x, y, 1));
+    }
+    applyLayout(currentLayout);
+    updateAreas(cells);
+}
+
+let lastTime = 0;
+function animate(time) {
+    const dt = Math.min((time - lastTime) / 16, 3);
+    lastTime = time;
+
+    // ── Gravity: pull cell centers, don't affect size ───
+    if (GRAVITY_STRENGTH > 0) {
+        const gx = Math.cos(GRAVITY_ANGLE) * GRAVITY_STRENGTH;
+        const gy = Math.sin(GRAVITY_ANGLE) * GRAVITY_STRENGTH;
+        for (const c of cells) {
+            if (c._dragging) continue;
+            c.vx += gx * dt;
+            c.vy += gy * dt;
+            c.vx *= VELOCITY_DAMPING;
+            c.vy *= VELOCITY_DAMPING;
+            c.x += c.vx * dt;
+            c.y += c.vy * dt;
+            // Keep inside viewport
+            const r = c.effectiveRadius();
+            if (c.x < r) { c.x = r; c.vx = Math.abs(c.vx) * 0.3; }
+            if (c.x > W - r) { c.x = W - r; c.vx = -Math.abs(c.vx) * 0.3; }
+            if (c.y < r) { c.y = r; c.vy = Math.abs(c.vy) * 0.3; }
+            if (c.y > H - r) { c.y = H - r; c.vy = -Math.abs(c.vy) * 0.3; }
+        }
+    }
+
+    // ── Move toward targets (layout transition) ────────
+    // Only when gravity is off — gravity replaces target seeking
+    if (GRAVITY_STRENGTH === 0) {
+        const posRate = 1 - Math.exp(-dt * 0.12);
+        for (const c of cells) {
+            if (!c._dragging) {
+                c.x += (c.targetX - c.x) * posRate;
+                c.y += (c.targetY - c.y) * posRate;
+            }
+        }
+    }
+
+    // Weight always interpolates toward target
+    const weightRate = 1 - Math.exp(-dt * 0.08);
+    for (const c of cells) {
+        c.weight += (c.targetWeight - c.weight) * weightRate;
+    }
+
+    // ── Void settling ─────────────────────────────────
+    // Centers can pass through voids during motion, but must
+    // settle outside. Two forces:
+    // 1. Velocity push (proportional to depth inside void)
+    // 2. Direct position correction (teleport toward boundary)
+    // Combined, these overcome gravity and any other force.
+    for (const c of cells) {
+        if (c._dragging) continue;
+        for (const v of voidObjects) {
+            if (v.contains(c.x, c.y)) {
+                const bp = v.nearestBoundaryPoint(c.x, c.y);
+                const depth = Math.hypot(c.x - bp.x, c.y - bp.y);
+
+                // Direct position push: move 20% toward boundary per frame
+                // This always wins regardless of opposing forces
+                c.x += (bp.x - c.x) * 0.2;
+                c.y += (bp.y - c.y) * 0.2;
+
+                // Also zero out velocity component INTO the void
+                const vDot = c.vx * (-bp.nx) + c.vy * (-bp.ny);
+                if (vDot > 0) {
+                    c.vx -= (-bp.nx) * vDot;
+                    c.vy -= (-bp.ny) * vDot;
+                }
+            }
+        }
+    }
+
+    // ── Update hover ─────────────────────────────────
+    const newHovered = dragCell || findCellAt(mouseX, mouseY);
+    for (const c of cells) {
+        const target = (c === newHovered && c.visible) ? 1 : 0;
+        c.hoverMix += (target - c.hoverMix) * (1 - Math.exp(-dt * (target > 0.5 ? 0.3 : 0.08)));
+    }
+
+    // ── Compute areas from weights ───────────────────
+    updateAreas(cells);
+
+    // ── Physics: repulsion between close cells ───────
+    physicsStep(cells, dt);
+
+    // ── MK6 Edge-first pipeline ──────────────────────
+    // 1. Compute Voronoi scaffolding (exact regions from bisectors)
+    const scaffolds = computeScaffolding(cells, W, H);
+
+    // 2. Compute per-edge engagement (proximity → blend strength)
+    const engagements = computeEngagements(cells, scaffolds, W, H);
+
+    // 3. Assemble polygons (Voronoi edges where engaged, default shape where not)
+    for (const c of cells) {
+        if (!c.visible) continue;
+        const scaffold = scaffolds.get(c.id);
+        if (!scaffold || scaffold.voronoiPoly.length < 3) continue;
+
+        const eng = engagements.get(c.id) || new Map();
+        // Cache default shape — only recompute when area changes
+        if (!c._defShape || Math.abs(c._defShapeArea - c.area) > 1) {
+            c._defShape = computeDefaultShape(c);
+            c._defShapeArea = c.area;
+        }
+        // Update default shape position (area may be cached but position moves)
+        const defR = Math.sqrt(c.area / Math.PI);
+        const defShape = c._defShape.map((p, i) => {
+            const a = (i / MK6_DEFAULT_CORNERS) * Math.PI * 2;
+            const seed = c.id * 31 + i * 7;
+            const wobble = 1.0 + 0.04 * Math.sin(seed * 0.73) + 0.03 * Math.cos(seed * 1.17);
+            return [c.x + Math.cos(a) * defR * wobble, c.y + Math.sin(a) * defR * wobble];
+        });
+
+        c.polygon = assemblePolygon(c, scaffold, eng, defShape, GAP);
+    }
+
+    // 4. Void clipping — clip assembled polygons against void objects
+    for (const c of cells) {
+        if (!c.polygon || c.polygon.length < 3) continue;
+        for (const v of voidObjects) {
+            const r = c.effectiveRadius();
+            if (c.x < v.x - v.w - r || c.x > v.x + v.w + r ||
+                c.y < v.y - v.h - r || c.y > v.y + v.h + r) continue;
+
+            if (v.contains(c.x, c.y)) {
+                const dLeft = c.x - (v.x - v.w), dRight = (v.x + v.w) - c.x;
+                const dTop = c.y - (v.y - v.h), dBot = (v.y + v.h) - c.y;
+                const dMin = Math.min(dLeft, dRight, dTop, dBot);
+                if (dMin === dLeft) c.polygon = clipByHalfPlane(c.polygon, v.x - v.w, v.y, 1, 0);
+                else if (dMin === dRight) c.polygon = clipByHalfPlane(c.polygon, v.x + v.w, v.y, -1, 0);
+                else if (dMin === dTop) c.polygon = clipByHalfPlane(c.polygon, v.x, v.y - v.h, 0, 1);
+                else c.polygon = clipByHalfPlane(c.polygon, v.x, v.y + v.h, 0, -1);
+            } else {
+                const bp = v.nearestBoundaryPoint(c.x, c.y);
+                const dist = Math.hypot(c.x - bp.x, c.y - bp.y);
+                if (dist >= r) continue;
+                c.polygon = clipByHalfPlane(c.polygon, bp.x, bp.y, -bp.nx, -bp.ny);
+            }
+        }
+    }
+
+    // 5. Simplify for display
+    for (const c of cells) {
+        if (!c.polygon || c.polygon.length < 3) { c._displayPoly = null; continue; }
+        c._displayPoly = simplifyForDisplay(c.polygon, 7);
+    }
+
+    // Render
+    render(cells);
+
+    // Info
+    const avgEng = cells.reduce((sum, c) => {
+        if (!c._prevEngagements) return sum;
+        let s = 0, n = 0;
+        c._prevEngagements.forEach((v, k) => { if (typeof k === 'number') { s += v; n++; } });
+        return sum + (n > 0 ? s / n : 0);
+    }, 0) / Math.max(1, cells.filter(c => c.visible).length);
+    info.textContent = `mk7 · edge-first · ${cells.length} cells · engagement ${(avgEng * 100)|0}% · gap ${GAP}px`;
+
+    requestAnimationFrame(animate);
+}
+
+// ─── Controls ────────────────────────────────────────────────
+
+document.getElementById('addBtn').addEventListener('click', () => {
+    const id = cells.length;
+    const x = W / 2 + (Math.random() - 0.5) * 200;
+    const y = H / 3;
+    cells.push(new Cell(id, x, y, 1));
+    applyLayout(currentLayout);
+});
+
+document.getElementById('removeBtn').addEventListener('click', () => {
+    if (cells.length > 1) {
+        cells.pop();
+        // (MK5 dead code removed)
+    }
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+    // (MK5 dead code removed)
+    initCells(10);
+});
+
+document.getElementById('gapBtn').addEventListener('click', () => {
+    const gaps = [0, 2, 4, 8, 16];
+    const idx = (gaps.indexOf(GAP) + 1) % gaps.length;
+    GAP = gaps[idx];
+    document.getElementById('gapBtn').textContent = `Gap: ${GAP}`;
+});
+
+// Pull (gravity reach) — slider + number field stay in sync
+const pullSlider = document.getElementById('pullSlider');
+const pullNum = document.getElementById('pullNum');
+function setPull(val) {
+    GRAVITY_REACH = val;
+    pullSlider.value = Math.min(val, parseFloat(pullSlider.max));
+    pullNum.value = val;
+}
+pullSlider.addEventListener('input', () => setPull(parseFloat(pullSlider.value)));
+pullNum.addEventListener('input', () => setPull(parseFloat(pullNum.value) || 0));
+
+// Border pull — slider + number field stay in sync
+const borderSlider = document.getElementById('borderSlider');
+const borderNum = document.getElementById('borderNum');
+function setBorder(val) {
+    BORDER_PULL = val;
+    borderSlider.value = Math.min(val, parseFloat(borderSlider.max));
+    borderNum.value = val;
+}
+borderSlider.addEventListener('input', () => setBorder(parseFloat(borderSlider.value)));
+borderNum.addEventListener('input', () => setBorder(parseFloat(borderNum.value) || 0));
+
+// Focus (focal distance) — slider + number field
+const focusSlider = document.getElementById('focusSlider');
+const focusNum = document.getElementById('focusNum');
+function setFocus(val) {
+    BORDER_FOCUS = val;
+    focusSlider.value = Math.min(val, parseFloat(focusSlider.max));
+    focusNum.value = val;
+}
+focusSlider.addEventListener('input', () => setFocus(parseFloat(focusSlider.value)));
+focusNum.addEventListener('input', () => setFocus(parseFloat(focusNum.value) || 1));
+
+// Void pull
+const voidPullSlider = document.getElementById('voidPullSlider');
+const voidPullNum = document.getElementById('voidPullNum');
+function setVoidPull(val) {
+    VOID_PULL = val;
+    voidPullSlider.value = Math.min(val, parseFloat(voidPullSlider.max));
+    voidPullNum.value = val;
+}
+voidPullSlider.addEventListener('input', () => setVoidPull(parseFloat(voidPullSlider.value)));
+voidPullNum.addEventListener('input', () => setVoidPull(parseFloat(voidPullNum.value) || 0));
+
+// Void placement mode
+document.getElementById('voidBtn').addEventListener('click', () => {
+    placingVoid = !placingVoid;
+    document.getElementById('voidBtn').classList.toggle('active', placingVoid);
+    canvas.style.cursor = placingVoid ? 'crosshair' : 'default';
+});
+document.getElementById('clearVoidsBtn').addEventListener('click', () => {
+    voidObjects = [];
+});
+
+// Fill factor
+const fillSlider = document.getElementById('fillSlider');
+const fillNum = document.getElementById('fillNum');
+function setFill(val) {
+    FILL_FACTOR = val;
+    fillSlider.value = Math.min(val, parseFloat(fillSlider.max));
+    fillNum.value = val;
+}
+fillSlider.addEventListener('input', () => setFill(parseFloat(fillSlider.value)));
+fillNum.addEventListener('input', () => setFill(parseFloat(fillNum.value) || 1));
+
+// Star attraction (triple-target pull)
+const starSlider = document.getElementById('starSlider');
+const starNum = document.getElementById('starNum');
+function setStarPull(val) {
+    TARGET_PULL = val;
+    starSlider.value = Math.min(val, parseFloat(starSlider.max));
+    starNum.value = val;
+}
+starSlider.addEventListener('input', () => setStarPull(parseFloat(starSlider.value)));
+starNum.addEventListener('input', () => setStarPull(parseFloat(starNum.value) || 0));
+
+// Gravity controls
+const gravSlider = document.getElementById('gravSlider');
+const gravNum = document.getElementById('gravNum');
+function setGrav(val) {
+    GRAVITY_STRENGTH = val;
+    gravSlider.value = Math.min(val, parseFloat(gravSlider.max));
+    gravNum.value = val;
+}
+gravSlider.addEventListener('input', () => setGrav(parseFloat(gravSlider.value)));
+gravNum.addEventListener('input', () => setGrav(parseFloat(gravNum.value) || 0));
+
+const gravAngleSlider = document.getElementById('gravAngleSlider');
+const gravAngleNum = document.getElementById('gravAngleNum');
+function setGravAngle(val) {
+    GRAVITY_ANGLE = val;
+    gravAngleSlider.value = Math.min(val, parseFloat(gravAngleSlider.max));
+    gravAngleNum.value = val;
+}
+gravAngleSlider.addEventListener('input', () => setGravAngle(parseFloat(gravAngleSlider.value)));
+gravAngleNum.addEventListener('input', () => setGravAngle(parseFloat(gravAngleNum.value) || 0));
+
+// Layout buttons
+document.querySelectorAll('.layout-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const name = btn.dataset.layout;
+        if (name && LAYOUTS[name]) {
+            applyLayout(name);
+        }
+    });
+});
+
+// Debug toggle + layer toggles
+document.getElementById('debugBtn').addEventListener('click', () => {
+    debugMode = !debugMode;
+    document.getElementById('debugBtn').classList.toggle('active', debugMode);
+    document.getElementById('debugToggles').style.display = debugMode ? '' : 'none';
+});
+document.querySelectorAll('[data-layer]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const layer = btn.dataset.layer;
+        debugLayers[layer] = !debugLayers[layer];
+        btn.classList.toggle('active', debugLayers[layer]);
+    });
+});
+
+// ─── Start ───────────────────────────────────────────────────
+initCells(10);
+requestAnimationFrame(animate);
+
+</script>
+</body>
+</html>
