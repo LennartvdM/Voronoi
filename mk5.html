@@ -87,13 +87,13 @@
         <button class="ctrl-btn" id="clearVoidsBtn">Clear</button>
         <button class="ctrl-btn" id="debugBtn">Debug</button>
         <span id="debugToggles" style="display:none;">
-            <button class="ctrl-btn active" data-layer="corners" style="font-size:10px;padding:4px 8px;">Corners</button>
-            <button class="ctrl-btn active" data-layer="cellPull" style="font-size:10px;padding:4px 8px;">CellPull</button>
-            <button class="ctrl-btn active" data-layer="borderPull" style="font-size:10px;padding:4px 8px;">Border</button>
-            <button class="ctrl-btn active" data-layer="combined" style="font-size:10px;padding:4px 8px;">Combined</button>
-            <button class="ctrl-btn active" data-layer="restPoly" style="font-size:10px;padding:4px 8px;">RestPoly</button>
-            <button class="ctrl-btn active" data-layer="borderLine" style="font-size:10px;padding:4px 8px;">BdrLine</button>
-            <button class="ctrl-btn active" data-layer="northstars" style="font-size:10px;padding:4px 8px;">Stars</button>
+            <button class="ctrl-btn" data-layer="corners" style="font-size:10px;padding:4px 8px;">Corners</button>
+            <button class="ctrl-btn" data-layer="cellPull" style="font-size:10px;padding:4px 8px;">CellPull</button>
+            <button class="ctrl-btn" data-layer="borderPull" style="font-size:10px;padding:4px 8px;">Border</button>
+            <button class="ctrl-btn" data-layer="combined" style="font-size:10px;padding:4px 8px;">Combined</button>
+            <button class="ctrl-btn" data-layer="restPoly" style="font-size:10px;padding:4px 8px;">RestPoly</button>
+            <button class="ctrl-btn" data-layer="borderLine" style="font-size:10px;padding:4px 8px;">BdrLine</button>
+            <button class="ctrl-btn" data-layer="northstars" style="font-size:10px;padding:4px 8px;">Stars</button>
         </span>
         <div class="slider-group">
             <label>Pull</label>
@@ -1607,13 +1607,13 @@ function drawCell(cell) {
 
 let debugMode = false;
 const debugLayers = {
-    corners: true,      // orange corner vectors + dots
-    borderPull: true,    // yellow border pull vectors
-    cellPull: true,      // cyan cell-to-cell pull vectors
-    combined: true,      // white combined pull vectors
-    restPoly: true,      // red dashed rest poly outline
-    borderLine: true,    // yellow dashed line to border point
-    northstars: true,   // gold star dots at triple-points
+    corners: false,      // orange corner vectors + dots
+    borderPull: false,    // yellow border pull vectors
+    cellPull: false,      // cyan cell-to-cell pull vectors
+    combined: false,      // white combined pull vectors
+    restPoly: false,      // red dashed rest poly outline
+    borderLine: false,    // yellow dashed line to border point
+    northstars: false,   // gold star dots at triple-points
 };
 
 function render(cells) {
