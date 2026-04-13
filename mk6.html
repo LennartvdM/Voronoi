@@ -435,8 +435,25 @@ function computeScaffolding(cells, W, H) {
             if (poly.length < 3) break;
         }
 
-        // Viewport clip
-        const VM = 2; // slight inset
+        // Maximum reach: cell can't claim territory beyond this radius.
+        // Prevents outer cells from spiking toward viewport edges.
+        // Inner cells are unaffected (neighbors clip them first).
+        const rCell = Math.sqrt(cell.area / Math.PI);
+        const maxReach = rCell * FILL_FACTOR * 1.2;
+        const CLIP_SIDES = 16;
+        for (let i = 0; i < CLIP_SIDES; i++) {
+            const a = (i / CLIP_SIDES) * Math.PI * 2;
+            const cx = Math.cos(a), cy = Math.sin(a);
+            poly = clipByHalfPlane(poly,
+                cell.x + cx * maxReach,
+                cell.y + cy * maxReach,
+                cx, cy
+            );
+            if (poly.length < 3) break;
+        }
+
+        // Viewport clip (catches anything the circular clip missed)
+        const VM = 2;
         poly = clipByHalfPlane(poly, VM, 0, -1, 0);
         poly = clipByHalfPlane(poly, W - VM, 0, 1, 0);
         poly = clipByHalfPlane(poly, 0, VM, 0, -1);
