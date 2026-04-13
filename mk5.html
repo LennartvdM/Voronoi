@@ -87,13 +87,13 @@
         <button class="ctrl-btn" id="clearVoidsBtn">Clear</button>
         <button class="ctrl-btn" id="debugBtn">Debug</button>
         <span id="debugToggles" style="display:none;">
-            <button class="ctrl-btn active" data-layer="corners" style="font-size:10px;padding:4px 8px;">Corners</button>
-            <button class="ctrl-btn active" data-layer="cellPull" style="font-size:10px;padding:4px 8px;">CellPull</button>
-            <button class="ctrl-btn active" data-layer="borderPull" style="font-size:10px;padding:4px 8px;">Border</button>
-            <button class="ctrl-btn active" data-layer="combined" style="font-size:10px;padding:4px 8px;">Combined</button>
-            <button class="ctrl-btn active" data-layer="restPoly" style="font-size:10px;padding:4px 8px;">RestPoly</button>
-            <button class="ctrl-btn active" data-layer="borderLine" style="font-size:10px;padding:4px 8px;">BdrLine</button>
-            <button class="ctrl-btn active" data-layer="northstars" style="font-size:10px;padding:4px 8px;">Stars</button>
+            <button class="ctrl-btn" data-layer="corners" style="font-size:10px;padding:4px 8px;">Corners</button>
+            <button class="ctrl-btn" data-layer="cellPull" style="font-size:10px;padding:4px 8px;">CellPull</button>
+            <button class="ctrl-btn" data-layer="borderPull" style="font-size:10px;padding:4px 8px;">Border</button>
+            <button class="ctrl-btn" data-layer="combined" style="font-size:10px;padding:4px 8px;">Combined</button>
+            <button class="ctrl-btn" data-layer="restPoly" style="font-size:10px;padding:4px 8px;">RestPoly</button>
+            <button class="ctrl-btn" data-layer="borderLine" style="font-size:10px;padding:4px 8px;">BdrLine</button>
+            <button class="ctrl-btn" data-layer="northstars" style="font-size:10px;padding:4px 8px;">Stars</button>
         </span>
         <div class="slider-group">
             <label>Pull</label>
@@ -371,6 +371,28 @@ class Cell {
                     }
                 }
             }
+            // ── Triple-target pull ────────────────────────
+            // Candidate triple-points (bisector intersections) tell
+            // us where corners SHOULD meet. Pull rest poly vertices
+            // toward them — creating pseudopods that reach toward
+            // meeting points. Bisector clipping then carves corners
+            // at those positions. Sharp taper (facing^4) so only
+            // vertices near the target direction get pulled.
+            const myTargets = cellTripleTargets.get(this.id) || [];
+            for (const tt of myTargets) {
+                const tdx = tt.x - this.x, tdy = tt.y - this.y;
+                const tDist = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
+                const tndx = tdx / tDist, tndy = tdy / tDist;
+
+                const facing = cosA * tndx + sinA * tndy;
+                if (facing <= 0) continue;
+
+                const taper = facing * facing * facing * facing; // facing^4
+                const strength = taper * rBase * GRAVITY_REACH;
+                cellPullX += tndx * strength;
+                cellPullY += tndy * strength;
+            }
+
             pullX += cellPullX;
             pullY += cellPullY;
 
@@ -627,6 +649,91 @@ function simplifyToN(poly, targetN, myStars) {
 // snap just closes the last few pixels of disagreement.
 
 let currentNorthstars = [];
+
+// ─── Triple-point targets ────────────────────────────────────
+// Theoretical meeting points computed from bisector intersections.
+// These ALWAYS exist (depend on cell positions, not polygons).
+// They serve as ATTRACTORS in rest poly generation — cells extend
+// pseudopods toward where corners SHOULD meet. The corner-cluster
+// northstars then detect where they ARE meeting and snap them.
+
+let currentTripleTargets = [];
+let cellTripleTargets = new Map();
+
+function lineIntersect(px, py, dx, dy, qx, qy, ex, ey) {
+    const denom = dx * ey - dy * ex;
+    if (Math.abs(denom) < 0.0001) return null;
+    const s = ((qx - px) * ey - (qy - py) * ex) / denom;
+    return { x: px + s * dx, y: py + s * dy };
+}
+
+function computeTripleTargets(cells) {
+    const targets = [];
+    const n = cells.length;
+
+    for (let i = 0; i < n; i++) {
+        const a = cells[i];
+        const ra = a.effectiveRadius();
+        for (let j = i + 1; j < n; j++) {
+            const b = cells[j];
+            const rb = b.effectiveRadius();
+            const dij = Math.hypot(b.x - a.x, b.y - a.y);
+            if (dij > (ra + rb) * FILL_FACTOR * 1.5) continue;
+
+            for (let k = j + 1; k < n; k++) {
+                const c = cells[k];
+                const rc = c.effectiveRadius();
+                const dik = Math.hypot(c.x - a.x, c.y - a.y);
+                const djk = Math.hypot(c.x - b.x, c.y - b.y);
+                if (dik > (ra + rc) * FILL_FACTOR * 1.5) continue;
+                if (djk > (rb + rc) * FILL_FACTOR * 1.5) continue;
+
+                const wA = Math.sqrt(a.area), wB = Math.sqrt(b.area), wC = Math.sqrt(c.area);
+
+                // Bisector(A,B): weighted midpoint, perpendicular to AB
+                const dxAB = b.x - a.x, dyAB = b.y - a.y;
+                const lenAB = Math.sqrt(dxAB * dxAB + dyAB * dyAB);
+                if (lenAB < 0.01) continue;
+                const tAB = wA / (wA + wB);
+                const mxAB = a.x + dxAB * tAB, myAB = a.y + dyAB * tAB;
+
+                // Bisector(A,C): weighted midpoint, perpendicular to AC
+                const dxAC = c.x - a.x, dyAC = c.y - a.y;
+                const lenAC = Math.sqrt(dxAC * dxAC + dyAC * dyAC);
+                if (lenAC < 0.01) continue;
+                const tAC = wA / (wA + wC);
+                const mxAC = a.x + dxAC * tAC, myAC = a.y + dyAC * tAC;
+
+                const pt = lineIntersect(
+                    mxAB, myAB, -dyAB / lenAB, dxAB / lenAB,
+                    mxAC, myAC, -dyAC / lenAC, dxAC / lenAC
+                );
+                if (!pt) continue;
+
+                // Skip if far outside viewport
+                const margin = Math.max(W, H) * 0.3;
+                if (pt.x < -margin || pt.x > W + margin ||
+                    pt.y < -margin || pt.y > H + margin) continue;
+
+                // Weighted Delaunay check (power diagram)
+                const distA = Math.hypot(pt.x - a.x, pt.y - a.y);
+                const ref = distA / wA;
+                let valid = true;
+                for (let m = 0; m < n; m++) {
+                    if (m === i || m === j || m === k) continue;
+                    const distM = Math.hypot(pt.x - cells[m].x, pt.y - cells[m].y);
+                    const wM = Math.sqrt(cells[m].area);
+                    if (distM / wM < ref - 0.01) { valid = false; break; }
+                }
+
+                if (valid) {
+                    targets.push({ x: pt.x, y: pt.y, cells: [a.id, b.id, c.id] });
+                }
+            }
+        }
+    }
+    return targets;
+}
 const CLUSTER_RADIUS = 35; // max distance between corners to form a cluster
 
 function computeNorthstars(cells) {
@@ -1500,13 +1607,13 @@ function drawCell(cell) {
 
 let debugMode = false;
 const debugLayers = {
-    corners: true,      // orange corner vectors + dots
-    borderPull: true,    // yellow border pull vectors
-    cellPull: true,      // cyan cell-to-cell pull vectors
-    combined: true,      // white combined pull vectors
-    restPoly: true,      // red dashed rest poly outline
-    borderLine: true,    // yellow dashed line to border point
-    northstars: true,   // gold star dots at triple-points
+    corners: false,      // orange corner vectors + dots
+    borderPull: false,    // yellow border pull vectors
+    cellPull: false,      // cyan cell-to-cell pull vectors
+    combined: false,      // white combined pull vectors
+    restPoly: false,      // red dashed rest poly outline
+    borderLine: false,    // yellow dashed line to border point
+    northstars: false,   // gold star dots at triple-points
 };
 
 function render(cells) {
@@ -1656,7 +1763,20 @@ function renderDebug(cells) {
         }
     }
 
-    // Northstar dots (gold stars at triple-points)
+    // Triple targets (cyan diamonds — where corners SHOULD meet)
+    if (debugLayers.northstars && currentTripleTargets.length > 0) {
+        for (const tt of currentTripleTargets) {
+            ctx.save();
+            ctx.translate(tt.x, tt.y);
+            ctx.rotate(Math.PI / 4);
+            ctx.strokeStyle = 'rgba(100, 220, 255, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(-4, -4, 8, 8);
+            ctx.restore();
+        }
+    }
+
+    // Northstar dots (gold — where corners ARE meeting)
     if (debugLayers.northstars && currentNorthstars.length > 0) {
         for (const ns of currentNorthstars) {
             // Lines to the 3 participating cells
@@ -1852,13 +1972,26 @@ function animate(time) {
     // ── Compute areas from weights ───────────────────
     updateAreas(cells);
 
+    // ── Triple targets BEFORE solver ─────────────────
+    // Theoretical meeting points from bisector intersections.
+    // These are ATTRACTORS — they tell generateRestPoly where
+    // to extend pseudopods. Always exist regardless of cell size.
+    currentTripleTargets = computeTripleTargets(cells);
+    cellTripleTargets = new Map();
+    for (const c of cells) cellTripleTargets.set(c.id, []);
+    for (const tt of currentTripleTargets) {
+        for (const cid of tt.cells) {
+            const arr = cellTripleTargets.get(cid);
+            if (arr) arr.push(tt);
+        }
+    }
+
     // ── Solve contacts ───────────────────────────────
     solveCells(cells, dt);
 
-    // ── Compute northstars AFTER solver ──────────────
-    // Northstars are derived from the CLIPPED polygon corners —
-    // they need the solver to have run first so polygons reflect
-    // the current bisector geometry.
+    // ── Corner-cluster northstars AFTER solver ───────
+    // Observe where actual clipped corners ARE meeting.
+    // These handle the snap — the finishing move.
     currentNorthstars = computeNorthstars(cells);
     const cellStars = new Map();
     for (const c of cells) cellStars.set(c.id, []);
@@ -1887,7 +2020,7 @@ function animate(time) {
     render(cells);
 
     // Info
-    info.textContent = `mk5 · voroboids · ${cells.length} cells · ${currentNorthstars.length} stars · gap ${GAP}px`;
+    info.textContent = `mk5 · voroboids · ${cells.length} cells · ${currentTripleTargets.length} targets · ${currentNorthstars.length} stars · gap ${GAP}px`;
 
     requestAnimationFrame(animate);
 }
