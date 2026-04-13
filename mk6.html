@@ -628,14 +628,291 @@ function copyPoly(poly) {
     return poly.map(p => [p[0], p[1]]);
 }
 
-// Simplify polygon to exactly N essential corners.
-// Finds the N vertices with the highest angular deviation
-// (sharpest corners) from the solver's polygon.
-// Northstar vertices get a huge bonus so they're always kept.
-function simplifyToN(poly, targetN, myStars) {
-    if (!poly || poly.length <= targetN) return poly ? poly.map(p => [p[0], p[1]]) : null;
+// ═══════════════════════════════════════════════════════════════
+//  MK6 — EDGE-FIRST GEOMETRY PIPELINE
+//
+//  Edges are primary. The Voronoi scaffolding (from cell centers)
+//  provides exact edges and vertices. Cells assemble their shape
+//  from the edges that surround them. Engaged edges conform to
+//  the Voronoi bisector. Disengaged edges revert to the cell's
+//  own default shape. Vertices are where two edges meet — exact
+//  by construction, no clustering or snapping needed.
+// ═══════════════════════════════════════════════════════════════
+
+const MK6_ENGAGE_FULL = 0.8;    // dist/rSum ratio → full engagement
+const MK6_ENGAGE_ZERO = 2.5;    // dist/rSum ratio → full disengagement
+const MK6_ENGAGE_SMOOTH = 0.15; // temporal smoothing for engagement
+const MK6_DEFAULT_CORNERS = 12; // default shape resolution
+
+function smoothstep(edge0, edge1, x) {
+    const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+    return t * t * (3 - 2 * t);
+}
+
+// ── Compute Voronoi scaffolding for all cells ──────────────────
+// For each cell: clip a large bounding rect by all weighted bisectors
+// + viewport edges. Result is the exact Voronoi region with tagged edges.
+function computeScaffolding(cells, W, H) {
+    const scaffolds = new Map();
+
+    for (const cell of cells) {
+        if (!cell.visible) continue;
+
+        const bisectors = [];
+
+        for (const other of cells) {
+            if (other.id === cell.id || !other.visible) continue;
+            const dx = other.x - cell.x, dy = other.y - cell.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < 0.001) continue;
+
+            const wA = Math.sqrt(cell.area), wB = Math.sqrt(other.area);
+            const t = wA / (wA + wB);
+
+            bisectors.push({
+                mx: cell.x + dx * t,
+                my: cell.y + dy * t,
+                nx: dx / dist,
+                ny: dy / dist,
+                otherId: other.id,
+                dist: dist
+            });
+        }
+
+        // Start with large bounding rect, clip by all bisectors
+        const M = Math.max(W, H) * 2;
+        let poly = [[-M, -M], [W + M, -M], [W + M, H + M], [-M, H + M]];
+
+        // Sort by distance — nearest neighbors first
+        bisectors.sort((a, b) => a.dist - b.dist);
+
+        for (const bis of bisectors) {
+            poly = clipByHalfPlane(poly, bis.mx, bis.my, bis.nx, bis.ny);
+            if (poly.length < 3) break;
+        }
+
+        // Viewport clip
+        const VM = 2; // slight inset
+        poly = clipByHalfPlane(poly, VM, 0, -1, 0);
+        poly = clipByHalfPlane(poly, W - VM, 0, 1, 0);
+        poly = clipByHalfPlane(poly, 0, VM, 0, -1);
+        poly = clipByHalfPlane(poly, 0, H - VM, 0, 1);
+
+        // Tag each edge with the neighbor that created it
+        const edgeNeighbors = identifyEdgeNeighbors(cell, poly, bisectors, W, H);
+
+        scaffolds.set(cell.id, {
+            voronoiPoly: poly,
+            bisectors: bisectors,
+            edgeNeighbors: edgeNeighbors
+        });
+    }
+
+    return scaffolds;
+}
+
+// ── Identify which neighbor each polygon edge belongs to ───────
+// After all clips, test each edge midpoint against all bisectors.
+// The closest bisector line is the one that created that edge.
+function identifyEdgeNeighbors(cell, poly, bisectors, W, H) {
+    const V = poly.length;
+    const tags = [];
+
+    const viewportBisectors = [
+        { mx: W / 2, my: 0, nx: 0, ny: 1, otherId: 'top' },
+        { mx: W / 2, my: H, nx: 0, ny: -1, otherId: 'bottom' },
+        { mx: 0, my: H / 2, nx: 1, ny: 0, otherId: 'left' },
+        { mx: W, my: H / 2, nx: -1, ny: 0, otherId: 'right' },
+    ];
+    const allBisectors = [...bisectors, ...viewportBisectors];
+
+    for (let i = 0; i < V; i++) {
+        const j = (i + 1) % V;
+        const emx = (poly[i][0] + poly[j][0]) / 2;
+        const emy = (poly[i][1] + poly[j][1]) / 2;
+
+        let bestDist = Infinity, bestNeighbor = null;
+
+        for (const bis of allBisectors) {
+            const d = Math.abs((emx - bis.mx) * bis.nx + (emy - bis.my) * bis.ny);
+            if (d < bestDist) {
+                bestDist = d;
+                bestNeighbor = bis.otherId;
+            }
+        }
+
+        tags.push(bestNeighbor);
+    }
+
+    return tags;
+}
+
+// ── Compute per-edge engagement strength ───────────────────────
+// Engagement controls how much a cell conforms to the Voronoi edge.
+// Based on proximity: close = engaged (straight bisector edge),
+// far = disengaged (cell's own default shape).
+function computeEngagements(cells, scaffolds, W, H) {
+    const allEngagements = new Map();
+
+    for (const cell of cells) {
+        if (!cell.visible) continue;
+        const scaffold = scaffolds.get(cell.id);
+        if (!scaffold) continue;
+
+        const eng = new Map();
+        const rA = Math.sqrt(cell.area / Math.PI);
+
+        for (const bis of scaffold.bisectors) {
+            const other = cells.find(c => c.id === bis.otherId);
+            if (!other) continue;
+
+            const rB = Math.sqrt(other.area / Math.PI);
+            const rSum = rA + rB;
+            const ratio = bis.dist / rSum;
+
+            let target = 1.0 - smoothstep(MK6_ENGAGE_FULL, MK6_ENGAGE_ZERO, ratio);
+
+            // Hover boost: hovered cell claims territory
+            if (cell.hoverMix > 0.1) {
+                target = Math.min(1.0, target + cell.hoverMix * 0.3);
+            }
+
+            // Temporal smoothing
+            const prev = cell._prevEngagements
+                ? (cell._prevEngagements.get(bis.otherId) ?? target)
+                : target;
+            eng.set(bis.otherId, prev + (target - prev) * MK6_ENGAGE_SMOOTH);
+        }
+
+        // Viewport edges: engaged when close to boundary
+        for (const tag of ['top', 'bottom', 'left', 'right']) {
+            let distToBound;
+            switch (tag) {
+                case 'top': distToBound = cell.y; break;
+                case 'bottom': distToBound = H - cell.y; break;
+                case 'left': distToBound = cell.x; break;
+                case 'right': distToBound = W - cell.x; break;
+            }
+            eng.set(tag, smoothstep(rA * 2.5, rA * 0.5, distToBound));
+        }
+
+        cell._prevEngagements = eng;
+        allEngagements.set(cell.id, eng);
+    }
+
+    return allEngagements;
+}
+
+// ── Default shape — cell's personality when disengaged ─────────
+function computeDefaultShape(cell) {
+    const r = Math.sqrt(cell.area / Math.PI);
+    const n = MK6_DEFAULT_CORNERS;
+    const poly = [];
+    for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        const seed = cell.id * 31 + i * 7;
+        const wobble = 1.0 + 0.04 * Math.sin(seed * 0.73) + 0.03 * Math.cos(seed * 1.17);
+        poly.push([
+            cell.x + Math.cos(a) * r * wobble,
+            cell.y + Math.sin(a) * r * wobble
+        ]);
+    }
+    return poly;
+}
+
+// ── Ray-polygon intersection ───────────────────────────────────
+// Returns distance from (ox,oy) along direction (dx,dy) to the
+// nearest polygon edge intersection. Infinity if no hit.
+function rayPolyDist(ox, oy, dx, dy, poly) {
     const n = poly.length;
-    // Score each vertex by angular deviation (cross product magnitude)
+    let bestT = Infinity;
+    for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        const ex = poly[j][0] - poly[i][0], ey = poly[j][1] - poly[i][1];
+        const denom = dx * ey - dy * ex;
+        if (Math.abs(denom) < 0.0001) continue;
+        const sx = poly[i][0] - ox, sy = poly[i][1] - oy;
+        const t = (sx * ey - sy * ex) / denom;
+        const u = (sx * dy - sy * dx) / denom;
+        if (t > 0.001 && u >= -0.001 && u <= 1.001 && t < bestT) bestT = t;
+    }
+    return bestT;
+}
+
+// ── Assemble polygon from scaffolding + engagement + default ───
+// Walk Voronoi edges. Engaged edges produce Voronoi vertices.
+// Disengaged edges produce default shape samples. Blended edges
+// interpolate. Vertices are exact where both adjacent edges engage.
+function assemblePolygon(cell, scaffold, engagements, defaultShape, gapSize) {
+    const voroPoly = scaffold.voronoiPoly;
+    const edgeNeighbors = scaffold.edgeNeighbors;
+    const V = voroPoly.length;
+    if (V < 3) return copyPoly(defaultShape);
+
+    // Per-edge engagement
+    const edgeStr = edgeNeighbors.map(nid => engagements.get(nid) || 0);
+
+    const result = [];
+
+    for (let i = 0; i < V; i++) {
+        const prevE = (i - 1 + V) % V;
+        const nextE = i;
+
+        // Vertex engagement = min of two adjacent edge engagements
+        const vStr = Math.min(edgeStr[prevE], edgeStr[nextE]);
+
+        // Voronoi vertex with gap inset
+        const vx = voroPoly[i][0], vy = voroPoly[i][1];
+        const toCx = cell.x - vx, toCy = cell.y - vy;
+        const dist = Math.hypot(toCx, toCy) || 1;
+        const inset = (gapSize / 2) * vStr;
+        const voroX = vx + (toCx / dist) * inset;
+        const voroY = vy + (toCy / dist) * inset;
+
+        // Default shape at same angle
+        const angle = Math.atan2(vy - cell.y, vx - cell.x);
+        const cosA = Math.cos(angle), sinA = Math.sin(angle);
+        const defDist = rayPolyDist(cell.x, cell.y, cosA, sinA, defaultShape);
+        const defR = defDist < Infinity ? defDist : Math.sqrt(cell.area / Math.PI);
+        const defX = cell.x + cosA * defR;
+        const defY = cell.y + sinA * defR;
+
+        // Blend
+        const s = vStr;
+        result.push([voroX * s + defX * (1 - s), voroY * s + defY * (1 - s)]);
+
+        // On low-engagement edges, add default shape samples for smooth curves
+        if (edgeStr[nextE] < 0.8) {
+            const nextI = (i + 1) % V;
+            const nextAngle = Math.atan2(voroPoly[nextI][1] - cell.y, voroPoly[nextI][0] - cell.x);
+            let dAngle = nextAngle - angle;
+            while (dAngle > Math.PI) dAngle -= Math.PI * 2;
+            while (dAngle < -Math.PI) dAngle += Math.PI * 2;
+
+            const steps = Math.max(1, Math.ceil(Math.abs(dAngle) / (Math.PI / 8)));
+            for (let si = 1; si < steps; si++) {
+                const midA = angle + dAngle * (si / steps);
+                const mc = Math.cos(midA), ms = Math.sin(midA);
+                const vD = rayPolyDist(cell.x, cell.y, mc, ms, voroPoly);
+                const dD = rayPolyDist(cell.x, cell.y, mc, ms, defaultShape);
+                const vR = vD < Infinity ? vD : dist;
+                const dR = dD < Infinity ? dD : defR;
+                const str = edgeStr[nextE];
+                const gInset = (gapSize / 2) * str;
+                const bR = (vR - gInset) * str + dR * (1 - str);
+                result.push([cell.x + mc * bR, cell.y + ms * bR]);
+            }
+        }
+    }
+
+    return result;
+}
+
+// ── Simplify for display ───────────────────────────────────────
+// Pick the N sharpest corners by angular deviation.
+function simplifyForDisplay(poly, targetN) {
+    if (!poly || poly.length <= targetN) return poly ? copyPoly(poly) : null;
+    const n = poly.length;
     const scored = [];
     for (let i = 0; i < n; i++) {
         const prev = poly[(i - 1 + n) % n];
@@ -646,387 +923,34 @@ function simplifyToN(poly, targetN, myStars) {
         const cross = Math.abs(ax * by - ay * bx);
         const lenA = Math.sqrt(ax * ax + ay * ay) || 1;
         const lenB = Math.sqrt(bx * bx + by * by) || 1;
-        let deviation = cross / (lenA * lenB);
-
-        // Northstar bonus: proportional to proximity AND cluster confidence
-        if (myStars) {
-            for (const ns of myStars) {
-                const d = Math.hypot(ns.x - curr[0], ns.y - curr[1]);
-                if (d < 60) {
-                    const proximity = 1 - d / 60;
-                    const confidence = Math.max(0, 1 - (ns.spread || 0) / 60);
-                    // Minimum bonus of 3 even for loose clusters
-                    deviation += (3 + 7 * confidence) * proximity;
-                    break;
-                }
-            }
-        }
-
-        // Impasse vertex: MUST be included — this vertex was injected
-        // specifically to resolve a three-way edge-convergence gap.
-        // Score higher than any northstar bonus.
-        if (curr._impasse) {
-            deviation += 20;
-        }
-
-        scored.push({ idx: i, deviation });
+        scored.push({ idx: i, deviation: cross / (lenA * lenB) });
     }
-
-    // Take the top N by deviation, preserving original order
     scored.sort((a, b) => b.deviation - a.deviation);
     const kept = scored.slice(0, targetN).sort((a, b) => a.idx - b.idx);
     return kept.map(k => [poly[k.idx][0], poly[k.idx][1]]);
 }
 
-// ─── Northstar system ────────────────────────────────────────
-// Northstars are the "meeting points" where 3 cells converge.
-// Instead of computing bisector intersections (where math says
-// corners SHOULD be), we find clusters of actual polygon corners
-// from 3 different cells that ARE near each other. The northstar
-// is born from the corners, so it's always close to them. The
-// snap just closes the last few pixels of disagreement.
-
-let currentNorthstars = [];
-
-// ─── Triple-point targets ────────────────────────────────────
-// Theoretical meeting points computed from bisector intersections.
-// These ALWAYS exist (depend on cell positions, not polygons).
-// They serve as ATTRACTORS in rest poly generation — cells extend
-// pseudopods toward where corners SHOULD meet. The corner-cluster
-// northstars then detect where they ARE meeting and snap them.
-
-let currentTripleTargets = [];
-let cellTripleTargets = new Map();
-
-function lineIntersect(px, py, dx, dy, qx, qy, ex, ey) {
-    const denom = dx * ey - dy * ex;
-    if (Math.abs(denom) < 0.0001) return null;
-    const s = ((qx - px) * ey - (qy - py) * ex) / denom;
-    return { x: px + s * dx, y: py + s * dy };
-}
-
-function computeTripleTargets(cells) {
-    const targets = [];
+// ── Physics: repulsion only (no bisector clipping) ─────────────
+function physicsStep(cells, dt) {
     const n = cells.length;
-
     for (let i = 0; i < n; i++) {
-        const a = cells[i];
-        if (!a.visible) continue;
-        const rA = Math.sqrt(a.area / Math.PI);
-        const wA = Math.sqrt(a.area);
-
         for (let j = i + 1; j < n; j++) {
-            const b = cells[j];
-            if (!b.visible) continue;
-            const rB = Math.sqrt(b.area / Math.PI);
-            const wB = Math.sqrt(b.area);
-
-            const distAB = Math.hypot(b.x - a.x, b.y - a.y);
-            if (distAB > (rA + rB) * FILL_FACTOR * 1.5) continue;
-
-            for (let k = j + 1; k < n; k++) {
-                const c = cells[k];
-                if (!c.visible) continue;
-                const rC = Math.sqrt(c.area / Math.PI);
-                const wC = Math.sqrt(c.area);
-
-                const distAC = Math.hypot(c.x - a.x, c.y - a.y);
-                const distBC = Math.hypot(c.x - b.x, c.y - b.y);
-                if (distAC > (rA + rC) * FILL_FACTOR * 1.5) continue;
-                if (distBC > (rB + rC) * FILL_FACTOR * 1.5) continue;
-
-                // Bisector(A,B)
-                const dxAB = b.x - a.x, dyAB = b.y - a.y;
-                const lenAB = Math.hypot(dxAB, dyAB) || 1;
-                const tAB = wA / (wA + wB);
-                const mxAB = a.x + dxAB * tAB;
-                const myAB = a.y + dyAB * tAB;
-                const pxAB = -dyAB / lenAB, pyAB = dxAB / lenAB;
-
-                // Bisector(A,C)
-                const dxAC = c.x - a.x, dyAC = c.y - a.y;
-                const lenAC = Math.hypot(dxAC, dyAC) || 1;
-                const tAC = wA / (wA + wC);
-                const mxAC = a.x + dxAC * tAC;
-                const myAC = a.y + dyAC * tAC;
-                const pxAC = -dyAC / lenAC, pyAC = dxAC / lenAC;
-
-                // Intersect
-                const cross = pxAB * pyAC - pyAB * pxAC;
-                if (Math.abs(cross) < 0.0001) continue;
-
-                const dmx = mxAC - mxAB, dmy = myAC - myAB;
-                const s = (dmx * pyAC - dmy * pxAC) / cross;
-                const px = mxAB + s * pxAB;
-                const py = myAB + s * pyAB;
-
-                // Viewport check
-                const margin = Math.max(W, H) * 0.3;
-                if (px < -margin || px > W + margin || py < -margin || py > H + margin) continue;
-
-                // Weighted Delaunay check
-                const distPA = Math.hypot(px - a.x, py - a.y);
-                const ref = distPA / wA;
-                let valid = true;
-                for (let m = 0; m < n; m++) {
-                    if (m === i || m === j || m === k) continue;
-                    if (!cells[m].visible) continue;
-                    const distPM = Math.hypot(px - cells[m].x, py - cells[m].y);
-                    const wM = Math.sqrt(cells[m].area);
-                    if (distPM / wM < ref - 0.01) { valid = false; break; }
-                }
-                if (!valid) continue;
-
-                targets.push({
-                    x: px, y: py,
-                    cells: [a.id, b.id, c.id],
-                    cellDists: [
-                        Math.hypot(px - a.x, py - a.y),
-                        Math.hypot(px - b.x, py - b.y),
-                        Math.hypot(px - c.x, py - c.y)
-                    ],
-                    cellRadii: [rA, rB, rC]
-                });
+            const a = cells[i], b = cells[j];
+            const dx = b.x - a.x, dy = b.y - a.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 0.001) { b.x += 1; continue; }
+            const rA = a.effectiveRadius(), rB = b.effectiveRadius();
+            const minDist = (rA + rB) * 0.45 + GAP;
+            if (dist < minDist) {
+                const overlap = minDist - dist;
+                const push = overlap * 8 * dt * 0.1;
+                const nx = dx / dist, ny = dy / dist;
+                const totalArea = a.area + b.area;
+                const ratioA = b.area / totalArea;
+                const ratioB = a.area / totalArea;
+                if (!a._dragging) { a.x -= nx * push * ratioA; a.y -= ny * push * ratioA; }
+                if (!b._dragging) { b.x += nx * push * ratioB; b.y += ny * push * ratioB; }
             }
-        }
-    }
-
-    return targets;
-}
-const CLUSTER_RADIUS = 60; // max distance between corners to form a cluster
-
-function computeNorthstars(cells) {
-    const stars = [];
-
-    // Collect all clipped polygon corners with cell ownership
-    const allCorners = [];
-    for (const c of cells) {
-        if (!c.polygon || c.polygon.length < 3 || !c.visible) continue;
-        for (let i = 0; i < c.polygon.length; i++) {
-            allCorners.push({
-                x: c.polygon[i][0],
-                y: c.polygon[i][1],
-                cellId: c.id
-            });
-        }
-    }
-
-    // Spatial bucketing
-    const bucketSize = CLUSTER_RADIUS;
-    const buckets = new Map();
-
-    for (const corner of allCorners) {
-        const bx = Math.floor(corner.x / bucketSize);
-        const by = Math.floor(corner.y / bucketSize);
-        const key = bx + ',' + by;
-        if (!buckets.has(key)) buckets.set(key, []);
-        buckets.get(key).push(corner);
-    }
-
-    const usedTriples = new Map(); // cellTriple -> best star
-
-    for (const corner of allCorners) {
-        const bx = Math.floor(corner.x / bucketSize);
-        const by = Math.floor(corner.y / bucketSize);
-
-        // Gather nearby corners from other cells
-        const nearby = [];
-        for (let dx = -1; dx <= 1; dx++) {
-            for (let dy = -1; dy <= 1; dy++) {
-                const key = (bx + dx) + ',' + (by + dy);
-                const bucket = buckets.get(key);
-                if (!bucket) continue;
-                for (const other of bucket) {
-                    if (other.cellId === corner.cellId) continue;
-                    const d = Math.hypot(other.x - corner.x, other.y - corner.y);
-                    if (d < CLUSTER_RADIUS) {
-                        nearby.push(other);
-                    }
-                }
-            }
-        }
-
-        for (let a = 0; a < nearby.length; a++) {
-            for (let b = a + 1; b < nearby.length; b++) {
-                if (nearby[a].cellId === nearby[b].cellId) continue;
-
-                const dAB = Math.hypot(nearby[a].x - nearby[b].x, nearby[a].y - nearby[b].y);
-                if (dAB >= CLUSTER_RADIUS) continue;
-
-                const ids = [corner.cellId, nearby[a].cellId, nearby[b].cellId].sort((x, y) => x - y);
-                const tripleKey = ids.join(',');
-
-                const spread = Math.max(
-                    Math.hypot(corner.x - nearby[a].x, corner.y - nearby[a].y),
-                    Math.hypot(corner.x - nearby[b].x, corner.y - nearby[b].y),
-                    dAB
-                );
-
-                // Weighted centroid: tighter corners contribute more
-                const d0a = Math.hypot(corner.x - nearby[a].x, corner.y - nearby[a].y);
-                const d0b = Math.hypot(corner.x - nearby[b].x, corner.y - nearby[b].y);
-                const w0 = 1 / (1 + d0a + d0b);
-                const wa = 1 / (1 + d0a + dAB);
-                const wb = 1 / (1 + d0b + dAB);
-                const wSum = w0 + wa + wb;
-
-                const nx = (corner.x * w0 + nearby[a].x * wa + nearby[b].x * wb) / wSum;
-                const ny = (corner.y * w0 + nearby[a].y * wa + nearby[b].y * wb) / wSum;
-
-                const candidate = { x: nx, y: ny, cells: ids, spread: spread };
-
-                if (!usedTriples.has(tripleKey) || spread < usedTriples.get(tripleKey).spread) {
-                    usedTriples.set(tripleKey, candidate);
-                }
-            }
-        }
-    }
-
-    return Array.from(usedTriples.values());
-}
-
-// Snap display polygon corners to nearby northstars.
-// Snap strength modulated by cluster spread (confidence).
-// Tight clusters = firm lock. Loose clusters = gentle pull.
-function snapToNorthstars(displayPoly, myStars) {
-    if (!displayPoly || displayPoly.length < 3 || !myStars || myStars.length === 0) return;
-
-    for (let i = 0; i < displayPoly.length; i++) {
-        let bestDist = Infinity, bestStar = null;
-        for (const ns of myStars) {
-            const d = Math.hypot(ns.x - displayPoly[i][0], ns.y - displayPoly[i][1]);
-            if (d < bestDist) {
-                bestDist = d;
-                bestStar = ns;
-            }
-        }
-
-        if (!bestStar || bestDist > 50) continue;
-
-        // Confidence from cluster tightness: spread=0 → 1.0, spread=60 → 0.0
-        const confidence = Math.max(0, 1 - bestStar.spread / 60);
-
-        // Hard snap radius scales with confidence
-        const hardRadius = 5 + confidence * 15;  // 5px min, 20px for perfect clusters
-        const softRadius = hardRadius + 30;
-
-        if (bestDist > softRadius) continue;
-
-        if (bestDist < hardRadius) {
-            displayPoly[i][0] = bestStar.x;
-            displayPoly[i][1] = bestStar.y;
-        } else {
-            const t = (bestDist - hardRadius) / (softRadius - hardRadius);
-            const pull = (1 - t) * (1 - t) * (1 - t) * confidence;
-            displayPoly[i][0] += (bestStar.x - displayPoly[i][0]) * pull;
-            displayPoly[i][1] += (bestStar.y - displayPoly[i][1]) * pull;
-        }
-    }
-}
-
-// ─── Impasse detection ───────────────────────────────────────
-// Impasses are triple targets where NO participating cell has a
-// corner nearby. Three edges converge toward a meeting point but
-// all cells have spent their 7 corners elsewhere. The northstar
-// system is blind to these because it only clusters existing corners.
-
-function detectImpasses(tripleTargets, cells, radius) {
-    const IMPASSE_RADIUS = radius || 50;
-    const impasses = [];
-
-    for (const tt of tripleTargets) {
-        let hasCorner = false;
-
-        for (const cid of tt.cells) {
-            const cell = cells.find(c => c.id === cid);
-            if (!cell || !cell.polygon) continue;
-
-            for (const vert of cell.polygon) {
-                if (Math.hypot(vert[0] - tt.x, vert[1] - tt.y) < IMPASSE_RADIUS) {
-                    hasCorner = true;
-                    break;
-                }
-            }
-            if (hasCorner) break;
-        }
-
-        if (!hasCorner) {
-            impasses.push(tt);
-        }
-    }
-
-    return impasses;
-}
-
-// Also detect partial impasses: a northstar exists but one of its
-// three cells is missing a corner near it (presenting a flat edge).
-function detectPartialImpasses(northstars, cells) {
-    const partials = [];
-
-    for (const ns of northstars) {
-        for (const cid of ns.cells) {
-            const cell = cells.find(c => c.id === cid);
-            if (!cell || !cell.polygon) continue;
-
-            let hasCorner = false;
-            for (const vert of cell.polygon) {
-                if (Math.hypot(vert[0] - ns.x, vert[1] - ns.y) < 25) {
-                    hasCorner = true;
-                    break;
-                }
-            }
-
-            if (!hasCorner) {
-                partials.push({ x: ns.x, y: ns.y, cells: [cid] });
-            }
-        }
-    }
-
-    return partials;
-}
-
-// Inject a vertex into the cell's clipped polygon at the closest
-// point on its edge to each impasse. The injected vertex gets
-// _impasse = true so simplifyToN gives it maximum priority.
-function injectImpasseVertices(cell, impasses) {
-    if (!cell.polygon || cell.polygon.length < 3 || !impasses || impasses.length === 0) return;
-
-    const myImpasses = impasses.filter(imp => imp.cells.includes(cell.id));
-    if (myImpasses.length === 0) return;
-
-    for (const imp of myImpasses) {
-        let bestDist = Infinity;
-        let bestPoint = null;
-        let bestEdgeIdx = -1;
-
-        const poly = cell.polygon;
-        const n = poly.length;
-
-        for (let i = 0; i < n; i++) {
-            const ax = poly[i][0], ay = poly[i][1];
-            const bx = poly[(i + 1) % n][0], by = poly[(i + 1) % n][1];
-
-            const edx = bx - ax, edy = by - ay;
-            const edLen2 = edx * edx + edy * edy;
-            if (edLen2 < 1) continue;
-
-            let t = ((imp.x - ax) * edx + (imp.y - ay) * edy) / edLen2;
-            t = Math.max(0.05, Math.min(0.95, t)); // clamp away from existing vertices
-
-            const px = ax + edx * t;
-            const py = ay + edy * t;
-            const d = Math.hypot(px - imp.x, py - imp.y);
-
-            if (d < bestDist) {
-                bestDist = d;
-                bestPoint = [px, py];
-                bestEdgeIdx = i;
-            }
-        }
-
-        if (bestPoint && bestDist < 100) {
-            bestPoint._impasse = true;
-            cell.polygon.splice(bestEdgeIdx + 1, 0, bestPoint);
         }
     }
 }
@@ -2129,74 +2053,40 @@ function animate(time) {
     // ── Compute areas from weights ───────────────────
     updateAreas(cells);
 
-    // ── Triple targets BEFORE solver ─────────────────
-    // Theoretical meeting points from bisector intersections.
-    // These are ATTRACTORS — they tell generateRestPoly where
-    // to extend pseudopods. Always exist regardless of cell size.
-    currentTripleTargets = computeTripleTargets(cells);
-    cellTripleTargets = new Map();
-    for (const c of cells) cellTripleTargets.set(c.id, []);
-    for (const tt of currentTripleTargets) {
-        for (const cid of tt.cells) {
-            const arr = cellTripleTargets.get(cid);
-            if (arr) arr.push(tt);
-        }
-    }
+    // ── Physics: repulsion between close cells ───────
+    physicsStep(cells, dt);
 
-    // ── Solve contacts ───────────────────────────────
-    solveCells(cells, dt);
+    // ── MK6 Edge-first pipeline ──────────────────────
+    // 1. Compute Voronoi scaffolding (exact regions from bisectors)
+    const scaffolds = computeScaffolding(cells, W, H);
 
-    // ── Corner-cluster northstars AFTER solver ───────
-    // Observe where actual clipped corners ARE meeting.
-    // These handle the snap — the finishing move.
-    currentNorthstars = computeNorthstars(cells);
-    const cellStars = new Map();
-    for (const c of cells) cellStars.set(c.id, []);
-    for (const ns of currentNorthstars) {
-        for (const cid of ns.cells) {
-            const arr = cellStars.get(cid);
-            if (arr) arr.push(ns);
-        }
-    }
+    // 2. Compute per-edge engagement (proximity → blend strength)
+    const engagements = computeEngagements(cells, scaffolds, W, H);
 
-    // ── Detect impasses ────────────────────────────────
-    // Find triple targets where NO cell has a corner nearby (full
-    // impasses) and northstars where one cell is missing a corner
-    // (partial impasses). These are edge-convergence gaps — three
-    // edges meeting where no cell has budgeted a corner.
-    const fullImpasses = detectImpasses(currentTripleTargets, cells, 50);
-    const partialImpasses = detectPartialImpasses(currentNorthstars, cells);
-    const allImpasses = fullImpasses.concat(partialImpasses);
-
-    // ── Inject impasse vertices ──────────────────────
-    // For each impasse, insert a vertex into the participating
-    // cells' clipped polygons at the closest edge point. Marked
-    // with _impasse=true so simplifyToN gives it max priority.
-    // Frame 1: injected. Frame 2: northstar forms. Frame 3: locked.
+    // 3. Assemble polygons (Voronoi edges where engaged, default shape where not)
     for (const c of cells) {
-        injectImpasseVertices(c, allImpasses);
-    }
+        if (!c.visible) continue;
+        const scaffold = scaffolds.get(c.id);
+        if (!scaffold || scaffold.voronoiPoly.length < 3) continue;
 
-    // ── Simplify to 7-corner polygon ────────────────────
-    // Reduce solver output to exactly 7 corners — the sharpest
-    // angular deviations. Northstar vertices get bonus score
-    // so they're always kept. Impasse vertices get max priority.
-    // Then snap to exact northstar positions.
-    for (const c of cells) {
-        if (!c.polygon || c.polygon.length < 3) {
-            c._displayPoly = null;
-            continue;
-        }
-        const myStars = cellStars.get(c.id) || [];
-        c._displayPoly = simplifyToN(c.polygon, 7, myStars);
-        snapToNorthstars(c._displayPoly, myStars);
+        const eng = engagements.get(c.id) || new Map();
+        const defShape = computeDefaultShape(c);
+
+        c.polygon = assemblePolygon(c, scaffold, eng, defShape, GAP);
+        c._displayPoly = simplifyForDisplay(c.polygon, 7);
     }
 
     // Render
     render(cells);
 
     // Info
-    info.textContent = `mk6 · voroboids · ${cells.length} cells · ${currentTripleTargets.length} targets · ${currentNorthstars.length} stars · ${allImpasses.length} impasses · gap ${GAP}px`;
+    const avgEng = cells.reduce((sum, c) => {
+        if (!c._prevEngagements) return sum;
+        let s = 0, n = 0;
+        c._prevEngagements.forEach((v, k) => { if (typeof k === 'number') { s += v; n++; } });
+        return sum + (n > 0 ? s / n : 0);
+    }, 0) / Math.max(1, cells.filter(c => c.visible).length);
+    info.textContent = `mk6 · edge-first · ${cells.length} cells · engagement ${(avgEng * 100)|0}% · gap ${GAP}px`;
 
     requestAnimationFrame(animate);
 }
