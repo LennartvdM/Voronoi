@@ -121,6 +121,11 @@
             <input type="number" id="fillNum" min="1" max="5" step="0.1" value="2.0">
         </div>
         <div class="slider-group">
+            <label>Stars</label>
+            <input type="range" id="starSlider" min="0" max="10" step="0.1" value="1">
+            <input type="number" id="starNum" min="0" max="50" step="0.1" value="1">
+        </div>
+        <div class="slider-group">
             <label>Gravity</label>
             <input type="range" id="gravSlider" min="0" max="5" step="0.1" value="0">
             <input type="number" id="gravNum" min="0" max="10" step="0.1" value="0">
@@ -171,6 +176,7 @@ let BORDER_PULL = 0;      // how much cells stretch toward viewport borders (ang
 let BORDER_FOCUS = 1;     // taper curve for border push (0.3=sharp teardrop, 1=linear, 5=wide capsule)
 let VOID_PULL = 0;        // how much cells stretch toward void objects (like border pull)
 let FILL_FACTOR = 2.0;    // rest poly inflation for space-filling (1=circle, 2+=fills gaps via bisector)
+let TARGET_PULL = 1.0;    // triple-target attraction strength (0=off, 1=normal, 10+=extreme)
 
 // ─── Void objects ────────────────────────────────────────────
 // Rigid shapes that cells incline toward but must settle outside.
@@ -378,19 +384,21 @@ class Cell {
             // meeting points. Bisector clipping then carves corners
             // at those positions. Sharp taper (facing^4) so only
             // vertices near the target direction get pulled.
-            const myTargets = cellTripleTargets.get(this.id) || [];
-            for (const tt of myTargets) {
-                const tdx = tt.x - this.x, tdy = tt.y - this.y;
-                const tDist = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
-                const tndx = tdx / tDist, tndy = tdy / tDist;
+            if (TARGET_PULL > 0) {
+                const myTargets = cellTripleTargets.get(this.id) || [];
+                for (const tt of myTargets) {
+                    const tdx = tt.x - this.x, tdy = tt.y - this.y;
+                    const tDist = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
+                    const tndx = tdx / tDist, tndy = tdy / tDist;
 
-                const facing = cosA * tndx + sinA * tndy;
-                if (facing <= 0) continue;
+                    const facing = cosA * tndx + sinA * tndy;
+                    if (facing <= 0) continue;
 
-                const taper = facing * facing * facing * facing; // facing^4
-                const strength = taper * rBase * GRAVITY_REACH;
-                cellPullX += tndx * strength;
-                cellPullY += tndy * strength;
+                    const taper = facing * facing * facing * facing; // facing^4
+                    const strength = taper * rBase * GRAVITY_REACH * TARGET_PULL;
+                    cellPullX += tndx * strength;
+                    cellPullY += tndy * strength;
+                }
             }
 
             pullX += cellPullX;
@@ -2118,6 +2126,17 @@ function setFill(val) {
 }
 fillSlider.addEventListener('input', () => setFill(parseFloat(fillSlider.value)));
 fillNum.addEventListener('input', () => setFill(parseFloat(fillNum.value) || 1));
+
+// Star attraction (triple-target pull)
+const starSlider = document.getElementById('starSlider');
+const starNum = document.getElementById('starNum');
+function setStarPull(val) {
+    TARGET_PULL = val;
+    starSlider.value = Math.min(val, parseFloat(starSlider.max));
+    starNum.value = val;
+}
+starSlider.addEventListener('input', () => setStarPull(parseFloat(starSlider.value)));
+starNum.addEventListener('input', () => setStarPull(parseFloat(starNum.value) || 0));
 
 // Gravity controls
 const gravSlider = document.getElementById('gravSlider');
