@@ -117,8 +117,8 @@
         </div>
         <div class="slider-group">
             <label>Fill</label>
-            <input type="range" id="fillSlider" min="1" max="3" step="0.1" value="2.0">
-            <input type="number" id="fillNum" min="1" max="5" step="0.1" value="2.0">
+            <input type="range" id="fillSlider" min="0.01" max="1.2" step="0.01" value="0.5">
+            <input type="number" id="fillNum" min="0.01" max="2" step="0.01" value="0.5">
         </div>
         <div class="slider-group">
             <label>Stars</label>
@@ -169,7 +169,7 @@ resize();
 
 // ─── Config ──────────────────────────────────────────────────
 let GAP = 4;              // minimum pixel gap between cell surfaces
-let FILL_FACTOR = 2.0;    // used in area computation (fillFraction scaling)
+let FILL_FACTOR = 0.5;    // cell skin elasticity (0.01=tiny, 0.5=natural, 1.2=stretchy)
 let GRAVITY_REACH = 0.35; // (MK5 legacy — slider still wired)
 let BORDER_PULL = 0;      // (MK5 legacy — slider still wired)
 let BORDER_FOCUS = 1;     // (MK5 legacy — slider still wired)
