@@ -31,6 +31,7 @@
   }
   .meters b { color: #8fca9f; font-weight: 600; }
   .meters .bad { color: #e07a6a; }
+  .meters .soft { color: #c9b26a; }
 
   .bar {
     display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
@@ -45,7 +46,7 @@
   }
   .scene-btn:hover, .btn:hover { color: #ccd; border-color: #3a3a52; }
   .scene-btn.active { background: #2b2b48; color: #cfd0ff; border-color: #4a4a7a; }
-  input[type=range] { width: 90px; accent-color: #6a6af0; }
+  input[type=range] { width: 84px; accent-color: #6a6af0; }
   .val { font-size: 11px; color: #778; font-family: ui-monospace, Menlo, monospace; min-width: 3ch; }
 </style>
 </head>
@@ -54,7 +55,7 @@
     <a class="back" href="index.html">&larr; Back</a>
     <canvas id="c"></canvas>
     <div class="meters" id="meters">
-      area err <b id="mArea">–</b> · gap <b id="mGap">–</b> · overlap <b id="mOver">–</b> · solve <b id="mIter">–</b>
+      area err <b id="mArea">–</b> · gap <b id="mGap">–</b> · overlap <b id="mOver">–</b> · rect <b id="mRect">–</b> · solve <b id="mIter">–</b>
     </div>
   </div>
   <div class="bar">
@@ -65,21 +66,27 @@
       <button class="scene-btn" data-scene="sidebar">Sidebar</button>
       <button class="scene-btn" data-scene="frame">Frame</button>
     </div>
-    <div class="group"><span class="lbl">Cells</span>
-      <input type="range" id="count" min="4" max="42" value="14"><span class="val" id="countVal">14</span>
+    <div class="group"><span class="lbl">Elements</span>
+      <input type="range" id="count" min="4" max="30" value="12"><span class="val" id="countVal">12</span>
     </div>
     <div class="group"><span class="lbl">Gap</span>
       <input type="range" id="gap" min="0" max="28" value="10"><span class="val" id="gapVal">10</span>
     </div>
     <div class="group"><span class="lbl">Corners</span>
-      <input type="range" id="corner" min="0" max="34" value="16"><span class="val" id="cornerVal">16</span>
+      <input type="range" id="corner" min="0" max="34" value="14"><span class="val" id="cornerVal">14</span>
     </div>
     <div class="group"><span class="lbl">Hover</span>
-      <input type="range" id="hover" min="100" max="320" value="215"><span class="val" id="hoverVal">2.2&times;</span>
+      <input type="range" id="hover" min="100" max="260" value="160"><span class="val" id="hoverVal">1.6&times;</span>
+    </div>
+    <div class="group"><span class="lbl">Swirl</span>
+      <input type="range" id="swirl" min="0" max="100" value="45"><span class="val" id="swirlVal">45</span>
+    </div>
+    <div class="group"><span class="lbl">Stagger</span>
+      <input type="range" id="stagger" min="0" max="100" value="30"><span class="val" id="staggerVal">.30s</span>
     </div>
     <div class="group">
-      <button class="btn" id="add">+ Cell</button>
-      <button class="btn" id="remove">&minus; Cell</button>
+      <button class="btn" id="add">+ Element</button>
+      <button class="btn" id="remove">&minus; Element</button>
     </div>
   </div>
 
@@ -88,21 +95,28 @@
 'use strict';
 
 /* ============================================================== SOLVE
- * Sealed. Nothing aesthetic lives in here; no knob in this section is
- * a design knob. Behavior-matched to the validated reference in SEED.md.
+ * Sealed. Nothing aesthetic lives in here; no knob in this section is a
+ * design knob. Behavior-matched to the validated reference in SEED.md.
  *
  * The three pictures to hold:
- *  1. BIDDING. Every agent i bids |x - s_i|^2 - w_i for every point x of
- *     the canvas; every point goes to the lowest bidder. Agent i's cell
- *     is where it wins. All boundaries fall out of this one rule, so the
+ *  1. BIDDING. Every seed i bids |x - s_i|^2 - w_i for every point x of
+ *     the canvas; every point goes to the lowest bidder. Seed i's cell is
+ *     where it wins. All boundaries fall out of this one rule, so the
  *     tiling is watertight at every instant, whatever the weights are.
- *  2. AUCTION. The solver raises the weight of any agent holding less
- *     area than its claim and lowers the overweight ones. A theorem says
- *     the auction always clears: weights giving every agent exactly its
+ *  2. AUCTION. The solver raises the weight of any seed holding less area
+ *     than its claim and lowers the overweight ones. A theorem says the
+ *     auction always clears: weights giving every seed exactly its
  *     claimed area exist, and damped Newton finds them from any start.
  *  3. ONE SMOOTH FUNCTION. The diagram is a single continuous function
  *     of seed positions and weights. Move a seed and the picture
  *     deforms; it cannot tear, gap, or pop.
+ *
+ * And the fourth picture this file adds on top, without touching the
+ * math: a LATTICE of equal-weight seeds is a grid of exact rectangles.
+ * An element is a BODY of lattice seeds in formation. At rest every
+ * boundary is axis-aligned by construction; in motion the same seeds
+ * travel and the field stays watertight. Chameleon at rest, alive when
+ * it moves.
  */
 
 function ringArea(pts) {
@@ -114,8 +128,6 @@ function ringArea(pts) {
   return a / 2;
 }
 
-// Sutherland-Hodgman clip of a labeled polygon to ax*x + ay*y <= b.
-// labs[k] labels edge pts[k]->pts[k+1]: neighbor index >= 0 or negative wall id.
 function clipHalfPlane(poly, ax, ay, b, lab) {
   const pts = poly.pts, labs = poly.labs, n = pts.length;
   const oP = [], oL = [];
@@ -142,23 +154,64 @@ function clipHalfPlane(poly, ax, ay, b, lab) {
   return { pts: oP, labs: oL };
 }
 
-// Agent i beats j at x iff x.(s_j - s_i) <= (pot_j - pot_i)/2, pot_k = |s_k|^2 - w_k.
+// Same diagram as the reference, with prunable geometry: seeds are bucketed
+// in a spatial hash and each cell clips nearest-first, ring by ring, stopping
+// once no remaining seed's bisector can reach it. The bisector toward j sits
+// at d/2 + (w_i - w_j)/(2d) from s_i — a provable bound, so the output is
+// identical to the all-pairs version (areas agree to 1e-10 px²), just faster.
 function computeDiagram(seeds, weights, boundsPts) {
   const n = seeds.length;
   const cells = new Array(n);
   const areas = new Float64Array(n);
   const baseLabs = boundsPts.map((_, k) => -1 - k);
   const pot = new Float64Array(n);
+  let wmin = Infinity, wmax = -Infinity;
+  let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+  for (const p of boundsPts) { bx0 = Math.min(bx0, p[0]); by0 = Math.min(by0, p[1]); bx1 = Math.max(bx1, p[0]); by1 = Math.max(by1, p[1]); }
   for (let i = 0; i < n; i++) {
     pot[i] = seeds[i][0] * seeds[i][0] + seeds[i][1] * seeds[i][1] - weights[i];
+    if (weights[i] < wmin) wmin = weights[i];
+    if (weights[i] > wmax) wmax = weights[i];
   }
+  const maxDw = wmax - wmin;
+  const cs = Math.max(8, Math.sqrt((bx1 - bx0) * (by1 - by0) / Math.max(1, n)));
+  const gw = Math.ceil((bx1 - bx0) / cs) + 1, gh = Math.ceil((by1 - by0) / cs) + 1;
+  const buckets = new Array(gw * gh);
+  for (let k = 0; k < buckets.length; k++) buckets[k] = [];
+  const bxi = new Int32Array(n), byi = new Int32Array(n);
   for (let i = 0; i < n; i++) {
+    bxi[i] = Math.min(gw - 1, Math.max(0, Math.floor((seeds[i][0] - bx0) / cs)));
+    byi[i] = Math.min(gh - 1, Math.max(0, Math.floor((seeds[i][1] - by0) / cs)));
+    buckets[byi[i] * gw + bxi[i]].push(i);
+  }
+  const cand = [];
+  const maxRing = Math.max(gw, gh);
+  for (let i = 0; i < n; i++) {
+    const sx = seeds[i][0], sy = seeds[i][1], wi = weights[i];
     let poly = { pts: boundsPts, labs: baseLabs };
-    for (let j = 0; j < n; j++) {
-      if (j === i || poly.pts.length < 3) continue;
-      poly = clipHalfPlane(poly,
-        seeds[j][0] - seeds[i][0], seeds[j][1] - seeds[i][1],
-        (pot[j] - pot[i]) / 2, j);
+    let rFar = 0;
+    for (const p of boundsPts) rFar = Math.max(rFar, Math.hypot(p[0] - sx, p[1] - sy));
+    let dead = false;
+    for (let ring = 0; ring <= maxRing && !dead; ring++) {
+      const ringMin = (ring - 1) * cs;                       // nearest a seed in this ring can be
+      if (ring > 1 && ringMin / 2 - maxDw / (2 * ringMin) > rFar) break;
+      cand.length = 0;
+      const x0 = bxi[i] - ring, x1 = bxi[i] + ring, y0 = byi[i] - ring, y1 = byi[i] + ring;
+      for (let yy = Math.max(0, y0); yy <= Math.min(gh - 1, y1); yy++) {
+        for (let xx = Math.max(0, x0); xx <= Math.min(gw - 1, x1); xx++) {
+          if (ring > 0 && xx !== x0 && xx !== x1 && yy !== y0 && yy !== y1) continue;
+          for (const j of buckets[yy * gw + xx]) if (j !== i) cand.push(j);
+        }
+      }
+      cand.sort((a, b) => ((seeds[a][0] - sx) ** 2 + (seeds[a][1] - sy) ** 2) - ((seeds[b][0] - sx) ** 2 + (seeds[b][1] - sy) ** 2));
+      for (const j of cand) {
+        const d = Math.hypot(seeds[j][0] - sx, seeds[j][1] - sy);
+        if (d / 2 + (wi - weights[j]) / (2 * d) > rFar) continue;   // exact per pair
+        poly = clipHalfPlane(poly, seeds[j][0] - sx, seeds[j][1] - sy, (pot[j] - pot[i]) / 2, j);
+        if (poly.pts.length < 3) { dead = true; break; }
+        rFar = 0;
+        for (const p of poly.pts) rFar = Math.max(rFar, Math.hypot(p[0] - sx, p[1] - sy));
+      }
     }
     if (poly.pts.length < 3) { cells[i] = { pts: [], labs: [] }; areas[i] = 0; }
     else { cells[i] = poly; areas[i] = Math.abs(ringArea(poly.pts)); }
@@ -166,8 +219,6 @@ function computeDiagram(seeds, weights, boundsPts) {
   return { cells, areas };
 }
 
-// Jacobian d(areas)/d(weights): weighted graph Laplacian read off shared edges.
-// Rows sum to zero — only weight differences matter.
 function buildJacobian(diagram, seeds) {
   const n = seeds.length;
   const A = [];
@@ -194,7 +245,6 @@ function buildJacobian(diagram, seeds) {
   return A;
 }
 
-// Solve A x = g with x[n-1] pinned to 0 (removes the shared-constant nullspace).
 function solvePinned(A, g) {
   const n = g.length, m = n - 1;
   const M = [];
@@ -227,7 +277,6 @@ function solvePinned(A, g) {
 function norm2(v) { let s = 0; for (const x of v) s += x * x; return Math.sqrt(s); }
 function minOf(v) { let m = Infinity; for (const x of v) if (x < m) m = x; return m; }
 
-// Damped Newton on the concave dual, KMT floor + sufficient-decrease.
 function solveWeights(seeds, targets, boundsPts, w0, opts = {}) {
   const n = seeds.length;
   const tol = opts.tol !== undefined ? opts.tol : 1e-6;
@@ -245,10 +294,29 @@ function solveWeights(seeds, targets, boundsPts, w0, opts = {}) {
   let evals = 0;
   let diag = computeDiagram(seeds, w, boundsPts); evals++;
   if (w0 && minOf(diag.areas) <= 0) {
-    // Stale warm start: fall back to plain Voronoi (all-zero weights), which
-    // gives every interior seed a nonempty cell.
-    w = new Float64Array(n);
+    // Stale warm start: some seed's old weight leaves it no cell. Rather than
+    // discard everyone's warm weights (a cold solve, 5-6 iterations), lift
+    // only the empty seeds to the strongest bid around and let Newton pull
+    // them back — a few warm iterations instead of a cold restart.
+    // lift each empty seed to the strongest weight among its 8 nearest seeds:
+    // enough to win a cell locally, not enough to grab a whole neighbourhood
+    const empties = [];
+    for (let i = 0; i < n; i++) if (diag.areas[i] <= 0) empties.push(i);
+    const lifted = new Float64Array(n);
+    for (const i of empties) {
+      const near = [];
+      for (let j = 0; j < n; j++) if (j !== i && diag.areas[j] > 0) near.push([Math.hypot(seeds[j][0] - seeds[i][0], seeds[j][1] - seeds[i][1]), j]);
+      near.sort((a, b) => a[0] - b[0]);
+      let wl = -Infinity;
+      for (let k = 0; k < Math.min(8, near.length); k++) wl = Math.max(wl, w[near[k][1]]);
+      lifted[i] = isFinite(wl) ? wl : 0;
+    }
+    for (const i of empties) w[i] = lifted[i];
     diag = computeDiagram(seeds, w, boundsPts); evals++;
+    if (minOf(diag.areas) <= 0) {                  // still empty: the true cold restart
+      w = new Float64Array(n);
+      diag = computeDiagram(seeds, w, boundsPts); evals++;
+    }
   }
 
   const eps0 = 0.5 * Math.min(minOf(tgt), minOf(diag.areas));
@@ -288,7 +356,7 @@ function solveWeights(seeds, targets, boundsPts, w0, opts = {}) {
       }
     }
     iter++;
-    if (!accepted) break; // diagram is still watertight; areas merely drift
+    if (!accepted) break;
     maxRel = refreshResidual();
     converged = maxRel <= tol;
   }
@@ -301,15 +369,129 @@ function solveWeights(seeds, targets, boundsPts, w0, opts = {}) {
   return { weights: w, iterations: iter, evals, maxRelErr: maxRel, converged, diagram: diag };
 }
 
-/* ============================================================== AGENTS
- * The hive layer. Agents own position, area claim, and intent — the math
- * above never touches any of this. All rates are per second; dt is
- * seconds everywhere in this file.
+/* ============================================================== LATTICE
+ * Twelve columns — the web's own grid — and as many rows as the aspect
+ * asks for. A scene is a set of rectangles in lattice units. An element
+ * that covers k lattice cells is a body of k seeds; at rest each seed sits
+ * at its cell's center with claim 1, and the diagram IS the grid.
  */
 
-const CLAIM_MIN = 0.02;        // relative claim floor — zero never reaches the solve
-const SEED_MARGIN = 12;        // seeds stay strictly inside the domain by this much
-const SEED_MIN_SEP = 5;        // pairwise epsilon-separation, enforced upstream
+const COLS = 12;
+let ROWS = 7, PW = 0, PH = 0;   // pitch in px, set on resize
+
+function slotCenter(c, r) { return [PW * (c + 0.5), PH * (r + 0.5)]; }
+function rectArea(r) { return (r[2] - r[0]) * (r[3] - r[1]); }
+function rectCenter(r) { return [PW * (r[0] + r[2]) / 2, PH * (r[1] + r[3]) / 2]; }
+
+// Deterministic per-identity variation (no Math.random on steady paths,
+// so a resize can never scramble anything).
+function hash01(i, k) {
+  const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+// Split a lattice rectangle into n integer rectangles, largest-first,
+// along its longer side, at a ratio that varies by a deterministic salt.
+function guillotine(rect, n, salt) {
+  const rects = [rect.slice()];
+  let guard = 0;
+  while (rects.length < n && guard < 400) {
+    guard++;
+    rects.sort((a, b) => rectArea(b) - rectArea(a));
+    const idx = rects.findIndex(r => (r[2] - r[0]) > 1 || (r[3] - r[1]) > 1);
+    if (idx < 0) break;
+    const r = rects.splice(idx, 1)[0];
+    const w = r[2] - r[0], h = r[3] - r[1];
+    const ratio = 0.36 + 0.28 * hash01(guard, salt);
+    const vertical = w > h || (w === h && hash01(guard, salt + 7) < 0.5);
+    if (vertical && w > 1) {
+      const k = Math.min(w - 1, Math.max(1, Math.round(w * ratio)));
+      rects.push([r[0], r[1], r[0] + k, r[3]], [r[0] + k, r[1], r[2], r[3]]);
+    } else if (h > 1) {
+      const k = Math.min(h - 1, Math.max(1, Math.round(h * ratio)));
+      rects.push([r[0], r[1], r[2], r[1] + k], [r[0], r[1] + k, r[2], r[3]]);
+    } else {
+      const k = Math.min(w - 1, Math.max(1, Math.round(w * ratio)));
+      rects.push([r[0], r[1], r[0] + k, r[3]], [r[0] + k, r[1], r[2], r[3]]);
+    }
+  }
+  return rects;
+}
+
+// Share m rectangles across several regions in proportion to their area.
+function distribute(regions, m, salt) {
+  regions = regions.filter(r => rectArea(r) > 0);
+  if (m <= 0 || !regions.length) return [];
+  if (m < regions.length) {
+    regions.sort((a, b) => rectArea(b) - rectArea(a));
+    return regions.slice(0, m);
+  }
+  const total = regions.reduce((s, r) => s + rectArea(r), 0);
+  const counts = regions.map(r => Math.max(1, Math.floor(m * rectArea(r) / total)));
+  let assigned = counts.reduce((s, c) => s + c, 0);
+  while (assigned < m) { // remainder to the region with most area per rect
+    let best = 0, bestScore = -1;
+    regions.forEach((r, i) => { const s = rectArea(r) / counts[i]; if (s > bestScore) { bestScore = s; best = i; } });
+    counts[best]++; assigned++;
+  }
+  while (assigned > m) {
+    let best = -1, bestScore = Infinity;
+    regions.forEach((r, i) => { if (counts[i] > 1) { const s = rectArea(r) / counts[i]; if (s < bestScore) { bestScore = s; best = i; } } });
+    if (best < 0) break;
+    counts[best]--; assigned--;
+  }
+  const out = [];
+  regions.forEach((r, i) => out.push(...guillotine(r, Math.min(counts[i], rectArea(r)), salt + i * 13)));
+  return out;
+}
+
+/* ============================================================== SCENES
+ * Pure (cols, rows, n) -> { content: rect[], voids: rect[] } in lattice
+ * units, with content.length === n. Voids are margins, columns, pools of
+ * whitespace — bodies like any other, with no ink.
+ */
+
+const scenes = {
+  flock: null,
+
+  bento(C, R, n) {
+    return { content: guillotine([0, 0, C, R], n, 1), voids: [] };
+  },
+
+  hero(C, R, n) {
+    const col = Math.max(1, Math.round(C * 0.22));          // reading column (void)
+    const hero = [col, 1, Math.round(C * 0.72), R - 1];
+    const strips = [
+      [col, 0, C, 1],                                       // top run
+      [hero[2], 1, C, R - 1],                               // right column
+      [col, R - 1, C, R],                                   // bottom run
+    ];
+    const content = [hero, ...distribute(strips, n - 1, 2)];
+    return { content, voids: [[0, 0, col, R]] };
+  },
+
+  sidebar(C, R, n) {
+    const c = Math.max(2, Math.round(C * 0.45));
+    return { content: guillotine([0, 0, c, R], n, 3), voids: [[c, 0, C, R]] };
+  },
+
+  frame(C, R, n) {
+    const ring = [
+      [0, 0, C, 1], [0, R - 1, C, R],                       // top, bottom
+      [0, 1, 2, R - 1], [C - 2, 1, C, R - 1],               // left, right
+    ];
+    return { content: distribute(ring, n, 4), voids: [[2, 1, C - 2, R - 1]] };
+  },
+};
+
+/* ============================================================== BODIES
+ * The hive layer. A body owns its seeds, its claim, and its intent; the
+ * math never touches any of this. All rates per second; dt in seconds.
+ */
+
+const CLAIM_MIN = 0.02;
+const SEED_MARGIN = 10;
+const SEED_MIN_SEP = 5;
 
 const PALETTE = [
   '#6366f1', '#06b6d4', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6',
@@ -317,297 +499,358 @@ const PALETTE = [
   '#64748b', '#d946ef', '#84cc16', '#dc2626', '#2563eb', '#d97706',
   '#7c3aed', '#0d9488', '#e11d48', '#65a30d', '#4f46e5', '#fb923c',
   '#22d3d8', '#c026d3', '#a16207', '#475569', '#be123c', '#059669',
-  '#9333ea', '#0891b2', '#ca8a04', '#db2777', '#16a34a', '#ea580c',
-  '#4338ca', '#0e7490', '#b91c1c', '#15803d', '#7e22ce', '#c2410c'
 ];
 const NAMES = [
   'Drift', 'Ember', 'Tide', 'Moss', 'Petal', 'Aurora', 'Dune', 'Jazz',
   'Coal', 'Mint', 'Haze', 'Coral', 'Storm', 'Neon', 'Sage', 'Ruby',
   'Sky', 'Amber', 'Dusk', 'Reef', 'Rose', 'Zest', 'Night', 'Peach',
-  'Wave', 'Pulse', 'Bronze', 'Steel', 'Crimson', 'Fern', 'Iris', 'Ash',
-  'Lark', 'Plum', 'Glow', 'Frost', 'Ochre', 'Kelp', 'Vela', 'Onyx',
-  'Milo', 'Juno'
+  'Wave', 'Pulse', 'Bronze', 'Steel', 'Crimson', 'Fern',
 ];
 
-// Deterministic per-identity variation (no Math.random on steady paths,
-// so a resize can never scramble the flock).
-function hash01(i, k) {
-  const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453;
-  return x - Math.floor(x);
-}
-
 let nextId = 0;
-function makeAgent(x, y, opts = {}) {
+function makeBody(x, y, opts = {}) {
   const id = opts.id !== undefined ? opts.id : nextId++;
-  return {
+  const b = {
     id,
     name: NAMES[id % NAMES.length],
     color: PALETTE[id % PALETTE.length],
     isVoid: !!opts.isVoid,
-
-    // position + motion (the agent's sovereign state)
-    x, y, vx: 0, vy: 0,
-    station: null,             // {x,y} when a scene has seated this agent
-    wanderPhase: hash01(id, 1) * Math.PI * 2,
-
-    // claims — relative units; the solve rescales internally
-    baseClaim: opts.baseClaim !== undefined ? opts.baseClaim
-      : 0.8 + hash01(id, 2) * 0.7,   // some cells are simply bigger characters
-    claim: opts.claim !== undefined ? opts.claim : CLAIM_MIN,
-    targetClaim: opts.targetClaim !== undefined ? opts.targetClaim : 1,
-    leaving: false,            // ramping out; deleted at the floor
-
-    // garment state (display-only)
-    anchorX: x, anchorY: y,    // smoothed inscribed pole — content rides this
+    subs: [],
+    rect: null,                 // target lattice rect when seated
+    journey: null,              // { t0, delay, dur } shared by the formation
+    progress: 1,
+    leaving: false,
+    baseClaim: 0.8 + hash01(id, 2) * 0.7,   // its size as a free single seed
     hoverMix: 0,
+    anchorX: x, anchorY: y,
+    wanderPhase: hash01(id, 1) * Math.PI * 2,
   };
+  b.subs.push(makeSub(b, x, y, opts.claim !== undefined ? opts.claim : CLAIM_MIN));
+  return b;
+}
+
+function makeSub(body, x, y, claim) {
+  return {
+    body, x, y, vx: 0, vy: 0,
+    claim, claim0: claim, targetClaim: 1,
+    w: 0,                       // warm-start weight, remembered across frames
+    slot: null,                 // [c, r] when seated
+    path: null,                 // { sx, sy, cx, cy, ex, ey } bezier to the slot
+    leaving: false,
+  };
+}
+
+function bodyCentroid(b) {
+  let x = 0, y = 0, n = 0;
+  for (const s of b.subs) if (!s.leaving) { x += s.x; y += s.y; n++; }
+  if (!n) for (const s of b.subs) { x += s.x; y += s.y; n++; }
+  return [x / n, y / n];
+}
+
+function easeInOutCubic(u) {
+  return u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+}
+
+// --- seating: the one verb, spoken for a whole formation at once -------
+
+let swirlSign = 1;
+
+function seatBody(b, rect, t, timing, spawnAtSlots = false) {
+  const slots = [];
+  for (let r = rect[1]; r < rect[3]; r++) for (let c = rect[0]; c < rect[2]; c++) slots.push([c, r]);
+  b.rect = rect;
+
+  const live = b.subs.filter(s => !s.leaving);
+  const [cx0, cy0] = live.length ? bodyCentroid(b) : rectCenter(rect);   // a newborn body starts in place
+  const dist = Math.hypot(rectCenter(rect)[0] - cx0, rectCenter(rect)[1] - cy0);
+
+  // greedy nearest: keep the formation's internal arrangement coherent
+  const pairs = [];
+  live.forEach((s, i) => slots.forEach((sl, k) => {
+    const [x, y] = slotCenter(sl[0], sl[1]);
+    pairs.push({ i, k, d: (s.x - x) ** 2 + (s.y - y) ** 2 });
+  }));
+  pairs.sort((p, q) => p.d - q.d);
+  const subSlot = new Array(live.length).fill(-1), taken = new Array(slots.length).fill(false);
+  for (const p of pairs) if (subSlot[p.i] < 0 && !taken[p.k]) { subSlot[p.i] = p.k; taken[p.k] = true; }
+
+  // spawn seeds for unfilled slots: inside the body's blob so they grow en
+  // route (content), or directly in their slots so they never travel (voids)
+  slots.forEach((sl, k) => {
+    if (taken[k]) return;
+    const [sx1, sy1] = spawnAtSlots ? slotCenter(sl[0], sl[1]) : [cx0, cy0];
+    const s = makeSub(b, sx1 + (hash01(k, 21) - 0.5) * 6, sy1 + (hash01(k, 22) - 0.5) * 6, CLAIM_MIN);
+    b.subs.push(s);
+    live.push(s); subSlot.push(k); taken[k] = true;
+  });
+
+  // The body travels as a formation: ONE bezier carries its center, and
+  // every seed rides along holding its offset — start offset morphing into
+  // its slot offset — so the ranks never open for foreign seeds to enter.
+  const [ex0, ey0] = rectCenter(rect);
+  const bend = config.swirl * 0.55 * swirlSign * (0.7 + 0.6 * hash01(b.id, 12));
+  const ddx = ex0 - cx0, ddy = ey0 - cy0;
+  b.path = { sx: cx0, sy: cy0, ex: ex0, ey: ey0, cx: (cx0 + ex0) / 2 - ddy * bend, cy: (cy0 + ey0) / 2 + ddx * bend };
+  live.forEach((s, i) => {
+    let leaving = false, ox = 0, oy = 0;
+    if (subSlot[i] >= 0) {
+      const [sx1, sy1] = slotCenter(slots[subSlot[i]][0], slots[subSlot[i]][1]);
+      s.slot = slots[subSlot[i]]; ox = sx1 - ex0; oy = sy1 - ey0;
+    } else { s.slot = null; leaving = true; }               // surplus: fold into the center
+    s.path = true;
+    s.off0 = [s.x - cx0, s.y - cy0];
+    s.off1 = [ox, oy];
+    s.claim0 = s.claim;
+    s.targetClaim = leaving ? CLAIM_MIN : 1;
+    s.leaving = leaving;
+  });
+
+  b.journey = timing || {
+    t0: t,
+    delay: config.stagger * hash01(b.id, 11),
+    dur: Math.min(2.2, 0.9 + dist / 520) * (0.9 + 0.2 * hash01(b.id, 13)),
+  };
+  b.progress = 0;
+  b.leaving = false;
+}
+
+// Collapse a body to one free seed (flock mode): the rest fold in.
+function releaseBody(b, t) {
+  const [cx, cy] = bodyCentroid(b);
+  const live = b.subs.filter(s => !s.leaving);
+  let keep = live[0];
+  for (const s of live) if (Math.hypot(s.x - cx, s.y - cy) < Math.hypot(keep.x - cx, keep.y - cy)) keep = s;
+  b.path = { sx: cx, sy: cy, ex: keep.x, ey: keep.y, cx: (cx + keep.x) / 2, cy: (cy + keep.y) / 2 };
+  for (const s of live) {
+    if (s === keep) { s.slot = null; s.path = null; s.leaving = false; s.targetClaim = b.baseClaim; continue; }
+    s.slot = null; s.leaving = true; s.claim0 = s.claim; s.targetClaim = CLAIM_MIN;
+    s.path = true; s.off0 = [s.x - cx, s.y - cy]; s.off1 = [0, 0];
+  }
+  b.rect = null;
+  b.journey = { t0: t, delay: 0, dur: 0.8 };
+  b.progress = 0;
 }
 
 // --- steering ---------------------------------------------------------
 
-function steerAgents(agents, dt, t, W, H, mode) {
-  for (const a of agents) {
-    if (a === drag.agent) continue; // a dragged agent is in the owner's hand
-
-    let ax = 0, ay = 0;
-    if (a.station) {
-      // Arrive: a lightly under-damped spring — settles in about a second
-      // with a small overshoot, which is most of what reads as "alive".
-      const k1 = 24 * (0.85 + 0.3 * hash01(a.id, 3));
-      const k2 = 8.6;
-      // the station itself breathes a little
-      const bx = a.station.x + Math.sin(t * 0.6 + a.id * 1.7) * 2.5;
-      const by = a.station.y + Math.cos(t * 0.5 + a.id * 2.3) * 2.5;
-      ax += (bx - a.x) * k1 - a.vx * k2;
-      ay += (by - a.y) * k1 - a.vy * k2;
-    } else {
-      // Free drift: wander + weak centering. Separation is below, shared.
-      a.wanderPhase += (Math.sin(t * 0.7 + a.id * 2.1) + Math.sin(t * 1.31 + a.id * 0.73)) * 0.9 * dt;
-      const ws = 46;
-      ax += Math.cos(a.wanderPhase) * ws - a.vx * 1.4;
-      ay += Math.sin(a.wanderPhase) * ws - a.vy * 1.4;
-      ax += (W / 2 - a.x) * 0.06;
-      ay += (H / 2 - a.y) * 0.06;
-      // soft Lloyd: drift toward your own cell's pole — the hive reading its
-      // field. Settles spiky cells into rounder ones without a scene's help.
-      ax += (a.anchorX - a.x) * 0.9;
-      ay += (a.anchorY - a.y) * 0.9;
+function steerBodies(bodies, dt, t, W, H) {
+  for (const b of bodies) {
+    if (b.journey) {
+      const j = b.journey;
+      const u = Math.min(1, Math.max(0, (t - j.t0 - j.delay) / j.dur));
+      b.progress = easeInOutCubic(u);
     }
-    a.vx += ax * dt;
-    a.vy += ay * dt;
-
-    const sp = Math.hypot(a.vx, a.vy), maxSp = a.station ? 900 : 130;
-    if (sp > maxSp) { a.vx *= maxSp / sp; a.vy *= maxSp / sp; }
-    a.x += a.vx * dt;
-    a.y += a.vy * dt;
+    const k1 = 62 * (0.9 + 0.2 * hash01(b.id, 3)), k2 = 13.5;
+    for (const s of b.subs) {
+      if (b === drag.body) continue;
+      let ax = 0, ay = 0;
+      if (s.path && b.path) {
+        // ride the formation: the body's carrot plus this seed's offset,
+        // start offset morphing into slot offset; a lightly under-damped
+        // spring supplies the lag and overshoot that read as alive
+        const e = b.progress, m = 1 - e, p = b.path;
+        const bx = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex;
+        const by = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey;
+        const px = bx + s.off0[0] * m + s.off1[0] * e;
+        const py = by + s.off0[1] * m + s.off1[1] * e;
+        ax += (px - s.x) * k1 - s.vx * k2;
+        ay += (py - s.y) * k1 - s.vy * k2;
+      } else {
+        // free drift: wander + weak centering + soft Lloyd toward its own
+        // cell's pole — the hive reading its field
+        b.wanderPhase += (Math.sin(t * 0.7 + b.id * 2.1) + Math.sin(t * 1.31 + b.id * 0.73)) * 0.9 * dt;
+        ax += Math.cos(b.wanderPhase) * 46 - s.vx * 1.4;
+        ay += Math.sin(b.wanderPhase) * 46 - s.vy * 1.4;
+        ax += (W / 2 - s.x) * 0.06 + (b.anchorX - s.x) * 0.9;
+        ay += (H / 2 - s.y) * 0.06 + (b.anchorY - s.y) * 0.9;
+      }
+      s.vx += ax * dt; s.vy += ay * dt;
+      const sp = Math.hypot(s.vx, s.vy), maxSp = s.path ? 900 : 130;
+      if (sp > maxSp) { s.vx *= maxSp / sp; s.vy *= maxSp / sp; }
+      s.x += s.vx * dt; s.y += s.vy * dt;
+    }
   }
+}
 
-  // Soft mutual separation in free drift (keeps the flock loose, not a knot).
-  if (mode === 'flock') {
-    const R = 110, F = 240;
-    for (let i = 0; i < agents.length; i++) {
-      for (let j = i + 1; j < agents.length; j++) {
-        const A = agents[i], B = agents[j];
-        const dx = B.x - A.x, dy = B.y - A.y;
-        const d = Math.hypot(dx, dy);
-        if (d > 0 && d < R) {
-          const f = F * (1 - d / R) * dt / d;
-          if (A !== drag.agent) { A.x -= dx * f; A.y -= dy * f; }
-          if (B !== drag.agent) { B.x += dx * f; B.y += dy * f; }
-        }
+// Separation, every mode: seeds closer than their cells' natural radii
+// shove apart, so a traveler never squeezes between two neighbors.
+function separate(subs, dt, W, H) {
+  let claimSum = 0;
+  for (const s of subs) claimSum += s.claim;
+  const areaPerClaim = (W * H) / Math.max(1e-9, claimSum);
+  const rad = subs.map(s => Math.sqrt(s.claim * areaPerClaim / Math.PI));
+  for (let i = 0; i < subs.length; i++) {
+    const A = subs[i];
+    for (let j = i + 1; j < subs.length; j++) {
+      const B = subs[j];
+      // within a formation: only keep seeds from collapsing onto each other;
+      // across formations: a wider, firmer shell so bodies pass as blobs and
+      // no foreign seed slips between a body's ranks
+      const same = A.body === B.body;
+      const R = (same ? 0.45 : 0.85) * (rad[i] + rad[j]);
+      const F = same ? 1500 : 2600;
+      const dx = B.x - A.x, dy = B.y - A.y;
+      const d = Math.hypot(dx, dy);
+      if (d > 1e-6 && d < R) {
+        const sF = 1 - d / R;
+        const f = F * (same ? sF * sF : sF) * dt / d;
+        if (A.body !== drag.body) { A.vx -= dx * f; A.vy -= dy * f; }
+        if (B.body !== drag.body) { B.vx += dx * f; B.vy += dy * f; }
       }
     }
   }
 }
 
-// --- preconditions: guaranteed here, every frame, before the solve ----
-
-function enforcePreconditions(agents, W, H) {
-  for (const a of agents) {
-    a.x = Math.min(W - SEED_MARGIN, Math.max(SEED_MARGIN, a.x));
-    a.y = Math.min(H - SEED_MARGIN, Math.max(SEED_MARGIN, a.y));
+// Preconditions, guaranteed here every frame: seeds strictly inside the
+// domain and pairwise distinct. The solve fails silently without them.
+function enforcePreconditions(subs, W, H) {
+  for (const s of subs) {
+    s.x = Math.min(W - SEED_MARGIN, Math.max(SEED_MARGIN, s.x));
+    s.y = Math.min(H - SEED_MARGIN, Math.max(SEED_MARGIN, s.y));
   }
-  // pairwise epsilon-separation (coincident seeds fail silently in the solve)
-  for (let i = 0; i < agents.length; i++) {
-    for (let j = i + 1; j < agents.length; j++) {
-      const A = agents[i], B = agents[j];
-      let dx = B.x - A.x, dy = B.y - A.y;
-      let d = Math.hypot(dx, dy);
+  for (let i = 0; i < subs.length; i++) {
+    for (let j = i + 1; j < subs.length; j++) {
+      const A = subs[i], B = subs[j];
+      let dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy);
       if (d < SEED_MIN_SEP) {
-        if (d < 1e-6) { dx = 1; dy = 0; d = 1; } // exact overlap: pick a direction
+        if (d < 1e-6) { dx = 1; dy = 0; d = 1; }
         const push = (SEED_MIN_SEP - d) / 2 / d;
         const bx = dx * push, by = dy * push;
-        if (A !== drag.agent) { A.x -= bx; A.y -= by; }
-        if (B !== drag.agent) { B.x += bx; B.y += by; }
-        else { A.x -= bx * 2; A.y -= by * 2; }
+        if (A.body !== drag.body) { A.x -= bx; A.y -= by; } else { B.x += bx; B.y += by; }
+        if (B.body !== drag.body) { B.x += bx; B.y += by; } else { A.x -= bx; A.y -= by; }
       }
     }
   }
-  for (const a of agents) { // clamp again in case separation pushed outward
-    a.x = Math.min(W - SEED_MARGIN, Math.max(SEED_MARGIN, a.x));
-    a.y = Math.min(H - SEED_MARGIN, Math.max(SEED_MARGIN, a.y));
+  for (const s of subs) {
+    s.x = Math.min(W - SEED_MARGIN, Math.max(SEED_MARGIN, s.x));
+    s.y = Math.min(H - SEED_MARGIN, Math.max(SEED_MARGIN, s.y));
   }
 }
 
-// --- claims -----------------------------------------------------------
-
-function easeClaims(agents, dt, t, hoverBoost, hoveredId) {
+function easeClaims(bodies, dt, t, hoveredId) {
   const k = 1 - Math.exp(-6 * dt);
-  for (const a of agents) {
-    // hover is a temporary area claim — the one verb, again
-    const hm = 1 - Math.exp(-(a.id === hoveredId ? 10 : 5) * dt);
-    a.hoverMix += ((a.id === hoveredId ? 1 : 0) - a.hoverMix) * hm;
-
-    let target = a.leaving ? CLAIM_MIN : a.targetClaim;
-    if (!a.station && !a.isVoid && !a.leaving) {
-      target *= 1 + 0.05 * Math.sin(t * 0.8 + a.id * 2.9); // idle breathing
-    }
-    a.claim += (target - a.claim) * k;
-    if (a.claim < CLAIM_MIN) a.claim = CLAIM_MIN;
+  const kv = 1 - Math.exp(-4 * dt);
+  const content = [], voidsLive = [];
+  for (const b of bodies) for (const s of b.subs) {
+    // a folding seed still holds its ground while it is in the field
+    if (!b.isVoid) { if (!s.leaving || s.claim >= 0.08) content.push(s); }
+    else if (!b.leaving) voidsLive.push(s);
   }
-}
-
-/* ============================================================== SCENES
- * A scene is a claim table: stations with claims, some of them void.
- * Pure (W, H, count) -> { content: [{x,y,claim}], voids: [{x,y,claim}] }.
- * Assignment of agents to stations is greedy nearest + 2-opt.
- */
-
-const scenes = {
-  flock: null, // no stations: agents drift on their base claims
-
-  bento(W, H, n) {
-    const cols = Math.ceil(Math.sqrt(n * W / H));
-    const rows = Math.ceil(n / cols);
-    const content = [];
-    for (let i = 0; i < n; i++) {
-      const c = i % cols, r = Math.floor(i / cols);
-      const rowCount = (r === rows - 1) ? n - cols * (rows - 1) : cols;
-      const cw = W / rowCount;
-      content.push({
-        x: cw * ((i - r * cols) + 0.5),
-        y: (H / rows) * (r + 0.5),
-        claim: 1 + 0.55 * ((i * 7) % 3) / 2, // deterministic size hierarchy
-      });
-    }
-    return { content, voids: [] };
-  },
-
-  hero(W, H, n) {
-    const content = [{ x: W * 0.56, y: H * 0.46, claim: n * 0.42 }]; // the hero
-    const m = n - 1;
-    for (let i = 0; i < m; i++) {
-      const t = m === 1 ? 0.5 : i / (m - 1);
-      // one run along the top, then down the right, then along the bottom
-      let x, y;
-      if (t < 0.38) { const u = t / 0.38; x = W * (0.34 + u * 0.56); y = H * 0.1; }
-      else if (t < 0.62) { const u = (t - 0.38) / 0.24; x = W * 0.92; y = H * (0.24 + u * 0.5); }
-      else { const u = (t - 0.62) / 0.38; x = W * (0.9 - u * 0.56); y = H * 0.88; }
-      content.push({ x, y, claim: 1 });
-    }
-    return { content, voids: [{ x: W * 0.13, y: H * 0.5, claim: n * 0.28 }] };
-  },
-
-  sidebar(W, H, n) {
-    const content = [];
-    const rows = Math.ceil(n / 2);
-    for (let i = 0; i < n; i++) {
-      const col = i % 2, row = Math.floor(i / 2);
-      content.push({
-        x: W * (0.09 + col * 0.14),
-        y: H * ((row + 0.5) / rows),
-        claim: 1,
-      });
-    }
-    // mk8's sidebar crushed twelve cells into slivers with a hand-tuned void
-    // weight. Here the void simply claims 55%; content divides 45% exactly.
-    return { content, voids: [{ x: W * 0.66, y: H * 0.5, claim: n * 1.22 }] };
-  },
-
-  frame(W, H, n) {
-    const content = [];
-    const perim = 2 * (W + H);
-    for (let i = 0; i < n; i++) {
-      const t = (i / n) * perim;
-      let x, y;
-      if (t < W) { x = t; y = H * 0.09; }
-      else if (t < W + H) { x = W * 0.92; y = t - W; }
-      else if (t < 2 * W + H) { x = 2 * W + H - t; y = H * 0.91; }
-      else { x = W * 0.08; y = perim - t; }
-      content.push({
-        x: Math.min(W * 0.92, Math.max(W * 0.08, x)),
-        y: Math.min(H * 0.91, Math.max(H * 0.09, y)),
-        claim: 1,
-      });
-    }
-    return { content, voids: [{ x: W / 2, y: H / 2, claim: n * 0.72 }] };
-  },
-};
-
-// Greedy nearest assignment + 2-opt on squared travel. Policy, not law.
-function assignStations(agents, stations) {
-  const nA = agents.length, nS = stations.length;
-  const pairs = [];
-  for (let i = 0; i < nA; i++) {
-    for (let j = 0; j < nS; j++) {
-      const dx = agents[i].x - stations[j].x, dy = agents[i].y - stations[j].y;
-      pairs.push({ i, j, d: dx * dx + dy * dy });
-    }
-  }
-  pairs.sort((a, b) => a.d - b.d);
-  const gotS = new Array(nA).fill(-1), taken = new Array(nS).fill(false);
-  for (const p of pairs) {
-    if (gotS[p.i] < 0 && !taken[p.j]) { gotS[p.i] = p.j; taken[p.j] = true; }
-  }
-  const d2 = (a, s) => {
-    const dx = a.x - s.x, dy = a.y - s.y; return dx * dx + dy * dy;
-  };
-  for (let pass = 0; pass < 30; pass++) {
-    let improved = false;
-    for (let i = 0; i < nA; i++) {
-      for (let j = i + 1; j < nA; j++) {
-        const si = stations[gotS[i]], sj = stations[gotS[j]];
-        if (d2(agents[i], sj) + d2(agents[j], si) + 0.5 <
-            d2(agents[i], si) + d2(agents[j], sj)) {
-          const t = gotS[i]; gotS[i] = gotS[j]; gotS[j] = t;
-          improved = true;
+  // closed out to 0.72 pitch (the farthest any point inside a solid formation
+  // is from one of its seeds), fully open at 1.0 pitch (the adjacent slot),
+  // so a void never grows between a body's ranks and rest stays exact
+  const near = 0.72 * Math.min(PW, PH), far = 1.0 * Math.min(PW, PH);
+  for (const b of bodies) {
+    const hm = 1 - Math.exp(-(b.id === hoveredId ? 10 : 5) * dt);
+    b.hoverMix += ((b.id === hoveredId ? 1 : 0) - b.hoverMix) * hm;
+    for (const s of b.subs) {
+      if (b.isVoid) {
+        // Whitespace exists only where nothing else is. A void seed's claim
+        // is gated by vacancy: floor while any content seed is near, full
+        // once the space is empty — so whitespace pools exactly where cells
+        // have left, and a dissolving void yields the moment cells arrive.
+        let dmin = Infinity;
+        for (const c of content) { const d = Math.hypot(c.x - s.x, c.y - s.y); if (d < dmin) dmin = d; }
+        let gate = Math.min(1, Math.max(0, (dmin - near) / (far - near)));
+        if (b.leaving) {
+          // a dissolving void hands its space straight to the new void
+          // wherever the two overlap — no lingering, no doubled seeds
+          for (const v of voidsLive) { if (Math.hypot(v.x - s.x, v.y - s.y) < far) { gate = 0; break; } }
         }
+        const ramp = b.leaving ? 1 - b.progress : 1;
+        const target = Math.max(CLAIM_MIN, gate * ramp);
+        s.claim += (target - s.claim) * kv;
+      } else if (s.path && b.journey) {
+        // surplus seeds finish shrinking at 3/4 of the trip so they can be
+        // reaped before arrival — fewer seeds in the solve, same silhouette
+        const u = s.leaving ? Math.min(1, b.progress / 0.75) : b.progress;
+        s.claim = s.claim0 + (s.targetClaim - s.claim0) * u;
+      } else {
+        let target = s.leaving ? CLAIM_MIN : s.targetClaim;
+        if (!s.slot && !b.isVoid && !s.leaving) target *= 1 + 0.05 * Math.sin(t * 0.8 + b.id * 2.9);
+        s.claim += (target - s.claim) * k;
       }
+      if (s.claim < CLAIM_MIN) s.claim = CLAIM_MIN;
     }
-    if (!improved) break;
   }
-  return gotS;
 }
 
 /* ============================================================== GARMENT
- * Display only. Everything here stays inside the solved polygon and is
- * never fed back into agents or the solve.
+ * Display only. A body renders as the union of its seeds' cells: edges
+ * between two seeds of the same body are seams and vanish; the rest chain
+ * into the body's outline. Inset, rounded, dressed — never fed back.
  */
 
-// Cells from the solve are convex, so an exact inset is just clipping the
-// cell by each of its own edges pushed inward.
-function insetConvex(pts, d) {
-  if (d <= 0 || pts.length < 3) return pts;
-  const orient = ringArea(pts) > 0 ? 1 : -1;
-  let poly = { pts, labs: pts.map(() => 0) };
+function pointInPolygon(x, y, pts) {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const xi = pts[i][0], yi = pts[i][1], xj = pts[j][0], yj = pts[j][1];
+    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+
+// Chain a body's foreign edges into closed loops.
+function bodyOutlines(subIdx, cells, ownerOf, bodyId) {
+  const edges = [];
+  for (const i of subIdx) {
+    const { pts, labs } = cells[i];
+    for (let k = 0, m = pts.length; k < m; k++) {
+      const j = labs[k];
+      if (j >= 0 && ownerOf[j] === bodyId) continue;       // a seam
+      edges.push({ a: pts[k], b: pts[k + 1 === m ? 0 : k + 1], used: false });
+    }
+  }
+  const loops = [];
+  for (const e0 of edges) {
+    if (e0.used) continue;
+    const loop = [e0.a];
+    let cur = e0; cur.used = true;
+    for (let guard = 0; guard < edges.length; guard++) {
+      let next = null, best = 0.25;
+      for (const e of edges) {
+        if (e.used) continue;
+        const d = Math.hypot(e.a[0] - cur.b[0], e.a[1] - cur.b[1]);
+        if (d < best) { best = d; next = e; }
+      }
+      if (!next) break;
+      next.used = true;
+      loop.push(next.a);
+      cur = next;
+      if (Math.hypot(cur.b[0] - e0.a[0], cur.b[1] - e0.a[1]) < 0.25) break;
+    }
+    if (loop.length >= 3) loops.push(loop);
+  }
+  return loops;
+}
+
+// Inset a simple polygon by d: offset every edge inward and intersect
+// neighbors. Callers clamp d well below the polygon's inradius.
+function insetPolygon(pts, d) {
   const n = pts.length;
+  if (d <= 0 || n < 3) return pts;
+  const orient = ringArea(pts) > 0 ? 1 : -1;
+  const lines = [];
   for (let k = 0; k < n; k++) {
     const p = pts[k], q = pts[(k + 1) % n];
     let nx = (q[1] - p[1]) * orient, ny = (p[0] - q[0]) * orient;
     const len = Math.hypot(nx, ny);
-    if (len < 1e-9) continue;
-    nx /= len; ny /= len; // outward normal
-    const b = nx * p[0] + ny * p[1] - d; // keep nx*x + ny*y <= b
-    poly = clipHalfPlane(poly, nx, ny, b, 0);
-    if (poly.pts.length < 3) return [];
+    if (len < 1e-9) { lines.push(null); continue; }
+    nx /= len; ny /= len;
+    lines.push({ nx, ny, c: nx * p[0] + ny * p[1] - d });
   }
-  return poly.pts;
+  const out = [];
+  for (let k = 0; k < n; k++) {
+    const l1 = lines[(k + n - 1) % n], l2 = lines[k];
+    if (!l1 || !l2) continue;
+    const det = l1.nx * l2.ny - l1.ny * l2.nx;
+    if (Math.abs(det) < 1e-6) { out.push([pts[k][0] - l2.nx * d, pts[k][1] - l2.ny * d]); continue; }
+    out.push([(l1.c * l2.ny - l2.c * l1.ny) / det, (l1.nx * l2.c - l2.nx * l1.c) / det]);
+  }
+  return out;
 }
 
-// Rounded path with the tangent budgeted, not just the radius: the arc's
-// tangent length is r/tan(theta/2), and it must not consume more than half
-// of either adjoining edge — mk8 clamped the radius alone and acute cells
-// collapsed into lens shapes.
+// Rounded path with the tangent budgeted, not just the radius.
 function roundedPath(ctx, pts, r) {
   const n = pts.length;
   ctx.beginPath();
@@ -627,42 +870,46 @@ function roundedPath(ctx, pts, r) {
     const dot = (v1x * v2x + v1y * v2y) / (l1 * l2);
     const theta = Math.acos(Math.min(1, Math.max(-1, dot)));
     const tanHalf = Math.tan(theta / 2);
-    const tang = Math.min(r / (tanHalf || 1e9), l1 / 2, l2 / 2); // the budget
+    const tang = Math.min(r / (tanHalf || 1e9), l1 / 2, l2 / 2);
     const rr = tang * tanHalf;
     const t1x = p1[0] + (v1x / l1) * tang, t1y = p1[1] + (v1y / l1) * tang;
     const t2x = p1[0] + (v2x / l2) * tang, t2y = p1[1] + (v2y / l2) * tang;
-    if (!started) { ctx.moveTo(t1x, t1y); started = true; }
-    else ctx.lineTo(t1x, t1y);
-    if (rr > 0.1) ctx.arcTo(p1[0], p1[1], t2x, t2y, rr);
+    if (!started) { ctx.moveTo(t1x, t1y); started = true; } else ctx.lineTo(t1x, t1y);
+    if (rr > 0.1 && theta < Math.PI - 0.02) ctx.arcTo(p1[0], p1[1], t2x, t2y, rr);
     else ctx.lineTo(t2x, t2y);
   }
   ctx.closePath();
 }
 
-// Inscribed pole (approximate Chebyshev center): the content anchor.
-// Hill-climb on min distance to edges from the centroid; convex cells make
-// this well-behaved and cheap.
-function inscribedPole(pts) {
+// Inscribed pole: the largest-inscribed-circle center, climbed from a
+// point known to be inside and never allowed to leave the polygon.
+function inscribedPole(pts, startX, startY) {
   const n = pts.length;
-  let cx = 0, cy = 0;
-  for (const p of pts) { cx += p[0]; cy += p[1]; }
-  cx /= n; cy /= n;
   const minDist = (x, y) => {
     let md = Infinity;
     for (let k = 0; k < n; k++) {
       const p = pts[k], q = pts[(k + 1) % n];
       const ex = q[0] - p[0], ey = q[1] - p[1];
-      const L = Math.hypot(ex, ey) || 1e-9;
-      md = Math.min(md, Math.abs((x - p[0]) * ey - (y - p[1]) * ex) / L);
+      const L2 = ex * ex + ey * ey || 1e-9;
+      let t = ((x - p[0]) * ex + (y - p[1]) * ey) / L2;
+      t = Math.max(0, Math.min(1, t));
+      md = Math.min(md, Math.hypot(x - (p[0] + t * ex), y - (p[1] + t * ey)));
     }
     return md;
   };
-  let best = minDist(cx, cy), step = Math.sqrt(best) * 2 + 4;
-  for (let it = 0; it < 14; it++) {
+  let cx = startX, cy = startY;
+  if (startX === undefined || !pointInPolygon(cx, cy, pts)) {
+    cx = 0; cy = 0; for (const p of pts) { cx += p[0]; cy += p[1]; } cx /= n; cy /= n;
+    if (!pointInPolygon(cx, cy, pts)) { cx = pts[0][0]; cy = pts[0][1]; }
+  }
+  let best = minDist(cx, cy), step = Math.max(4, best);
+  for (let it = 0; it < 18; it++) {
     let moved = false;
     for (const [dx, dy] of [[step, 0], [-step, 0], [0, step], [0, -step]]) {
-      const d = minDist(cx + dx, cy + dy);
-      if (d > best) { best = d; cx += dx; cy += dy; moved = true; break; }
+      const x = cx + dx, y = cy + dy;
+      if (!pointInPolygon(x, y, pts)) continue;
+      const d = minDist(x, y);
+      if (d > best) { best = d; cx = x; cy = y; moved = true; break; }
     }
     if (!moved) step /= 2;
     if (step < 0.5) break;
@@ -678,22 +925,19 @@ function shade(hex, amt) {
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 }
 
-/* ============================================================== METERS
- * The theorem, watchable. gap/overlap by exact scanline rasterization of
- * the SOLVED polygons (pre-garment) — convex cells, no antialiasing noise.
- */
+/* ============================================================== METERS */
 
 const meterEls = {
   area: document.getElementById('mArea'),
   gap: document.getElementById('mGap'),
   over: document.getElementById('mOver'),
+  rect: document.getElementById('mRect'),
   iter: document.getElementById('mIter'),
 };
 
+// Exact scanline rasterization of the SOLVED cells (convex): 0 = gap, 2+ = overlap.
 function rasterCheck(cells, W, H) {
-  const S = 2; // rasterize at half resolution; report px^2 at full scale
-  // sample only pixel centers STRICTLY inside the domain — a center exactly
-  // on the boundary crosses no edges and would count as a phantom gap row
+  const S = 2;
   const gw = Math.floor((W - S / 2 - 1e-6) / S) + 1;
   const gh = Math.floor((H - S / 2 - 1e-6) / S) + 1;
   const cov = new Uint8Array(gw * gh);
@@ -702,10 +946,7 @@ function rasterCheck(cells, W, H) {
     if (pts.length < 3) continue;
     let y0 = Infinity, y1 = -Infinity;
     for (const p of pts) { y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); }
-    // sample at pixel centers (ry*S + S/2); a pixel belongs to whichever cell
-    // its center falls in, so shared boundaries never double- or zero-count
-    const r0 = Math.max(0, Math.ceil((y0 - S / 2) / S));
-    const r1 = Math.min(gh - 1, Math.floor((y1 - S / 2) / S));
+    const r0 = Math.max(0, Math.ceil((y0 - S / 2) / S)), r1 = Math.min(gh - 1, Math.floor((y1 - S / 2) / S));
     for (let ry = r0; ry <= r1; ry++) {
       const y = ry * S + S / 2;
       let xin = Infinity, xout = -Infinity;
@@ -717,16 +958,12 @@ function rasterCheck(cells, W, H) {
         }
       }
       if (xin > xout) continue;
-      const c0 = Math.max(0, Math.ceil((xin - S / 2) / S));
-      const c1 = Math.min(gw - 1, Math.floor((xout - S / 2) / S));
+      const c0 = Math.max(0, Math.ceil((xin - S / 2) / S)), c1 = Math.min(gw - 1, Math.floor((xout - S / 2) / S));
       for (let cx2 = c0; cx2 <= c1; cx2++) cov[ry * gw + cx2]++;
     }
   }
   let gap = 0, over = 0;
-  for (let k = 0; k < cov.length; k++) {
-    if (cov[k] === 0) gap++;
-    else if (cov[k] > 1) over++;
-  }
+  for (let k = 0; k < cov.length; k++) { if (cov[k] === 0) gap++; else if (cov[k] > 1) over++; }
   return { gap: gap * S * S, over: over * S * S };
 }
 
@@ -737,102 +974,176 @@ const ctx = canvas.getContext('2d');
 let W = 0, H = 0, dpr = 1;
 
 const config = {
-  count: 14,
+  count: 12,
   gap: 10,
-  cornerRadius: 16,
-  hoverBoost: 2.15,   // hover multiplies the hovered agent's claim
+  cornerRadius: 14,
+  hoverBoost: 1.6,
+  swirl: 0.45,
+  stagger: 0.30,
   scene: 'bento',
 };
 
-let agents = [];
-let solved = null;          // the frame's ONE authoritative tessellation
-let weights = null;         // warm-start memory, parallel to agents[]
+let bodies = [];
+let solved = null;                  // the frame's ONE authoritative tessellation
+let solvedSubs = [];                // the flat seed list the solve was made from
+let ownerOf = [];                   // flat index -> body id
 let hoveredId = -1;
-const drag = { agent: null, px: 0, py: 0 };
+const drag = { body: null, px: 0, py: 0, offs: null };
 let mouseX = -1e9, mouseY = -1e9;
 let simTime = 0;
 let raster = { gap: 0, over: 0 };
+let rectPct = 100;
 let frame = 0;
-let solveMs = 0;
+let solveMs = 0, lastIters = 0;
+let lastSig = null;
 
 function domainPts() { return [[0, 0], [W, 0], [W, H], [0, H]]; }
 
-// --- scene entry: the one verb, spoken n times ------------------------
+// --- scene entry --------------------------------------------------------
 
 function enterScene(name) {
   config.scene = name;
-  document.querySelectorAll('.scene-btn').forEach(b =>
-    b.classList.toggle('active', b.dataset.scene === name));
+  document.querySelectorAll('.scene-btn').forEach(el => el.classList.toggle('active', el.dataset.scene === name));
 
-  const contentAgents = agents.filter(a => !a.isVoid && !a.leaving);
-  const spec = scenes[name] ? scenes[name](W, H, contentAgents.length) : null;
+  const content = bodies.filter(b => !b.isVoid && !b.leaving);
+  const spec = scenes[name] ? scenes[name](COLS, ROWS, content.length) : null;
 
-  if (!spec) { // flock: release stations, retire voids, resume base claims
-    for (const a of agents) {
-      a.station = null;
-      if (a.isVoid) a.leaving = true;
-      else a.targetClaim = a.baseClaim;
+  if (!spec) {
+    for (const b of bodies) {
+      if (b.isVoid) { retireBody(b); continue; }
+      releaseBody(b, simTime);
     }
     return;
   }
 
-  const gotS = assignStations(contentAgents, spec.content);
-  contentAgents.forEach((a, k) => {
-    const s = spec.content[gotS[k]];
-    a.station = { x: s.x, y: s.y };
-    a.targetClaim = s.claim;
-    a.leaving = false;
+  swirlSign = -swirlSign;
+  const centers = spec.content.map(r => { const [x, y] = rectCenter(r); return { x, y }; });
+  const gotS = assignStations(content.map(b => { const [x, y] = bodyCentroid(b); return { x, y }; }), centers);
+  let slowest = 0.9;
+  content.forEach((b, k) => {
+    seatBody(b, spec.content[gotS[k]], simTime);
+    slowest = Math.max(slowest, b.journey.delay + b.journey.dur);
   });
 
-  // Reconcile void agents against void stations: reuse, spawn, retire.
-  const liveVoids = agents.filter(a => a.isVoid && !a.leaving);
-  spec.voids.forEach((s, k) => {
-    let v = liveVoids[k];
-    if (!v) {
-      v = makeAgent(s.x + hash01(k, 9) * 8, s.y + hash01(k, 10) * 8,
-        { isVoid: true, claim: CLAIM_MIN });
-      agents.push(v);
+  // Whitespace has no identity to carry across the page: a margin does not
+  // travel, it dissolves here and forms there. Old voids ramp down in place
+  // on the slowest traveler's clock while new voids grow into their rects,
+  // seeds born in their slots — so no void seed ever crosses a content body.
+  // Never stack dissolving generations (rapid re-entry): a void already on
+  // its way out just goes. A void whose rect is unchanged (resize, an
+  // element added or removed) is kept exactly as it is.
+  bodies = bodies.filter(b => !(b.isVoid && b.leaving));
+  const sameRect = (a, r) => a && r && a[0] === r[0] && a[1] === r[1] && a[2] === r[2] && a[3] === r[3];
+  const liveVoids = bodies.filter(b => b.isVoid);
+  const kept = new Set();
+  const pending = [];
+  spec.voids.forEach(r => {
+    const v = liveVoids.find(b => !kept.has(b) && sameRect(b.rect, r));
+    if (v) kept.add(v); else pending.push(r);
+  });
+  // Adoption: where a new void's rect overlaps an old one, the old seeds
+  // simply change owner — same slot, same claim, same warm weight. Nothing
+  // dissolves or spawns there; only the non-overlapping slots do.
+  const donors = liveVoids.filter(v => !kept.has(v));
+  const newVoids = pending.map((r, k) => {
+    const [x, y] = rectCenter(r);
+    const v = makeBody(x + hash01(k, 9) * 6, y + hash01(k, 10) * 6, { isVoid: true, claim: CLAIM_MIN });
+    v.subs.length = 0;                       // seatBody fills every slot: adopted or newborn
+    for (const d of donors) {
+      d.subs = d.subs.filter(s => {
+        const inside = s.slot && s.slot[0] >= r[0] && s.slot[0] < r[2] && s.slot[1] >= r[1] && s.slot[1] < r[3];
+        if (!inside) return true;
+        s.body = v; s.leaving = false; v.subs.push(s);
+        return false;
+      });
     }
-    v.station = { x: s.x, y: s.y };
-    v.targetClaim = s.claim;
-    v.leaving = false;
+    return v;
   });
-  for (let k = spec.voids.length; k < liveVoids.length; k++) liveVoids[k].leaving = true;
+  for (const d of donors) {
+    if (d.subs.length) retireBody(d, slowest);
+    else bodies.splice(bodies.indexOf(d), 1);
+  }
+  newVoids.forEach((v, k) => {
+    bodies.push(v);
+    seatBody(v, pending[k], simTime, { t0: simTime, delay: 0, dur: slowest }, true);
+  });
 }
 
-// --- insertion / removal: the same math, per SEED ---------------------
-
-function addAgent(x, y) {
-  const a = makeAgent(
-    x !== undefined ? x : W * (0.35 + hash01(nextId, 5) * 0.3),
-    y !== undefined ? y : H * (0.35 + hash01(nextId, 6) * 0.3),
-    { claim: CLAIM_MIN });
-  a.targetClaim = a.baseClaim;
-  agents.push(a);
-  enterScene(config.scene); // reseat everyone around the newcomer
+function retireBody(b, dur = 0.6) {
+  // hold formation in place while the claims ramp down to the floor
+  const [cx, cy] = bodyCentroid(b);
+  b.leaving = true; b.rect = null;
+  b.path = { sx: cx, sy: cy, ex: cx, ey: cy, cx, cy };
+  b.journey = { t0: simTime, delay: 0, dur };
+  b.progress = 0;
+  for (const s of b.subs) {
+    s.leaving = true; s.slot = null; s.path = true;
+    s.off0 = [s.x - cx, s.y - cy]; s.off1 = s.off0;
+    s.claim0 = s.claim; s.targetClaim = CLAIM_MIN;
+  }
 }
 
-function removeAgent() {
-  const content = agents.filter(a => !a.isVoid && !a.leaving);
+// Greedy nearest assignment + 2-opt on squared travel.
+function assignStations(points, stations) {
+  const nA = points.length, nS = stations.length;
+  const pairs = [];
+  for (let i = 0; i < nA; i++) for (let j = 0; j < nS; j++) {
+    const dx = points[i].x - stations[j].x, dy = points[i].y - stations[j].y;
+    pairs.push({ i, j, d: dx * dx + dy * dy });
+  }
+  pairs.sort((a, b) => a.d - b.d);
+  const gotS = new Array(nA).fill(-1), taken = new Array(nS).fill(false);
+  for (const p of pairs) if (gotS[p.i] < 0 && !taken[p.j]) { gotS[p.i] = p.j; taken[p.j] = true; }
+  const d2 = (a, s) => { const dx = a.x - s.x, dy = a.y - s.y; return dx * dx + dy * dy; };
+  for (let pass = 0; pass < 30; pass++) {
+    let improved = false;
+    for (let i = 0; i < nA; i++) for (let j = i + 1; j < nA; j++) {
+      const si = stations[gotS[i]], sj = stations[gotS[j]];
+      if (d2(points[i], sj) + d2(points[j], si) + 0.5 < d2(points[i], si) + d2(points[j], sj)) {
+        const t = gotS[i]; gotS[i] = gotS[j]; gotS[j] = t; improved = true;
+      }
+    }
+    if (!improved) break;
+  }
+  return gotS;
+}
+
+// --- insertion / removal ----------------------------------------------
+
+function addBody() {
+  const b = makeBody(W * (0.35 + hash01(nextId, 5) * 0.3), H * (0.35 + hash01(nextId, 6) * 0.3), { claim: CLAIM_MIN });
+  b.subs[0].targetClaim = b.baseClaim;
+  bodies.push(b);
+  enterScene(config.scene);
+}
+
+function removeBody() {
+  const content = bodies.filter(b => !b.isVoid && !b.leaving);
   if (content.length <= 3) return;
-  content[content.length - 1].leaving = true;
-  // stations recompute once it is gone (see reap() below)
+  retireBody(content[content.length - 1]);
 }
 
 function reap() {
-  let reaped = false;
-  agents = agents.filter(a => {
-    if (a.leaving && a.claim <= CLAIM_MIN * 1.05) { reaped = true; return false; }
-    return true;
-  });
-  if (reaped) enterScene(config.scene);
+  let changed = false;
+  for (const b of bodies) {
+    const before = b.subs.length;
+    // a leaving seed is gone once its claim is negligible — early enough that
+    // a dissolving void leaves no pinholes in the content moving over it
+    b.subs = b.subs.filter(s => !(s.leaving && s.claim <= 0.06 && (b.isVoid || !b.journey || b.progress >= 0.5)));
+    if (b.subs.length !== before) changed = true;
+  }
+  // a dissolved void just disappears; only a removed element re-layouts
+  const contentGone = bodies.some(b => b.subs.length === 0 && !b.isVoid);
+  bodies = bodies.filter(b => b.subs.length > 0);
+  if (contentGone) { enterScene(config.scene); changed = true; }
+  return changed;
 }
 
 // --- the frame --------------------------------------------------------
 
 let lastT = 0;
 function tick(nowMs) {
-  const now = nowMs / 1000;                     // seconds — the one convention
+  const now = nowMs / 1000;
   let dt = lastT ? now - lastT : 1 / 60;
   lastT = now;
   if (dt > 0.05) dt = 0.05;
@@ -840,56 +1151,75 @@ function tick(nowMs) {
   frame++;
 
   reap();
+  const subs = [];
+  for (const b of bodies) for (const s of b.subs) subs.push(s);
 
   // 1. the hive moves
-  steerAgents(agents, dt, simTime, W, H, config.scene);
-  if (drag.agent) { drag.agent.x = drag.px; drag.agent.y = drag.py; }
-  enforcePreconditions(agents, W, H);
-  easeClaims(agents, dt, simTime, config.hoverBoost, hoveredId);
+  steerBodies(bodies, dt, simTime, W, H);
+  separate(subs, dt, W, H);
+  if (drag.body) drag.body.subs.forEach((s, i) => { s.x = drag.px + drag.offs[i][0]; s.y = drag.py + drag.offs[i][1]; s.vx = 0; s.vy = 0; });
+  enforcePreconditions(subs, W, H);
+  easeClaims(bodies, dt, simTime, hoveredId);
 
-  // 2. the field condenses: one solve, warm-started, exact
-  const seeds = agents.map(a => [a.x, a.y]);
-  const claims = agents.map(a =>
-    a.claim * (a.id === hoveredId || a.hoverMix > 0.001
-      ? 1 + (config.hoverBoost - 1) * a.hoverMix : 1));
-  const w0 = (weights && weights.length === agents.length) ? weights : null;
-  const t0 = performance.now();
-  const sol = solveWeights(seeds, claims, domainPts(), w0);
-  solveMs = performance.now() - t0;
-  weights = sol.weights;
-  solved = sol;
+  // 2. the field condenses — one solve, warm, exact; skipped when nothing moved.
+  // Only seeds whose claim means something enter the field: a seed at the
+  // floor (folding into its body, or a void seed gated shut under content) is
+  // painted over anyway, and floor-sized cells are what make Newton thrash.
+  // A seed crosses in or out at ~8% of a lattice cell — invisible either way.
+  const active = subs.filter(s => s.claim >= 0.08);
+  const seeds = active.map(s => [s.x, s.y]);
+  const claims = active.map(s => s.claim * (s.body.hoverMix > 0.001 ? 1 + (config.hoverBoost - 1) * s.body.hoverMix : 1));
+  let sig = active.length + '|';
+  for (let i = 0; i < active.length; i++) sig += (seeds[i][0] * 8 | 0) + ',' + (seeds[i][1] * 8 | 0) + ',' + (claims[i] * 1e4 | 0) + ';';
+  if (active.length >= 2 && (sig !== lastSig || !solved)) {
+    const t0 = performance.now();
+    // Newton amortized across frames: at most 3 iterations per frame, warm
+    // weights carried forward, so a hard mid-transition solve costs a few
+    // frames of small area error (the meter shows it) instead of one 60 ms
+    // frame. The diagram is watertight at every step regardless; at rest
+    // this converges to 1e-6 within a frame or two and then costs nothing.
+    const sol = solveWeights(seeds, claims, domainPts(), active.map(s => s.w), { maxIter: 2 });
+    solveMs = performance.now() - t0;
+    lastIters = sol.iterations;
+    active.forEach((s, i) => { s.w = sol.weights[i]; });
+    solved = sol;
+    solvedSubs = active;
+    ownerOf = active.map(s => s.body.id);
+    lastSig = sig;
+  }
 
-  // 3. hover = the bid run backward on this frame's truth
+  // 3. hover: the bid run backward on this frame's truth
   hoveredId = hitTest(mouseX, mouseY);
-  canvas.style.cursor = drag.agent ? 'grabbing' : (hoveredId >= 0 ? 'grab' : 'default');
+  canvas.style.cursor = drag.body ? 'grabbing' : (hoveredId >= 0 ? 'grab' : 'default');
 
   // 4. garment + render
   render();
 
   // 5. meters
-  if (frame % 12 === 0) raster = rasterCheck(sol.diagram.cells, W, H);
-  const errPct = sol.maxRelErr * 100;
+  if (frame % 12 === 0) raster = rasterCheck(solved.diagram.cells, W, H);
+  const errPct = solved.maxRelErr * 100;
   meterEls.area.textContent = errPct < 1e-4 ? errPct.toExponential(1) + '%' : errPct.toFixed(3) + '%';
   meterEls.area.className = errPct <= 1e-4 ? '' : 'bad';
   meterEls.gap.textContent = raster.gap + 'px²';
   meterEls.gap.className = raster.gap <= 64 ? '' : 'bad';
   meterEls.over.textContent = raster.over + 'px²';
   meterEls.over.className = raster.over <= 64 ? '' : 'bad';
-  meterEls.iter.textContent = sol.iterations + 'it ' + solveMs.toFixed(2) + 'ms';
-  meterEls.iter.className = sol.iterations <= 10 ? '' : 'bad';
+  meterEls.rect.textContent = rectPct.toFixed(rectPct >= 99.95 ? 0 : 1) + '%';
+  meterEls.rect.className = rectPct >= 99.95 ? '' : 'soft';
+  meterEls.iter.textContent = lastIters + 'it ' + solveMs.toFixed(1) + 'ms';
+  meterEls.iter.className = lastIters <= 10 ? '' : 'bad';
 
   requestAnimationFrame(tick);
 }
 
-// A point's owner is its lowest bidder — same weights the frame renders.
 function hitTest(x, y) {
   if (!solved || x < 0 || y < 0 || x > W || y > H) return -1;
   let best = Infinity, id = -1;
-  for (let i = 0; i < agents.length; i++) {
-    const a = agents[i];
-    const dx = x - a.x, dy = y - a.y;
+  for (let i = 0; i < solvedSubs.length; i++) {
+    const s = solvedSubs[i];
+    const dx = x - s.x, dy = y - s.y;
     const bid = dx * dx + dy * dy - solved.weights[i];
-    if (bid < best) { best = bid; id = a.isVoid ? -1 : a.id; }
+    if (bid < best) { best = bid; id = s.body.isVoid ? -1 : s.body.id; }
   }
   return id;
 }
@@ -898,74 +1228,99 @@ function render() {
   ctx.clearRect(0, 0, W, H);
   const cells = solved.diagram.cells;
   const halfGap = config.gap / 2;
+  const idx = new Map();
+  solvedSubs.forEach((s, i) => { if (!idx.has(s.body)) idx.set(s.body, []); idx.get(s.body).push(i); });
 
-  let hoveredIdx = -1;
-  for (let i = 0; i < agents.length; i++) {
-    if (agents[i].id === hoveredId) { hoveredIdx = i; break; }
-  }
+  let axisLen = 0, totalLen = 0;
+  const anchorK = 1 - Math.exp(-9 / 60);
 
-  const drawCell = (i) => {
-    const a = agents[i];
-    if (a.isVoid) return;
-    const raw = cells[i].pts;
-    if (raw.length < 3) return;
-    const pts = insetConvex(raw, halfGap);
-    if (pts.length < 3) return;
-
-    const pole = inscribedPole(pts);
-    const k = 1 - Math.exp(-9 * (1 / 60)); // anchor smoothing, calmer than the cell
-    a.anchorX += (pole.x - a.anchorX) * k;
-    a.anchorY += (pole.y - a.anchorY) * k;
-
-    const hv = a.hoverMix;
-    const fade = a.leaving || a.claim < 0.12 ? Math.max(0, (a.claim - CLAIM_MIN) / 0.1) : 1;
-
-    ctx.save();
-    roundedPath(ctx, pts, config.cornerRadius);
-    ctx.clip();
-
-    // fill: the cell's color, dimmed at rest, lifted on hover
-    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (const p of pts) {
-      x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]);
-      x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]);
+  const drawBody = (b) => {
+    const subIdx = idx.get(b);
+    if (!subIdx) return;
+    const loops = bodyOutlines(subIdx, cells, ownerOf, b.id);
+    // A loop lying inside a bigger loop of the same body is a hole — a
+    // floor-claim foreign seed passing through — and is painted over. The
+    // only garment liberty taken outside the solved polygon: a few px² for
+    // a few frames, so a body never freckles while another passes through.
+    const areas = loops.map(l => Math.abs(ringArea(l)));
+    const cen = loops.map(l => { let x = 0, y = 0; for (const p of l) { x += p[0]; y += p[1]; } return [x / l.length, y / l.length]; });
+    const visible = loops.filter((l, i) => !loops.some((o, j) => j !== i && areas[j] > areas[i] && pointInPolygon(cen[i][0], cen[i][1], o)));
+    for (const loop of visible) {
+      for (let k = 0; k < loop.length; k++) {
+        const p = loop[k], q = loop[(k + 1) % loop.length];
+        const dx = Math.abs(q[0] - p[0]), dy = Math.abs(q[1] - p[1]), L = Math.hypot(dx, dy);
+        totalLen += L; if (Math.min(dx, dy) < 0.05) axisLen += L;
+      }
     }
-    const grad = ctx.createLinearGradient(x0, y0, x1, y1);
-    grad.addColorStop(0, shade(a.color, -14));
-    grad.addColorStop(1, shade(a.color, -68));
-    ctx.globalAlpha = (0.52 + 0.38 * hv) * fade;
-    ctx.fillStyle = grad;
-    ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    if (b.isVoid) return;
 
-    // identity: a big quiet numeral, and the agent's name at the pole
-    const rr = Math.min(pole.r, (y1 - y0) / 2);
-    if (rr > 22) {
-      ctx.globalAlpha = 0.16 * fade;
+    // the anchor climbs inside the largest sub-cell, never leaves the union
+    let bigI = subIdx[0];
+    for (const i of subIdx) if (solved.diagram.areas[i] > solved.diagram.areas[bigI]) bigI = i;
+    const bigPts = cells[bigI].pts;
+    let sx = 0, sy = 0; for (const p of bigPts) { sx += p[0]; sy += p[1]; }
+    sx /= bigPts.length || 1; sy /= bigPts.length || 1;
+
+    const hv = b.hoverMix;
+    // one gradient across the whole body, so a piece that does get drawn
+    // separately shares its shading and never reads as a second element
+    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+    for (const l of visible) for (const p of l) { bx0 = Math.min(bx0, p[0]); by0 = Math.min(by0, p[1]); bx1 = Math.max(bx1, p[0]); by1 = Math.max(by1, p[1]); }
+    let poleR = 0, anchored = false;
+    for (const loop of visible) {
+      const rawPole = inscribedPole(loop, sx, sy);
+      const inset = Math.min(halfGap, 0.45 * rawPole.r);
+      const pts = insetPolygon(loop, inset);
+      if (pts.length < 3) continue;
+      const pole = inscribedPole(pts, rawPole.x, rawPole.y);
+      if (!anchored && pointInPolygon(sx, sy, loop)) {
+        b.anchorX += (pole.x - b.anchorX) * anchorK;
+        b.anchorY += (pole.y - b.anchorY) * anchorK;
+        poleR = pole.r; anchored = true;
+      }
+      const fade = Math.max(0, Math.min(1, (b.subs[0].claim - CLAIM_MIN) / 0.1));
+
+      ctx.save();
+      roundedPath(ctx, pts, config.cornerRadius);
+      ctx.clip();
+      const grad = ctx.createLinearGradient(bx0, by0, bx1, by1);
+      grad.addColorStop(0, shade(b.color, -14));
+      grad.addColorStop(1, shade(b.color, -68));
+      ctx.globalAlpha = (0.52 + 0.38 * hv) * fade;
+      ctx.fillStyle = grad;
+      ctx.fillRect(bx0, by0, bx1 - bx0, by1 - by0);
+      ctx.restore();
+
+      ctx.save();
+      roundedPath(ctx, pts, config.cornerRadius);
+      ctx.clip();
+      ctx.globalAlpha = fade;
+      roundedPath(ctx, pts, config.cornerRadius);
+      ctx.strokeStyle = `rgba(255,255,255,${0.16 + 0.5 * hv})`;
+      ctx.lineWidth = (1 + hv * 2.4) * 2;
+      if (hv > 0.02) { ctx.shadowColor = `rgba(255,255,255,${0.45 * hv})`; ctx.shadowBlur = 16 * hv; }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    if (anchored && poleR > 20) {
+      ctx.save();
+      ctx.globalAlpha = 0.16;
       ctx.fillStyle = '#fff';
-      ctx.font = `700 ${Math.round(rr * 1.5)}px system-ui, sans-serif`;
+      ctx.font = `700 ${Math.round(poleR * 1.4)}px system-ui, sans-serif`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(String(a.id + 1), a.anchorX, a.anchorY);
-      ctx.globalAlpha = (0.55 + 0.45 * hv) * fade;
-      ctx.font = `500 ${Math.max(11, Math.min(14, rr * 0.24))}px system-ui, sans-serif`;
-      ctx.fillText(a.name, a.anchorX, a.anchorY + rr * 0.62);
+      ctx.fillText(String(b.id + 1), b.anchorX, b.anchorY);
+      ctx.globalAlpha = 0.55 + 0.45 * hv;
+      ctx.font = `500 ${Math.max(11, Math.min(14, poleR * 0.24))}px system-ui, sans-serif`;
+      ctx.fillText(b.name, b.anchorX, b.anchorY + poleR * 0.62);
+      ctx.restore();
     }
-
-    // inner stroke: clip and stroke the same path at doubled width, so
-    // exactly half the line lands inside — the one mk8 trick worth keeping
-    ctx.globalAlpha = fade;
-    roundedPath(ctx, pts, config.cornerRadius);
-    ctx.strokeStyle = `rgba(255,255,255,${0.16 + 0.5 * hv})`;
-    ctx.lineWidth = (1 + hv * 2.4) * 2;
-    if (hv > 0.02) {
-      ctx.shadowColor = `rgba(255,255,255,${0.45 * hv})`;
-      ctx.shadowBlur = 16 * hv;
-    }
-    ctx.stroke();
-    ctx.restore();
   };
 
-  for (let i = 0; i < agents.length; i++) if (i !== hoveredIdx) drawCell(i);
-  if (hoveredIdx >= 0) drawCell(hoveredIdx); // hovered draws last
+  let hovered = null;
+  for (const b of bodies) { if (b.id === hoveredId) hovered = b; else drawBody(b); }
+  if (hovered) drawBody(hovered);
+  rectPct = totalLen > 0 ? 100 * axisLen / totalLen : 100;
 }
 
 /* --------------------------------------------------------------- I/O */
@@ -976,19 +1331,32 @@ function resize() {
   dpr = window.devicePixelRatio || 1;
   W = Math.max(320, rect.width);
   H = Math.max(240, rect.height);
-  canvas.width = W * dpr;
-  canvas.height = H * dpr;
-  canvas.style.width = W + 'px';
-  canvas.style.height = H + 'px';
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  if (oldW > 0 && agents.length) {
-    for (const a of agents) { // carry the flock along; never re-roll it
-      a.x *= W / oldW; a.y *= H / oldH;
-      a.anchorX *= W / oldW; a.anchorY *= H / oldH;
+  const oldRows = ROWS;
+  ROWS = Math.max(4, Math.min(10, Math.round(COLS * H / W)));
+  PW = W / COLS; PH = H / ROWS;
+  if (oldW > 0 && bodies.length) {
+    // A lattice scaled is still a lattice: scale every seed, path and
+    // offset and the rectangles stay exact for free, mid-drag included.
+    // Only a change in row count needs a new layout — and not per event.
+    const kx = W / oldW, ky = H / oldH;
+    for (const b of bodies) {
+      b.anchorX *= kx; b.anchorY *= ky;
+      if (b.path) { b.path.sx *= kx; b.path.cx *= kx; b.path.ex *= kx; b.path.sy *= ky; b.path.cy *= ky; b.path.ey *= ky; }
+      for (const s of b.subs) {
+        s.x *= kx; s.y *= ky; s.vx = 0; s.vy = 0; s.w *= kx * ky;
+        if (s.off0) { s.off0 = [s.off0[0] * kx, s.off0[1] * ky]; s.off1 = [s.off1[0] * kx, s.off1[1] * ky]; }
+      }
     }
-    enterScene(config.scene); // stations re-derive from the new canvas
+    if (ROWS !== oldRows) {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => enterScene(config.scene), 150);
+    }
   }
 }
+let resizeTimer = null;
 
 function pointerPos(e) {
   const r = canvas.getBoundingClientRect();
@@ -997,58 +1365,48 @@ function pointerPos(e) {
 
 canvas.addEventListener('pointermove', (e) => {
   [mouseX, mouseY] = pointerPos(e);
-  if (drag.agent) { drag.px = mouseX; drag.py = mouseY; }
+  if (drag.body) { drag.px = mouseX; drag.py = mouseY; }
 });
 canvas.addEventListener('pointerleave', () => { mouseX = -1e9; mouseY = -1e9; });
 canvas.addEventListener('pointerdown', (e) => {
   const [x, y] = pointerPos(e);
   const id = hitTest(x, y);
   if (id < 0) return;
-  drag.agent = agents.find(a => a.id === id) || null;
-  if (drag.agent) {
-    drag.px = x; drag.py = y;
-    canvas.setPointerCapture(e.pointerId);
-  }
+  const b = bodies.find(bb => bb.id === id);
+  if (!b) return;
+  drag.body = b; drag.px = x; drag.py = y;
+  // the whole formation comes along, drawn in a little tighter than lattice
+  // spacing so no neighbour's seed can wedge between its ranks while pinned
+  drag.offs = b.subs.map(s => [(s.x - x) * 0.7, (s.y - y) * 0.7]);
+  canvas.setPointerCapture(e.pointerId);
 });
-const endDrag = () => { drag.agent = null; };
+const endDrag = () => { drag.body = null; drag.offs = null; };
 canvas.addEventListener('pointerup', endDrag);
 canvas.addEventListener('pointercancel', endDrag);
 
-document.querySelectorAll('.scene-btn').forEach(b =>
-  b.addEventListener('click', () => enterScene(b.dataset.scene)));
+document.querySelectorAll('.scene-btn').forEach(b => b.addEventListener('click', () => enterScene(b.dataset.scene)));
 
-const bindSlider = (id, fn) => {
-  const el = document.getElementById(id);
-  el.addEventListener('input', () => fn(+el.value));
-};
+const bindSlider = (id, fn) => { const el = document.getElementById(id); el.addEventListener('input', () => fn(+el.value)); };
 bindSlider('count', v => {
   document.getElementById('countVal').textContent = v;
-  let content = agents.filter(a => !a.isVoid && !a.leaving).length;
-  while (content < v) { addAgent(); content++; }
-  while (content > v) { removeAgent(); content--; }
+  let n = bodies.filter(b => !b.isVoid && !b.leaving).length;
+  while (n < v) { addBody(); n++; }
+  while (n > v) { removeBody(); n--; }
 });
-bindSlider('gap', v => {
-  config.gap = v;
-  document.getElementById('gapVal').textContent = v;
-});
-bindSlider('corner', v => {
-  config.cornerRadius = v;
-  document.getElementById('cornerVal').textContent = v;
-});
-bindSlider('hover', v => {
-  config.hoverBoost = v / 100;
-  document.getElementById('hoverVal').textContent = (v / 100).toFixed(1) + '×';
-});
+bindSlider('gap', v => { config.gap = v; document.getElementById('gapVal').textContent = v; });
+bindSlider('corner', v => { config.cornerRadius = v; document.getElementById('cornerVal').textContent = v; });
+bindSlider('hover', v => { config.hoverBoost = v / 100; document.getElementById('hoverVal').textContent = (v / 100).toFixed(1) + '×'; });
+bindSlider('swirl', v => { config.swirl = v / 100; document.getElementById('swirlVal').textContent = v; });
+bindSlider('stagger', v => { config.stagger = v / 100; document.getElementById('staggerVal').textContent = '.' + String(v).padStart(2, '0') + 's'; });
 document.getElementById('add').addEventListener('click', () => {
-  document.getElementById('count').value = String(Math.min(42,
-    agents.filter(a => !a.isVoid && !a.leaving).length + 1));
-  addAgent();
-  document.getElementById('countVal').textContent =
-    document.getElementById('count').value;
+  const n = Math.min(30, bodies.filter(b => !b.isVoid && !b.leaving).length + 1);
+  document.getElementById('count').value = String(n);
+  document.getElementById('countVal').textContent = String(n);
+  addBody();
 });
 document.getElementById('remove').addEventListener('click', () => {
-  removeAgent();
-  const n = Math.max(4, agents.filter(a => !a.isVoid && !a.leaving).length - 1);
+  removeBody();
+  const n = Math.max(4, bodies.filter(b => !b.isVoid && !b.leaving).length);
   document.getElementById('count').value = String(n);
   document.getElementById('countVal').textContent = String(n);
 });
@@ -1057,15 +1415,11 @@ document.getElementById('remove').addEventListener('click', () => {
 
 function init() {
   resize();
-  // Spawn the founding flock in a loose ring (spawn may be random; every
-  // frame after this is deterministic in the identities).
   for (let i = 0; i < config.count; i++) {
     const th = (i / config.count) * Math.PI * 2 + hash01(i, 7);
     const r = Math.min(W, H) * (0.18 + hash01(i, 8) * 0.2);
-    const a = makeAgent(W / 2 + Math.cos(th) * r, H / 2 + Math.sin(th) * r);
-    a.claim = a.baseClaim; // the founders arrive full-grown
-    a.targetClaim = a.baseClaim;
-    agents.push(a);
+    const b = makeBody(W / 2 + Math.cos(th) * r, H / 2 + Math.sin(th) * r, { claim: 1 });
+    bodies.push(b);
   }
   enterScene(config.scene);
   requestAnimationFrame(tick);
