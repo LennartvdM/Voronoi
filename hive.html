@@ -55,7 +55,7 @@
     <a class="back" href="index.html">&larr; Back</a>
     <canvas id="c"></canvas>
     <div class="meters" id="meters">
-      area err <b id="mArea">–</b> · gap <b id="mGap">–</b> · overlap <b id="mOver">–</b> · rect <b id="mRect">–</b> · solve <b id="mIter">–</b>
+      area err <b id="mArea">–</b> · gap <b id="mGap">–</b> · overlap <b id="mOver">–</b> · rect <b id="mRect">–</b> · seeds <b id="mSeeds">–</b> · solve <b id="mIter">–</b>
     </div>
   </div>
   <div class="bar">
@@ -515,36 +515,36 @@ function makeBody(x, y, opts = {}) {
     name: NAMES[id % NAMES.length],
     color: PALETTE[id % PALETTE.length],
     isVoid: !!opts.isVoid,
+
+    // The body's own position: ONE spring, whatever its slot count. Seeds
+    // are derived from it every frame, never integrated separately, so a
+    // formation cannot shear or open up.
+    x, y, vx: 0, vy: 0,
+
+    rect: null,                 // lattice rect when seated
+    offs: [[0, 0]],             // seed offsets from the body centre at full crystal
+    core: 0,                    // the seed carrying the whole claim while melted
     subs: [],
-    rect: null,                 // target lattice rect when seated
-    journey: null,              // { t0, delay, dur } shared by the formation
-    progress: 1,
+
+    path: null, journey: null, progress: 1,
     leaving: false,
+
+    // Total claim in lattice-cell units: a 6-slot element claims 6.
+    claim: opts.claim !== undefined ? opts.claim : CLAIM_MIN,
+    claim0: CLAIM_MIN,
+    claimTarget: 1,
     baseClaim: 0.8 + hash01(id, 2) * 0.7,   // its size as a free single seed
+
     hoverMix: 0,
     anchorX: x, anchorY: y,
     wanderPhase: hash01(id, 1) * Math.PI * 2,
   };
-  b.subs.push(makeSub(b, x, y, opts.claim !== undefined ? opts.claim : CLAIM_MIN));
+  b.subs.push(makeSub(b, x, y));
   return b;
 }
 
-function makeSub(body, x, y, claim) {
-  return {
-    body, x, y, vx: 0, vy: 0,
-    claim, claim0: claim, targetClaim: 1,
-    w: 0,                       // warm-start weight, remembered across frames
-    slot: null,                 // [c, r] when seated
-    path: null,                 // { sx, sy, cx, cy, ex, ey } bezier to the slot
-    leaving: false,
-  };
-}
-
-function bodyCentroid(b) {
-  let x = 0, y = 0, n = 0;
-  for (const s of b.subs) if (!s.leaving) { x += s.x; y += s.y; n++; }
-  if (!n) for (const s of b.subs) { x += s.x; y += s.y; n++; }
-  return [x / n, y / n];
+function makeSub(body, x, y) {
+  return { body, x, y, claim: CLAIM_MIN, w: 0 };  // w: warm-start weight
 }
 
 function easeInOutCubic(u) {
@@ -555,80 +555,58 @@ function easeInOutCubic(u) {
 
 let swirlSign = 1;
 
-function seatBody(b, rect, t, timing, spawnAtSlots = false) {
-  const slots = [];
-  for (let r = rect[1]; r < rect[3]; r++) for (let c = rect[0]; c < rect[2]; c++) slots.push([c, r]);
+// Describe a body's formation: the offsets of its lattice slots from the
+// rect centre. Derived, so a resize re-derives it for free.
+function refreshFormation(b) {
+  if (!b.rect) { b.offs = [[0, 0]]; b.core = 0; b.subs.length = 1; return; }
+  const [ex, ey] = rectCenter(b.rect);
+  const offs = [];
+  for (let r = b.rect[1]; r < b.rect[3]; r++) {
+    for (let c = b.rect[0]; c < b.rect[2]; c++) {
+      const [sx, sy] = slotCenter(c, r);
+      offs.push([sx - ex, sy - ey]);
+    }
+  }
+  // The core is the slot nearest the centre. While the field is liquid it
+  // carries the body's entire claim, so a melted element is ONE seed — one
+  // smooth convex cell — sitting where its rectangle will be.
+  let core = 0;
+  for (let i = 1; i < offs.length; i++) {
+    if (Math.hypot(offs[i][0], offs[i][1]) < Math.hypot(offs[core][0], offs[core][1])) core = i;
+  }
+  b.offs = offs; b.core = core;
+  while (b.subs.length < offs.length) b.subs.push(makeSub(b, b.x, b.y));
+  b.subs.length = offs.length;
+}
+
+function seatBody(b, rect, t, timing) {
   b.rect = rect;
+  refreshFormation(b);
+  b.claim0 = b.claim;
+  b.claimTarget = b.offs.length;      // one lattice cell per slot
+  b.leaving = false;
 
-  const live = b.subs.filter(s => !s.leaving);
-  const [cx0, cy0] = live.length ? bodyCentroid(b) : rectCenter(rect);   // a newborn body starts in place
-  const dist = Math.hypot(rectCenter(rect)[0] - cx0, rectCenter(rect)[1] - cy0);
-
-  // greedy nearest: keep the formation's internal arrangement coherent
-  const pairs = [];
-  live.forEach((s, i) => slots.forEach((sl, k) => {
-    const [x, y] = slotCenter(sl[0], sl[1]);
-    pairs.push({ i, k, d: (s.x - x) ** 2 + (s.y - y) ** 2 });
-  }));
-  pairs.sort((p, q) => p.d - q.d);
-  const subSlot = new Array(live.length).fill(-1), taken = new Array(slots.length).fill(false);
-  for (const p of pairs) if (subSlot[p.i] < 0 && !taken[p.k]) { subSlot[p.i] = p.k; taken[p.k] = true; }
-
-  // spawn seeds for unfilled slots: inside the body's blob so they grow en
-  // route (content), or directly in their slots so they never travel (voids)
-  slots.forEach((sl, k) => {
-    if (taken[k]) return;
-    const [sx1, sy1] = spawnAtSlots ? slotCenter(sl[0], sl[1]) : [cx0, cy0];
-    const s = makeSub(b, sx1 + (hash01(k, 21) - 0.5) * 6, sy1 + (hash01(k, 22) - 0.5) * 6, CLAIM_MIN);
-    b.subs.push(s);
-    live.push(s); subSlot.push(k); taken[k] = true;
-  });
-
-  // The body travels as a formation: ONE bezier carries its center, and
-  // every seed rides along holding its offset — start offset morphing into
-  // its slot offset — so the ranks never open for foreign seeds to enter.
-  const [ex0, ey0] = rectCenter(rect);
+  const [ex, ey] = rectCenter(rect);
+  const dist = Math.hypot(ex - b.x, ey - b.y);
   const bend = config.swirl * 0.55 * swirlSign * (0.7 + 0.6 * hash01(b.id, 12));
-  const ddx = ex0 - cx0, ddy = ey0 - cy0;
-  b.path = { sx: cx0, sy: cy0, ex: ex0, ey: ey0, cx: (cx0 + ex0) / 2 - ddy * bend, cy: (cy0 + ey0) / 2 + ddx * bend };
-  live.forEach((s, i) => {
-    let leaving = false, ox = 0, oy = 0;
-    if (subSlot[i] >= 0) {
-      const [sx1, sy1] = slotCenter(slots[subSlot[i]][0], slots[subSlot[i]][1]);
-      s.slot = slots[subSlot[i]]; ox = sx1 - ex0; oy = sy1 - ey0;
-    } else { s.slot = null; leaving = true; }               // surplus: fold into the center
-    s.path = true;
-    s.off0 = [s.x - cx0, s.y - cy0];
-    s.off1 = [ox, oy];
-    s.claim0 = s.claim;
-    s.targetClaim = leaving ? CLAIM_MIN : 1;
-    s.leaving = leaving;
-  });
-
+  const ddx = ex - b.x, ddy = ey - b.y;
+  b.path = { sx: b.x, sy: b.y, ex, ey, cx: (b.x + ex) / 2 - ddy * bend, cy: (b.y + ey) / 2 + ddx * bend };
   b.journey = timing || {
     t0: t,
     delay: config.stagger * hash01(b.id, 11),
     dur: Math.min(2.2, 0.9 + dist / 520) * (0.9 + 0.2 * hash01(b.id, 13)),
   };
   b.progress = 0;
-  b.leaving = false;
 }
 
-// Collapse a body to one free seed (flock mode): the rest fold in.
-function releaseBody(b, t) {
-  const [cx, cy] = bodyCentroid(b);
-  const live = b.subs.filter(s => !s.leaving);
-  let keep = live[0];
-  for (const s of live) if (Math.hypot(s.x - cx, s.y - cy) < Math.hypot(keep.x - cx, keep.y - cy)) keep = s;
-  b.path = { sx: cx, sy: cy, ex: keep.x, ey: keep.y, cx: (cx + keep.x) / 2, cy: (cy + keep.y) / 2 };
-  for (const s of live) {
-    if (s === keep) { s.slot = null; s.path = null; s.leaving = false; s.targetClaim = b.baseClaim; continue; }
-    s.slot = null; s.leaving = true; s.claim0 = s.claim; s.targetClaim = CLAIM_MIN;
-    s.path = true; s.off0 = [s.x - cx, s.y - cy]; s.off1 = [0, 0];
-  }
+// Release a body back to the flock: one seed, its own resting size.
+function releaseBody(b) {
   b.rect = null;
-  b.journey = { t0: t, delay: 0, dur: 0.8 };
-  b.progress = 0;
+  refreshFormation(b);
+  b.claim0 = b.claim;
+  b.claimTarget = b.baseClaim;
+  b.path = null; b.journey = null; b.progress = 1;
+  b.leaving = false;
 }
 
 // --- steering ---------------------------------------------------------
@@ -640,138 +618,121 @@ function steerBodies(bodies, dt, t, W, H) {
       const u = Math.min(1, Math.max(0, (t - j.t0 - j.delay) / j.dur));
       b.progress = easeInOutCubic(u);
     }
-    const k1 = 62 * (0.9 + 0.2 * hash01(b.id, 3)), k2 = 13.5;
-    for (const s of b.subs) {
-      if (b === drag.body) continue;
-      let ax = 0, ay = 0;
-      if (s.path && b.path) {
-        // ride the formation: the body's carrot plus this seed's offset,
-        // start offset morphing into slot offset; a lightly under-damped
-        // spring supplies the lag and overshoot that read as alive
-        const e = b.progress, m = 1 - e, p = b.path;
-        const bx = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex;
-        const by = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey;
-        const px = bx + s.off0[0] * m + s.off1[0] * e;
-        const py = by + s.off0[1] * m + s.off1[1] * e;
-        ax += (px - s.x) * k1 - s.vx * k2;
-        ay += (py - s.y) * k1 - s.vy * k2;
-      } else {
-        // free drift: wander + weak centering + soft Lloyd toward its own
-        // cell's pole — the hive reading its field
-        b.wanderPhase += (Math.sin(t * 0.7 + b.id * 2.1) + Math.sin(t * 1.31 + b.id * 0.73)) * 0.9 * dt;
-        ax += Math.cos(b.wanderPhase) * 46 - s.vx * 1.4;
-        ay += Math.sin(b.wanderPhase) * 46 - s.vy * 1.4;
-        ax += (W / 2 - s.x) * 0.06 + (b.anchorX - s.x) * 0.9;
-        ay += (H / 2 - s.y) * 0.06 + (b.anchorY - s.y) * 0.9;
-      }
-      s.vx += ax * dt; s.vy += ay * dt;
-      const sp = Math.hypot(s.vx, s.vy), maxSp = s.path ? 900 : 130;
-      if (sp > maxSp) { s.vx *= maxSp / sp; s.vy *= maxSp / sp; }
-      s.x += s.vx * dt; s.y += s.vy * dt;
+    if (b === drag.body) { b.x = drag.px; b.y = drag.py; b.vx = 0; b.vy = 0; continue; }
+    let ax = 0, ay = 0;
+    if (b.path) {
+      // follow the journey's carrot with a lightly under-damped spring: the
+      // bezier gives the path, the spring the lag and overshoot that read
+      // as alive. The resting wobble fades out as the lattice locks, so a
+      // crystallised layout is the grid, not a grid breathing by a pixel.
+      const e = b.progress, m = 1 - e, p = b.path;
+      const px = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex;
+      const py = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey;
+      const k1 = 62 * (0.9 + 0.2 * hash01(b.id, 3)), k2 = 13.5;
+      const wob = 2.5 * (1 - crystal);
+      ax = (px + Math.sin(t * 0.6 + b.id * 1.7) * wob - b.x) * k1 - b.vx * k2;
+      ay = (py + Math.cos(t * 0.5 + b.id * 2.3) * wob - b.y) * k1 - b.vy * k2;
+    } else {
+      // free drift: wander + weak centering + soft Lloyd toward its own
+      // cell's pole — the hive reading its field
+      b.wanderPhase += (Math.sin(t * 0.7 + b.id * 2.1) + Math.sin(t * 1.31 + b.id * 0.73)) * 0.9 * dt;
+      ax = Math.cos(b.wanderPhase) * 46 - b.vx * 1.4;
+      ay = Math.sin(b.wanderPhase) * 46 - b.vy * 1.4;
+      ax += (W / 2 - b.x) * 0.06 + (b.anchorX - b.x) * 0.9;
+      ay += (H / 2 - b.y) * 0.06 + (b.anchorY - b.y) * 0.9;
     }
+    b.vx += ax * dt; b.vy += ay * dt;
+    const sp = Math.hypot(b.vx, b.vy), maxSp = b.path ? 900 : 130;
+    if (sp > maxSp) { b.vx *= maxSp / sp; b.vy *= maxSp / sp; }
+    b.x += b.vx * dt; b.y += b.vy * dt;
   }
 }
 
-// Separation, every mode: seeds closer than their cells' natural radii
-// shove apart, so a traveler never squeezes between two neighbors.
-function separate(subs, dt, W, H) {
+// Bodies push apart while the field is liquid, so a traveller never wedges
+// between two neighbours. Once the lattice locks there is nothing to push
+// and pushing would only spoil the grid.
+function separate(bodies, dt, W, H) {
+  if (crystal > 0.995) return;
   let claimSum = 0;
-  for (const s of subs) claimSum += s.claim;
-  const areaPerClaim = (W * H) / Math.max(1e-9, claimSum);
-  const rad = subs.map(s => Math.sqrt(s.claim * areaPerClaim / Math.PI));
-  for (let i = 0; i < subs.length; i++) {
-    const A = subs[i];
-    for (let j = i + 1; j < subs.length; j++) {
-      const B = subs[j];
-      // within a formation: only keep seeds from collapsing onto each other;
-      // across formations: a wider, firmer shell so bodies pass as blobs and
-      // no foreign seed slips between a body's ranks
-      const same = A.body === B.body;
-      const R = (same ? 0.45 : 0.85) * (rad[i] + rad[j]);
-      const F = same ? 1500 : 2600;
-      const dx = B.x - A.x, dy = B.y - A.y;
-      const d = Math.hypot(dx, dy);
+  for (const b of bodies) claimSum += b.claim;
+  const areaPer = (W * H) / Math.max(1e-9, claimSum);
+  const rad = bodies.map(b => Math.sqrt(b.claim * areaPer / Math.PI));
+  const F = 2600 * (1 - crystal);
+  for (let i = 0; i < bodies.length; i++) {
+    const A = bodies[i];
+    for (let j = i + 1; j < bodies.length; j++) {
+      const B = bodies[j];
+      const R = 0.85 * (rad[i] + rad[j]);
+      const dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy);
       if (d > 1e-6 && d < R) {
-        const sF = 1 - d / R;
-        const f = F * (same ? sF * sF : sF) * dt / d;
-        if (A.body !== drag.body) { A.vx -= dx * f; A.vy -= dy * f; }
-        if (B.body !== drag.body) { B.vx += dx * f; B.vy += dy * f; }
+        const f = F * (1 - d / R) * dt / d;
+        if (A !== drag.body) { A.vx -= dx * f; A.vy -= dy * f; }
+        if (B !== drag.body) { B.vx += dx * f; B.vy += dy * f; }
       }
     }
   }
 }
 
-// Preconditions, guaranteed here every frame: seeds strictly inside the
-// domain and pairwise distinct. The solve fails silently without them.
-function enforcePreconditions(subs, W, H) {
-  for (const s of subs) {
-    s.x = Math.min(W - SEED_MARGIN, Math.max(SEED_MARGIN, s.x));
-    s.y = Math.min(H - SEED_MARGIN, Math.max(SEED_MARGIN, s.y));
+// Preconditions for the seeds that reach the solve — strictly inside the
+// domain, pairwise distinct — enforced on the BODY, so a formation moves as
+// one. Its own seeds are distinct by construction: they only enter the
+// field once the crystal fraction has spread them past the minimum.
+function enforcePreconditions(bodies, W, H) {
+  for (const b of bodies) {
+    b.x = Math.min(W - SEED_MARGIN, Math.max(SEED_MARGIN, b.x));
+    b.y = Math.min(H - SEED_MARGIN, Math.max(SEED_MARGIN, b.y));
   }
-  for (let i = 0; i < subs.length; i++) {
-    for (let j = i + 1; j < subs.length; j++) {
-      const A = subs[i], B = subs[j];
+  for (let i = 0; i < bodies.length; i++) {
+    for (let j = i + 1; j < bodies.length; j++) {
+      const A = bodies[i], B = bodies[j];
       let dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy);
       if (d < SEED_MIN_SEP) {
         if (d < 1e-6) { dx = 1; dy = 0; d = 1; }
         const push = (SEED_MIN_SEP - d) / 2 / d;
-        const bx = dx * push, by = dy * push;
-        if (A.body !== drag.body) { A.x -= bx; A.y -= by; } else { B.x += bx; B.y += by; }
-        if (B.body !== drag.body) { B.x += bx; B.y += by; } else { A.x -= bx; A.y -= by; }
+        if (A !== drag.body) { A.x -= dx * push; A.y -= dy * push; }
+        if (B !== drag.body) { B.x += dx * push; B.y += dy * push; }
       }
     }
   }
-  for (const s of subs) {
-    s.x = Math.min(W - SEED_MARGIN, Math.max(SEED_MARGIN, s.x));
-    s.y = Math.min(H - SEED_MARGIN, Math.max(SEED_MARGIN, s.y));
+}
+
+// Seeds are PLACED, not integrated: the body's position plus its formation
+// offsets scaled by the crystal fraction, and the body's claim shared out
+// the same way. Melted, every element is one seed holding its whole claim —
+// a single smooth convex cell, nothing to segment. Crystallised, the
+// offsets are exact lattice slots and the union is the exact rectangle.
+// Everything between is one continuous interpolation of the same numbers.
+function placeSeeds(bodies) {
+  for (const b of bodies) {
+    const n = b.subs.length;
+    // hover only reshapes the field while the page is liquid; a locked
+    // element lights up instead of reflowing its neighbours
+    const hover = 1 + (config.hoverBoost - 1) * b.hoverMix * (1 - crystal);
+    const coreShare = n - (n - 1) * crystal;          // n when melted, 1 when locked
+    const otherShare = Math.max(CLAIM_MIN, crystal);  // ~0 when melted, 1 when locked
+    for (let i = 0; i < n; i++) {
+      const s = b.subs[i];
+      s.x = b.x + b.offs[i][0] * crystal;
+      s.y = b.y + b.offs[i][1] * crystal;
+      s.claim = b.claim * hover * (i === b.core ? coreShare : otherShare) / n;
+    }
   }
 }
 
 function easeClaims(bodies, dt, t, hoveredId) {
   const k = 1 - Math.exp(-6 * dt);
-  const kv = 1 - Math.exp(-4 * dt);
-  const content = [], voidsLive = [];
-  for (const b of bodies) for (const s of b.subs) {
-    // a folding seed still holds its ground while it is in the field
-    if (!b.isVoid) { if (!s.leaving || s.claim >= 0.08) content.push(s); }
-    else if (!b.leaving) voidsLive.push(s);
-  }
-  // closed out to 0.72 pitch (the farthest any point inside a solid formation
-  // is from one of its seeds), fully open at 1.0 pitch (the adjacent slot),
-  // so a void never grows between a body's ranks and rest stays exact
-  const near = 0.72 * Math.min(PW, PH), far = 1.0 * Math.min(PW, PH);
   for (const b of bodies) {
     const hm = 1 - Math.exp(-(b.id === hoveredId ? 10 : 5) * dt);
     b.hoverMix += ((b.id === hoveredId ? 1 : 0) - b.hoverMix) * hm;
-    for (const s of b.subs) {
-      if (b.isVoid) {
-        // Whitespace exists only where nothing else is. A void seed's claim
-        // is gated by vacancy: floor while any content seed is near, full
-        // once the space is empty — so whitespace pools exactly where cells
-        // have left, and a dissolving void yields the moment cells arrive.
-        let dmin = Infinity;
-        for (const c of content) { const d = Math.hypot(c.x - s.x, c.y - s.y); if (d < dmin) dmin = d; }
-        let gate = Math.min(1, Math.max(0, (dmin - near) / (far - near)));
-        if (b.leaving) {
-          // a dissolving void hands its space straight to the new void
-          // wherever the two overlap — no lingering, no doubled seeds
-          for (const v of voidsLive) { if (Math.hypot(v.x - s.x, v.y - s.y) < far) { gate = 0; break; } }
-        }
-        const ramp = b.leaving ? 1 - b.progress : 1;
-        const target = Math.max(CLAIM_MIN, gate * ramp);
-        s.claim += (target - s.claim) * kv;
-      } else if (s.path && b.journey) {
-        // surplus seeds finish shrinking at 3/4 of the trip so they can be
-        // reaped before arrival — fewer seeds in the solve, same silhouette
-        const u = s.leaving ? Math.min(1, b.progress / 0.75) : b.progress;
-        s.claim = s.claim0 + (s.targetClaim - s.claim0) * u;
-      } else {
-        let target = s.leaving ? CLAIM_MIN : s.targetClaim;
-        if (!s.slot && !b.isVoid && !s.leaving) target *= 1 + 0.05 * Math.sin(t * 0.8 + b.id * 2.9);
-        s.claim += (target - s.claim) * k;
-      }
-      if (s.claim < CLAIM_MIN) s.claim = CLAIM_MIN;
+    if (b.journey && b.path) {
+      // size travels with position: the same eased progress
+      b.claim = b.claim0 + (b.claimTarget - b.claim0) * b.progress;
+    } else {
+      let target = b.claimTarget;
+      if (!b.rect && !b.isVoid && !b.leaving) target *= 1 + 0.05 * Math.sin(t * 0.8 + b.id * 2.9);
+      b.claim += (target - b.claim) * k;
     }
+    if (b.claim < CLAIM_MIN) b.claim = CLAIM_MIN;
   }
 }
 
@@ -822,6 +783,31 @@ function bodyOutlines(subIdx, cells, ownerOf, bodyId) {
     if (loop.length >= 3) loops.push(loop);
   }
   return loops;
+}
+
+// A body's outline is chained from its sub-cells' edges, so every seam
+// junction leaves a duplicate vertex and every straight run arrives split
+// into collinear pieces. Both are invisible in the polygon and fatal in the
+// garment: insetPolygon cannot offset a zero-length edge, so it drops that
+// corner — which renders as a chamfer chopped across it. Reduce the loop to
+// its real corners before dressing it.
+function simplifyLoop(pts, epsLen = 0.05, epsSin = 1e-3) {
+  const a = [];
+  for (const p of pts) {
+    const q = a[a.length - 1];
+    if (!q || Math.hypot(p[0] - q[0], p[1] - q[1]) > epsLen) a.push(p);
+  }
+  while (a.length > 1 && Math.hypot(a[0][0] - a[a.length - 1][0], a[0][1] - a[a.length - 1][1]) <= epsLen) a.pop();
+  if (a.length < 3) return a;
+  const out = [];
+  for (let i = 0; i < a.length; i++) {
+    const p = a[(i + a.length - 1) % a.length], c = a[i], n = a[(i + 1) % a.length];
+    const ux = c[0] - p[0], uy = c[1] - p[1], vx = n[0] - c[0], vy = n[1] - c[1];
+    const lu = Math.hypot(ux, uy), lv = Math.hypot(vx, vy);
+    if (lu < epsLen || lv < epsLen) continue;
+    if (Math.abs(ux * vy - uy * vx) / (lu * lv) > epsSin) out.push(c);   // a real corner
+  }
+  return out.length >= 3 ? out : a;
 }
 
 // Inset a simple polygon by d: offset every edge inward and intersect
@@ -932,6 +918,7 @@ const meterEls = {
   gap: document.getElementById('mGap'),
   over: document.getElementById('mOver'),
   rect: document.getElementById('mRect'),
+  seeds: document.getElementById('mSeeds'),
   iter: document.getElementById('mIter'),
 };
 
@@ -988,7 +975,14 @@ let solved = null;                  // the frame's ONE authoritative tessellatio
 let solvedSubs = [];                // the flat seed list the solve was made from
 let ownerOf = [];                   // flat index -> body id
 let hoveredId = -1;
-const drag = { body: null, px: 0, py: 0, offs: null };
+
+// The lattice is a REST STATE, not a travel mechanism. crystal is 0 while
+// anything is moving — every element is a single seed, organic and cheap —
+// and eases to 1 once the whole page has arrived, locking the exact grid.
+let crystal = 0, crystalTarget = 0;
+const ACTIVE_MIN = 0.12;            // a seed joins the field once it is worth this much of a lattice cell
+
+const drag = { body: null, px: 0, py: 0 };
 let mouseX = -1e9, mouseY = -1e9;
 let simTime = 0;
 let raster = { gap: 0, over: 0 };
@@ -1010,77 +1004,45 @@ function enterScene(name) {
 
   if (!spec) {
     for (const b of bodies) {
-      if (b.isVoid) { retireBody(b); continue; }
-      releaseBody(b, simTime);
+      if (b.isVoid) retireBody(b, 0.5);
+      else releaseBody(b);
     }
     return;
   }
 
   swirlSign = -swirlSign;
   const centers = spec.content.map(r => { const [x, y] = rectCenter(r); return { x, y }; });
-  const gotS = assignStations(content.map(b => { const [x, y] = bodyCentroid(b); return { x, y }; }), centers);
+  const gotS = assignStations(content, centers);
   let slowest = 0.9;
   content.forEach((b, k) => {
     seatBody(b, spec.content[gotS[k]], simTime);
     slowest = Math.max(slowest, b.journey.delay + b.journey.dur);
   });
 
-  // Whitespace has no identity to carry across the page: a margin does not
-  // travel, it dissolves here and forms there. Old voids ramp down in place
-  // on the slowest traveler's clock while new voids grow into their rects,
-  // seeds born in their slots — so no void seed ever crosses a content body.
-  // Never stack dissolving generations (rapid re-entry): a void already on
-  // its way out just goes. A void whose rect is unchanged (resize, an
-  // element added or removed) is kept exactly as it is.
-  bodies = bodies.filter(b => !(b.isVoid && b.leaving));
-  const sameRect = (a, r) => a && r && a[0] === r[0] && a[1] === r[1] && a[2] === r[2] && a[3] === r[3];
-  const liveVoids = bodies.filter(b => b.isVoid);
-  const kept = new Set();
-  const pending = [];
+  // Whitespace has no identity to carry across a page: a margin does not
+  // travel, it dissolves here and forms there. While the field is liquid
+  // every body is a single seed, so this is one blob fading out and another
+  // growing in — no comb of void seeds threading between the cells. The new
+  // void grows on the slowest traveller's clock, so it never opens ahead of
+  // the elements vacating it.
+  for (const v of bodies.filter(b => b.isVoid && !b.leaving)) retireBody(v, slowest);
   spec.voids.forEach(r => {
-    const v = liveVoids.find(b => !kept.has(b) && sameRect(b.rect, r));
-    if (v) kept.add(v); else pending.push(r);
-  });
-  // Adoption: where a new void's rect overlaps an old one, the old seeds
-  // simply change owner — same slot, same claim, same warm weight. Nothing
-  // dissolves or spawns there; only the non-overlapping slots do.
-  const donors = liveVoids.filter(v => !kept.has(v));
-  const newVoids = pending.map((r, k) => {
     const [x, y] = rectCenter(r);
-    const v = makeBody(x + hash01(k, 9) * 6, y + hash01(k, 10) * 6, { isVoid: true, claim: CLAIM_MIN });
-    v.subs.length = 0;                       // seatBody fills every slot: adopted or newborn
-    for (const d of donors) {
-      d.subs = d.subs.filter(s => {
-        const inside = s.slot && s.slot[0] >= r[0] && s.slot[0] < r[2] && s.slot[1] >= r[1] && s.slot[1] < r[3];
-        if (!inside) return true;
-        s.body = v; s.leaving = false; v.subs.push(s);
-        return false;
-      });
-    }
-    return v;
-  });
-  for (const d of donors) {
-    if (d.subs.length) retireBody(d, slowest);
-    else bodies.splice(bodies.indexOf(d), 1);
-  }
-  newVoids.forEach((v, k) => {
+    const v = makeBody(x, y, { isVoid: true, claim: CLAIM_MIN });
     bodies.push(v);
-    seatBody(v, pending[k], simTime, { t0: simTime, delay: 0, dur: slowest }, true);
+    seatBody(v, r, simTime, { t0: simTime, delay: 0, dur: slowest });
   });
 }
 
 function retireBody(b, dur = 0.6) {
-  // hold formation in place while the claims ramp down to the floor
-  const [cx, cy] = bodyCentroid(b);
+  // shrink in place, as one seed, and be gone
   b.leaving = true; b.rect = null;
-  b.path = { sx: cx, sy: cy, ex: cx, ey: cy, cx, cy };
+  refreshFormation(b);
+  b.path = { sx: b.x, sy: b.y, ex: b.x, ey: b.y, cx: b.x, cy: b.y };
   b.journey = { t0: simTime, delay: 0, dur };
   b.progress = 0;
-  for (const s of b.subs) {
-    s.leaving = true; s.slot = null; s.path = true;
-    s.off0 = [s.x - cx, s.y - cy]; s.off1 = s.off0;
-    s.claim0 = s.claim; s.targetClaim = CLAIM_MIN;
-  }
+  b.claim0 = b.claim;
+  b.claimTarget = CLAIM_MIN;
 }
 
 // Greedy nearest assignment + 2-opt on squared travel.
@@ -1112,7 +1074,7 @@ function assignStations(points, stations) {
 
 function addBody() {
   const b = makeBody(W * (0.35 + hash01(nextId, 5) * 0.3), H * (0.35 + hash01(nextId, 6) * 0.3), { claim: CLAIM_MIN });
-  b.subs[0].targetClaim = b.baseClaim;
+  b.claim0 = CLAIM_MIN; b.claimTarget = b.baseClaim;
   bodies.push(b);
   enterScene(config.scene);
 }
@@ -1124,19 +1086,11 @@ function removeBody() {
 }
 
 function reap() {
-  let changed = false;
-  for (const b of bodies) {
-    const before = b.subs.length;
-    // a leaving seed is gone once its claim is negligible — early enough that
-    // a dissolving void leaves no pinholes in the content moving over it
-    b.subs = b.subs.filter(s => !(s.leaving && s.claim <= 0.06 && (b.isVoid || !b.journey || b.progress >= 0.5)));
-    if (b.subs.length !== before) changed = true;
-  }
-  // a dissolved void just disappears; only a removed element re-layouts
-  const contentGone = bodies.some(b => b.subs.length === 0 && !b.isVoid);
-  bodies = bodies.filter(b => b.subs.length > 0);
-  if (contentGone) { enterScene(config.scene); changed = true; }
-  return changed;
+  const done = b => b.leaving && b.claim <= CLAIM_MIN * 1.5 && b.progress >= 0.999;
+  // a dissolved void just disappears; a removed element re-layouts the rest
+  const contentGone = bodies.some(b => done(b) && !b.isVoid);
+  bodies = bodies.filter(b => !done(b));
+  if (contentGone) enterScene(config.scene);
 }
 
 // --- the frame --------------------------------------------------------
@@ -1151,27 +1105,41 @@ function tick(nowMs) {
   frame++;
 
   reap();
+
+  // 1. the hive moves — one spring per body, whatever its slot count
+  steerBodies(bodies, dt, simTime, W, H);
+  separate(bodies, dt, W, H);
+  enforcePreconditions(bodies, W, H);
+  easeClaims(bodies, dt, simTime, hoveredId);
+
+  // 2. crystal: the lattice locks in only when the whole page has arrived
+  // and nothing is being dragged. Any disturbance melts it back to one seed
+  // per element — organic while it travels, exact once it lands. Melting is
+  // quick (you touch it, it goes liquid); locking is gentle (it settles).
+  const seated = bodies.filter(b => b.rect && !b.leaving);
+  const settled = seated.length > 0 && !drag.body && seated.every(b => b.progress >= 0.999);
+  crystalTarget = settled ? 1 : 0;
+  const step = dt / (crystalTarget > crystal ? 0.55 : 0.13);   // lock 0.55 s, melt 0.13 s
+  crystal += Math.max(-step, Math.min(step, crystalTarget - crystal));
+  crystal = Math.max(0, Math.min(1, crystal));
+  // a locked lattice sits exactly on its slots, so the grid is exact
+  if (crystal === 1) for (const b of seated) { b.x = b.path.ex; b.y = b.path.ey; b.vx = 0; b.vy = 0; }
+
+  placeSeeds(bodies);
   const subs = [];
   for (const b of bodies) for (const s of b.subs) subs.push(s);
 
-  // 1. the hive moves
-  steerBodies(bodies, dt, simTime, W, H);
-  separate(subs, dt, W, H);
-  if (drag.body) drag.body.subs.forEach((s, i) => { s.x = drag.px + drag.offs[i][0]; s.y = drag.py + drag.offs[i][1]; s.vx = 0; s.vy = 0; });
-  enforcePreconditions(subs, W, H);
-  easeClaims(bodies, dt, simTime, hoveredId);
-
-  // 2. the field condenses — one solve, warm, exact; skipped when nothing moved.
-  // Only seeds whose claim means something enter the field: a seed at the
-  // floor (folding into its body, or a void seed gated shut under content) is
-  // painted over anyway, and floor-sized cells are what make Newton thrash.
-  // A seed crosses in or out at ~8% of a lattice cell — invisible either way.
-  const active = subs.filter(s => s.claim >= 0.08);
+  // 3. the field condenses — one solve, warm, exact; skipped when nothing moved.
+  // Only seeds worth something enter the field. While the page is liquid a
+  // body's lattice seeds sit at the claim floor and stay out, so travel
+  // solves ~one seed per element; they fade in as the crystal spreads them,
+  // each carving a cell interior to its own body, where the seam hides it.
+  const active = subs.filter(s => s.claim >= ACTIVE_MIN);
   const seeds = active.map(s => [s.x, s.y]);
-  const claims = active.map(s => s.claim * (s.body.hoverMix > 0.001 ? 1 + (config.hoverBoost - 1) * s.body.hoverMix : 1));
+  const claims = active.map(s => s.claim);
   let sig = active.length + '|';
   for (let i = 0; i < active.length; i++) sig += (seeds[i][0] * 8 | 0) + ',' + (seeds[i][1] * 8 | 0) + ',' + (claims[i] * 1e4 | 0) + ';';
-  if (active.length >= 2 && (sig !== lastSig || !solved)) {
+  if (active.length >= 2 && (sig !== lastSig || !solved || !solved.converged)) {
     const t0 = performance.now();
     // Newton amortized across frames: at most 3 iterations per frame, warm
     // weights carried forward, so a hard mid-transition solve costs a few
@@ -1188,14 +1156,14 @@ function tick(nowMs) {
     lastSig = sig;
   }
 
-  // 3. hover: the bid run backward on this frame's truth
+  // 4. hover: the bid run backward on this frame's truth
   hoveredId = hitTest(mouseX, mouseY);
   canvas.style.cursor = drag.body ? 'grabbing' : (hoveredId >= 0 ? 'grab' : 'default');
 
-  // 4. garment + render
+  // 5. garment + render
   render();
 
-  // 5. meters
+  // 6. meters
   if (frame % 12 === 0) raster = rasterCheck(solved.diagram.cells, W, H);
   const errPct = solved.maxRelErr * 100;
   meterEls.area.textContent = errPct < 1e-4 ? errPct.toExponential(1) + '%' : errPct.toFixed(3) + '%';
@@ -1206,6 +1174,7 @@ function tick(nowMs) {
   meterEls.over.className = raster.over <= 64 ? '' : 'bad';
   meterEls.rect.textContent = rectPct.toFixed(rectPct >= 99.95 ? 0 : 1) + '%';
   meterEls.rect.className = rectPct >= 99.95 ? '' : 'soft';
+  meterEls.seeds.textContent = solvedSubs.length + (crystal === 1 ? ' locked' : crystal === 0 ? ' liquid' : ' ' + Math.round(crystal * 100) + '%');
   meterEls.iter.textContent = lastIters + 'it ' + solveMs.toFixed(1) + 'ms';
   meterEls.iter.className = lastIters <= 10 ? '' : 'bad';
 
@@ -1237,7 +1206,7 @@ function render() {
   const drawBody = (b) => {
     const subIdx = idx.get(b);
     if (!subIdx) return;
-    const loops = bodyOutlines(subIdx, cells, ownerOf, b.id);
+    const loops = bodyOutlines(subIdx, cells, ownerOf, b.id).map(l => simplifyLoop(l)).filter(l => l.length >= 3);
     // A loop lying inside a bigger loop of the same body is a hole — a
     // floor-claim foreign seed passing through — and is painted over. The
     // only garment liberty taken outside the solved polygon: a few px² for
@@ -1269,7 +1238,9 @@ function render() {
     let poleR = 0, anchored = false;
     for (const loop of visible) {
       const rawPole = inscribedPole(loop, sx, sy);
-      const inset = Math.min(halfGap, 0.45 * rawPole.r);
+      // A locked element cannot reflow its neighbours on hover — a real page
+      // does not either — so it lifts instead, growing into its own gap.
+      const inset = Math.min(halfGap * (1 - 0.5 * hv * crystal), 0.45 * rawPole.r);
       const pts = insetPolygon(loop, inset);
       if (pts.length < 3) continue;
       const pole = inscribedPole(pts, rawPole.x, rawPole.y);
@@ -1278,7 +1249,7 @@ function render() {
         b.anchorY += (pole.y - b.anchorY) * anchorK;
         poleR = pole.r; anchored = true;
       }
-      const fade = Math.max(0, Math.min(1, (b.subs[0].claim - CLAIM_MIN) / 0.1));
+      const fade = Math.max(0, Math.min(1, (b.claim - CLAIM_MIN) / 0.14));
 
       ctx.save();
       roundedPath(ctx, pts, config.cornerRadius);
@@ -1343,12 +1314,15 @@ function resize() {
     // Only a change in row count needs a new layout — and not per event.
     const kx = W / oldW, ky = H / oldH;
     for (const b of bodies) {
+      b.x *= kx; b.y *= ky; b.vx = 0; b.vy = 0;
       b.anchorX *= kx; b.anchorY *= ky;
-      if (b.path) { b.path.sx *= kx; b.path.cx *= kx; b.path.ex *= kx; b.path.sy *= ky; b.path.cy *= ky; b.path.ey *= ky; }
-      for (const s of b.subs) {
-        s.x *= kx; s.y *= ky; s.vx = 0; s.vy = 0; s.w *= kx * ky;
-        if (s.off0) { s.off0 = [s.off0[0] * kx, s.off0[1] * ky]; s.off1 = [s.off1[0] * kx, s.off1[1] * ky]; }
+      for (const s of b.subs) { s.w *= kx * ky; }
+      if (b.path) {
+        b.path.sx *= kx; b.path.cx *= kx; b.path.sy *= ky; b.path.cy *= ky;
+        if (b.rect) { const [ex, ey] = rectCenter(b.rect); b.path.ex = ex; b.path.ey = ey; }
+        else { b.path.ex *= kx; b.path.ey *= ky; }
       }
+      refreshFormation(b);          // slots re-derive from the new pitch
     }
     if (ROWS !== oldRows) {
       clearTimeout(resizeTimer);
@@ -1374,13 +1348,12 @@ canvas.addEventListener('pointerdown', (e) => {
   if (id < 0) return;
   const b = bodies.find(bb => bb.id === id);
   if (!b) return;
+  // a grab melts the page: the dragged element becomes one seed and so does
+  // everything else, so it moves through a liquid field, not a rigid grid
   drag.body = b; drag.px = x; drag.py = y;
-  // the whole formation comes along, drawn in a little tighter than lattice
-  // spacing so no neighbour's seed can wedge between its ranks while pinned
-  drag.offs = b.subs.map(s => [(s.x - x) * 0.7, (s.y - y) * 0.7]);
   canvas.setPointerCapture(e.pointerId);
 });
-const endDrag = () => { drag.body = null; drag.offs = null; };
+const endDrag = () => { drag.body = null; };
 canvas.addEventListener('pointerup', endDrag);
 canvas.addEventListener('pointercancel', endDrag);
 
