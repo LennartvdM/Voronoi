@@ -78,6 +78,9 @@
     <div class="group"><span class="lbl">Hover</span>
       <input type="range" id="hover" min="100" max="260" value="160"><span class="val" id="hoverVal">1.6&times;</span>
     </div>
+    <div class="group"><span class="lbl">Fields</span>
+      <input type="range" id="fields" min="0" max="100" value="55"><span class="val" id="fieldsVal">55</span>
+    </div>
     <div class="group"><span class="lbl">Swirl</span>
       <input type="range" id="swirl" min="0" max="100" value="45"><span class="val" id="swirlVal">45</span>
     </div>
@@ -535,6 +538,10 @@ function makeBody(x, y, opts = {}) {
     claimTarget: 1,
     baseClaim: 0.8 + hash01(id, 2) * 0.7,   // its size as a free single seed
 
+    px: x, py: y,                // last frame's position: members ride the delta
+    members: [], inner: null,   // a field's roster and its inner tessellation
+    loops: null,                // this frame's simplified union outline
+
     hoverMix: 0,
     anchorX: x, anchorY: y,
     wanderPhase: hash01(id, 1) * Math.PI * 2,
@@ -733,6 +740,121 @@ function easeClaims(bodies, dt, t, hoveredId) {
       b.claim += (target - b.claim) * k;
     }
     if (b.claim < CLAIM_MIN) b.claim = CLAIM_MIN;
+  }
+}
+
+
+/* ============================================================== FIELDS
+ * A field is an element that holds other cells. Its outer border is the
+ * rigid rectangle the lattice locks; inside, its members divide it with
+ * ordinary Voronoi boundaries — organic, squished against a straight edge.
+ *
+ * This is not a new mechanism. A power diagram clipped to a convex domain
+ * already has exactly that shape: bisectors inside, the domain's own edges
+ * outside. So a field is the SAME sealed solver run once more, one level
+ * down, with the field's own polygon as its domain. Nesting, not machinery.
+ */
+
+// Andrew's monotone chain. The inner domain must be convex (step 4 of the
+// solver assumes it); a locked field is a rectangle and a melted one is a
+// single convex cell, so the hull only differs from the union during the
+// half-second lock ramp, and the garment clips that away.
+function convexHull(pts) {
+  if (pts.length < 3) return pts.slice();
+  const p = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [];
+  for (const q of p) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+  const hi = [];
+  for (let i = p.length - 1; i >= 0; i--) { const q = p[i]; while (hi.length >= 2 && cross(hi[hi.length - 2], hi[hi.length - 1], q) <= 0) hi.pop(); hi.push(q); }
+  lo.pop(); hi.pop();
+  const h = lo.concat(hi);
+  return h.length >= 3 ? h : pts.slice();
+}
+
+function polyCentroid(pts) {
+  let a = 0, cx = 0, cy = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i], q = pts[(i + 1) % pts.length];
+    const f = p[0] * q[1] - q[0] * p[1];
+    a += f; cx += (p[0] + q[0]) * f; cy += (p[1] + q[1]) * f;
+  }
+  if (Math.abs(a) < 1e-9) { let x = 0, y = 0; for (const p of pts) { x += p[0]; y += p[1]; } return [x / pts.length, y / pts.length]; }
+  return [cx / (3 * a), cy / (3 * a)];
+}
+
+// Grow or shrink a field's roster. Members are identities like any other:
+// they persist across scenes, so a gallery keeps its cards when the page
+// rearranges and the field it lives in changes shape.
+function setMembers(b, k) {
+  if (k < 2) { b.members = []; b.inner = null; return; }
+  while (b.members.length > k) b.members.pop();
+  while (b.members.length < k) {
+    const i = b.members.length, mid = b.id * 31 + i;
+    b.members.push({
+      color: PALETTE[(b.id * 5 + i * 3 + 1) % PALETTE.length],
+      x: b.x + (hash01(mid, 41) - 0.5) * 40,
+      y: b.y + (hash01(mid, 42) - 0.5) * 40,
+      claim: 0.75 + hash01(mid, 43) * 0.6,
+      w: 0, phase: hash01(mid, 44) * Math.PI * 2,
+    });
+  }
+}
+
+// Members ride along with their field, then relax inside whatever shape it
+// currently has: a light Lloyd step toward each cell's own centroid keeps
+// them evenly spread, and a slow wander keeps the interior alive even while
+// the outer rectangle is locked rigid.
+function updateFields(dt, t) {
+  for (const b of bodies) {
+    const loops = b.loops;
+    if (!b.members.length || !loops || !loops.length) { b.inner = null; continue; }
+    let big = loops[0], bigA = Math.abs(ringArea(loops[0]));
+    for (const l of loops) { const a = Math.abs(ringArea(l)); if (a > bigA) { bigA = a; big = l; } }
+    const domain = convexHull(big);
+    if (domain.length < 3 || bigA < 400) { b.inner = null; continue; }
+
+    const [dcx, dcy] = polyCentroid(domain);
+    const reach = Math.sqrt(bigA);
+    for (const m of b.members) {
+      m.x += b.x - b.px; m.y += b.y - b.py;            // carried by the field
+      m.phase += dt * 0.55;
+      m.x += Math.cos(m.phase) * reach * 0.035 * dt;
+      m.y += Math.sin(m.phase * 1.13) * reach * 0.035 * dt;
+      if (!pointInPolygon(m.x, m.y, domain)) {          // never leave the field
+        m.x += (dcx - m.x) * 0.5; m.y += (dcy - m.y) * 0.5;
+        if (!pointInPolygon(m.x, m.y, domain)) { m.x = dcx; m.y = dcy; }
+      }
+    }
+    // pairwise epsilon-separation, same precondition the outer field has
+    for (let i = 0; i < b.members.length; i++) {
+      for (let j = i + 1; j < b.members.length; j++) {
+        const A = b.members[i], B = b.members[j];
+        let dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy);
+        if (d < SEED_MIN_SEP) {
+          if (d < 1e-6) { dx = 1; dy = 0; d = 1; }
+          const push = (SEED_MIN_SEP - d) / 2 / d;
+          A.x -= dx * push; A.y -= dy * push; B.x += dx * push; B.y += dy * push;
+        }
+      }
+    }
+
+    let sol;
+    try {
+      sol = solveWeights(b.members.map(m => [m.x, m.y]), b.members.map(m => m.claim),
+                         domain, b.members.map(m => m.w), { maxIter: 2 });
+    } catch (e) { b.inner = null; continue; }
+    b.members.forEach((m, i) => { m.w = sol.weights[i]; });
+    b.inner = { cells: sol.diagram.cells, domain };
+
+    // Lloyd: drift each member toward its own cell's centre of area
+    b.members.forEach((m, i) => {
+      const c = sol.diagram.cells[i];
+      if (!c || c.pts.length < 3) return;
+      const [px, py] = polyCentroid(c.pts);
+      m.x += (px - m.x) * Math.min(1, 2.2 * dt);
+      m.y += (py - m.y) * Math.min(1, 2.2 * dt);
+    });
   }
 }
 
@@ -967,6 +1089,7 @@ const config = {
   hoverBoost: 1.6,
   swirl: 0.45,
   stagger: 0.30,
+  fieldDensity: 0.55,
   scene: 'bento',
 };
 
@@ -1005,7 +1128,7 @@ function enterScene(name) {
   if (!spec) {
     for (const b of bodies) {
       if (b.isVoid) retireBody(b, 0.5);
-      else releaseBody(b);
+      else { setMembers(b, 0); releaseBody(b); }   // no rigid border, no field
     }
     return;
   }
@@ -1015,7 +1138,15 @@ function enterScene(name) {
   const gotS = assignStations(content, centers);
   let slowest = 0.9;
   content.forEach((b, k) => {
-    seatBody(b, spec.content[gotS[k]], simTime);
+    const rect = spec.content[gotS[k]];
+    seatBody(b, rect, simTime);
+    // Roomy rects become fields: a rigid rectangle holding loose cells.
+    // Small ones stay single elements, the way a page mixes a gallery
+    // section with plain cards.
+    // Roomy rects become fields; small ones stay single cards, so a page
+    // reads as sections among elements rather than one uniform mush.
+    const slots = rectArea(rect);
+    setMembers(b, slots >= 4 ? Math.min(7, Math.round(slots * 0.45 * config.fieldDensity)) : 0);
     slowest = Math.max(slowest, b.journey.delay + b.journey.dur);
   });
 
@@ -1160,8 +1291,11 @@ function tick(nowMs) {
   hoveredId = hitTest(mouseX, mouseY);
   canvas.style.cursor = drag.body ? 'grabbing' : (hoveredId >= 0 ? 'grab' : 'default');
 
-  // 5. garment + render
+  // 5. outlines, then the fields' inner tessellations, then the garment
+  computeOutlines();
+  updateFields(dt, simTime);
   render();
+  for (const b of bodies) { b.px = b.x; b.py = b.y; }
 
   // 6. meters
   if (frame % 12 === 0) raster = rasterCheck(solved.diagram.cells, W, H);
@@ -1193,49 +1327,102 @@ function hitTest(x, y) {
   return id;
 }
 
-function render() {
-  ctx.clearRect(0, 0, W, H);
+// One pass over the frame's tessellation: every body's union outline,
+// reduced to its real corners, holes dropped. The field solve and the
+// garment both read it, so they cannot disagree about a body's shape.
+function computeOutlines() {
   const cells = solved.diagram.cells;
-  const halfGap = config.gap / 2;
   const idx = new Map();
   solvedSubs.forEach((s, i) => { if (!idx.has(s.body)) idx.set(s.body, []); idx.get(s.body).push(i); });
-
+  for (const b of bodies) { b.loops = null; b.bigSeed = -1; }
   let axisLen = 0, totalLen = 0;
-  const anchorK = 1 - Math.exp(-9 / 60);
-
-  const drawBody = (b) => {
-    const subIdx = idx.get(b);
-    if (!subIdx) return;
+  for (const [b, subIdx] of idx) {
     const loops = bodyOutlines(subIdx, cells, ownerOf, b.id).map(l => simplifyLoop(l)).filter(l => l.length >= 3);
-    // A loop lying inside a bigger loop of the same body is a hole — a
-    // floor-claim foreign seed passing through — and is painted over. The
-    // only garment liberty taken outside the solved polygon: a few px² for
-    // a few frames, so a body never freckles while another passes through.
     const areas = loops.map(l => Math.abs(ringArea(l)));
     const cen = loops.map(l => { let x = 0, y = 0; for (const p of l) { x += p[0]; y += p[1]; } return [x / l.length, y / l.length]; });
-    const visible = loops.filter((l, i) => !loops.some((o, j) => j !== i && areas[j] > areas[i] && pointInPolygon(cen[i][0], cen[i][1], o)));
-    for (const loop of visible) {
+    b.loops = loops.filter((l, i) => !loops.some((o, j) => j !== i && areas[j] > areas[i] && pointInPolygon(cen[i][0], cen[i][1], o)));
+    b.bigSeed = subIdx.reduce((a, i) => cells[i] && solved.diagram.areas[i] > solved.diagram.areas[a] ? i : a, subIdx[0]);
+    for (const loop of b.loops) {
       for (let k = 0; k < loop.length; k++) {
         const p = loop[k], q = loop[(k + 1) % loop.length];
         const dx = Math.abs(q[0] - p[0]), dy = Math.abs(q[1] - p[1]), L = Math.hypot(dx, dy);
         totalLen += L; if (Math.min(dx, dy) < 0.05) axisLen += L;
       }
     }
-    if (b.isVoid) return;
+  }
+  rectPct = totalLen > 0 ? 100 * axisLen / totalLen : 100;
+}
 
-    // the anchor climbs inside the largest sub-cell, never leaves the union
-    let bigI = subIdx[0];
-    for (const i of subIdx) if (solved.diagram.areas[i] > solved.diagram.areas[bigI]) bigI = i;
-    const bigPts = cells[bigI].pts;
-    let sx = 0, sy = 0; for (const p of bigPts) { sx += p[0]; sy += p[1]; }
+function render() {
+  ctx.clearRect(0, 0, W, H);
+  const halfGap = config.gap / 2;
+  const anchorK = 1 - Math.exp(-9 / 60);
+
+  // A field's members: ordinary cells of an ordinary power diagram, whose
+  // domain happens to be a rectangle. Their shared edges are Voronoi
+  // bisectors; their outer edges are the field's border, because that is
+  // where the domain ends.
+  const drawMembers = (b, fade) => {
+    const g = Math.max(1.5, config.gap * 0.4);
+    b.members.forEach((m, i) => {
+      const c = b.inner.cells[i];
+      if (!c || c.pts.length < 3) return;
+      const loop = simplifyLoop(c.pts);
+      if (loop.length < 3) return;
+      const raw = inscribedPole(loop, m.x, m.y);
+      const pts = insetPolygon(loop, Math.min(g / 2, 0.42 * raw.r));
+      if (pts.length < 3) return;
+      const pole = inscribedPole(pts, raw.x, raw.y);
+      const r = Math.min(config.cornerRadius * 0.65, pole.r * 0.8);
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const p of pts) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
+
+      ctx.save();
+      roundedPath(ctx, pts, r); ctx.clip();
+      const grad = ctx.createLinearGradient(x0, y0, x1, y1);
+      grad.addColorStop(0, shade(m.color, -8));
+      grad.addColorStop(1, shade(m.color, -60));
+      ctx.globalAlpha = (0.58 + 0.34 * b.hoverMix) * fade;
+      ctx.fillStyle = grad;
+      ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+      ctx.restore();
+
+      ctx.save();
+      roundedPath(ctx, pts, r); ctx.clip();
+      ctx.globalAlpha = fade;
+      roundedPath(ctx, pts, r);
+      ctx.strokeStyle = `rgba(255,255,255,${0.12 + 0.2 * b.hoverMix})`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+
+      if (pole.r > 17) {
+        ctx.save();
+        ctx.globalAlpha = 0.22 * fade;
+        ctx.fillStyle = '#fff';
+        ctx.font = `700 ${Math.round(pole.r * 0.8)}px system-ui, sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(String(i + 1), pole.x, pole.y);
+        ctx.restore();
+      }
+    });
+  };
+
+  const drawBody = (b) => {
+    const visible = b.loops;
+    if (!visible || !visible.length || b.isVoid || b.bigSeed < 0) return;
+    const bigPts = solved.diagram.cells[b.bigSeed].pts;
+    let sx = 0, sy = 0;
+    for (const p of bigPts) { sx += p[0]; sy += p[1]; }
     sx /= bigPts.length || 1; sy /= bigPts.length || 1;
 
     const hv = b.hoverMix;
-    // one gradient across the whole body, so a piece that does get drawn
-    // separately shares its shading and never reads as a second element
+    const isField = !!(b.inner && b.members.length);
+    const fade = Math.max(0, Math.min(1, (b.claim - CLAIM_MIN) / 0.14));
     let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
     for (const l of visible) for (const p of l) { bx0 = Math.min(bx0, p[0]); by0 = Math.min(by0, p[1]); bx1 = Math.max(bx1, p[0]); by1 = Math.max(by1, p[1]); }
     let poleR = 0, anchored = false;
+
     for (const loop of visible) {
       const rawPole = inscribedPole(loop, sx, sy);
       // A locked element cannot reflow its neighbours on hover — a real page
@@ -1249,17 +1436,19 @@ function render() {
         b.anchorY += (pole.y - b.anchorY) * anchorK;
         poleR = pole.r; anchored = true;
       }
-      const fade = Math.max(0, Math.min(1, (b.claim - CLAIM_MIN) / 0.14));
 
       ctx.save();
       roundedPath(ctx, pts, config.cornerRadius);
-      ctx.clip();
-      const grad = ctx.createLinearGradient(bx0, by0, bx1, by1);
-      grad.addColorStop(0, shade(b.color, -14));
-      grad.addColorStop(1, shade(b.color, -68));
-      ctx.globalAlpha = (0.52 + 0.38 * hv) * fade;
-      ctx.fillStyle = grad;
-      ctx.fillRect(bx0, by0, bx1 - bx0, by1 - by0);
+      ctx.clip();                       // the field's rigid border, in one line
+      if (isField) drawMembers(b, fade);
+      else {
+        const grad = ctx.createLinearGradient(bx0, by0, bx1, by1);
+        grad.addColorStop(0, shade(b.color, -14));
+        grad.addColorStop(1, shade(b.color, -68));
+        ctx.globalAlpha = (0.52 + 0.38 * hv) * fade;
+        ctx.fillStyle = grad;
+        ctx.fillRect(bx0, by0, bx1 - bx0, by1 - by0);
+      }
       ctx.restore();
 
       ctx.save();
@@ -1267,21 +1456,21 @@ function render() {
       ctx.clip();
       ctx.globalAlpha = fade;
       roundedPath(ctx, pts, config.cornerRadius);
-      ctx.strokeStyle = `rgba(255,255,255,${0.16 + 0.5 * hv})`;
+      ctx.strokeStyle = `rgba(255,255,255,${(isField ? 0.10 : 0.16) + 0.5 * hv})`;
       ctx.lineWidth = (1 + hv * 2.4) * 2;
       if (hv > 0.02) { ctx.shadowColor = `rgba(255,255,255,${0.45 * hv})`; ctx.shadowBlur = 16 * hv; }
       ctx.stroke();
       ctx.restore();
     }
 
-    if (anchored && poleR > 20) {
+    if (!isField && anchored && poleR > 20) {
       ctx.save();
-      ctx.globalAlpha = 0.16;
+      ctx.globalAlpha = 0.16 * fade;
       ctx.fillStyle = '#fff';
       ctx.font = `700 ${Math.round(poleR * 1.4)}px system-ui, sans-serif`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(String(b.id + 1), b.anchorX, b.anchorY);
-      ctx.globalAlpha = 0.55 + 0.45 * hv;
+      ctx.globalAlpha = (0.55 + 0.45 * hv) * fade;
       ctx.font = `500 ${Math.max(11, Math.min(14, poleR * 0.24))}px system-ui, sans-serif`;
       ctx.fillText(b.name, b.anchorX, b.anchorY + poleR * 0.62);
       ctx.restore();
@@ -1291,7 +1480,6 @@ function render() {
   let hovered = null;
   for (const b of bodies) { if (b.id === hoveredId) hovered = b; else drawBody(b); }
   if (hovered) drawBody(hovered);
-  rectPct = totalLen > 0 ? 100 * axisLen / totalLen : 100;
 }
 
 /* --------------------------------------------------------------- I/O */
@@ -1369,6 +1557,11 @@ bindSlider('count', v => {
 bindSlider('gap', v => { config.gap = v; document.getElementById('gapVal').textContent = v; });
 bindSlider('corner', v => { config.cornerRadius = v; document.getElementById('cornerVal').textContent = v; });
 bindSlider('hover', v => { config.hoverBoost = v / 100; document.getElementById('hoverVal').textContent = (v / 100).toFixed(1) + '×'; });
+bindSlider('fields', v => {
+  config.fieldDensity = v / 100;
+  document.getElementById('fieldsVal').textContent = v;
+  enterScene(config.scene);
+});
 bindSlider('swirl', v => { config.swirl = v / 100; document.getElementById('swirlVal').textContent = v; });
 bindSlider('stagger', v => { config.stagger = v / 100; document.getElementById('staggerVal').textContent = '.' + String(v).padStart(2, '0') + 's'; });
 document.getElementById('add').addEventListener('click', () => {
