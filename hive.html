@@ -169,7 +169,12 @@ function clipHalfPlane(poly, ax, ay, b, lab) {
 // once no remaining seed's bisector can reach it. The bisector toward j sits
 // at d/2 + (w_i - w_j)/(2d) from s_i — a provable bound, so the output is
 // identical to the all-pairs version (areas agree to 1e-10 px²), just faster.
-function computeDiagram(seeds, weights, boundsPts) {
+// A NON-CONVEX domain (a field whose border a shard has pushed through, a
+// travelling blob) arrives triangulated: each cell is clipped to the convex
+// bounds as before, then to every triangle, and the pieces are summed. The
+// theorem never asked for convexity — it integrates a lower envelope over
+// whatever region it is given — only the clipper did.
+function computeDiagram(seeds, weights, boundsPts, tris) {
   const n = seeds.length;
   const cells = new Array(n);
   const areas = new Float64Array(n);
@@ -224,9 +229,101 @@ function computeDiagram(seeds, weights, boundsPts) {
       }
     }
     if (poly.pts.length < 3) { cells[i] = { pts: [], labs: [] }; areas[i] = 0; }
-    else { cells[i] = poly; areas[i] = Math.abs(ringArea(poly.pts)); }
+    else if (!tris) { cells[i] = poly; areas[i] = Math.abs(ringArea(poly.pts)); }
+    else {
+      const pieces = [];
+      let a = 0;
+      for (const tri of tris) {
+        let q = poly;
+        for (let e = 0; e < 3 && q.pts.length >= 3; e++) q = clipHalfPlane(q, tri[e].ax, tri[e].ay, tri[e].b, WALL_TRI);
+        if (q.pts.length >= 3) { pieces.push(q); a += Math.abs(ringArea(q.pts)); }
+      }
+      if (!pieces.length) { cells[i] = { pts: [], labs: [], pieces }; areas[i] = 0; }
+      else { const o = unionOutline(pieces); cells[i] = { pts: o.pts, labs: o.labs, pieces }; areas[i] = a; }
+    }
   }
   return { cells, areas };
+}
+
+const WALL_TRI = -1000;   // label of an edge cut by a domain triangle: a wall, or a seam between two pieces
+
+// Ear-clip a simple polygon into triangles, each as three inward half-planes
+// in clipHalfPlane's form (ax*x + ay*y <= b). Null if the polygon is not
+// simple enough to clip — the caller then falls back to its convex bounds.
+function triangulate(poly) {
+  const n = poly.length;
+  if (n < 3) return null;
+  const o = ringArea(poly) > 0 ? 1 : -1;
+  const cross = (a, b, c) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+  const inTri = (p, a, b, c) => o * cross(a, b, p) >= -1e-9 && o * cross(b, c, p) >= -1e-9 && o * cross(c, a, p) >= -1e-9;
+  const idx = poly.map((_, i) => i);
+  const tris = [];
+  let guard = 0;
+  while (idx.length > 3 && guard++ < 4 * n) {
+    let found = false;
+    for (let k = 0; k < idx.length; k++) {
+      const m = idx.length;
+      const i0 = idx[(k + m - 1) % m], i1 = idx[k], i2 = idx[(k + 1) % m];
+      const a = poly[i0], b = poly[i1], c = poly[i2];
+      if (o * cross(a, b, c) <= 1e-9) continue;                 // reflex or flat: not an ear
+      let ok = true;
+      for (const j of idx) {
+        if (j === i0 || j === i1 || j === i2) continue;
+        if (inTri(poly[j], a, b, c)) { ok = false; break; }
+      }
+      if (!ok) continue;
+      tris.push([a, b, c]); idx.splice(k, 1); found = true; break;
+    }
+    if (!found) return null;
+  }
+  if (idx.length === 3) tris.push([poly[idx[0]], poly[idx[1]], poly[idx[2]]]);
+  return tris.map(t => {
+    const hp = [];
+    for (let e = 0; e < 3; e++) {
+      const p = t[e], q = t[(e + 1) % 3];
+      hp.push({ ax: o * (q[1] - p[1]), ay: -o * (q[0] - p[0]), b: o * ((q[1] - p[1]) * p[0] - (q[0] - p[0]) * p[1]) });
+    }
+    return hp;
+  });
+}
+
+// The outline of a union of pieces that share edges exactly (pieces of one
+// cell cut by a triangulation): drop every edge whose reverse is also present,
+// chain the rest into loops, keep the labels. Returns the largest loop.
+function unionOutline(pieces) {
+  const edges = [];
+  for (const { pts, labs } of pieces) {
+    for (let k = 0, m = pts.length; k < m; k++) edges.push({ a: pts[k], b: pts[k + 1 === m ? 0 : k + 1], lab: labs[k], dead: false });
+  }
+  const same = (p, q) => Math.abs(p[0] - q[0]) < 1e-5 && Math.abs(p[1] - q[1]) < 1e-5;
+  for (let i = 0; i < edges.length; i++) {
+    if (edges[i].dead) continue;
+    for (let j = i + 1; j < edges.length; j++) {
+      if (edges[j].dead) continue;
+      if (same(edges[i].a, edges[j].b) && same(edges[i].b, edges[j].a)) { edges[i].dead = edges[j].dead = true; break; }
+    }
+  }
+  let best = null, bestA = -1;
+  for (const e0 of edges) {
+    if (e0.dead) continue;
+    const pts = [e0.a], labs = [e0.lab];
+    let cur = e0; cur.dead = true;
+    for (let guard = 0; guard < edges.length; guard++) {
+      let next = null, bd = 1e-3;
+      for (const e of edges) {
+        if (e.dead) continue;
+        const d = Math.hypot(e.a[0] - cur.b[0], e.a[1] - cur.b[1]);
+        if (d < bd) { bd = d; next = e; }
+      }
+      if (!next) break;
+      next.dead = true;
+      pts.push(next.a); labs.push(next.lab);
+      cur = next;
+      if (Math.hypot(cur.b[0] - e0.a[0], cur.b[1] - e0.a[1]) < 1e-3) break;
+    }
+    if (pts.length >= 3) { const a = Math.abs(ringArea(pts)); if (a > bestA) { bestA = a; best = { pts, labs }; } }
+  }
+  return best || { pts: [], labs: [] };
 }
 
 function buildJacobian(diagram, seeds) {
@@ -234,14 +331,16 @@ function buildJacobian(diagram, seeds) {
   const A = [];
   for (let i = 0; i < n; i++) A.push(new Float64Array(n));
   for (let i = 0; i < n; i++) {
-    const { pts, labs } = diagram.cells[i];
-    for (let k = 0, m = pts.length; k < m; k++) {
-      const j = labs[k];
-      if (j < 0) continue;
-      const p = pts[k], q = pts[k + 1 === m ? 0 : k + 1];
-      const L = Math.hypot(q[0] - p[0], q[1] - p[1]);
-      const d = Math.hypot(seeds[j][0] - seeds[i][0], seeds[j][1] - seeds[i][1]);
-      A[i][j] -= L / (2 * d);
+    const parts = diagram.cells[i].pieces || [diagram.cells[i]];
+    for (const { pts, labs } of parts) {
+      for (let k = 0, m = pts.length; k < m; k++) {
+        const j = labs[k];
+        if (j < 0) continue;
+        const p = pts[k], q = pts[k + 1 === m ? 0 : k + 1];
+        const L = Math.hypot(q[0] - p[0], q[1] - p[1]);
+        const d = Math.hypot(seeds[j][0] - seeds[i][0], seeds[j][1] - seeds[i][1]);
+        A[i][j] -= L / (2 * d);
+      }
     }
   }
   for (let i = 0; i < n; i++) {
@@ -291,7 +390,9 @@ function solveWeights(seeds, targets, boundsPts, w0, opts = {}) {
   const n = seeds.length;
   const tol = opts.tol !== undefined ? opts.tol : 1e-6;
   const maxIter = opts.maxIter !== undefined ? opts.maxIter : 50;
-  const domainArea = Math.abs(ringArea(boundsPts));
+  // opts.domain: a simple polygon inside boundsPts to solve on instead
+  const tris = opts.domain ? triangulate(opts.domain) : null;
+  const domainArea = Math.abs(ringArea(tris ? opts.domain : boundsPts));
 
   let tSum = 0;
   for (const t of targets) {
@@ -302,7 +403,7 @@ function solveWeights(seeds, targets, boundsPts, w0, opts = {}) {
 
   let w = w0 ? Float64Array.from(w0) : new Float64Array(n);
   let evals = 0;
-  let diag = computeDiagram(seeds, w, boundsPts); evals++;
+  let diag = computeDiagram(seeds, w, boundsPts, tris); evals++;
   if (w0 && minOf(diag.areas) <= 0) {
     // Stale warm start: some seed's old weight leaves it no cell. Rather than
     // discard everyone's warm weights (a cold solve, 5-6 iterations), lift
@@ -322,10 +423,10 @@ function solveWeights(seeds, targets, boundsPts, w0, opts = {}) {
       lifted[i] = isFinite(wl) ? wl : 0;
     }
     for (const i of empties) w[i] = lifted[i];
-    diag = computeDiagram(seeds, w, boundsPts); evals++;
+    diag = computeDiagram(seeds, w, boundsPts, tris); evals++;
     if (minOf(diag.areas) <= 0) {                  // still empty: the true cold restart
       w = new Float64Array(n);
-      diag = computeDiagram(seeds, w, boundsPts); evals++;
+      diag = computeDiagram(seeds, w, boundsPts, tris); evals++;
     }
   }
 
@@ -353,7 +454,7 @@ function solveWeights(seeds, targets, boundsPts, w0, opts = {}) {
     for (let bt = 0; bt < 40 && !accepted; bt++, t /= 2) {
       const wt = new Float64Array(n);
       for (let i = 0; i < n; i++) wt[i] = w[i] + t * dw[i];
-      const dt = computeDiagram(seeds, wt, boundsPts); evals++;
+      const dt = computeDiagram(seeds, wt, boundsPts, tris); evals++;
       let gnT = 0, mn = Infinity;
       for (let i = 0; i < n; i++) {
         const gi = tgt[i] - dt.areas[i];
@@ -376,7 +477,7 @@ function solveWeights(seeds, targets, boundsPts, w0, opts = {}) {
   mean /= n;
   for (let i = 0; i < n; i++) w[i] -= mean;
 
-  return { weights: w, iterations: iter, evals, maxRelErr: maxRel, converged, diagram: diag };
+  return { weights: w, iterations: iter, evals, maxRelErr: maxRel, converged, diagram: diag, nonConvex: !!tris };
 }
 
 
@@ -723,7 +824,8 @@ function rasterCheck(cells, W, H) {
 const CLAIM_MIN = 0.02;
 const SEED_MARGIN = 10;
 const SEED_MIN_SEP = 5;
-const ACTIVE_MIN = 0.12;   // a seed joins the field once it is worth this much of a lattice cell
+const ACTIVE_MIN = 0.12;   // a lattice seed joins the field once it is worth this much of a slot
+const EXTRA_MIN = 0.02;    // a pressing member's page seed joins at this much: too small to see appear
 const MAX_DEPTH = 2;       // page > field > field-in-a-field; enough to prove the recursion
 const MAX_MEMBERS = 9;     // the largest roster a field shows
 
@@ -774,6 +876,38 @@ function assignStations(points, stations) {
   return gotS;
 }
 
+// Inset an outline by d without letting a feature shorter than d turn
+// inside out: an inset edge that runs against its original is a collapsed
+// feature, so drop it from the source and inset again. Then reduce the
+// result to its real corners. Small shards need this; rectangles never do.
+function insetClean(pts, d) {
+  let src = simplifyLoop(pts, 1.5, 0.02);
+  for (let iter = 0; iter < 8 && src.length >= 3; iter++) {
+    const out = insetPolygon(src, d);
+    if (out.length !== src.length) return simplifyLoop(out, 1.0, 0.01);
+    let flipped = -1;
+    for (let k = 0; k < src.length; k++) {
+      const k1 = (k + 1) % src.length;
+      const dot = (out[k1][0] - out[k][0]) * (src[k1][0] - src[k][0]) + (out[k1][1] - out[k][1]) * (src[k1][1] - src[k][1]);
+      if (dot < 0) { flipped = k; break; }
+    }
+    if (flipped < 0) return simplifyLoop(out, 1.0, 0.01);
+    src = src.filter((_, k) => k !== flipped && k !== (flipped + 1) % src.length);
+  }
+  return [];
+}
+
+// The domain a field hands its hive: its outline inset by the padding,
+// provided the result is a polygon the clipper can triangulate; failing
+// that, a smaller padding; failing that, the plain content box.
+function domainFor(cell, pad, box) {
+  for (const d of [pad, pad / 2, 0]) {
+    const poly = d > 0 ? insetClean(cell, d) : simplifyLoop(cell, 1.5, 0.02);
+    if (poly.length >= 3 && Math.abs(ringArea(poly)) > 0.5 * Math.abs(ringArea(cell)) && triangulate(poly)) return poly;
+  }
+  return box;
+}
+
 class Hive {
   constructor(opts = {}) {
     this.depth = opts.depth || 0;
@@ -791,6 +925,8 @@ class Hive {
     this.PW = this.W / this.COLS; this.PH = this.H / this.ROWS;
     this.ox = 0; this.oy = 0;                      // origin in the parent's px
     this.absX = 0; this.absY = 0;                  // origin in canvas px
+    this.domainPoly = null;                        // the cell this hive lives in, when not a rectangle
+    this.domainSig = '';
     this.stable = true;                            // false while the cell this hive lives in is liquid
     this.dormant = false;                          // too small to run this frame
     this.layoutAt = -1;                            // time a re-layout was requested, or -1
@@ -898,6 +1034,7 @@ class Hive {
       // cells, a card does not. The Fields slider sets how many are galleries.
       kindRoll: hash01(k, 21),
       hive: null,                 // a field: the hive living inside this cell
+      extras: [],                 // a field's pressing members, bidding in THIS auction
       loops: null, bigSeed: -1,   // this frame's simplified union outline
 
       hoverMix: 0,
@@ -1099,9 +1236,11 @@ class Hive {
         ay = (py + Math.cos(t * 0.5 + k * 2.3) * wob - b.y) * k1 - b.vy * k2;
       } else {
         // free drift: wander + weak centering + soft Lloyd toward its own
-        // cell's pole — the hive reading its field. A field's members drift
-        // calmer than the page: alive, not restless.
-        const calm = this.style.calm;
+        // cell's pole — the hive reading its field.
+        // A field's members drift calmer than the page: alive, not restless.
+        // A hovered one holds still — you are holding it, and the shard it
+        // pushes through the border should not wander out from under you.
+        const calm = this.style.calm * (1 - b.hoverMix);
         b.wanderPhase += (Math.sin(t * 0.7 + k * 2.1) + Math.sin(t * 1.31 + k * 0.73)) * 0.9 * dt;
         ax = Math.cos(b.wanderPhase) * 46 * calm - b.vx * 1.4;
         ay = Math.sin(b.wanderPhase) * 46 * calm - b.vy * 1.4;
@@ -1147,9 +1286,19 @@ class Hive {
   // field once the crystal fraction has spread them past the minimum.
   enforcePreconditions() {
     const bodies = this.bodies, drag = this.drag, W = this.W, H = this.H;
+    const poly = this.domainPolyActive();
+    let cx = W / 2, cy = H / 2;
+    if (poly) { cx = 0; cy = 0; for (const p of poly) { cx += p[0]; cy += p[1]; } cx /= poly.length; cy /= poly.length; }
     for (const b of bodies) {
       b.x = Math.min(W - SEED_MARGIN, Math.max(SEED_MARGIN, b.x));
       b.y = Math.min(H - SEED_MARGIN, Math.max(SEED_MARGIN, b.y));
+      if (poly && !pointInPolygon(b.x, b.y, poly)) {
+        // the box is not the domain: a body in a corner the cell does not
+        // reach walks back toward the middle until it is inside
+        for (let k = 0; k < 6 && !pointInPolygon(b.x, b.y, poly); k++) { b.x += (cx - b.x) * 0.5; b.y += (cy - b.y) * 0.5; }
+        if (!pointInPolygon(b.x, b.y, poly)) { b.x = cx; b.y = cy; }
+        b.vx *= 0.5; b.vy *= 0.5;
+      }
     }
     for (let i = 0; i < bodies.length; i++) {
       for (let j = i + 1; j < bodies.length; j++) {
@@ -1192,6 +1341,7 @@ class Hive {
   placeSeeds() {
     const crystal = this.crystal;
     for (const b of this.bodies) {
+      this.placePressure(b);
       const n = b.subs.length;
       // hover only reshapes the field while the page is liquid; a locked
       // element lights up instead of reflowing its neighbours
@@ -1202,14 +1352,65 @@ class Hive {
         const s = b.subs[i];
         s.x = b.x + b.offs[i][0] * crystal;
         s.y = b.y + b.offs[i][1] * crystal;
-        s.claim = b.claim * hover * (i === b.core ? coreShare : otherShare) / n;
+        // A lattice seed joins the field only once the crystal has spread it
+        // a real distance from the core. Its floor share scales with the
+        // body's claim, so a big claim melted into a small formation could
+        // otherwise push a seed over the entry gate while it still sits on
+        // the core — two coincident seeds, two identical cells, an overlap.
+        const spread = i === b.core ? Infinity : crystal * Math.hypot(b.offs[i][0], b.offs[i][1]);
+        s.claim = spread >= SEED_MIN_SEP ? b.claim * hover * (i === b.core ? coreShare : otherShare) / n : 0;
       }
+    }
+  }
+
+  // PRESSURE. A field's border is a fact of this auction, not a wall: a
+  // member asking for more than its rest share (hover, drag) bids for the
+  // extra HERE too, as one more seed of its field, placed where the member
+  // is. Inside the field that seed's cell is a seam and invisible. Where it
+  // reaches the border it carries straight on — a shard eating into the
+  // neighbour, whose straight edge is cut around it by a true bisector, the
+  // areas exact, and the field's interior re-tiled into the new shape by
+  // its own auction. Only an organic interior presses; a locked grid inside
+  // lifts on hover the way the page does.
+  placePressure(b) {
+    const h = b.hive;
+    const kids = h && !h.dormant && h.crystal === 0 && this.crystal === 1 ? h.bodies.filter(m => !m.isVoid && !m.leaving) : [];
+    b.extras = [];
+    if (!kids.length) return;
+    let sum = 0;
+    for (const m of kids) sum += m.claim;
+    const slots = b.offs.length;
+    for (const m of kids) {
+      const want = m.hoverMix * (config.hoverBoost - 1) * (m.claim / sum) * slots;
+      if (want < EXTRA_MIN) { if (m.pageSub) m.pageSub.live = false; continue; }
+      if (!m.pageSub) m.pageSub = Object.assign(makeSub(b, 0, 0), { extra: true, live: false });
+      const s = m.pageSub;
+      s.x = h.ox + m.x; s.y = h.oy + m.y; s.claim = want;
+      // never coincide with one of the field's own lattice seeds
+      for (const f of b.subs) if (Math.abs(f.x - s.x) < 0.5 && Math.abs(f.y - s.y) < 0.5) { s.x += 0.7; s.y += 0.4; }
+      if (!s.live) {
+        // entering the auction: start at the weight that gives a cell of
+        // about the right size next to the nearest lattice seed, so the
+        // solve continues warm instead of lifting a cold seed
+        let near = null, nd = Infinity;
+        for (const f of b.subs) { const d = Math.hypot(f.x - s.x, f.y - s.y); if (d < nd) { nd = d; near = f; } }
+        const r = Math.sqrt(want * this.PW * this.PH / Math.PI);
+        s.w = near ? near.w + 2 * nd * r - nd * nd : 0;
+        s.live = true;
+      }
+      b.extras.push(s);
     }
   }
 
   // --- the solve --------------------------------------------------------
 
-  domainPts() { return [[0, 0], [this.W, 0], [this.W, this.H], [0, this.H]]; }
+  domainPts() {
+    const poly = this.domainPolyActive();
+    let x0 = 0, y0 = 0, x1 = this.W, y1 = this.H;
+    if (poly) for (const p of poly) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
+    return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+  }
+  domainPolyActive() { return this.crystal === 0 && this.domainPoly ? this.domainPoly : null; }
 
   // One solve, warm, exact; skipped when nothing moved. Only seeds worth
   // something enter the field. While the page is liquid a body's lattice
@@ -1218,12 +1419,13 @@ class Hive {
   // interior to its own body, where the seam hides it.
   solve() {
     const subs = [];
-    for (const b of this.bodies) for (const s of b.subs) subs.push(s);
-    const active = subs.filter(s => s.claim >= ACTIVE_MIN);
+    for (const b of this.bodies) { for (const s of b.subs) subs.push(s); for (const s of b.extras) subs.push(s); }
+    const active = subs.filter(s => s.claim >= (s.extra ? EXTRA_MIN : ACTIVE_MIN));
     if (active.length < 2) { this.solved = null; this.solvedSubs = []; this.ownerOf = []; this.lastSig = null; return; }
     const seeds = active.map(s => [s.x, s.y]);
     const claims = active.map(s => s.claim);
-    let sig = active.length + '|';
+    const domain = this.domainPolyActive();
+    let sig = active.length + '|' + (this.W * 8 | 0) + 'x' + (this.H * 8 | 0) + '|' + (domain ? this.domainSig : '') + '|';
     for (let i = 0; i < active.length; i++) sig += (seeds[i][0] * 8 | 0) + ',' + (seeds[i][1] * 8 | 0) + ',' + (claims[i] * 1e4 | 0) + ';';
     if (sig === this.lastSig && this.solved && this.solved.converged) return;
     const t0 = performance.now();
@@ -1232,7 +1434,7 @@ class Hive {
     // frames of small area error (the meter shows it) instead of one 60 ms
     // frame. The diagram is watertight at every step regardless; at rest
     // this converges to 1e-6 within a frame or two and then costs nothing.
-    const sol = solveWeights(seeds, claims, this.domainPts(), active.map(s => s.w), { maxIter: 2 });
+    const sol = solveWeights(seeds, claims, this.domainPts(), active.map(s => s.w), { maxIter: 2, domain });
     this.solveMs = performance.now() - t0;
     this.lastIters = sol.iterations;
     active.forEach((s, i) => { s.w = sol.weights[i]; });
@@ -1245,25 +1447,42 @@ class Hive {
   // --- the frame --------------------------------------------------------
 
   // The parent calls this with the cell this hive lives in, every frame.
-  fit(ox, oy, w, h, stable, parentAbsX, parentAbsY) {
-    this.ox = ox; this.oy = oy;
-    this.absX = parentAbsX + ox; this.absY = parentAbsY + oy;
+  // The parent hands over the cell this hive lives in, as a polygon in the
+  // parent's px (already inset by the padding). A rectangle is the plain
+  // domain; anything else — a travelling blob, a border with a shard
+  // through it — is the solve's non-convex domain, exact, when the interior
+  // is organic. A grid inside stretches to the box instead and the parent's
+  // border clips it: rectangles cannot follow a curve, and need not.
+  // frame: [x, y, w, h], the box this hive's coordinates live in — the
+  // content box of its rectangle once the page is locked, the outline's box
+  // while it travels. poly: the domain, which may reach OUTSIDE the frame
+  // when a shard has pushed through the border; the frame does not follow
+  // it, so nothing inside shifts when the border yields.
+  fit(frame, poly, stable, parentAbsX, parentAbsY) {
+    const [x0, y0, w, h] = frame;
+    this.ox = x0; this.oy = y0;
+    this.absX = parentAbsX + x0; this.absY = parentAbsY + y0;
     this.stable = stable;
     if (Math.abs(w - this.W) > 1e-9 || Math.abs(h - this.H) > 1e-9) this.setSize(w, h);
+    const isRect = poly.length === 4 && poly.every(p => (Math.abs(p[0] - x0) < 1e-6 || Math.abs(p[0] - x0 - w) < 1e-6) && (Math.abs(p[1] - y0) < 1e-6 || Math.abs(p[1] - y0 - h) < 1e-6));
+    if (isRect) { this.domainPoly = null; this.domainSig = ''; return; }
+    this.domainPoly = poly.map(p => [p[0] - x0, p[1] - y0]);
+    let sig = '';
+    for (const p of this.domainPoly) sig += (p[0] * 8 | 0) + ',' + (p[1] * 8 | 0) + ';';
+    this.domainSig = sig;
   }
 
-  // A field's cell this frame, as [x, y, w, h] in this hive's px: the exact
-  // rectangle once locked, else the bounding box of its outline.
-  cellBox(b) {
-    if (this.crystal === 1 && b.rect && b.progress >= 0.999) {
-      return [b.rect[0] * this.PW, b.rect[1] * this.PH, (b.rect[2] - b.rect[0]) * this.PW, (b.rect[3] - b.rect[1]) * this.PH];
+  // A field's cell this frame, as a polygon in this hive's px: the exact
+  // rectangle once locked and unpressed, else its outline.
+  cellPoly(b) {
+    if (this.crystal === 1 && b.rect && b.progress >= 0.999 && !b.extras.length) {
+      const x0 = b.rect[0] * this.PW, y0 = b.rect[1] * this.PH, x1 = b.rect[2] * this.PW, y1 = b.rect[3] * this.PH;
+      return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
     }
     if (!b.loops || !b.loops.length) return null;
     let big = b.loops[0], bigA = Math.abs(ringArea(big));
     for (const l of b.loops) { const a = Math.abs(ringArea(l)); if (a > bigA) { bigA = a; big = l; } }
-    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (const p of big) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
-    return [x0, y0, x1 - x0, y1 - y0];
+    return big;
   }
 
   step(dt, t) {
@@ -1305,22 +1524,33 @@ class Hive {
     // field looks at it, and a field cannot reshape the cell it lives in.
     for (const b of this.bodies) {
       if (!b.hive) continue;
-      const box = this.cellBox(b);
-      if (!box) { b.hive.dormant = true; continue; }
+      const cell = this.cellPoly(b);
+      if (!cell) { b.hive.dormant = true; continue; }
+      // the frame: the rectangle's own box once locked, else the outline's
+      const locked = this.crystal === 1 && b.rect && b.progress >= 0.999;
+      let x0, y0, x1, y1;
+      if (locked) { x0 = b.rect[0] * this.PW; y0 = b.rect[1] * this.PH; x1 = b.rect[2] * this.PW; y1 = b.rect[3] * this.PH; }
+      else {
+        x0 = Infinity; y0 = Infinity; x1 = -Infinity; y1 = -Infinity;
+        for (const p of cell) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
+      }
       // the box model, literally: border, then padding, then the content
       // box — and the content box is the hive inside's whole world
-      const pad = Math.min(config.gap * this.style.gap, box[2] / 6, box[3] / 6);
-      const w = box[2] - 2 * pad, h = box[3] - 2 * pad;
-      if (w < 48 || h < 48) { b.hive.dormant = true; continue; }
+      const pad = Math.min(config.gap * this.style.gap, (x1 - x0) / 6, (y1 - y0) / 6);
+      if (x1 - x0 - 2 * pad < 48 || y1 - y0 - 2 * pad < 48) { b.hive.dormant = true; continue; }
+      const frame = [x0 + pad, y0 + pad, x1 - x0 - 2 * pad, y1 - y0 - 2 * pad];
+      const box = [[frame[0], frame[1]], [frame[0] + frame[2], frame[1]], [frame[0] + frame[2], frame[1] + frame[3]], [frame[0], frame[1] + frame[3]]];
+      const dom = (cell.length !== 4 || !locked || b.extras.length) ? domainFor(cell, pad, box) : box;
       b.hive.dormant = false;
-      b.hive.fit(box[0] + pad, box[1] + pad, w, h, this.crystal === 1, this.absX, this.absY);
+      b.hive.fit(frame, dom, this.crystal === 1, this.absX, this.absY);
       b.hive.step(dt, t);
     }
   }
 
   // Hit-test in this hive's px: the bid run backward on this frame's truth.
   hitTest(x, y) {
-    if (!this.solved || x < 0 || y < 0 || x > this.W || y > this.H) return -1;
+    if (!this.solved) return -1;
+    if (!this.domainPoly && (x < 0 || y < 0 || x > this.W || y > this.H)) return -1;
     let best = Infinity, id = -1;
     const subs = this.solvedSubs, w = this.solved.weights;
     for (let i = 0; i < subs.length; i++) {
@@ -1581,7 +1811,7 @@ function resize() {
   canvas.width = W * dpr; canvas.height = H * dpr;
   canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  root.fit(0, 0, W, H, true, 0, 0);
+  root.fit([0, 0, W, H], [[0, 0], [W, 0], [W, H], [0, H]], true, 0, 0);
 }
 
 function pointerPos(e) {
