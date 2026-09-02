@@ -1535,9 +1535,9 @@ class Hive {
   // not negotiate with the page — there are no two sides here. Its shard
   // grows from the corners where its own cell meets the field's edge, and
   // only from there: the side walls are its sibling bisectors, continued
-  // straight through the edge; the front is a depth, the field's rectangle
-  // pushed out by h, faceted by the neighbours' bisectors where they come
-  // closer — true Voronoi facets, at frozen weights, nobody bidding back.
+  // straight through the edge; the front is the neighbours' bisectors at
+  // frozen weights — true Voronoi facets, nobody bidding back — bounded by
+  // a depth, the field's rectangle pushed out by h.
   // Nothing may cut across the attachment: a member that touches the edge
   // encroaches along its whole contact, never bursts out of part of it.
   // The rectangle yields by difference; its claim stays exact underneath;
@@ -1571,27 +1571,28 @@ class Hive {
         // slider's full boost
         const depth = m.hoverMix * (config.hoverBoost - 1) * 0.5 * Math.sqrt(h.solved.diagram.areas[i]);
         if (!(depth > 0.05)) continue;
-        // the contact: the cell's wall edges. No contact, no shard — and the
-        // weight at which every neighbour's bisector clears the whole contact,
-        // so no facet can ever cut across it
-        let touches = false, Wedge = -Infinity;
+        // the contact: the cell's wall edges. No contact, no shard. The
+        // member's weight is the least that wins every point of the band
+        // half a depth out from the whole contact, so no facet can cut across
+        // the attachment, while the facets still show between half the depth
+        // and the front — tilted where the neighbours sit off-axis, which is
+        // what makes it read as a cell and not as a rectangle pushed out.
+        let touches = false, Wm = -Infinity;
         for (let k = 0, n = cell.pts.length; k < n; k++) {
           if (cell.labs[k] >= 0) continue;
           touches = true;
           const p = cell.pts[k], q = cell.pts[k + 1 === n ? 0 : k + 1];
+          const onX = Math.abs(p[0] - q[0]) < 1e-6;                       // a vertical wall
+          const nx = onX ? (p[0] < h.W / 2 ? -1 : 1) : 0, ny = onX ? 0 : (p[1] < h.H / 2 ? -1 : 1);
           for (let t = 0; t <= 8; t++) {
-            const u = t / 8, x = h.ox + p[0] + (q[0] - p[0]) * u, y = h.oy + p[1] + (q[1] - p[1]) * u;
-            let bid = Infinity;
-            for (const k2 of beyondIdx) { const dx = x - subs[k2].x, dy = y - subs[k2].y; const v = dx * dx + dy * dy - w[k2]; if (v < bid) bid = v; }
-            if (bid === Infinity) continue;
-            const v = (x - sx) * (x - sx) + (y - sy) * (y - sy) - bid;
-            if (v > Wedge) Wedge = v;
+            const u = t / 8;
+            const x = h.ox + p[0] + (q[0] - p[0]) * u + nx * 0.5 * depth, y = h.oy + p[1] + (q[1] - p[1]) * u + ny * 0.5 * depth;
+            const mine = (x - sx) * (x - sx) + (y - sy) * (y - sy);
+            for (const k2 of beyondIdx) { const dx = x - subs[k2].x, dy = y - subs[k2].y; const v = mine - (dx * dx + dy * dy - w[k2]); if (v > Wm) Wm = v; }
           }
         }
         if (!touches) continue;
-        let dNear = Infinity;
-        for (const k2 of beyondIdx) dNear = Math.min(dNear, Math.hypot(subs[k2].x - sx, subs[k2].y - sy));
-        const Wm = isFinite(Wedge) ? Wedge + 2 * dNear * depth : 0;
+        if (!isFinite(Wm)) Wm = 0;
         const potM = sx * sx + sy * sy - Wm;
         // the front: the rectangle pushed out by the depth, within the page
         let poly = { pts: page, labs: [-1, -2, -3, -4] };
@@ -1604,7 +1605,7 @@ class Hive {
           poly = clipHalfPlane(poly, jx - sx, jy - sy, ((jx * jx + jy * jy - kw[j]) - (sx * sx + sy * sy - kw[i])) / 2, -5);
         }
         // the facets: the neighbours' bisectors, where they come closer than the front
-        if (isFinite(Wedge)) for (const k2 of beyondIdx) { if (poly.pts.length < 3) break; poly = clipHalfPlane(poly, subs[k2].x - sx, subs[k2].y - sy, (pot[k2] - potM) / 2, -6); }
+        for (const k2 of beyondIdx) { if (poly.pts.length < 3) break; poly = clipHalfPlane(poly, subs[k2].x - sx, subs[k2].y - sy, (pot[k2] - potM) / 2, -6); }
         if (poly.pts.length < 3) continue;
         // minus the field's rectangle: the eight convex pieces around it (a
         // 3x3 less its centre), so neighbouring pieces share an edge exactly
