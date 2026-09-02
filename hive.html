@@ -792,12 +792,14 @@ function shade(hex, amt) {
 
 /* ============================================================== METERS */
 
-// Exact scanline rasterization of the SOLVED cells (convex): 0 = gap, 2+ = overlap.
+// Exact scanline rasterization of the picture's polygons, even-odd, so a
+// notched cell counts right: 0 = gap, 2+ = overlap.
 function rasterCheck(cells, W, H) {
   const S = 2;
   const gw = Math.floor((W - S / 2 - 1e-6) / S) + 1;
   const gh = Math.floor((H - S / 2 - 1e-6) / S) + 1;
   const cov = new Uint8Array(gw * gh);
+  const xs = [];
   for (const cell of cells) {
     const pts = cell.pts;
     if (pts.length < 3) continue;
@@ -806,23 +808,23 @@ function rasterCheck(cells, W, H) {
     const r0 = Math.max(0, Math.ceil((y0 - S / 2) / S)), r1 = Math.min(gh - 1, Math.floor((y1 - S / 2) / S));
     for (let ry = r0; ry <= r1; ry++) {
       const y = ry * S + S / 2;
-      let xin = Infinity, xout = -Infinity;
+      xs.length = 0;
       for (let k = 0; k < pts.length; k++) {
         const p = pts[k], q = pts[(k + 1) % pts.length];
-        if ((p[1] <= y) !== (q[1] <= y)) {
-          const x = p[0] + (y - p[1]) * (q[0] - p[0]) / (q[1] - p[1]);
-          xin = Math.min(xin, x); xout = Math.max(xout, x);
-        }
+        if ((p[1] <= y) !== (q[1] <= y)) xs.push(p[0] + (y - p[1]) * (q[0] - p[0]) / (q[1] - p[1]));
       }
-      if (xin > xout) continue;
-      const c0 = Math.max(0, Math.ceil((xin - S / 2) / S)), c1 = Math.min(gw - 1, Math.floor((xout - S / 2) / S));
-      for (let cx2 = c0; cx2 <= c1; cx2++) cov[ry * gw + cx2]++;
+      xs.sort((a, b) => a - b);
+      for (let m = 0; m + 1 < xs.length; m += 2) {
+        const c0 = Math.max(0, Math.ceil((xs[m] - S / 2) / S)), c1 = Math.min(gw - 1, Math.floor((xs[m + 1] - S / 2) / S));
+        for (let cx2 = c0; cx2 <= c1; cx2++) cov[ry * gw + cx2]++;
+      }
     }
   }
   let gap = 0, over = 0;
   for (let k = 0; k < cov.length; k++) { if (cov[k] === 0) gap++; else if (cov[k] > 1) over++; }
   return { gap: gap * S * S, over: over * S * S };
 }
+
 
 /* ============================================================== HIVE
  * One domain, one auction, one crystal, one scene. The page is a hive. A
@@ -919,7 +921,9 @@ function insetClean(pts, d) {
 // that, a smaller padding; failing that, the plain content box.
 function domainFor(cell, pad, box) {
   for (const d of [pad, pad / 2, 0]) {
-    const poly = d > 0 ? insetClean(cell, d) : simplifyLoop(cell, 1.5, 0.02);
+    // only duplicates and exact collinears go: a corner rounded off here
+    // would leave a sliver between the hive's leaves and the neighbours'
+    const poly = d > 0 ? insetClean(cell, d) : simplifyLoop(cell, 0.05, 1e-5);
     if (poly.length >= 3 && Math.abs(ringArea(poly)) > 0.5 * Math.abs(ringArea(cell)) && triangulate(poly)) return poly;
   }
   return box;
@@ -929,7 +933,7 @@ class Hive {
   constructor(opts = {}) {
     this.depth = opts.depth || 0;
     this.shift = opts.shift || 0;                  // identity offset: names, colours, salts
-    this.style = Object.assign({ gap: 1, corner: 1, calm: 1, labels: true, flat: false }, opts.style || {});
+    this.style = Object.assign({ calm: 1, labels: true }, opts.style || {});
     this.minCount = opts.minCount !== undefined ? opts.minCount : 1;
     this.scene = opts.scene || 'flock';
 
@@ -944,6 +948,7 @@ class Hive {
     this.absX = 0; this.absY = 0;                  // origin in canvas px
     this.domainPoly = null;                        // the cell this hive lives in, when not a rectangle
     this.domainSig = '';
+    this.domainIsCell = true;
     this.shards = [];                              // this frame's shards: members carving into this hive's cells
     this.stable = true;                            // false while the cell this hive lives in is liquid
     this.dormant = false;                          // too small to run this frame
@@ -1052,7 +1057,6 @@ class Hive {
       // cells, a card does not. The Fields slider sets how many are galleries.
       kindRoll: hash01(k, 21),
       hive: null,                 // a field: the hive living inside this cell
-      shard: null,                // set by the parent when it draws this member whole, shard included
       loops: null, bigSeed: -1,   // this frame's simplified union outline
 
       hoverMix: 0,
@@ -1147,7 +1151,7 @@ class Hive {
         depth: this.depth + 1,
         shift: (b.id + this.shift) * 5 + 3,
         scene: config.inner,
-        style: { gap: this.style.gap * 0.4, corner: this.style.corner * 0.65, calm: 0.45, labels: false, flat: true },
+        style: { calm: 0.45, labels: false },
         W: (rect[2] - rect[0]) * this.PW,
         H: (rect[3] - rect[1]) * this.PH,
       });
@@ -1403,6 +1407,7 @@ class Hive {
     const seeds = active.map(s => [s.x, s.y]);
     const claims = active.map(s => s.claim);
     const domain = this.domainPolyActive();
+    this.exact = this.domainIsCell !== false && (!this.domainPoly || !!domain);   // false: solved on a box that is not the cell
     let sig = active.length + '|' + (this.W * 8 | 0) + 'x' + (this.H * 8 | 0) + '|' + (domain ? this.domainSig : '') + '|';
     for (let i = 0; i < active.length; i++) sig += (seeds[i][0] * 8 | 0) + ',' + (seeds[i][1] * 8 | 0) + ',' + (claims[i] * 1e4 | 0) + ';';
     if (sig === this.lastSig && this.solved && this.solved.converged) return;
@@ -1450,16 +1455,18 @@ class Hive {
     this.domainSig = sig;
   }
 
-  // A field's cell this frame, as a polygon in this hive's px: the exact
-  // rectangle once locked and unpressed, else its outline.
+  // A field's cell this frame, as a polygon in this hive's px: its outline,
+  // returned as the exact rectangle whenever the outline IS its rectangle
+  // (locked, arrived, and nothing nearby retiring or pressing).
   cellPoly(b) {
-    if (this.crystal === 1 && b.rect && b.progress >= 0.999) {
-      const x0 = b.rect[0] * this.PW, y0 = b.rect[1] * this.PH, x1 = b.rect[2] * this.PW, y1 = b.rect[3] * this.PH;
-      return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
-    }
     if (!b.loops || !b.loops.length) return null;
     let big = b.loops[0], bigA = Math.abs(ringArea(big));
     for (const l of b.loops) { const a = Math.abs(ringArea(l)); if (a > bigA) { bigA = a; big = l; } }
+    if (this.crystal === 1 && b.rect && b.progress >= 0.999 && big.length === 4) {
+      const x0 = b.rect[0] * this.PW, y0 = b.rect[1] * this.PH, x1 = b.rect[2] * this.PW, y1 = b.rect[3] * this.PH;
+      const near = (v, t) => Math.abs(v - t) < 0.05;
+      if (big.every(p => (near(p[0], x0) || near(p[0], x1)) && (near(p[1], y0) || near(p[1], y1)))) return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+    }
     return big;
   }
 
@@ -1504,23 +1511,19 @@ class Hive {
       if (!b.hive) continue;
       const cell = this.cellPoly(b);
       if (!cell) { b.hive.dormant = true; continue; }
-      // the frame: the rectangle's own box once locked, else the outline's
-      const locked = this.crystal === 1 && b.rect && b.progress >= 0.999;
-      let x0, y0, x1, y1;
-      if (locked) { x0 = b.rect[0] * this.PW; y0 = b.rect[1] * this.PH; x1 = b.rect[2] * this.PW; y1 = b.rect[3] * this.PH; }
-      else {
-        x0 = Infinity; y0 = Infinity; x1 = -Infinity; y1 = -Infinity;
-        for (const p of cell) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
-      }
-      // the box model, literally: border, then padding, then the content
-      // box — and the content box is the hive inside's whole world
-      const pad = Math.min(config.gap * this.style.gap, (x1 - x0) / 6, (y1 - y0) / 6);
-      if (x1 - x0 - 2 * pad < 48 || y1 - y0 - 2 * pad < 48) { b.hive.dormant = true; continue; }
-      const frame = [x0 + pad, y0 + pad, x1 - x0 - 2 * pad, y1 - y0 - 2 * pad];
-      const box = [[frame[0], frame[1]], [frame[0] + frame[2], frame[1]], [frame[0] + frame[2], frame[1] + frame[3]], [frame[0], frame[1] + frame[3]]];
-      const dom = locked ? box : domainFor(cell, pad, box);
+      // the frame: the cell's box; the cell is exactly a rectangle when locked
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const p of cell) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
+      const locked = cell.length === 4 && cell.every(p => (p[0] === x0 || p[0] === x1) && (p[1] === y0 || p[1] === y1));
+      // no padding: the cell IS the hive inside's whole world, so a member
+      // at the edge meets the neighbour across the one gap, like any cell
+      if (x1 - x0 < 48 || y1 - y0 < 48) { b.hive.dormant = true; continue; }
+      const frame = [x0, y0, x1 - x0, y1 - y0];
+      const box = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+      const dom = locked ? box : domainFor(cell, 0, box);
       b.hive.dormant = false;
       b.hive.fit(frame, dom, this.crystal === 1, this.absX, this.absY);
+      b.hive.domainIsCell = locked || dom !== box;   // false: the clipper could not take the cell, the box stands in
       b.hive.step(dt, t);
     }
 
@@ -1540,7 +1543,6 @@ class Hive {
   // it is metered, not hidden. Zero pressure, zero shard: rest is untouched.
   computeShards() {
     this.shards = [];
-    for (const b of this.bodies) if (b.hive) for (const m of b.hive.bodies) m.shard = null;
     if (!this.solved || this.crystal < 1) return;
     const subs = this.solvedSubs, w = this.solved.weights;
     const pageBid = (x, y) => {
@@ -1553,8 +1555,8 @@ class Hive {
     for (const b of this.bodies) {
       const h = b.hive;
       if (!h || h.dormant || h.crystal !== 0 || !h.solved || !b.rect) continue;
-      const box = [h.ox, h.oy, h.ox + h.W, h.oy + h.H];
       const rect = [b.rect[0] * this.PW, b.rect[1] * this.PH, b.rect[2] * this.PW, b.rect[3] * this.PH];
+      const box = rect;
       const kids = h.solvedSubs, kw = h.solved.weights;
       for (let i = 0; i < kids.length; i++) {
         const m = kids[i].body;
@@ -1596,8 +1598,8 @@ class Hive {
           for (let k = 0; k < subs.length && poly.pts.length >= 3; k++) poly = clipHalfPlane(poly, subs[k].x - sx, subs[k].y - sy, (pot[k] - potM) / 2, -6);
           return poly.pts.length >= 3 ? poly : null;
         };
-        // minus a box: the eight convex pieces around it (a 3x3 less its
-        // centre), so that any two neighbouring pieces share an edge exactly
+        // minus the field's rectangle: the eight convex pieces around it (a
+        // 3x3 less its centre), so neighbouring pieces share an edge exactly
         // and chain back into one outline
         const minus = (poly, bx) => {
           const pieces = [];
@@ -1616,28 +1618,6 @@ class Hive {
         };
         let dNear = Infinity;
         for (let k = 0; k < subs.length; k++) dNear = Math.min(dNear, Math.hypot(subs[k].x - sx, subs[k].y - sy));
-        // the member's inner cell, in this hive's px, its box-edge runs split
-        // wherever a shard attaches, so the union below chains exactly
-        const inner = { pts: cell.pts.map(q => [q[0] + h.ox, q[1] + h.oy]), labs: cell.labs.slice() };
-        const onLine = (q, k) => Math.abs(q[k & 1] - box[k]) < 1e-6;
-        const withShard = (pieces) => {
-          const pts = [], labs = [];
-          const n = inner.pts.length;
-          for (let k = 0; k < n; k++) {
-            const p = inner.pts[k], q = inner.pts[k + 1 === n ? 0 : k + 1];
-            pts.push(p); labs.push(inner.labs[k]);
-            for (let e = 0; e < 4; e++) {
-              if (!onLine(p, e) || !onLine(q, e)) continue;
-              const ax = e & 1 ? 0 : 1;                           // the coordinate that runs along this edge
-              const lo = Math.min(p[ax], q[ax]), hi = Math.max(p[ax], q[ax]);
-              const cuts = [];
-              for (const pc of pieces) for (const v of pc.pts) if (onLine(v, e) && v[ax] > lo + 1e-6 && v[ax] < hi - 1e-6) cuts.push(v);
-              cuts.sort((u, v) => (u[ax] - v[ax]) * (q[ax] >= p[ax] ? 1 : -1));
-              for (const c of cuts) { pts.push([c[0], c[1]]); labs.push(inner.labs[k]); }
-            }
-          }
-          return { pts, labs };
-        };
         const shardAt = (want) => {
           let lo = 0, hi = 8 * dNear * (want + (rect[2] - rect[0]) / 6);
           let poly = region(hi);
@@ -1650,27 +1630,16 @@ class Hive {
           if (!poly) return null;
           const pieces = minus(poly, box);
           if (!pieces.length) return null;
-          const loops = unionOutlines(pieces).map(l => simplifyLoop(l.pts, 0.05, 1e-3)).filter(l => l.length >= 3);
-          if (!loops.length) return null;
-          // one cell: the inner cell and the shard, chained into a single outline
-          let want0 = Math.abs(ringArea(inner.pts));
-          for (const pc of pieces) want0 += Math.abs(ringArea(pc.pts));
-          const u = unionOutlines([withShard(pieces), ...pieces]).map(l => simplifyLoop(l.pts, 0.05, 1e-3)).filter(l => l.length >= 3);
-          let whole = null;
-          if (u.length === 1 && Math.abs(Math.abs(ringArea(u[0])) - want0) < 0.01 * want0) whole = u[0];
-          return { poly, loops, whole };
+          return { poly, pieces };
         };
         const shown = shardAt(depth);
         if (!shown) continue;
         let beyond = 0;
-        for (const pc of minus(shown.poly, rect)) beyond += Math.abs(ringArea(pc.pts));
-        // the pointer keeps a shard it is on: the hovered member's hit region
-        // is its shard at full pressure, so the tip cannot slip out from
-        // under the cursor while the mix is still climbing
-        const hit = m.id === h.hoveredId && m.hoverMix < 0.999 ? (shardAt(scale) || shown) : shown;
-        const sh = { field: b, member: m, box, loops: shown.loops, whole: shown.whole, hitLoops: hit.loops, beyond, hv: m.hoverMix, anchor: [h.ox + m.anchorX, h.oy + m.anchorY] };
-        if (sh.whole) m.shard = sh;                                // drawn by this hive, as one cell
-        this.shards.push(sh);
+        for (const pc of shown.pieces) beyond += Math.abs(ringArea(pc.pts));
+        // the shard: the region the member wins beyond its field, in this
+        // hive's px. The picture joins it to the member's cell and cuts it
+        // out of whatever it lies over; nothing else needs to know.
+        this.shards.push({ field: b, member: m, F: shown.poly.pts, pieces: shown.pieces, beyond, hv: m.hoverMix });
       }
     }
   }
@@ -1693,11 +1662,6 @@ class Hive {
   // The chain of bodies under a point, outermost first: the page's element,
   // then the member inside it, and so on down.
   hitPath(x, y) {
-    for (const sh of this.shards) {
-      for (const loop of sh.hitLoops) {
-        if (pointInPolygon(x, y, loop)) return [{ hive: this, body: sh.field }, { hive: sh.field.hive, body: sh.member }];
-      }
-    }
     const id = this.hitTest(x, y);
     if (id < 0) return [];
     const b = this.bodies.find(bb => bb.id === id);
@@ -1716,7 +1680,7 @@ class Hive {
   // reduced to its real corners, holes dropped. The fields and the garment
   // both read it, so they cannot disagree about a body's shape.
   computeOutlines() {
-    for (const b of this.bodies) { b.loops = null; b.bigSeed = -1; }
+    for (const b of this.bodies) { b.loops = null; b.holes = null; b.bigSeed = -1; }
     if (!this.solved) { this.rectPct = 100; return; }
     const cells = this.solved.diagram.cells, areas = this.solved.diagram.areas;
     const idx = new Map();
@@ -1726,7 +1690,9 @@ class Hive {
       const loops = bodyOutlines(subIdx, cells, this.ownerOf, b.id).map(l => simplifyLoop(l)).filter(l => l.length >= 3);
       const la = loops.map(l => Math.abs(ringArea(l)));
       const cen = loops.map(l => { let x = 0, y = 0; for (const p of l) { x += p[0]; y += p[1]; } return [x / l.length, y / l.length]; });
-      b.loops = loops.filter((l, i) => !loops.some((o, j) => j !== i && la[j] > la[i] && pointInPolygon(cen[i][0], cen[i][1], o)));
+      const hole = loops.map((l, i) => loops.some((o, j) => j !== i && la[j] > la[i] && pointInPolygon(cen[i][0], cen[i][1], o)));
+      b.loops = loops.filter((l, i) => !hole[i]);
+      b.holes = loops.filter((l, i) => hole[i]);
       b.bigSeed = subIdx.reduce((a, i) => cells[i] && areas[i] > areas[a] ? i : a, subIdx[0]);
       for (const loop of b.loops) {
         for (let k = 0; k < loop.length; k++) {
@@ -1739,209 +1705,320 @@ class Hive {
     this.rectPct = totalLen > 0 ? 100 * axisLen / totalLen : 100;
   }
 
-  // --- the garment ------------------------------------------------------
-  // Display only: the outline inset, rounded, dressed — never fed back. The
-  // context arrives translated to this hive's origin; a field draws its hive
-  // inside its own clipped, rounded border, translated once more.
-
-  render(ctx, dim = 1) {
+  // --- the leaves -------------------------------------------------------
+  // The picture is the tree's leaves: every cell that is not a field, as
+  // convex pieces in root px with the chain of bodies it belongs to. A field
+  // contributes nothing of its own — its members are the leaves, and their
+  // aligned outer edges are its rectangle. One list, one dressing, one gap.
+  collectLeaves(out, ox, oy, fade) {
     if (!this.solved) return;
-    const halfGap = config.gap * this.style.gap / 2;
-    const corner = config.cornerRadius * this.style.corner;
-    const anchorK = 1 - Math.exp(-9 / 60);
-    const crystal = this.crystal;
     const cells = this.solved.diagram.cells;
-
-    const drawBody = (b) => {
-      const visible = b.loops;
-      if (!visible || !visible.length || b.isVoid || b.bigSeed < 0 || b.shard) return;
-      const bigPts = cells[b.bigSeed].pts;
-      let sx = 0, sy = 0;
-      for (const p of bigPts) { sx += p[0]; sy += p[1]; }
-      sx /= bigPts.length || 1; sy /= bigPts.length || 1;
-
-      const hv = b.hoverMix;
-      const field = b.hive && !b.hive.dormant && b.hive.solved ? b.hive : null;
-      const fade = Math.max(0, Math.min(1, (b.claim - CLAIM_MIN) / 0.14)) * dim;
-      let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
-      for (const l of visible) for (const p of l) { bx0 = Math.min(bx0, p[0]); by0 = Math.min(by0, p[1]); bx1 = Math.max(bx1, p[0]); by1 = Math.max(by1, p[1]); }
-      let poleR = 0, anchored = false;
-
-      for (const loop of visible) {
-        const rawPole = inscribedPole(loop, sx, sy);
-        // A locked element cannot reflow its neighbours on hover — a real page
-        // does not either — so it lifts instead, growing into its own gap.
-        const inset = Math.min(halfGap * (1 - 0.5 * hv * crystal), 0.45 * rawPole.r);
-        const pts = insetPolygon(loop, inset);
-        if (pts.length < 3) continue;
-        const pole = inscribedPole(pts, rawPole.x, rawPole.y);
-        if (!anchored && pointInPolygon(sx, sy, loop)) {
-          b.anchorX += (pole.x - b.anchorX) * anchorK;
-          b.anchorY += (pole.y - b.anchorY) * anchorK;
-          poleR = pole.r; anchored = true;
+    const idx = new Map();
+    this.solvedSubs.forEach((s, i) => { if (!idx.has(s.body)) idx.set(s.body, []); idx.get(s.body).push(i); });
+    for (const [b, subIdx] of idx) {
+      const f = fade * Math.max(0, Math.min(1, (b.claim - CLAIM_MIN) / 0.14));
+      const h = b.hive;
+      const own = () => {
+        const pieces = [];
+        for (const i of subIdx) {
+          const c = cells[i];
+          for (const pc of (c.pieces || [c])) if (pc.pts.length >= 3) pieces.push({ pts: pc.pts.map(p => [p[0] + ox, p[1] + oy]), labs: pc.labs });
         }
-
-        // one clip per loop: the rigid border, in one line. Fill, then the
-        // hive inside (if any), then the stroke — all cut by the same path.
-        ctx.save();
-        roundedPath(ctx, pts, corner);
-        ctx.clip();
-        if (this.style.flat) ctx.fillStyle = shade(b.color, -34);
-        else {
-          const grad = ctx.createLinearGradient(bx0, by0, bx1, by1);
-          grad.addColorStop(0, shade(b.color, -14));
-          grad.addColorStop(1, shade(b.color, -68));
-          ctx.fillStyle = grad;
+        return pieces;
+      };
+      if (h && !h.dormant && h.solved) {
+        const n0 = out.length;
+        h.collectLeaves(out, ox + h.ox, oy + h.oy, f);
+        if (out.length > n0) {
+          const big = this.cellPoly(b);
+          const cellPoly = big && big.length >= 3 ? big.map(p => [p[0] + ox, p[1] + oy]) : null;
+          // a grid inside a travelling cell was solved on its box: keep it to
+          // the cell itself, whatever shape the cell is in this frame
+          const tris = !h.exact && cellPoly ? triangulate(simplifyLoop(cellPoly)) : null;
+          const hull = !h.exact && cellPoly && !tris ? convexHull(cellPoly) : null;
+          // a hole in the cell (a foreign cell a melting formation encloses
+          // for a frame) is not the hive's ground: cut it out of its leaves
+          const holes = [];
+          if (b.holes) for (const hl of b.holes) { const t = triangulate(simplifyLoop(hl)); if (t) for (const tri of t) holes.push(tri); }
+          for (let k = n0; k < out.length; k++) {
+            out[k].path.unshift({ hive: this, body: b });
+            if (tris) out[k].pieces = clipPiecesToTriangles(out[k].pieces, tris);
+            else if (hull) out[k].pieces = clipPieces(out[k].pieces, hull);
+            for (const tri of holes) {
+              const poly = triPoly(tri, ox, oy);
+              if (!poly) continue;
+              const cut = subtractConvex(out[k].pieces, poly);
+              if (cut) out[k].pieces = cut;
+            }
+          }
+          // mid-ramp a cell can be in two pieces for a frame; the hive inside
+          // lives in the largest, and what is left is still this body's ink
+          if (cellPoly && b.loops && b.loops.length > 1) {
+            const stray = own().filter(pc => { let x = 0, y = 0; for (const q of pc.pts) { x += q[0]; y += q[1]; } return !pointInPolygon(x / pc.pts.length, y / pc.pts.length, cellPoly); });
+            if (stray.length) out.push({ path: [{ hive: this, body: b }], body: b, color: b.color, hv: b.hoverMix, fade: f, isVoid: b.isVoid, labels: false, pieces: stray, loops: null, touched: false });
+          }
+          continue;
         }
-        ctx.globalAlpha = (field ? 0.16 + 0.1 * hv : 0.52 + 0.38 * hv) * fade;
-        ctx.fillRect(bx0, by0, bx1 - bx0, by1 - by0);
-        if (field) {
-          // the hive inside: its own tessellation, in its own coordinates,
-          // cut by this cell's border because that is where its domain ends
-          ctx.save();
-          ctx.globalAlpha = 1;
-          ctx.translate(field.ox, field.oy);
-          field.render(ctx, fade);
-          ctx.restore();
-        }
-        ctx.globalAlpha = fade;
-        roundedPath(ctx, pts, corner);
-        ctx.strokeStyle = `rgba(255,255,255,${(field ? 0.10 : 0.16) + 0.5 * hv})`;
-        ctx.lineWidth = (1 + hv * 2.4) * 2;
-        if (hv > 0.02) { ctx.shadowColor = `rgba(255,255,255,${0.45 * hv})`; ctx.shadowBlur = 16 * hv; }
-        ctx.stroke();
-        ctx.restore();
       }
-
-      if (!field && anchored && poleR > (this.style.labels ? 20 : 17)) {
-        ctx.save();
-        ctx.fillStyle = '#fff';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        if (this.style.labels) {
-          ctx.globalAlpha = 0.16 * fade;
-          ctx.font = `700 ${Math.round(poleR * 1.4)}px system-ui, sans-serif`;
-          ctx.fillText(String(b.id + 1), b.anchorX, b.anchorY);
-          ctx.globalAlpha = (0.55 + 0.45 * hv) * fade;
-          ctx.font = `500 ${Math.max(11, Math.min(14, poleR * 0.24))}px system-ui, sans-serif`;
-          ctx.fillText(b.name, b.anchorX, b.anchorY + poleR * 0.62);
-        } else {
-          ctx.globalAlpha = 0.22 * fade;
-          ctx.font = `700 ${Math.round(poleR * 0.8)}px system-ui, sans-serif`;
-          ctx.fillText(String(b.id + 1), b.anchorX, b.anchorY);
-        }
-        ctx.restore();
-      }
-    };
-
-    let hovered = null;
-    for (const b of this.bodies) { if (b.id === this.hoveredId) hovered = b; else drawBody(b); }
-    if (hovered) drawBody(hovered);
-    for (const sh of this.shards) this.drawShard(ctx, sh, dim);
+      const pieces = own();
+      if (!pieces.length) continue;
+      out.push({ path: [{ hive: this, body: b }], body: b, color: b.color, hv: b.hoverMix, fade: f, isVoid: b.isVoid, labels: this.style.labels, pieces, loops: null, touched: false });
+    }
   }
 
-  // A shard is drawn where it lies, over whatever it conquered. The
-  // rectangle yields first: its paint is erased under the shard plus the
-  // page's half gap — the cut edge is a real edge of the garment, so it
-  // gets the page's stroke. Then the shard itself, inset by the member's gap
-  // on its walls and run across the attachment so it is one cell with the
-  // member inside; rounded where two walls meet, sharp where a wall meets
-  // the box, and stroked everywhere but the attachment.
-  drawShard(ctx, sh, dim) {
-    const m = sh.member, hv = sh.hv, box = sh.box;
-    const fade = Math.max(0, Math.min(1, (m.claim - CLAIM_MIN) / 0.14)) * dim;
-    const halfGap = config.gap * this.style.gap / 2;
-    const memGap = config.gap * sh.field.hive.style.gap / 2;
-    const corner = config.cornerRadius * sh.field.hive.style.corner;
-    const eps = 0.05;
-    const onBox = (p, q) => (Math.abs(p[0] - box[0]) < eps && Math.abs(q[0] - box[0]) < eps) || (Math.abs(p[0] - box[2]) < eps && Math.abs(q[0] - box[2]) < eps)
-                          || (Math.abs(p[1] - box[1]) < eps && Math.abs(q[1] - box[1]) < eps) || (Math.abs(p[1] - box[3]) < eps && Math.abs(q[1] - box[3]) < eps);
-    const outsideBox = () => { ctx.beginPath(); ctx.rect(-1e5, -1e5, 2e5, 2e5); ctx.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]); ctx.clip('evenodd'); };
-    const path = (pts) => { ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]); ctx.closePath(); };
-    for (const loop of sh.loops) {
-      const n = loop.length;
-      const att = loop.map((p, k) => onBox(p, loop[(k + 1) % n]));
-      if (att.every(a => a)) continue;
-      const radii = loop.map((p, k) => (att[k] || att[(k + n - 1) % n]) ? 0 : corner);
+  // Every shard in the tree, in root px.
+  collectShards(out, ox, oy) {
+    for (const sh of this.shards) {
+      out.push({ member: sh.member, hv: sh.hv, beyond: sh.beyond,
+        F: sh.F.map(p => [p[0] + ox, p[1] + oy]),
+        pieces: sh.pieces.map(pc => ({ pts: pc.pts.map(p => [p[0] + ox, p[1] + oy]), labs: pc.labs })) });
+    }
+    for (const b of this.bodies) if (b.hive && !b.hive.dormant) b.hive.collectShards(out, ox + b.hive.ox, oy + b.hive.oy);
+  }
+}
 
-      // 1. the rectangle yields
-      const bite = insetPolygon(loop, att.map(a => a ? 0 : -halfGap));
-      if (bite.length < 3) continue;
-      ctx.save();
-      ctx.globalCompositeOperation = 'destination-out';
-      path(bite); ctx.fill();
-      ctx.restore();
-      // the cut edge is the neighbour's edge now: give it the page's stroke
-      ctx.save();
-      ctx.beginPath(); ctx.rect(-1e5, -1e5, 2e5, 2e5); ctx.moveTo(bite[0][0], bite[0][1]); for (let k = 1; k < bite.length; k++) ctx.lineTo(bite[k][0], bite[k][1]); ctx.closePath(); ctx.clip('evenodd');
-      outsideBox();
-      ctx.globalAlpha = fade;
-      path(bite);
-      ctx.strokeStyle = 'rgba(255,255,255,0.16)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.restore();
+/* ============================================================== THE PICTURE
+ * Display only, and one path for everything on screen. The leaves are
+ * gathered, the shards are joined to their members and cut out of whatever
+ * they lie over, every leaf is chained into its outline, and every outline
+ * is dressed the same way: inset by half the gap, rounded, filled, stroked,
+ * numbered. Hit-testing and the gap meter read the same leaves.
+ */
 
-      if (sh.whole) continue;
-      // no single outline could be chained: paint the shard on its own,
-      // run across the attachment so it reads as part of the cell inside
-      const body = insetPolygon(loop, att.map(a => a ? -2 : memGap));
-      if (body.length < 3) continue;
+function convexHull(pts) {
+  if (pts.length < 3) return pts.slice();
+  const p = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [];
+  for (const q of p) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+  const hi = [];
+  for (let i = p.length - 1; i >= 0; i--) { const q = p[i]; while (hi.length >= 2 && cross(hi[hi.length - 2], hi[hi.length - 1], q) <= 0) hi.pop(); hi.push(q); }
+  lo.pop(); hi.pop();
+  const h = lo.concat(hi);
+  return h.length >= 3 ? h : pts.slice();
+}
+
+// A convex polygon as inward half-planes in clipHalfPlane's form.
+function halfPlanes(poly) {
+  const o = ringArea(poly) > 0 ? 1 : -1, hp = [];
+  for (let k = 0, n = poly.length; k < n; k++) {
+    const p = poly[k], q = poly[(k + 1) % n];
+    hp.push([o * (q[1] - p[1]), -o * (q[0] - p[0]), o * ((q[1] - p[1]) * p[0] - (q[0] - p[0]) * p[1])]);
+  }
+  return hp;
+}
+
+function clipPieces(pieces, convex) {
+  const hp = halfPlanes(convex), out = [];
+  for (let pc of pieces) {
+    for (const [ax, ay, b] of hp) { if (pc.pts.length < 3) break; pc = clipHalfPlane(pc, ax, ay, b, -8); }
+    if (pc.pts.length >= 3) out.push(pc);
+  }
+  return out;
+}
+
+// A triangle from triangulate() back as a polygon, translated: the three
+// vertices are the intersections of its half-planes.
+function triPoly(tri, ox, oy) {
+  const pts = [];
+  for (let e = 0; e < 3; e++) {
+    const a = tri[e], b = tri[(e + 1) % 3];
+    const det = a.ax * b.ay - a.ay * b.ax;
+    if (Math.abs(det) < 1e-12) return null;
+    pts.push([(a.b * b.ay - b.b * a.ay) / det + ox, (a.ax * b.b - b.ax * a.b) / det + oy]);
+  }
+  return pts;
+}
+
+// pieces kept to a simple polygon, given triangulated: each piece is cut by
+// every triangle and the bits share their edges exactly, so they chain back.
+function clipPiecesToTriangles(pieces, tris) {
+  const out = [];
+  for (const pc of pieces) {
+    for (const tri of tris) {
+      let q = pc;
+      for (let e = 0; e < 3 && q.pts.length >= 3; e++) q = clipHalfPlane(q, tri[e].ax, tri[e].ay, tri[e].b, -8);
+      if (q.pts.length >= 3 && Math.abs(ringArea(q.pts)) > 1e-6) out.push(q);
+    }
+  }
+  return out;
+}
+
+// pieces minus a convex polygon F: a piece F does not reach is kept as it
+// is; one it does is replaced by the wedges outside F's edges — outside edge
+// k and inside edges 0..k-1 — which are disjoint, convex, and share their
+// edges exactly. Returns null when nothing was cut.
+function subtractConvex(pieces, F) {
+  const hp = halfPlanes(F);
+  let changed = false;
+  const out = [];
+  for (const pc of pieces) {
+    let inside = pc;
+    for (const [ax, ay, b] of hp) { if (inside.pts.length < 3) break; inside = clipHalfPlane(inside, ax, ay, b, -8); }
+    if (inside.pts.length < 3 || Math.abs(ringArea(inside.pts)) < 1e-6) { out.push(pc); continue; }
+    changed = true;
+    for (let k = 0; k < hp.length; k++) {
+      let q = clipHalfPlane(pc, -hp[k][0], -hp[k][1], -hp[k][2], -8);
+      for (let j = 0; j < k && q.pts.length >= 3; j++) q = clipHalfPlane(q, hp[j][0], hp[j][1], hp[j][2], -8);
+      if (q.pts.length >= 3 && Math.abs(ringArea(q.pts)) > 1e-6) out.push(q);
+    }
+  }
+  return changed ? out : null;
+}
+
+// Where one piece's vertex sits on another piece's edge, split the edge
+// there, so a union of pieces chains by exact reverse edges.
+function splitAtVertices(pieces) {
+  const verts = [];
+  for (const pc of pieces) for (const v of pc.pts) verts.push(v);
+  return pieces.map(pc => {
+    const pts = [], labs = [], n = pc.pts.length;
+    for (let k = 0; k < n; k++) {
+      const a = pc.pts[k], b = pc.pts[(k + 1) % n];
+      pts.push(a); labs.push(pc.labs[k]);
+      const ex = b[0] - a[0], ey = b[1] - a[1], L2 = ex * ex + ey * ey;
+      if (L2 < 1e-12) continue;
+      const cuts = [];
+      for (const v of verts) {
+        const t = ((v[0] - a[0]) * ex + (v[1] - a[1]) * ey) / L2;
+        if (t <= 1e-7 || t >= 1 - 1e-7) continue;
+        const px = a[0] + t * ex - v[0], py = a[1] + t * ey - v[1];
+        if (px * px + py * py < 1e-8) cuts.push([t, v]);
+      }
+      cuts.sort((u, v) => u[0] - v[0]);
+      let last = -1;
+      for (const [t, v] of cuts) { if (t - last < 1e-7) continue; pts.push(v); labs.push(pc.labs[k]); last = t; }
+    }
+    return { pts, labs };
+  });
+}
+
+// Chain a leaf's pieces into its outline(s): real corners only, holes dropped.
+function leafOutlines(pieces) {
+  const loops = unionOutlines(splitAtVertices(pieces)).map(l => simplifyLoop(l.pts, 0.05, 1e-5)).filter(l => l.length >= 3);
+  const areas = loops.map(l => Math.abs(ringArea(l)));
+  const cen = loops.map(l => { let x = 0, y = 0; for (const p of l) { x += p[0]; y += p[1]; } return [x / l.length, y / l.length]; });
+  return loops.filter((l, i) => !loops.some((o, j) => j !== i && areas[j] > areas[i] && pointInPolygon(cen[i][0], cen[i][1], o)));
+}
+
+// The frame's picture: leaves gathered, shards applied, outlines chained.
+function buildPicture(root) {
+  const leaves = [];
+  root.collectLeaves(leaves, 0, 0, 1);
+  const shards = [];
+  root.collectShards(shards, 0, 0);
+  // Strongest first. Where two shards meet, the stronger keeps the ground:
+  // each shard is reduced by every stronger one before it joins its member
+  // or cuts anyone, so shards never overlap and never leave a hole.
+  shards.sort((a, b) => b.hv - a.hv || a.member.id - b.member.id);
+  const done = [];
+  for (const sh of shards) {
+    let eff = [{ pts: sh.F, labs: sh.F.map(() => -9) }], mine = sh.pieces;
+    for (const F of done) {
+      eff = subtractConvex(eff, F) || eff;
+      mine = subtractConvex(mine, F) || mine;
+    }
+    done.push(sh.F);
+    const owner = leaves.find(l => l.body === sh.member);
+    if (owner) { owner.pieces.push(...mine); owner.touched = true; }
+    for (const f of eff) {
+      let fx0 = Infinity, fy0 = Infinity, fx1 = -Infinity, fy1 = -Infinity;
+      for (const p of f.pts) { fx0 = Math.min(fx0, p[0]); fy0 = Math.min(fy0, p[1]); fx1 = Math.max(fx1, p[0]); fy1 = Math.max(fy1, p[1]); }
+      for (const leaf of leaves) {
+        if (leaf.body === sh.member) continue;
+        let lx0 = Infinity, ly0 = Infinity, lx1 = -Infinity, ly1 = -Infinity;
+        for (const pc of leaf.pieces) for (const p of pc.pts) { lx0 = Math.min(lx0, p[0]); ly0 = Math.min(ly0, p[1]); lx1 = Math.max(lx1, p[0]); ly1 = Math.max(ly1, p[1]); }
+        if (lx1 < fx0 || lx0 > fx1 || ly1 < fy0 || ly0 > fy1) continue;
+        const cut = subtractConvex(leaf.pieces, f.pts);
+        if (cut) { leaf.pieces = cut; leaf.touched = true; }
+      }
+    }
+  }
+  let carved = 0;
+  for (const sh of shards) carved += sh.beyond;
+  for (const leaf of leaves) leaf.loops = leafOutlines(leaf.pieces);
+  return { leaves, shards, carved };
+}
+
+// The chain of bodies under a point, from the picture: outermost first.
+function hitLeaves(picture, x, y) {
+  if (!picture) return null;
+  for (const leaf of picture.leaves) {
+    for (const loop of leaf.loops) if (pointInPolygon(x, y, loop)) return leaf.isVoid ? [] : leaf.path;
+  }
+  return null;
+}
+
+// Dress and paint every leaf the same way. ctx is in root px.
+function paintPicture(ctx, picture, hoveredPath) {
+  const halfGap = config.gap / 2, corner = config.cornerRadius;
+  const anchorK = 1 - Math.exp(-9 / 60);
+  const hoveredBody = hoveredPath && hoveredPath.length ? hoveredPath[hoveredPath.length - 1].body : null;
+  const paint = (leaf) => {
+    if (leaf.isVoid || !leaf.loops.length) return;
+    const b = leaf.body, hv = leaf.hv, fade = leaf.fade;
+    const inner = leaf.path[leaf.path.length - 1].hive;
+    // A locked element cannot reflow its neighbours on hover — a real page
+    // does not either — so it lifts instead, growing into its own gap.
+    const lift = 0.5 * hv * inner.crystal;
+    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+    for (const l of leaf.loops) for (const p of l) { bx0 = Math.min(bx0, p[0]); by0 = Math.min(by0, p[1]); bx1 = Math.max(bx1, p[0]); by1 = Math.max(by1, p[1]); }
+    let big = leaf.loops[0], bigA = 0;
+    for (const l of leaf.loops) { const a = Math.abs(ringArea(l)); if (a > bigA) { bigA = a; big = l; } }
+    let poleR = 0, anchored = false;
+    for (const loop of leaf.loops) {
+      const rawPole = inscribedPole(loop, inner.absX + b.anchorX, inner.absY + b.anchorY);
+      const inset = Math.min(halfGap * (1 - lift), 0.45 * rawPole.r);
+      const pts = insetPolygon(loop, inset);
+      if (pts.length < 3) continue;
+      const pole = inscribedPole(pts, rawPole.x, rawPole.y);
+      if (!anchored && loop === big) {
+        b.anchorX += ((pole.x - inner.absX) - b.anchorX) * anchorK;
+        b.anchorY += ((pole.y - inner.absY) - b.anchorY) * anchorK;
+        poleR = pole.r; anchored = true;
+      }
       ctx.save();
-      roundedPath(ctx, body, radii);
-      ctx.globalAlpha = (0.52 + 0.38 * hv) * fade;
-      ctx.fillStyle = shade(m.color, -30);
-      ctx.fill();
-      ctx.restore();
-      ctx.save();
-      outsideBox();
-      roundedPath(ctx, body, radii);
+      roundedPath(ctx, pts, corner);
       ctx.clip();
+      const grad = ctx.createLinearGradient(bx0, by0, bx1, by1);
+      grad.addColorStop(0, shade(leaf.color, -14));
+      grad.addColorStop(1, shade(leaf.color, -68));
+      ctx.globalAlpha = (0.52 + 0.38 * hv) * fade;
+      ctx.fillStyle = grad;
+      ctx.fillRect(bx0, by0, bx1 - bx0, by1 - by0);
       ctx.globalAlpha = fade;
-      roundedPath(ctx, body, radii);
+      roundedPath(ctx, pts, corner);
       ctx.strokeStyle = `rgba(255,255,255,${0.16 + 0.5 * hv})`;
       ctx.lineWidth = (1 + hv * 2.4) * 2;
       if (hv > 0.02) { ctx.shadowColor = `rgba(255,255,255,${0.45 * hv})`; ctx.shadowBlur = 16 * hv; }
       ctx.stroke();
       ctx.restore();
     }
-    if (!sh.whole) return;
-
-    // 2. the cell, whole: inner cell and shard as one outline, dressed the
-    // way its hive dresses a cell — inset, rounded, filled, stroked, numbered
-    const loop = sh.whole;
-    const rawPole = inscribedPole(loop, sh.anchor[0], sh.anchor[1]);
-    const pts = insetPolygon(loop, Math.min(memGap, 0.45 * rawPole.r));
-    if (pts.length < 3) return;
-    const pole = inscribedPole(pts, rawPole.x, rawPole.y);
-    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
-    for (const p of pts) { bx0 = Math.min(bx0, p[0]); by0 = Math.min(by0, p[1]); bx1 = Math.max(bx1, p[0]); by1 = Math.max(by1, p[1]); }
-    ctx.save();
-    roundedPath(ctx, pts, corner);
-    ctx.clip();
-    const grad = ctx.createLinearGradient(bx0, by0, bx1, by1);
-    grad.addColorStop(0, shade(m.color, -14));
-    grad.addColorStop(1, shade(m.color, -68));
-    ctx.globalAlpha = (0.52 + 0.38 * hv) * fade;
-    ctx.fillStyle = grad;
-    ctx.fillRect(bx0, by0, bx1 - bx0, by1 - by0);
-    ctx.globalAlpha = fade;
-    roundedPath(ctx, pts, corner);
-    ctx.strokeStyle = `rgba(255,255,255,${0.16 + 0.5 * hv})`;
-    ctx.lineWidth = (1 + hv * 2.4) * 2;
-    if (hv > 0.02) { ctx.shadowColor = `rgba(255,255,255,${0.45 * hv})`; ctx.shadowBlur = 16 * hv; }
-    ctx.stroke();
-    ctx.restore();
-    if (pole.r > 17) {
+    if (anchored && poleR > (leaf.labels ? 20 : 17)) {
+      const ax = inner.absX + b.anchorX, ay = inner.absY + b.anchorY;
       ctx.save();
-      ctx.globalAlpha = 0.22 * fade;
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.font = `700 ${Math.round(pole.r * 0.8)}px system-ui, sans-serif`;
-      ctx.fillText(String(m.id + 1), pole.x, pole.y);
+      if (leaf.labels) {
+        ctx.globalAlpha = 0.16 * fade;
+        ctx.font = `700 ${Math.round(poleR * 1.4)}px system-ui, sans-serif`;
+        ctx.fillText(String(b.id + 1), ax, ay);
+        ctx.globalAlpha = (0.55 + 0.45 * hv) * fade;
+        ctx.font = `500 ${Math.max(11, Math.min(14, poleR * 0.24))}px system-ui, sans-serif`;
+        ctx.fillText(b.name, ax, ay + poleR * 0.62);
+      } else {
+        ctx.globalAlpha = 0.22 * fade;
+        ctx.font = `700 ${Math.round(poleR * 0.8)}px system-ui, sans-serif`;
+        ctx.fillText(String(b.id + 1), ax, ay);
+      }
       ctx.restore();
     }
-  }
+  };
+  let hovered = null;
+  for (const leaf of picture.leaves) { if (leaf.body === hoveredBody) hovered = leaf; else paint(leaf); }
+  if (hovered) paint(hovered);
 }
+
 
 
 /* ============================================================== KERNEL LOOP */
@@ -1976,6 +2053,7 @@ const meterEls = {
 const root = new Hive({ depth: 0, minCount: 3, scene: config.scene, W: 320, H: 240 });
 
 let dragHive = null;                 // the hive whose body is being dragged
+let picture = null;                  // this frame's leaves — the one picture
 let mouseX = -1e9, mouseY = -1e9;
 let simTime = 0;
 let raster = { gap: 0, over: 0 };
@@ -1990,22 +2068,26 @@ function tick(nowMs) {
   simTime += dt;
   frame++;
 
-  // 1-4. the page, and every hive inside it
+  // 1-5. the page, and every hive inside it
   root.step(dt, simTime);
 
-  // 5. hover: the chain of bodies under the pointer, page first
+  // 6. the picture: leaves gathered, shards joined and cut, outlines chained
+  picture = buildPicture(root);
+
+  // 7. hover: the chain of bodies under the pointer, page first
   root.walk(h => { h.hoveredId = -1; });
-  const path = root.hitPath(mouseX, mouseY);
+  const path = hitLeaves(picture, mouseX, mouseY) || root.hitPath(mouseX, mouseY);
   for (const e of path) e.hive.hoveredId = e.body.id;
   canvas.style.cursor = dragHive ? 'grabbing' : (path.length ? 'grab' : 'default');
 
-  // 6. the garment
+  // 8. the garment: one dressing for every leaf
   ctx.clearRect(0, 0, W, H);
-  root.render(ctx);
+  paintPicture(ctx, picture, path);
 
-  // 7. meters — the page's own row, plus the worst of the fields
+  // 9. meters — the page's own row, plus the worst of the fields. Gap and
+  // overlap are measured on the picture itself, shards included.
   if (root.solved) {
-    if (frame % 12 === 0) raster = rasterCheck(root.solved.diagram.cells, W, H);
+    if (frame % 12 === 0) raster = rasterCheck(picture.leaves.flatMap(l => l.loops.map(pts => ({ pts }))), W, H);
     const errPct = root.solved.maxRelErr * 100;
     meterEls.area.textContent = errPct < 1e-4 ? errPct.toExponential(1) + '%' : errPct.toFixed(3) + '%';
     meterEls.area.className = errPct <= 1e-4 ? '' : 'bad';
@@ -2020,9 +2102,9 @@ function tick(nowMs) {
     meterEls.iter.textContent = root.lastIters + 'it ' + root.solveMs.toFixed(1) + 'ms';
     meterEls.iter.className = root.lastIters <= 10 ? '' : 'bad';
   }
-  let fields = 0, innerErr = 0, innerMs = 0, innerLocked = 0, carved = 0;
+  let fields = 0, innerErr = 0, innerMs = 0, innerLocked = 0;
+  const carved = picture.carved;
   root.walk(h => {
-    for (const sh of h.shards) carved += sh.beyond;
     if (h.depth === 0 || h.dormant || !h.solved) return;
     fields++; innerMs += h.solveMs; innerErr = Math.max(innerErr, h.solved.maxRelErr);
     if (h.crystal === 1) innerLocked++;
@@ -2064,7 +2146,7 @@ canvas.addEventListener('pointermove', (e) => {
 canvas.addEventListener('pointerleave', () => { mouseX = -1e9; mouseY = -1e9; });
 canvas.addEventListener('pointerdown', (e) => {
   const [x, y] = pointerPos(e);
-  const path = root.hitPath(x, y);
+  const path = hitLeaves(picture, x, y) || root.hitPath(x, y);
   if (!path.length) return;
   // a grab takes the innermost cell under the pointer — a member moves inside
   // its field, a plain element moves across the page; shift takes the page's
