@@ -1532,114 +1532,97 @@ class Hive {
   }
 
   // SHARDS. A member asking for more than its rest share (hover, drag) does
-  // not negotiate with the page — there are no two sides here. It bids ONE-
-  // SIDED: against every page seed at its frozen weight, with a weight of its
-  // own that starts at a tie on the content box's edge and grows with the
-  // pressure. The region it wins is cut by its siblings' bisectors (its own
-  // auction's weights, so it attaches seamlessly to its inner cell) and by
-  // the page seeds' bisectors — true Voronoi facets — minus the box. A few
-  // vertices. The rectangle yields by difference and never pushes back: its
-  // claim stays exact in the auction underneath, and the area carved out of
-  // it is metered, not hidden. Zero pressure, zero shard: rest is untouched.
+  // not negotiate with the page — there are no two sides here. Its shard
+  // grows from the corners where its own cell meets the field's edge, and
+  // only from there: the side walls are its sibling bisectors, continued
+  // straight through the edge; the front is a depth, the field's rectangle
+  // pushed out by h, faceted by the neighbours' bisectors where they come
+  // closer — true Voronoi facets, at frozen weights, nobody bidding back.
+  // Nothing may cut across the attachment: a member that touches the edge
+  // encroaches along its whole contact, never bursts out of part of it.
+  // The rectangle yields by difference; its claim stays exact underneath;
+  // the carved area is metered. Zero pressure, zero depth, zero shard.
   computeShards() {
     this.shards = [];
     if (!this.solved || this.crystal < 1) return;
     const subs = this.solvedSubs, w = this.solved.weights;
-    const pageBid = (x, y) => {
-      let m = Infinity;
-      for (let k = 0; k < subs.length; k++) { const dx = x - subs[k].x, dy = y - subs[k].y; const v = dx * dx + dy * dy - w[k]; if (v < m) m = v; }
-      return m;
-    };
     const pot = new Float64Array(subs.length);
     for (let k = 0; k < subs.length; k++) pot[k] = subs[k].x * subs[k].x + subs[k].y * subs[k].y - w[k];
+    const page = this.domainPts();
     for (const b of this.bodies) {
       const h = b.hive;
       if (!h || h.dormant || h.crystal !== 0 || !h.solved || !b.rect) continue;
       const rect = [b.rect[0] * this.PW, b.rect[1] * this.PH, b.rect[2] * this.PW, b.rect[3] * this.PH];
-      const box = rect;
       const kids = h.solvedSubs, kw = h.solved.weights;
+      // the seeds beyond this field: the only ones that shape a front
+      const beyondIdx = [];
+      for (let k = 0; k < subs.length; k++) {
+        if (subs[k].body === b) continue;
+        const q = subs[k];
+        if (q.x < rect[0] || q.x > rect[2] || q.y < rect[1] || q.y > rect[3]) beyondIdx.push(k);
+      }
       for (let i = 0; i < kids.length; i++) {
         const m = kids[i].body;
         if (m.isVoid || m.hoverMix < 0.02) continue;
         const cell = h.solved.diagram.cells[i];
         if (!cell || cell.pts.length < 3) continue;
         const sx = kids[i].x + h.ox, sy = kids[i].y + h.oy;
-        // the tie: along the stretch of the box's edge this cell touches, the
-        // smallest weight at which the member wins a point of the page
-        let W0 = Infinity;
+        // pressure is a depth, half the cell's own scale at the hover
+        // slider's full boost
+        const depth = m.hoverMix * (config.hoverBoost - 1) * 0.5 * Math.sqrt(h.solved.diagram.areas[i]);
+        if (!(depth > 0.05)) continue;
+        // the contact: the cell's wall edges. No contact, no shard — and the
+        // weight at which every neighbour's bisector clears the whole contact,
+        // so no facet can ever cut across it
+        let touches = false, Wedge = -Infinity;
         for (let k = 0, n = cell.pts.length; k < n; k++) {
-          if (cell.labs[k] >= 0) continue;                       // an edge with a sibling, not the wall
+          if (cell.labs[k] >= 0) continue;
+          touches = true;
           const p = cell.pts[k], q = cell.pts[k + 1 === n ? 0 : k + 1];
           for (let t = 0; t <= 8; t++) {
             const u = t / 8, x = h.ox + p[0] + (q[0] - p[0]) * u, y = h.oy + p[1] + (q[1] - p[1]) * u;
-            const v = (x - sx) * (x - sx) + (y - sy) * (y - sy) - pageBid(x, y);
-            if (v < W0) W0 = v;
+            let bid = Infinity;
+            for (const k2 of beyondIdx) { const dx = x - subs[k2].x, dy = y - subs[k2].y; const v = dx * dx + dy * dy - w[k2]; if (v < bid) bid = v; }
+            if (bid === Infinity) continue;
+            const v = (x - sx) * (x - sx) + (y - sy) * (y - sy) - bid;
+            if (v > Wedge) Wedge = v;
           }
         }
-        if (!isFinite(W0)) continue;                               // the cell does not touch the box's edge
-        // pressure is a DEPTH — how far past the field's edge the shard's tip
-        // reaches, half the cell's own scale at the hover slider's full boost.
-        // The weight that buys it depends on which frozen seeds stand in the
-        // way, so find it by bisection; the shard's own walls may close it
-        // off sooner, and then the pressure saturates.
-        const scale = (config.hoverBoost - 1) * 0.5 * Math.sqrt(h.solved.diagram.areas[i]);
-        const depth = m.hoverMix * scale;
-        if (!(depth > 0)) continue;
-        const sibHp = [];
-        for (let j = 0; j < kids.length; j++) {
+        if (!touches) continue;
+        let dNear = Infinity;
+        for (const k2 of beyondIdx) dNear = Math.min(dNear, Math.hypot(subs[k2].x - sx, subs[k2].y - sy));
+        const Wm = isFinite(Wedge) ? Wedge + 2 * dNear * depth : 0;
+        const potM = sx * sx + sy * sy - Wm;
+        // the front: the rectangle pushed out by the depth, within the page
+        let poly = { pts: page, labs: [-1, -2, -3, -4] };
+        const grown = [[1, 0, rect[2] + depth], [-1, 0, -(rect[0] - depth)], [0, 1, rect[3] + depth], [0, -1, -(rect[1] - depth)]];
+        for (const [ax, ay, bb] of grown) { if (poly.pts.length < 3) break; poly = clipHalfPlane(poly, ax, ay, bb, -5); }
+        // the side walls: the member's own cell, continued
+        for (let j = 0; j < kids.length && poly.pts.length >= 3; j++) {
           if (j === i) continue;
           const jx = kids[j].x + h.ox, jy = kids[j].y + h.oy;
-          sibHp.push([jx - sx, jy - sy, ((jx * jx + jy * jy - kw[j]) - (sx * sx + sy * sy - kw[i])) / 2]);
+          poly = clipHalfPlane(poly, jx - sx, jy - sy, ((jx * jx + jy * jy - kw[j]) - (sx * sx + sy * sy - kw[i])) / 2, -5);
         }
-        const region = (P) => {
-          const potM = sx * sx + sy * sy - (W0 + P);
-          let poly = { pts: this.domainPts(), labs: [-1, -2, -3, -4] };
-          for (const [ax, ay, bb] of sibHp) { if (poly.pts.length < 3) break; poly = clipHalfPlane(poly, ax, ay, bb, -5); }
-          for (let k = 0; k < subs.length && poly.pts.length >= 3; k++) poly = clipHalfPlane(poly, subs[k].x - sx, subs[k].y - sy, (pot[k] - potM) / 2, -6);
-          return poly.pts.length >= 3 ? poly : null;
-        };
+        // the facets: the neighbours' bisectors, where they come closer than the front
+        if (isFinite(Wedge)) for (const k2 of beyondIdx) { if (poly.pts.length < 3) break; poly = clipHalfPlane(poly, subs[k2].x - sx, subs[k2].y - sy, (pot[k2] - potM) / 2, -6); }
+        if (poly.pts.length < 3) continue;
         // minus the field's rectangle: the eight convex pieces around it (a
         // 3x3 less its centre), so neighbouring pieces share an edge exactly
         // and chain back into one outline
-        const minus = (poly, bx) => {
-          const pieces = [];
-          const cut = (hp) => { let q = poly; for (const [ax, ay, bb] of hp) { if (q.pts.length < 3) break; q = clipHalfPlane(q, ax, ay, bb, -7); } if (q.pts.length >= 3) pieces.push(q); };
-          const L = [1, 0, bx[0]], R = [-1, 0, -bx[2]], T = [0, 1, bx[1]], B = [0, -1, -bx[3]];
-          const M = [[-1, 0, -bx[0]], [1, 0, bx[2]]], V = [[0, -1, -bx[1]], [0, 1, bx[3]]];
-          cut([L, T]); cut([...M, T]); cut([R, T]);
-          cut([L, ...V]); cut([R, ...V]);
-          cut([L, B]); cut([...M, B]); cut([R, B]);
-          return pieces;
-        };
-        const reach = (poly) => {
-          let d = 0;
-          if (poly) for (const q of poly.pts) d = Math.max(d, rect[0] - q[0], q[0] - rect[2], rect[1] - q[1], q[1] - rect[3]);
-          return d;
-        };
-        let dNear = Infinity;
-        for (let k = 0; k < subs.length; k++) dNear = Math.min(dNear, Math.hypot(subs[k].x - sx, subs[k].y - sy));
-        const shardAt = (want) => {
-          let lo = 0, hi = 8 * dNear * (want + (rect[2] - rect[0]) / 6);
-          let poly = region(hi);
-          if (reach(poly) > want) {
-            for (let it = 0; it < 14; it++) {
-              const mid = (lo + hi) / 2, pm = region(mid);
-              if (reach(pm) >= want) { hi = mid; poly = pm; } else lo = mid;
-            }
-          }
-          if (!poly) return null;
-          const pieces = minus(poly, box);
-          if (!pieces.length) return null;
-          return { poly, pieces };
-        };
-        const shown = shardAt(depth);
-        if (!shown) continue;
+        const pieces = [];
+        const cut = (hp) => { let q = poly; for (const [ax, ay, bb] of hp) { if (q.pts.length < 3) break; q = clipHalfPlane(q, ax, ay, bb, -7); } if (q.pts.length >= 3 && Math.abs(ringArea(q.pts)) > 1e-6) pieces.push(q); };
+        const L = [1, 0, rect[0]], R = [-1, 0, -rect[2]], T = [0, 1, rect[1]], B = [0, -1, -rect[3]];
+        const M = [[-1, 0, -rect[0]], [1, 0, rect[2]]], V = [[0, -1, -rect[1]], [0, 1, rect[3]]];
+        cut([L, T]); cut([...M, T]); cut([R, T]);
+        cut([L, ...V]); cut([R, ...V]);
+        cut([L, B]); cut([...M, B]); cut([R, B]);
+        if (!pieces.length) continue;
         let beyond = 0;
-        for (const pc of shown.pieces) beyond += Math.abs(ringArea(pc.pts));
+        for (const pc of pieces) beyond += Math.abs(ringArea(pc.pts));
         // the shard: the region the member wins beyond its field, in this
         // hive's px. The picture joins it to the member's cell and cuts it
         // out of whatever it lies over; nothing else needs to know.
-        this.shards.push({ field: b, member: m, F: shown.poly.pts, pieces: shown.pieces, beyond, hv: m.hoverMix });
+        this.shards.push({ field: b, member: m, F: poly.pts, pieces, beyond, hv: m.hoverMix });
       }
     }
   }
