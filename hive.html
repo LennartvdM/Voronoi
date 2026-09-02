@@ -965,7 +965,6 @@ class Hive {
     this.ownerOf = [];                             // flat index -> body id
     this.lastSig = null;
     this.hoveredId = -1;
-    this.drag = { body: null, px: 0, py: 0 };
     this.swirlSign = 1;
     this.t = 0;
     this.solveMs = 0; this.lastIters = 0; this.rectPct = 100;
@@ -985,7 +984,7 @@ class Hive {
   rectCenter(r) { return [this.PW * (r[0] + r[2]) / 2, this.PH * (r[1] + r[3]) / 2]; }
 
   // The domain changes size: scale everything and the lattice stays a
-  // lattice, rectangles exact, mid-drag included. The PITCH follows the size
+  // lattice, rectangles exact, mid-flight included. The PITCH follows the size
   // every time; the lattice DIMENSIONS only change together with a new
   // layout, so a seated formation is inside the domain at every instant,
   // whatever the size does in between — a field's cell breathes every frame
@@ -1287,7 +1286,7 @@ class Hive {
   // --- steering ---------------------------------------------------------
 
   steer(dt, t) {
-    const drag = this.drag, W = this.W, H = this.H;
+    const W = this.W, H = this.H;
     for (const b of this.bodies) {
       const k = b.id + this.shift;
       if (b.journey) {
@@ -1295,7 +1294,6 @@ class Hive {
         const u = Math.min(1, Math.max(0, (t - j.t0 - j.delay) / j.dur));
         b.progress = easeInOutCubic(u);
       }
-      if (b === drag.body) { b.x = drag.px; b.y = drag.py; b.vx = 0; b.vy = 0; continue; }
       if (b.isSelf) { b.x = W / 2; b.y = H / 2; b.vx = 0; b.vy = 0; continue; }
       let ax = 0, ay = 0;
       if (b.path) {
@@ -1335,7 +1333,7 @@ class Hive {
   // and pushing would only spoil the grid.
   separate(dt) {
     if (this.crystal > 0.995) return;
-    const bodies = this.bodies, drag = this.drag;
+    const bodies = this.bodies;
     let claimSum = 0;
     for (const b of bodies) claimSum += b.claim;
     const areaPer = (this.W * this.H) / Math.max(1e-9, claimSum);
@@ -1351,8 +1349,8 @@ class Hive {
         const dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy);
         if (d > 1e-6 && d < R) {
           const f = F * (1 - d / R) * dt / d;
-          if (A !== drag.body) { A.vx -= dx * f; A.vy -= dy * f; }
-          if (B !== drag.body) { B.vx += dx * f; B.vy += dy * f; }
+          A.vx -= dx * f; A.vy -= dy * f;
+          B.vx += dx * f; B.vy += dy * f;
         }
       }
     }
@@ -1363,7 +1361,7 @@ class Hive {
   // one. Its own seeds are distinct by construction: they only enter the
   // field once the crystal fraction has spread them past the minimum.
   enforcePreconditions() {
-    const bodies = this.bodies, drag = this.drag, W = this.W, H = this.H;
+    const bodies = this.bodies, W = this.W, H = this.H;
     const poly = this.domainPolyActive();
     let cx = W / 2, cy = H / 2;
     if (poly) { cx = 0; cy = 0; for (const p of poly) { cx += p[0]; cy += p[1]; } cx /= poly.length; cy /= poly.length; }
@@ -1385,8 +1383,8 @@ class Hive {
         if (d < SEED_MIN_SEP) {
           if (d < 1e-6) { dx = 1; dy = 0; d = 1; }
           const push = (SEED_MIN_SEP - d) / 2 / d;
-          if (A !== drag.body && !A.isSelf) { A.x -= dx * push; A.y -= dy * push; }
-          if (B !== drag.body && !B.isSelf) { B.x += dx * push; B.y += dy * push; }
+          if (!A.isSelf) { A.x -= dx * push; A.y -= dy * push; }
+          if (!B.isSelf) { B.x += dx * push; B.y += dy * push; }
         }
       }
     }
@@ -1622,9 +1620,9 @@ class Hive {
 
   step(dt, t) {
     this.t = t;
-    // a pending re-layout waits for stillness: the cell locked, no drag, and
-    // the size quiet for a moment — content reflows when the card has landed
-    if (this.layoutAt >= 0 && this.stable && !this.drag.body && t - this.layoutAt > 0.15) {
+    // a pending re-layout waits for stillness: the cell locked and the size
+    // quiet for a moment — content reflows when the card has landed
+    if (this.layoutAt >= 0 && this.stable && t - this.layoutAt > 0.15) {
       this.layoutAt = -1;
       this.relayout();
     }
@@ -1636,15 +1634,13 @@ class Hive {
     this.enforcePreconditions();
     this.easeClaims(dt, t);
 
-    // 2. crystal: the lattice locks in only when the whole page has arrived
-    // and nothing is being dragged. Any disturbance melts it back to one seed
-    // per element — organic while it travels, exact once it lands. Melting is
-    // quick (you touch it, it goes liquid); locking is gentle (it settles).
+    // 2. crystal: the lattice locks in only when the whole page has arrived.
+    // A new scene melts it back to one seed per element — organic while it
+    // travels, exact once it lands. Melting is brisk; locking is gentle.
     const seated = this.bodies.filter(b => b.rect && !b.leaving);
-    const settled = seated.length > 0 && !this.drag.body && seated.every(b => b.progress >= 0.999);
+    const settled = seated.length > 0 && seated.every(b => b.progress >= 0.999);
     this.crystalTarget = settled ? 1 : 0;
-    const melt = this.drag.body ? 0.13 : 0.3;                              // a grab melts at once; a scene, gently
-    const step = dt / (this.crystalTarget > this.crystal ? 0.55 : melt);   // lock 0.55 s
+    const step = dt / (this.crystalTarget > this.crystal ? 0.55 : 0.3);    // lock 0.55 s, melt 0.3 s
     this.crystal += Math.max(-step, Math.min(step, this.crystalTarget - this.crystal));
     this.crystal = Math.max(0, Math.min(1, this.crystal));
     // a locked lattice sits exactly on its slots, so the grid is exact
@@ -1683,7 +1679,7 @@ class Hive {
     this.computeShards();
   }
 
-  // SHARDS. A member asking for more than its rest share (hover, drag) does
+  // SHARDS. A member asking for more than its rest share (hover) does
   // not negotiate with the page — there are no two sides here. Its shard
   // grows from the corners where its own cell meets the field's edge, and
   // only from there: the side walls are its sibling bisectors, continued
@@ -2255,7 +2251,6 @@ const meterEls = {
 // The page: the root hive. Every field is a hive inside one of its cells.
 const root = new Hive({ depth: 0, minCount: 3, scene: config.scene, W: 320, H: 240 });
 
-let dragHive = null;                 // the hive whose body is being dragged
 let picture = null;                  // this frame's leaves — the one picture
 let mouseX = -1e9, mouseY = -1e9;
 let simTime = 0;
@@ -2281,7 +2276,7 @@ function tick(nowMs) {
   root.walk(h => { h.hoveredId = -1; });
   const path = hitLeaves(picture, mouseX, mouseY) || root.hitPath(mouseX, mouseY);
   for (const e of path) e.hive.hoveredId = e.body.id;
-  canvas.style.cursor = dragHive ? 'grabbing' : (path.length ? 'grab' : 'default');
+  canvas.style.cursor = 'default';
 
   // 8. the garment: one dressing for every leaf
   ctx.clearRect(0, 0, W, H);
@@ -2342,29 +2337,8 @@ function pointerPos(e) {
   return [e.clientX - r.left, e.clientY - r.top];
 }
 
-canvas.addEventListener('pointermove', (e) => {
-  [mouseX, mouseY] = pointerPos(e);
-  if (dragHive) { dragHive.drag.px = mouseX - dragHive.absX; dragHive.drag.py = mouseY - dragHive.absY; }
-});
+canvas.addEventListener('pointermove', (e) => { [mouseX, mouseY] = pointerPos(e); });
 canvas.addEventListener('pointerleave', () => { mouseX = -1e9; mouseY = -1e9; });
-canvas.addEventListener('pointerdown', (e) => {
-  const [x, y] = pointerPos(e);
-  const path = hitLeaves(picture, x, y) || root.hitPath(x, y);
-  if (!path.length) return;
-  // a grab takes the innermost cell under the pointer — a member moves inside
-  // its field, a plain element moves across the page; shift takes the page's
-  // element whatever is inside it. Either way the hive it belongs to melts:
-  // the dragged body becomes one seed and so does everything around it, so
-  // it moves through a liquid field, not a rigid grid.
-  const hit = e.shiftKey ? path[0] : path[path.length - 1];
-  dragHive = hit.hive;
-  dragHive.drag.body = hit.body;
-  dragHive.drag.px = x - dragHive.absX; dragHive.drag.py = y - dragHive.absY;
-  canvas.setPointerCapture(e.pointerId);
-});
-const endDrag = () => { if (dragHive) { dragHive.drag.body = null; dragHive = null; } };
-canvas.addEventListener('pointerup', endDrag);
-canvas.addEventListener('pointercancel', endDrag);
 
 document.querySelectorAll('.scene-btn').forEach(b => b.addEventListener('click', () => {
   config.scene = b.dataset.scene;
