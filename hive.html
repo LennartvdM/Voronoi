@@ -418,23 +418,22 @@ function solveWeights(seeds, targets, boundsPts, w0, opts = {}) {
   let diag = computeDiagram(seeds, w, boundsPts, tris); evals++;
   if (w0 && minOf(diag.areas) <= 0) {
     // Stale warm start: some seed's old weight leaves it no cell. Rather than
-    // discard everyone's warm weights (a cold solve, 5-6 iterations), lift
-    // only the empty seeds to the strongest bid around and let Newton pull
-    // them back — a few warm iterations instead of a cold restart.
-    // lift each empty seed to the strongest weight among its 8 nearest seeds:
-    // enough to win a cell locally, not enough to grab a whole neighbourhood
+    // discard everyone's warm weights (a cold solve, 5-6 iterations), repair
+    // only the empty seeds and let Newton grow them — a few warm iterations
+    // instead of a cold restart.
+    // give each empty seed a sliver a few px wide beside its nearest live
+    // neighbour: alive, so the system stays nonsingular, and small, so the
+    // fix takes nothing from anyone that Newton must then give back
     const empties = [];
     for (let i = 0; i < n; i++) if (diag.areas[i] <= 0) empties.push(i);
     const lifted = new Float64Array(n);
     for (const i of empties) {
-      const near = [];
-      for (let j = 0; j < n; j++) if (j !== i && diag.areas[j] > 0) near.push([Math.hypot(seeds[j][0] - seeds[i][0], seeds[j][1] - seeds[i][1]), j]);
-      near.sort((a, b) => a[0] - b[0]);
-      let wl = -Infinity;
-      for (let k = 0; k < Math.min(8, near.length); k++) wl = Math.max(wl, w[near[k][1]]);
-      lifted[i] = isFinite(wl) ? wl : 0;
+      let nj = -1, nd = Infinity;
+      for (let j = 0; j < n; j++) if (j !== i && diag.areas[j] > 0) { const d = Math.hypot(seeds[j][0] - seeds[i][0], seeds[j][1] - seeds[i][1]); if (d < nd) { nd = d; nj = j; } }
+      lifted[i] = nj >= 0 ? w[nj] - nd * nd + 2 * nd * 3 : 0;
     }
     for (const i of empties) w[i] = lifted[i];
+    solveWeights.lifts = (solveWeights.lifts || 0) + empties.length;
     diag = computeDiagram(seeds, w, boundsPts, tris); evals++;
     if (minOf(diag.areas) <= 0) {                  // still empty: the true cold restart
       w = new Float64Array(n);
@@ -844,7 +843,9 @@ function rasterCheck(cells, W, H) {
 const CLAIM_MIN = 0.02;
 const SEED_MARGIN = 10;
 const SEED_MIN_SEP = 5;
-const ACTIVE_MIN = 0.12;   // a lattice seed joins the field once it is worth this much of a slot
+const ENTRY_SEP = 25;      // a lattice seed joins its body's auction only this far from the core: seeds a few px
+                           // apart with slot-sized weights make Newton's system stiff, and it lags, then jolts
+const ACTIVE_MIN = 0.01;   // a seed joins the auction once it is worth this much of a slot: too small to see appear
 const MAX_DEPTH = 2;       // page > field > field-in-a-field; enough to prove the recursion
 const MAX_MEMBERS = 9;     // the largest roster a field shows
 
@@ -1011,6 +1012,7 @@ class Hive {
           else { b.path.ex *= kx; b.path.ey *= ky; }
         }
         this.refreshFormation(b);
+        if (b.isSelf) { b.x = W / 2; b.y = H / 2; }
       }
     }
     if (this.wantCols() !== this.COLS || this.wantRows() !== this.ROWS) this.layoutAt = this.t;
@@ -1039,7 +1041,8 @@ class Hive {
       // formation cannot shear or open up.
       x, y, vx: 0, vy: 0,
 
-      rect: null,                 // lattice rect when seated
+      rect: null,                 // lattice rect when seated (where it is going)
+      formRect: null,             // the rect its formation reflects (where it is): swapped only at crystal 0
       offs: [[0, 0]],             // seed offsets from the body centre at full crystal
       core: 0,                    // the seed carrying the whole claim while melted
       subs: [],
@@ -1057,6 +1060,8 @@ class Hive {
       // cells, a card does not. The Fields slider sets how many are galleries.
       kindRoll: hash01(k, 21),
       hive: null,                 // a field: the hive living inside this cell
+      isSelf: !!opts.isSelf,      // a field's own card, as a member of its own hive
+      content: null,              // the label's own lazy state: see paintPicture
       loops: null, bigSeed: -1,   // this frame's simplified union outline
 
       hoverMix: 0,
@@ -1070,11 +1075,15 @@ class Hive {
   // Describe a body's formation: the offsets of its lattice slots from the
   // rect centre. Derived, so a resize re-derives it for free.
   refreshFormation(b) {
-    if (!b.rect) { b.offs = [[0, 0]]; b.core = 0; b.subs.length = 1; return; }
-    const [ex, ey] = this.rectCenter(b.rect);
+    const rect = b.formRect;
+    // the core's seed carries the body's whole claim while melted, and its
+    // warm weight with it: whatever the new formation is, that seed stays
+    const coreSub = b.subs[b.core] || b.subs[0];
+    if (!rect) { b.offs = [[0, 0]]; b.core = 0; b.subs.length = 1; b.subs[0] = coreSub; return; }
+    const [ex, ey] = this.rectCenter(rect);
     const offs = [];
-    for (let r = b.rect[1]; r < b.rect[3]; r++) {
-      for (let c = b.rect[0]; c < b.rect[2]; c++) {
+    for (let r = rect[1]; r < rect[3]; r++) {
+      for (let c = rect[0]; c < rect[2]; c++) {
         const [sx, sy] = this.slotCenter(c, r);
         offs.push([sx - ex, sy - ey]);
       }
@@ -1086,18 +1095,30 @@ class Hive {
     for (let i = 1; i < offs.length; i++) {
       if (Math.hypot(offs[i][0], offs[i][1]) < Math.hypot(offs[core][0], offs[core][1])) core = i;
     }
-    b.offs = offs; b.core = core;
+      b.offs = offs; b.core = core;
     while (b.subs.length < offs.length) b.subs.push(makeSub(b, b.x, b.y));
     b.subs.length = offs.length;
+    if (b.subs[core] !== coreSub) { const k = b.subs.indexOf(coreSub); if (k >= 0) b.subs[k] = b.subs[core]; b.subs[core] = coreSub; }
   }
 
   // --- seating: the one verb, spoken for a whole formation at once -------
 
+  // The formation is a rest-state fact. A body melting out of one rectangle
+  // keeps that formation until the crystal reaches zero and only then takes
+  // the new one: at zero the offsets multiply by nothing, so the swap is
+  // invisible. Swapping at once would teleport its seeds from the old
+  // rectangle's shape into the new one's while they are still spread.
+  takeFormation(b) {
+    if (this.crystal > 0 && b.formRect) return;      // still melting: keep what is on screen
+    b.formRect = b.rect;
+    this.refreshFormation(b);
+  }
+
   seatBody(b, rect, timing) {
     b.rect = rect;
-    this.refreshFormation(b);
+    this.takeFormation(b);
     b.claim0 = b.claim;
-    b.claimTarget = b.offs.length;      // one lattice cell per slot
+    b.claimTarget = rectArea(rect);     // one lattice cell per slot
     b.leaving = false;
 
     const [ex, ey] = this.rectCenter(rect);
@@ -1117,7 +1138,7 @@ class Hive {
   // Release a body back to the flock: one seed, its own resting size.
   releaseBody(b) {
     b.rect = null;
-    this.refreshFormation(b);
+    this.takeFormation(b);
     b.claim0 = b.claim;
     b.claimTarget = b.baseClaim;
     b.path = null; b.journey = null; b.progress = 1;
@@ -1125,9 +1146,10 @@ class Hive {
   }
 
   retireBody(b, dur = 0.6) {
-    // shrink in place, as one seed, and be gone
-    b.leaving = true; b.rect = null; b.hive = null;
-    this.refreshFormation(b);
+    // shrink in place, as one seed, and be gone; a field keeps its hive and
+    // takes it along, so nothing inside it switches while it fades
+    b.leaving = true; b.rect = null;
+    this.takeFormation(b);
     b.path = { sx: b.x, sy: b.y, ex: b.x, ey: b.y, cx: b.x, cy: b.y };
     b.journey = { t0: this.t, delay: 0, dur };
     b.progress = 0;
@@ -1145,7 +1167,7 @@ class Hive {
     const slots = rectArea(rect);
     const gallery = b.kindRoll < config.fieldDensity * (this.depth === 0 ? 1 : 0.5);
     const k = gallery && this.depth < MAX_DEPTH && slots >= 4 ? Math.min(MAX_MEMBERS, Math.round(slots * 0.5 + 1)) : 0;
-    if (k < 3) { b.hive = null; return; }
+    if (k < 3) { this.dropField(b); return; }
     if (!b.hive) {
       b.hive = new Hive({
         depth: this.depth + 1,
@@ -1155,22 +1177,53 @@ class Hive {
         W: (rect[2] - rect[0]) * this.PW,
         H: (rect[3] - rect[1]) * this.PH,
       });
+      b.hive.adoptSelf(b);
+    } else if (b.hive.dropping) {
+      // called back before the merge finished: the members grow again
+      b.hive.dropping = false;
+      for (const m of b.hive.bodies) if (m.leaving && !m.isSelf && !m.isVoid) { m.leaving = false; m.path = null; m.journey = null; m.progress = 1; m.claimTarget = m.baseClaim; }
     }
     b.hive.setCount(k);
+  }
+
+  // A cell splits: the field's own card is a member of its hive — the SELF —
+  // holding everything, and the members bud out of it from the floor. A cell
+  // merges: the members retire into the self, and once only the self is
+  // left the hive dissolves and the card carries on, the same cell. Nothing
+  // outside the field moves, because the field's outer cell never changes.
+  adoptSelf(field) {
+    const s = this.makeBody(this.W / 2, this.H / 2, { claim: 1, isSelf: true });
+    s.name = field.name; s.color = field.color; s.label = field.id + 1;
+    this.self = s;
+    this.bodies.push(s);
+  }
+
+  dropField(b) {
+    const h = b.hive;
+    if (!h || h.dropping) return;
+    h.dropping = true;
+    for (const m of h.bodies) if (!m.isSelf && !m.isVoid && !m.leaving) h.retireBody(m, 0.8);
+  }
+
+  // dissolved once every member has retired into the self
+  fieldMerged(b) {
+    const h = b.hive;
+    return !!h && h.dropping && h.bodies.every(m => m.isSelf || m.isVoid || m.claim <= CLAIM_MIN * 1.5);
   }
 
   // --- scenes -----------------------------------------------------------
 
   enterScene(name) {
     this.scene = name;
-    const content = this.bodies.filter(b => !b.isVoid && !b.leaving);
+    const content = this.bodies.filter(b => !b.isVoid && !b.leaving && !b.isSelf);
     const spec = scenes[name] ? scenes[name](this.COLS, this.ROWS, content.length) : null;
 
     if (!spec || spec.content.length < content.length) {
-      // no rigid border anywhere, so no fields either
+      // no rigid border anywhere, so no fields either: they merge back into
+      // cards; whitespace dissolves at the pace the cells move, not faster
       for (const b of this.bodies) {
-        if (b.isVoid) this.retireBody(b, 0.5);
-        else { b.hive = null; this.releaseBody(b); }
+        if (b.isVoid) this.retireBody(b, 1.2);
+        else if (!b.isSelf) { this.dropField(b); this.releaseBody(b); }
       }
       return;
     }
@@ -1212,13 +1265,13 @@ class Hive {
   }
 
   removeBody() {
-    const content = this.bodies.filter(b => !b.isVoid && !b.leaving);
+    const content = this.bodies.filter(b => !b.isVoid && !b.leaving && !b.isSelf);
     if (content.length <= this.minCount) return;
     this.retireBody(content[content.length - 1]);
   }
 
   setCount(k) {
-    let n = this.bodies.filter(b => !b.isVoid && !b.leaving).length;
+    let n = this.bodies.filter(b => !b.isVoid && !b.leaving && !b.isSelf).length;
     while (n < k) { this.addBody(); n++; }
     while (n > k && n > this.minCount) { this.removeBody(); n--; }
   }
@@ -1228,7 +1281,7 @@ class Hive {
     // a dissolved void just disappears; a removed element re-layouts the rest
     const contentGone = this.bodies.some(b => done(b) && !b.isVoid);
     this.bodies = this.bodies.filter(b => !done(b));
-    if (contentGone) this.enterScene(this.scene);
+    if (contentGone && !this.dropping) this.enterScene(this.scene);
   }
 
   // --- steering ---------------------------------------------------------
@@ -1243,6 +1296,7 @@ class Hive {
         b.progress = easeInOutCubic(u);
       }
       if (b === drag.body) { b.x = drag.px; b.y = drag.py; b.vx = 0; b.vy = 0; continue; }
+      if (b.isSelf) { b.x = W / 2; b.y = H / 2; b.vx = 0; b.vy = 0; continue; }
       let ax = 0, ay = 0;
       if (b.path) {
         // follow the journey's carrot with a lightly under-damped spring: the
@@ -1289,8 +1343,10 @@ class Hive {
     const F = 2600 * (1 - this.crystal);
     for (let i = 0; i < bodies.length; i++) {
       const A = bodies[i];
+      if (A.isSelf) continue;
       for (let j = i + 1; j < bodies.length; j++) {
         const B = bodies[j];
+        if (B.isSelf) continue;
         const R = 0.85 * (rad[i] + rad[j]);
         const dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy);
         if (d > 1e-6 && d < R) {
@@ -1329,8 +1385,8 @@ class Hive {
         if (d < SEED_MIN_SEP) {
           if (d < 1e-6) { dx = 1; dy = 0; d = 1; }
           const push = (SEED_MIN_SEP - d) / 2 / d;
-          if (A !== drag.body) { A.x -= dx * push; A.y -= dy * push; }
-          if (B !== drag.body) { B.x += dx * push; B.y += dy * push; }
+          if (A !== drag.body && !A.isSelf) { A.x -= dx * push; A.y -= dy * push; }
+          if (B !== drag.body && !B.isSelf) { B.x += dx * push; B.y += dy * push; }
         }
       }
     }
@@ -1342,6 +1398,18 @@ class Hive {
       const hovered = b.id === this.hoveredId;
       const hm = 1 - Math.exp(-(hovered ? 10 : 5) * dt);
       b.hoverMix += ((hovered ? 1 : 0) - b.hoverMix) * hm;
+      if (b.isSelf) {
+        // the self holds whatever the members do not hold yet — derived, so a
+        // split and a merge are the same curve run in opposite directions;
+        // a deadband keeps the members' breathing from waking it at rest
+        let sum = 0, base = 0;
+        for (const m of this.bodies) if (!m.isSelf && !m.isVoid) { sum += m.claim; base += m.baseClaim; }
+        const rho = base > 0 ? Math.max(0, Math.min(1, (sum / base - 0.1) / 0.8)) : 0;
+        // fully handed over, the self leaves the auction altogether: it sits
+        // at the field's centre, which a lattice inside may put a seed on
+        b.claim = base > 0 ? (rho >= 1 ? 0 : Math.max(CLAIM_MIN, base * (1 - rho))) : 1;
+        continue;
+      }
       if (b.journey && b.path) {
         // size travels with position: the same eased progress
         b.claim = b.claim0 + (b.claimTarget - b.claim0) * b.progress;
@@ -1360,26 +1428,36 @@ class Hive {
   // a single smooth convex cell, nothing to segment. Crystallised, the
   // offsets are exact lattice slots and the union is the exact rectangle.
   // Everything between is one continuous interpolation of the same numbers.
+  // The crystal moves SEEDS, never claims. A lattice seed is out of the
+  // auction until the crystal has carried it a real distance from the core,
+  // then holds an equal share of its body until it leaves the same way; the
+  // core holds the shares of everyone not yet in. Claims that shrank with
+  // the crystal asked Newton to shrink seventy cells by a factor of hundreds
+  // in ten frames; it lagged, and released the error when they left.
   placeSeeds() {
     const crystal = this.crystal;
     for (const b of this.bodies) {
+      if (b.formRect !== b.rect && crystal === 0) { b.formRect = b.rect; this.refreshFormation(b); }
       const n = b.subs.length;
       // hover only reshapes the field while the page is liquid; a locked
       // element lights up instead of reflowing its neighbours
       const hover = 1 + (config.hoverBoost - 1) * b.hoverMix * (1 - crystal);
-      const coreShare = n - (n - 1) * crystal;          // n when melted, 1 when locked
-      const otherShare = Math.max(CLAIM_MIN, crystal);  // ~0 when melted, 1 when locked
+      // a body on its way out dissolves its formation early, while the
+      // cluster is still open: a big formation contracted tight is the one
+      // thing the solver cannot follow, and a leaving body has no rest
+      // state to keep
+      const sep = b.leaving ? 3 * ENTRY_SEP : ENTRY_SEP;
+      let out = 0;
       for (let i = 0; i < n; i++) {
         const s = b.subs[i];
         s.x = b.x + b.offs[i][0] * crystal;
         s.y = b.y + b.offs[i][1] * crystal;
-        // A lattice seed joins the field only once the crystal has spread it
-        // a real distance from the core. Its floor share scales with the
-        // body's claim, so a big claim melted into a small formation could
-        // otherwise push a seed over the entry gate while it still sits on
-        // the core — two coincident seeds, two identical cells, an overlap.
-        const spread = i === b.core ? Infinity : crystal * Math.hypot(b.offs[i][0], b.offs[i][1]);
-        s.claim = spread >= SEED_MIN_SEP ? b.claim * hover * (i === b.core ? coreShare : otherShare) / n : 0;
+        s.spread = i === b.core ? Infinity : crystal * Math.hypot(b.offs[i][0], b.offs[i][1]);
+        if (s.spread < sep) out++;
+      }
+      for (let i = 0; i < n; i++) {
+        const s = b.subs[i];
+        s.claim = i === b.core ? b.claim * hover * (1 + out) / n : (s.spread >= sep ? b.claim * hover / n : 0);
       }
     }
   }
@@ -1404,8 +1482,80 @@ class Hive {
     for (const b of this.bodies) for (const s of b.subs) subs.push(s);
     const active = subs.filter(s => s.claim >= ACTIVE_MIN);
     if (active.length < 2) { this.solved = null; this.solvedSubs = []; this.ownerOf = []; this.lastSig = null; return; }
+    // the solver's one silent failure is two coincident seeds: nudge the
+    // later of any pair closer than the precondition allows
+    for (let i = 0; i < active.length; i++) for (let j = i + 1; j < active.length; j++) {
+      const a = active[i], c = active[j];
+      if (Math.abs(a.x - c.x) < SEED_MIN_SEP && Math.abs(a.y - c.y) < SEED_MIN_SEP && Math.hypot(a.x - c.x, a.y - c.y) < 1) { c.x += 1.1; c.y += 0.7; }
+    }
     const seeds = active.map(s => [s.x, s.y]);
     const claims = active.map(s => s.claim);
+    // A seed entering the auction must not bring a stale weight: with the
+    // weight it had the last time it was live it grabs a whole slot at once
+    // and Newton needs frames to take it back. Start it at the weight that
+    // gives a cell of about its own size next to the nearest live seed, so
+    // the solve continues warm and the newcomer is as small as it looks.
+    const live = active.filter(q => q.live);
+    const domainArea = Math.abs(ringArea(this.domainPts()));
+    let tSum = 0; for (const c of claims) tSum += c;
+    if (!live.length) {
+      // a cold hive: weights by radius put every bisector about where the
+      // claims want it, so the first solve is already close
+      for (const s of active) s.w = s.claim * domainArea / tSum / Math.PI;
+    } else {
+      const prevIdx = new Map();
+      this.solvedSubs.forEach((q, i) => prevIdx.set(q, i));
+      for (const b of this.bodies) {
+        const core = b.subs[b.core];
+        if (!core || !core.live) continue;
+        const rb = Math.sqrt(Math.max(1, b.claim * domainArea / tSum) / Math.PI);
+        // a lattice seed coming in takes its share from the core: a little
+        // under the core's weight, so it starts with a modest cell a few px
+        // short of the midpoint, never empty, and Newton settles it within
+        // the body, where it shows nowhere
+        for (const s of b.subs) if (s !== core && s.claim >= ACTIVE_MIN && !s.live) s.w = core.w - s.spread * s.spread / 2;
+        // lattice seeds going out hand their cells to the core: give the core
+        // the weight that keeps each of their edges with anyone staying where
+        // it was — read off last frame's diagram — so Newton only has the
+        // seams among the leavers to redo
+        if (this.solved) {
+          const leaving = new Set();
+          for (const s of b.subs) if (s !== core && s.live && s.claim < ACTIVE_MIN) leaving.add(s);
+          let W = 0, k = 0;
+          for (const s of leaving) {
+            const i = prevIdx.get(s);
+            if (i === undefined) continue;
+            const cell = this.solved.diagram.cells[i];
+            for (let e = 0, m = cell.pts.length; e < m; e++) {
+              const j = cell.labs[e];
+              if (j < 0) continue;
+              const q = this.solvedSubs[j];
+              if (q === core || leaving.has(q)) continue;
+              const p = cell.pts[e], p2 = cell.pts[e + 1 === m ? 0 : e + 1];
+              const mx = (p[0] + p2[0]) / 2, my = (p[1] + p2[1]) / 2;
+              const Dx = q.x - core.x, Dy = q.y - core.y, D = Math.hypot(Dx, Dy);
+              if (D < 1e-6) continue;
+              const d = ((mx - core.x) * Dx + (my - core.y) * Dy) / D;
+              W += q.w + 2 * D * d - D * D; k++;
+            }
+          }
+          if (k) core.w = W / k;
+        }
+      }
+      for (const s of active) if (!s.live) {
+        // anyone else enters as a sliver a few px wide beside the nearest
+        // live seed: real, so the solver never has to lift it, and small, so
+        // nothing is taken from anyone until Newton grows it into its claim
+        const b = s.body, core = b.subs[b.core];
+        if (core && core.live && s !== core) continue;             // a lattice seed: handled above
+        let near = null, nd = Infinity;
+        for (const q of live) { const d = Math.hypot(q.x - s.x, q.y - s.y); if (d < nd) { nd = d; near = q; } }
+        const r = Math.min(3, Math.sqrt(Math.max(1, s.claim * domainArea / tSum) / Math.PI));
+        s.w = near.w - nd * nd + 2 * nd * r;
+      }
+    }
+    for (const s of subs) s.live = false;
+    for (const s of active) s.live = true;
     const domain = this.domainPolyActive();
     this.exact = this.domainIsCell !== false && (!this.domainPoly || !!domain);   // false: solved on a box that is not the cell
     let sig = active.length + '|' + (this.W * 8 | 0) + 'x' + (this.H * 8 | 0) + '|' + (domain ? this.domainSig : '') + '|';
@@ -1417,7 +1567,7 @@ class Hive {
     // frames of small area error (the meter shows it) instead of one 60 ms
     // frame. The diagram is watertight at every step regardless; at rest
     // this converges to 1e-6 within a frame or two and then costs nothing.
-    const sol = solveWeights(seeds, claims, this.domainPts(), active.map(s => s.w), { maxIter: 2, domain });
+    const sol = solveWeights(seeds, claims, this.domainPts(), active.map(s => s.w), { maxIter: 3, domain });
     this.solveMs = performance.now() - t0;
     this.lastIters = sol.iterations;
     active.forEach((s, i) => { s.w = sol.weights[i]; });
@@ -1493,7 +1643,8 @@ class Hive {
     const seated = this.bodies.filter(b => b.rect && !b.leaving);
     const settled = seated.length > 0 && !this.drag.body && seated.every(b => b.progress >= 0.999);
     this.crystalTarget = settled ? 1 : 0;
-    const step = dt / (this.crystalTarget > this.crystal ? 0.55 : 0.13);   // lock 0.55 s, melt 0.13 s
+    const melt = this.drag.body ? 0.13 : 0.3;                              // a grab melts at once; a scene, gently
+    const step = dt / (this.crystalTarget > this.crystal ? 0.55 : melt);   // lock 0.55 s
     this.crystal += Math.max(-step, Math.min(step, this.crystalTarget - this.crystal));
     this.crystal = Math.max(0, Math.min(1, this.crystal));
     // a locked lattice sits exactly on its slots, so the grid is exact
@@ -1509,6 +1660,7 @@ class Hive {
     // field looks at it, and a field cannot reshape the cell it lives in.
     for (const b of this.bodies) {
       if (!b.hive) continue;
+      if (this.fieldMerged(b)) { b.hive = null; continue; }
       const cell = this.cellPoly(b);
       if (!cell) { b.hive.dormant = true; continue; }
       // the frame: the cell's box; the cell is exactly a rectangle when locked
@@ -1746,7 +1898,7 @@ class Hive {
       }
       const pieces = own();
       if (!pieces.length) continue;
-      out.push({ path: [{ hive: this, body: b }], body: b, color: b.color, hv: b.hoverMix, fade: f, isVoid: b.isVoid, labels: this.style.labels, pieces, loops: null, touched: false });
+      out.push({ path: [{ hive: this, body: b }], body: b, color: b.color, hv: b.hoverMix, fade: f, isVoid: b.isVoid, labels: this.style.labels || b.isSelf, label: b.label !== undefined ? b.label : b.id + 1, pieces, loops: null, touched: false });
     }
   }
 
@@ -1933,10 +2085,75 @@ function hitLeaves(picture, x, y) {
   return null;
 }
 
+// Distance from a point to a polygon's boundary: the radius of the largest
+// circle centred there.
+function radiusAt(pts, x, y) {
+  let md = Infinity;
+  for (let k = 0, n = pts.length; k < n; k++) {
+    const p = pts[k], q = pts[(k + 1) % n];
+    const ex = q[0] - p[0], ey = q[1] - p[1];
+    const L2 = ex * ex + ey * ey || 1e-9;
+    let t = ((x - p[0]) * ex + (y - p[1]) * ey) / L2;
+    t = Math.max(0, Math.min(1, t));
+    md = Math.min(md, Math.hypot(x - (p[0] + t * ex), y - (p[1] + t * ey)));
+  }
+  return md;
+}
+
+// CONTENT. A label does not need to be exact: it can float anywhere inside
+// its cell and never look wrong. So it does not read the tessellation every
+// frame. It samples a target — the cell's inscribed pole — a few times a
+// second, or when the cell has clearly changed, keeps the target it has
+// unless a new one is clearly better, and drifts toward it on a slow
+// critically damped spring, velocity continuous, so a target that hops does
+// not make the label dart. Its size follows the pole's radius on the same
+// slow clock, in 2 px steps, so it breathes rather than flickers. One test
+// per frame keeps it inside a cell that has grown a notch or a shard.
+const CONTENT_SAMPLE = 0.33;    // s between samples
+const CONTENT_OMEGA = 6;        // rad/s: the spring's natural frequency, ~1 s to settle
+const CONTENT_SIZE_TAU = 0.8;   // s: the size's time constant
+
+// Everything here is in the cell's own frame — offsets from the body's
+// seed — so a travelling cell carries its label with it and only the
+// label's place WITHIN the cell is lazy.
+function contentStep(c, pts, big, area, t, dt, bx, by) {
+  const tx = bx + c.tox, ty = by + c.toy;
+  const stale = !c.init || t - c.at > CONTENT_SAMPLE || Math.abs(area - c.area) > 0.05 * area || !pointInPolygon(tx, ty, pts);
+  if (stale) {
+    const raw = inscribedPole(big, c.init ? tx : bx, c.init ? ty : by);
+    const pole = inscribedPole(pts, raw.x, raw.y);
+    if (c.init && pointInPolygon(tx, ty, pts)) {
+      // hysteresis: the pole flips between near-equal optima; only a
+      // clearly better one is worth moving for
+      const here = radiusAt(pts, tx, ty);
+      if (pole.r > 1.15 * here) { c.tox = pole.x - bx; c.toy = pole.y - by; c.tr = pole.r; }
+      else c.tr = here;
+    } else { c.tox = pole.x - bx; c.toy = pole.y - by; c.tr = pole.r; }
+    c.at = t; c.area = area;
+    if (!c.init) { c.ox = c.tox; c.oy = c.toy; c.r = c.tr; c.init = true; }
+  }
+  // the drift, on the offset
+  const w = CONTENT_OMEGA;
+  const ax = w * w * (c.tox - c.ox) - 2 * w * c.vx, ay = w * w * (c.toy - c.oy) - 2 * w * c.vy;
+  c.vx += ax * dt; c.vy += ay * dt;
+  c.ox += c.vx * dt; c.oy += c.vy * dt;
+  if (!pointInPolygon(bx + c.ox, by + c.oy, pts) && pointInPolygon(tx, ty, pts)) {
+    // outside its cell: come back only as far as the edge, along the line
+    // to the target, so a cell that moved under the label nudges it in
+    // rather than teleporting it
+    let lo = 0, hi = 1;                                  // 0 = target (inside), 1 = here (outside)
+    for (let k = 0; k < 10; k++) { const m = (lo + hi) / 2; if (pointInPolygon(bx + c.tox + (c.ox - c.tox) * m, by + c.toy + (c.oy - c.toy) * m, pts)) lo = m; else hi = m; }
+    const m = Math.max(0, lo - 0.02);
+    c.ox = c.tox + (c.ox - c.tox) * m; c.oy = c.toy + (c.oy - c.toy) * m;
+    c.vx *= 0.5; c.vy *= 0.5;
+  } else if (!pointInPolygon(bx + c.ox, by + c.oy, pts)) { c.ox = c.tox; c.oy = c.toy; c.vx = 0; c.vy = 0; }
+  c.r += (c.tr - c.r) * (1 - Math.exp(-dt / CONTENT_SIZE_TAU));
+  c.x = bx + c.ox; c.y = by + c.oy; c.tx = tx; c.ty = ty;
+}
+
 // Dress and paint every leaf the same way. ctx is in root px.
-function paintPicture(ctx, picture, hoveredPath) {
+function paintPicture(ctx, picture, hoveredPath, dt, t) {
   const halfGap = config.gap / 2, corner = config.cornerRadius;
-  const anchorK = 1 - Math.exp(-9 / 60);
   const hoveredBody = hoveredPath && hoveredPath.length ? hoveredPath[hoveredPath.length - 1].body : null;
   const paint = (leaf) => {
     if (leaf.isVoid || !leaf.loops.length) return;
@@ -1949,18 +2166,14 @@ function paintPicture(ctx, picture, hoveredPath) {
     for (const l of leaf.loops) for (const p of l) { bx0 = Math.min(bx0, p[0]); by0 = Math.min(by0, p[1]); bx1 = Math.max(bx1, p[0]); by1 = Math.max(by1, p[1]); }
     let big = leaf.loops[0], bigA = 0;
     for (const l of leaf.loops) { const a = Math.abs(ringArea(l)); if (a > bigA) { bigA = a; big = l; } }
-    let poleR = 0, anchored = false;
+    let bigPts = null;
     for (const loop of leaf.loops) {
-      const rawPole = inscribedPole(loop, inner.absX + b.anchorX, inner.absY + b.anchorY);
-      const inset = Math.min(halfGap * (1 - lift), 0.45 * rawPole.r);
+      let lx0 = Infinity, ly0 = Infinity, lx1 = -Infinity, ly1 = -Infinity;
+      for (const p of loop) { lx0 = Math.min(lx0, p[0]); ly0 = Math.min(ly0, p[1]); lx1 = Math.max(lx1, p[0]); ly1 = Math.max(ly1, p[1]); }
+      const inset = Math.min(halfGap * (1 - lift), 0.25 * Math.min(lx1 - lx0, ly1 - ly0));
       const pts = insetPolygon(loop, inset);
       if (pts.length < 3) continue;
-      const pole = inscribedPole(pts, rawPole.x, rawPole.y);
-      if (!anchored && loop === big) {
-        b.anchorX += ((pole.x - inner.absX) - b.anchorX) * anchorK;
-        b.anchorY += ((pole.y - inner.absY) - b.anchorY) * anchorK;
-        poleR = pole.r; anchored = true;
-      }
+      if (loop === big) bigPts = pts;
       ctx.save();
       roundedPath(ctx, pts, corner);
       ctx.clip();
@@ -1978,22 +2191,28 @@ function paintPicture(ctx, picture, hoveredPath) {
       ctx.stroke();
       ctx.restore();
     }
-    if (anchored && poleR > (leaf.labels ? 20 : 17)) {
-      const ax = inner.absX + b.anchorX, ay = inner.absY + b.anchorY;
+    if (!bigPts) return;
+
+    // the content: its own clock, its own drift
+    const c = b.content || (b.content = { init: false, x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0, tox: 0, toy: 0, tx: 0, ty: 0, r: 0, tr: 0, at: -1, area: 0 });
+    contentStep(c, bigPts, big, bigA, t, dt, inner.absX + b.x, inner.absY + b.y);
+    b.anchorX = b.x + c.tox; b.anchorY = b.y + c.toy;   // the body's own slow drift target
+    const rr = Math.round(c.r / 2) * 2;
+    if (rr > (leaf.labels ? 20 : 17)) {
       ctx.save();
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       if (leaf.labels) {
         ctx.globalAlpha = 0.16 * fade;
-        ctx.font = `700 ${Math.round(poleR * 1.4)}px system-ui, sans-serif`;
-        ctx.fillText(String(b.id + 1), ax, ay);
+        ctx.font = `700 ${Math.round(rr * 1.4)}px system-ui, sans-serif`;
+        ctx.fillText(String(leaf.label), c.x, c.y);
         ctx.globalAlpha = (0.55 + 0.45 * hv) * fade;
-        ctx.font = `500 ${Math.max(11, Math.min(14, poleR * 0.24))}px system-ui, sans-serif`;
-        ctx.fillText(b.name, ax, ay + poleR * 0.62);
+        ctx.font = `500 ${Math.max(11, Math.min(14, rr * 0.24))}px system-ui, sans-serif`;
+        ctx.fillText(b.name, c.x, c.y + rr * 0.62);
       } else {
         ctx.globalAlpha = 0.22 * fade;
-        ctx.font = `700 ${Math.round(poleR * 0.8)}px system-ui, sans-serif`;
-        ctx.fillText(String(b.id + 1), ax, ay);
+        ctx.font = `700 ${Math.round(rr * 0.8)}px system-ui, sans-serif`;
+        ctx.fillText(String(leaf.label), c.x, c.y);
       }
       ctx.restore();
     }
@@ -2066,7 +2285,7 @@ function tick(nowMs) {
 
   // 8. the garment: one dressing for every leaf
   ctx.clearRect(0, 0, W, H);
-  paintPicture(ctx, picture, path);
+  paintPicture(ctx, picture, path, dt, simTime);
 
   // 9. meters — the page's own row, plus the worst of the fields. Gap and
   // overlap are measured on the picture itself, shards included.
