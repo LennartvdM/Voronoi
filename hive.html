@@ -277,6 +277,12 @@ function triangulate(poly) {
     if (!found) return null;
   }
   if (idx.length === 3) tris.push([poly[idx[0]], poly[idx[1]], poly[idx[2]]]);
+  // a polygon that is not simple can ear-clip into triangles that do not
+  // cover it; refuse those rather than leave a hole in someone's domain
+  let cover = 0;
+  for (const t of tris) cover += Math.abs(ringArea(t));
+  const want = Math.abs(ringArea(poly));
+  if (Math.abs(cover - want) > 1e-6 * want + 1e-6) return null;
   return tris.map(t => {
     const hp = [];
     for (let e = 0; e < 3; e++) {
@@ -288,9 +294,15 @@ function triangulate(poly) {
 }
 
 // The outline of a union of pieces that share edges exactly (pieces of one
-// cell cut by a triangulation): drop every edge whose reverse is also present,
-// chain the rest into loops, keep the labels. Returns the largest loop.
+// cell cut by a triangulation, a shard cut by a box): drop every edge whose
+// reverse is also present, chain the rest into loops, keep the labels.
 function unionOutline(pieces) {
+  const loops = unionOutlines(pieces);
+  let best = null, bestA = -1;
+  for (const l of loops) { const a = Math.abs(ringArea(l.pts)); if (a > bestA) { bestA = a; best = l; } }
+  return best || { pts: [], labs: [] };
+}
+function unionOutlines(pieces) {
   const edges = [];
   for (const { pts, labs } of pieces) {
     for (let k = 0, m = pts.length; k < m; k++) edges.push({ a: pts[k], b: pts[k + 1 === m ? 0 : k + 1], lab: labs[k], dead: false });
@@ -303,7 +315,7 @@ function unionOutline(pieces) {
       if (same(edges[i].a, edges[j].b) && same(edges[i].b, edges[j].a)) { edges[i].dead = edges[j].dead = true; break; }
     }
   }
-  let best = null, bestA = -1;
+  const loops = [];
   for (const e0 of edges) {
     if (e0.dead) continue;
     const pts = [e0.a], labs = [e0.lab];
@@ -321,9 +333,9 @@ function unionOutline(pieces) {
       cur = next;
       if (Math.hypot(cur.b[0] - e0.a[0], cur.b[1] - e0.a[1]) < 1e-3) break;
     }
-    if (pts.length >= 3) { const a = Math.abs(ringArea(pts)); if (a > bestA) { bestA = a; best = { pts, labs }; } }
+    if (pts.length >= 3) loops.push({ pts, labs });
   }
-  return best || { pts: [], labs: [] };
+  return loops;
 }
 
 function buildJacobian(diagram, seeds) {
@@ -671,10 +683,14 @@ function simplifyLoop(pts, epsLen = 0.05, epsSin = 1e-3) {
 }
 
 // Inset a simple polygon by d: offset every edge inward and intersect
-// neighbors. Callers clamp d well below the polygon's inradius.
+// neighbors. Callers clamp d well below the polygon's inradius. d may be an
+// array, one distance per edge (edge k runs pts[k] -> pts[k+1]); negative
+// distances offset outward.
 function insetPolygon(pts, d) {
   const n = pts.length;
-  if (d <= 0 || n < 3) return pts;
+  if (n < 3) return pts;
+  const dk = k => Array.isArray(d) ? d[k] : d;
+  if (!Array.isArray(d) && d === 0) return pts;
   const orient = ringArea(pts) > 0 ? 1 : -1;
   const lines = [];
   for (let k = 0; k < n; k++) {
@@ -683,24 +699,26 @@ function insetPolygon(pts, d) {
     const len = Math.hypot(nx, ny);
     if (len < 1e-9) { lines.push(null); continue; }
     nx /= len; ny /= len;
-    lines.push({ nx, ny, c: nx * p[0] + ny * p[1] - d });
+    lines.push({ nx, ny, c: nx * p[0] + ny * p[1] - dk(k) });
   }
   const out = [];
   for (let k = 0; k < n; k++) {
     const l1 = lines[(k + n - 1) % n], l2 = lines[k];
     if (!l1 || !l2) continue;
     const det = l1.nx * l2.ny - l1.ny * l2.nx;
-    if (Math.abs(det) < 1e-6) { out.push([pts[k][0] - l2.nx * d, pts[k][1] - l2.ny * d]); continue; }
+    if (Math.abs(det) < 1e-6) { out.push([pts[k][0] - l2.nx * dk(k), pts[k][1] - l2.ny * dk(k)]); continue; }
     out.push([(l1.c * l2.ny - l2.c * l1.ny) / det, (l1.nx * l2.c - l2.nx * l1.c) / det]);
   }
   return out;
 }
 
-// Rounded path with the tangent budgeted, not just the radius.
+// Rounded path with the tangent budgeted, not just the radius. r may be an
+// array, one radius per vertex; 0 leaves that corner sharp.
 function roundedPath(ctx, pts, r) {
   const n = pts.length;
   ctx.beginPath();
-  if (r <= 0.5) {
+  const rk = k => Array.isArray(r) ? r[k] : r;
+  if (!Array.isArray(r) && r <= 0.5) {
     ctx.moveTo(pts[0][0], pts[0][1]);
     for (let k = 1; k < n; k++) ctx.lineTo(pts[k][0], pts[k][1]);
     ctx.closePath();
@@ -716,7 +734,7 @@ function roundedPath(ctx, pts, r) {
     const dot = (v1x * v2x + v1y * v2y) / (l1 * l2);
     const theta = Math.acos(Math.min(1, Math.max(-1, dot)));
     const tanHalf = Math.tan(theta / 2);
-    const tang = Math.min(r / (tanHalf || 1e9), l1 / 2, l2 / 2);
+    const tang = Math.min(rk(k) / (tanHalf || 1e9), l1 / 2, l2 / 2);
     const rr = tang * tanHalf;
     const t1x = p1[0] + (v1x / l1) * tang, t1y = p1[1] + (v1y / l1) * tang;
     const t2x = p1[0] + (v2x / l2) * tang, t2y = p1[1] + (v2y / l2) * tang;
@@ -825,7 +843,6 @@ const CLAIM_MIN = 0.02;
 const SEED_MARGIN = 10;
 const SEED_MIN_SEP = 5;
 const ACTIVE_MIN = 0.12;   // a lattice seed joins the field once it is worth this much of a slot
-const EXTRA_MIN = 0.02;    // a pressing member's page seed joins at this much: too small to see appear
 const MAX_DEPTH = 2;       // page > field > field-in-a-field; enough to prove the recursion
 const MAX_MEMBERS = 9;     // the largest roster a field shows
 
@@ -927,6 +944,7 @@ class Hive {
     this.absX = 0; this.absY = 0;                  // origin in canvas px
     this.domainPoly = null;                        // the cell this hive lives in, when not a rectangle
     this.domainSig = '';
+    this.shards = [];                              // this frame's shards: members carving into this hive's cells
     this.stable = true;                            // false while the cell this hive lives in is liquid
     this.dormant = false;                          // too small to run this frame
     this.layoutAt = -1;                            // time a re-layout was requested, or -1
@@ -1034,7 +1052,7 @@ class Hive {
       // cells, a card does not. The Fields slider sets how many are galleries.
       kindRoll: hash01(k, 21),
       hive: null,                 // a field: the hive living inside this cell
-      extras: [],                 // a field's pressing members, bidding in THIS auction
+      shard: null,                // set by the parent when it draws this member whole, shard included
       loops: null, bigSeed: -1,   // this frame's simplified union outline
 
       hoverMix: 0,
@@ -1341,7 +1359,6 @@ class Hive {
   placeSeeds() {
     const crystal = this.crystal;
     for (const b of this.bodies) {
-      this.placePressure(b);
       const n = b.subs.length;
       // hover only reshapes the field while the page is liquid; a locked
       // element lights up instead of reflowing its neighbours
@@ -1363,45 +1380,6 @@ class Hive {
     }
   }
 
-  // PRESSURE. A field's border is a fact of this auction, not a wall: a
-  // member asking for more than its rest share (hover, drag) bids for the
-  // extra HERE too, as one more seed of its field, placed where the member
-  // is. Inside the field that seed's cell is a seam and invisible. Where it
-  // reaches the border it carries straight on — a shard eating into the
-  // neighbour, whose straight edge is cut around it by a true bisector, the
-  // areas exact, and the field's interior re-tiled into the new shape by
-  // its own auction. Only an organic interior presses; a locked grid inside
-  // lifts on hover the way the page does.
-  placePressure(b) {
-    const h = b.hive;
-    const kids = h && !h.dormant && h.crystal === 0 && this.crystal === 1 ? h.bodies.filter(m => !m.isVoid && !m.leaving) : [];
-    b.extras = [];
-    if (!kids.length) return;
-    let sum = 0;
-    for (const m of kids) sum += m.claim;
-    const slots = b.offs.length;
-    for (const m of kids) {
-      const want = m.hoverMix * (config.hoverBoost - 1) * (m.claim / sum) * slots;
-      if (want < EXTRA_MIN) { if (m.pageSub) m.pageSub.live = false; continue; }
-      if (!m.pageSub) m.pageSub = Object.assign(makeSub(b, 0, 0), { extra: true, live: false });
-      const s = m.pageSub;
-      s.x = h.ox + m.x; s.y = h.oy + m.y; s.claim = want;
-      // never coincide with one of the field's own lattice seeds
-      for (const f of b.subs) if (Math.abs(f.x - s.x) < 0.5 && Math.abs(f.y - s.y) < 0.5) { s.x += 0.7; s.y += 0.4; }
-      if (!s.live) {
-        // entering the auction: start at the weight that gives a cell of
-        // about the right size next to the nearest lattice seed, so the
-        // solve continues warm instead of lifting a cold seed
-        let near = null, nd = Infinity;
-        for (const f of b.subs) { const d = Math.hypot(f.x - s.x, f.y - s.y); if (d < nd) { nd = d; near = f; } }
-        const r = Math.sqrt(want * this.PW * this.PH / Math.PI);
-        s.w = near ? near.w + 2 * nd * r - nd * nd : 0;
-        s.live = true;
-      }
-      b.extras.push(s);
-    }
-  }
-
   // --- the solve --------------------------------------------------------
 
   domainPts() {
@@ -1419,8 +1397,8 @@ class Hive {
   // interior to its own body, where the seam hides it.
   solve() {
     const subs = [];
-    for (const b of this.bodies) { for (const s of b.subs) subs.push(s); for (const s of b.extras) subs.push(s); }
-    const active = subs.filter(s => s.claim >= (s.extra ? EXTRA_MIN : ACTIVE_MIN));
+    for (const b of this.bodies) for (const s of b.subs) subs.push(s);
+    const active = subs.filter(s => s.claim >= ACTIVE_MIN);
     if (active.length < 2) { this.solved = null; this.solvedSubs = []; this.ownerOf = []; this.lastSig = null; return; }
     const seeds = active.map(s => [s.x, s.y]);
     const claims = active.map(s => s.claim);
@@ -1475,7 +1453,7 @@ class Hive {
   // A field's cell this frame, as a polygon in this hive's px: the exact
   // rectangle once locked and unpressed, else its outline.
   cellPoly(b) {
-    if (this.crystal === 1 && b.rect && b.progress >= 0.999 && !b.extras.length) {
+    if (this.crystal === 1 && b.rect && b.progress >= 0.999) {
       const x0 = b.rect[0] * this.PW, y0 = b.rect[1] * this.PH, x1 = b.rect[2] * this.PW, y1 = b.rect[3] * this.PH;
       return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
     }
@@ -1540,10 +1518,160 @@ class Hive {
       if (x1 - x0 - 2 * pad < 48 || y1 - y0 - 2 * pad < 48) { b.hive.dormant = true; continue; }
       const frame = [x0 + pad, y0 + pad, x1 - x0 - 2 * pad, y1 - y0 - 2 * pad];
       const box = [[frame[0], frame[1]], [frame[0] + frame[2], frame[1]], [frame[0] + frame[2], frame[1] + frame[3]], [frame[0], frame[1] + frame[3]]];
-      const dom = (cell.length !== 4 || !locked || b.extras.length) ? domainFor(cell, pad, box) : box;
+      const dom = locked ? box : domainFor(cell, pad, box);
       b.hive.dormant = false;
       b.hive.fit(frame, dom, this.crystal === 1, this.absX, this.absY);
       b.hive.step(dt, t);
+    }
+
+    // 5. the shards: the voronoi conquers the rectangle
+    this.computeShards();
+  }
+
+  // SHARDS. A member asking for more than its rest share (hover, drag) does
+  // not negotiate with the page — there are no two sides here. It bids ONE-
+  // SIDED: against every page seed at its frozen weight, with a weight of its
+  // own that starts at a tie on the content box's edge and grows with the
+  // pressure. The region it wins is cut by its siblings' bisectors (its own
+  // auction's weights, so it attaches seamlessly to its inner cell) and by
+  // the page seeds' bisectors — true Voronoi facets — minus the box. A few
+  // vertices. The rectangle yields by difference and never pushes back: its
+  // claim stays exact in the auction underneath, and the area carved out of
+  // it is metered, not hidden. Zero pressure, zero shard: rest is untouched.
+  computeShards() {
+    this.shards = [];
+    for (const b of this.bodies) if (b.hive) for (const m of b.hive.bodies) m.shard = null;
+    if (!this.solved || this.crystal < 1) return;
+    const subs = this.solvedSubs, w = this.solved.weights;
+    const pageBid = (x, y) => {
+      let m = Infinity;
+      for (let k = 0; k < subs.length; k++) { const dx = x - subs[k].x, dy = y - subs[k].y; const v = dx * dx + dy * dy - w[k]; if (v < m) m = v; }
+      return m;
+    };
+    const pot = new Float64Array(subs.length);
+    for (let k = 0; k < subs.length; k++) pot[k] = subs[k].x * subs[k].x + subs[k].y * subs[k].y - w[k];
+    for (const b of this.bodies) {
+      const h = b.hive;
+      if (!h || h.dormant || h.crystal !== 0 || !h.solved || !b.rect) continue;
+      const box = [h.ox, h.oy, h.ox + h.W, h.oy + h.H];
+      const rect = [b.rect[0] * this.PW, b.rect[1] * this.PH, b.rect[2] * this.PW, b.rect[3] * this.PH];
+      const kids = h.solvedSubs, kw = h.solved.weights;
+      for (let i = 0; i < kids.length; i++) {
+        const m = kids[i].body;
+        if (m.isVoid || m.hoverMix < 0.02) continue;
+        const cell = h.solved.diagram.cells[i];
+        if (!cell || cell.pts.length < 3) continue;
+        const sx = kids[i].x + h.ox, sy = kids[i].y + h.oy;
+        // the tie: along the stretch of the box's edge this cell touches, the
+        // smallest weight at which the member wins a point of the page
+        let W0 = Infinity;
+        for (let k = 0, n = cell.pts.length; k < n; k++) {
+          if (cell.labs[k] >= 0) continue;                       // an edge with a sibling, not the wall
+          const p = cell.pts[k], q = cell.pts[k + 1 === n ? 0 : k + 1];
+          for (let t = 0; t <= 8; t++) {
+            const u = t / 8, x = h.ox + p[0] + (q[0] - p[0]) * u, y = h.oy + p[1] + (q[1] - p[1]) * u;
+            const v = (x - sx) * (x - sx) + (y - sy) * (y - sy) - pageBid(x, y);
+            if (v < W0) W0 = v;
+          }
+        }
+        if (!isFinite(W0)) continue;                               // the cell does not touch the box's edge
+        // pressure is a DEPTH — how far past the field's edge the shard's tip
+        // reaches, half the cell's own scale at the hover slider's full boost.
+        // The weight that buys it depends on which frozen seeds stand in the
+        // way, so find it by bisection; the shard's own walls may close it
+        // off sooner, and then the pressure saturates.
+        const scale = (config.hoverBoost - 1) * 0.5 * Math.sqrt(h.solved.diagram.areas[i]);
+        const depth = m.hoverMix * scale;
+        if (!(depth > 0)) continue;
+        const sibHp = [];
+        for (let j = 0; j < kids.length; j++) {
+          if (j === i) continue;
+          const jx = kids[j].x + h.ox, jy = kids[j].y + h.oy;
+          sibHp.push([jx - sx, jy - sy, ((jx * jx + jy * jy - kw[j]) - (sx * sx + sy * sy - kw[i])) / 2]);
+        }
+        const region = (P) => {
+          const potM = sx * sx + sy * sy - (W0 + P);
+          let poly = { pts: this.domainPts(), labs: [-1, -2, -3, -4] };
+          for (const [ax, ay, bb] of sibHp) { if (poly.pts.length < 3) break; poly = clipHalfPlane(poly, ax, ay, bb, -5); }
+          for (let k = 0; k < subs.length && poly.pts.length >= 3; k++) poly = clipHalfPlane(poly, subs[k].x - sx, subs[k].y - sy, (pot[k] - potM) / 2, -6);
+          return poly.pts.length >= 3 ? poly : null;
+        };
+        // minus a box: the eight convex pieces around it (a 3x3 less its
+        // centre), so that any two neighbouring pieces share an edge exactly
+        // and chain back into one outline
+        const minus = (poly, bx) => {
+          const pieces = [];
+          const cut = (hp) => { let q = poly; for (const [ax, ay, bb] of hp) { if (q.pts.length < 3) break; q = clipHalfPlane(q, ax, ay, bb, -7); } if (q.pts.length >= 3) pieces.push(q); };
+          const L = [1, 0, bx[0]], R = [-1, 0, -bx[2]], T = [0, 1, bx[1]], B = [0, -1, -bx[3]];
+          const M = [[-1, 0, -bx[0]], [1, 0, bx[2]]], V = [[0, -1, -bx[1]], [0, 1, bx[3]]];
+          cut([L, T]); cut([...M, T]); cut([R, T]);
+          cut([L, ...V]); cut([R, ...V]);
+          cut([L, B]); cut([...M, B]); cut([R, B]);
+          return pieces;
+        };
+        const reach = (poly) => {
+          let d = 0;
+          if (poly) for (const q of poly.pts) d = Math.max(d, rect[0] - q[0], q[0] - rect[2], rect[1] - q[1], q[1] - rect[3]);
+          return d;
+        };
+        let dNear = Infinity;
+        for (let k = 0; k < subs.length; k++) dNear = Math.min(dNear, Math.hypot(subs[k].x - sx, subs[k].y - sy));
+        // the member's inner cell, in this hive's px, its box-edge runs split
+        // wherever a shard attaches, so the union below chains exactly
+        const inner = { pts: cell.pts.map(q => [q[0] + h.ox, q[1] + h.oy]), labs: cell.labs.slice() };
+        const onLine = (q, k) => Math.abs(q[k & 1] - box[k]) < 1e-6;
+        const withShard = (pieces) => {
+          const pts = [], labs = [];
+          const n = inner.pts.length;
+          for (let k = 0; k < n; k++) {
+            const p = inner.pts[k], q = inner.pts[k + 1 === n ? 0 : k + 1];
+            pts.push(p); labs.push(inner.labs[k]);
+            for (let e = 0; e < 4; e++) {
+              if (!onLine(p, e) || !onLine(q, e)) continue;
+              const ax = e & 1 ? 0 : 1;                           // the coordinate that runs along this edge
+              const lo = Math.min(p[ax], q[ax]), hi = Math.max(p[ax], q[ax]);
+              const cuts = [];
+              for (const pc of pieces) for (const v of pc.pts) if (onLine(v, e) && v[ax] > lo + 1e-6 && v[ax] < hi - 1e-6) cuts.push(v);
+              cuts.sort((u, v) => (u[ax] - v[ax]) * (q[ax] >= p[ax] ? 1 : -1));
+              for (const c of cuts) { pts.push([c[0], c[1]]); labs.push(inner.labs[k]); }
+            }
+          }
+          return { pts, labs };
+        };
+        const shardAt = (want) => {
+          let lo = 0, hi = 8 * dNear * (want + (rect[2] - rect[0]) / 6);
+          let poly = region(hi);
+          if (reach(poly) > want) {
+            for (let it = 0; it < 14; it++) {
+              const mid = (lo + hi) / 2, pm = region(mid);
+              if (reach(pm) >= want) { hi = mid; poly = pm; } else lo = mid;
+            }
+          }
+          if (!poly) return null;
+          const pieces = minus(poly, box);
+          if (!pieces.length) return null;
+          const loops = unionOutlines(pieces).map(l => simplifyLoop(l.pts, 0.05, 1e-3)).filter(l => l.length >= 3);
+          if (!loops.length) return null;
+          // one cell: the inner cell and the shard, chained into a single outline
+          let want0 = Math.abs(ringArea(inner.pts));
+          for (const pc of pieces) want0 += Math.abs(ringArea(pc.pts));
+          const u = unionOutlines([withShard(pieces), ...pieces]).map(l => simplifyLoop(l.pts, 0.05, 1e-3)).filter(l => l.length >= 3);
+          let whole = null;
+          if (u.length === 1 && Math.abs(Math.abs(ringArea(u[0])) - want0) < 0.01 * want0) whole = u[0];
+          return { poly, loops, whole };
+        };
+        const shown = shardAt(depth);
+        if (!shown) continue;
+        let beyond = 0;
+        for (const pc of minus(shown.poly, rect)) beyond += Math.abs(ringArea(pc.pts));
+        // the pointer keeps a shard it is on: the hovered member's hit region
+        // is its shard at full pressure, so the tip cannot slip out from
+        // under the cursor while the mix is still climbing
+        const hit = m.id === h.hoveredId && m.hoverMix < 0.999 ? (shardAt(scale) || shown) : shown;
+        const sh = { field: b, member: m, box, loops: shown.loops, whole: shown.whole, hitLoops: hit.loops, beyond, hv: m.hoverMix, anchor: [h.ox + m.anchorX, h.oy + m.anchorY] };
+        if (sh.whole) m.shard = sh;                                // drawn by this hive, as one cell
+        this.shards.push(sh);
+      }
     }
   }
 
@@ -1565,6 +1693,11 @@ class Hive {
   // The chain of bodies under a point, outermost first: the page's element,
   // then the member inside it, and so on down.
   hitPath(x, y) {
+    for (const sh of this.shards) {
+      for (const loop of sh.hitLoops) {
+        if (pointInPolygon(x, y, loop)) return [{ hive: this, body: sh.field }, { hive: sh.field.hive, body: sh.member }];
+      }
+    }
     const id = this.hitTest(x, y);
     if (id < 0) return [];
     const b = this.bodies.find(bb => bb.id === id);
@@ -1621,7 +1754,7 @@ class Hive {
 
     const drawBody = (b) => {
       const visible = b.loops;
-      if (!visible || !visible.length || b.isVoid || b.bigSeed < 0) return;
+      if (!visible || !visible.length || b.isVoid || b.bigSeed < 0 || b.shard) return;
       const bigPts = cells[b.bigSeed].pts;
       let sx = 0, sy = 0;
       for (const p of bigPts) { sx += p[0]; sy += p[1]; }
@@ -1703,6 +1836,110 @@ class Hive {
     let hovered = null;
     for (const b of this.bodies) { if (b.id === this.hoveredId) hovered = b; else drawBody(b); }
     if (hovered) drawBody(hovered);
+    for (const sh of this.shards) this.drawShard(ctx, sh, dim);
+  }
+
+  // A shard is drawn where it lies, over whatever it conquered. The
+  // rectangle yields first: its paint is erased under the shard plus the
+  // page's half gap — the cut edge is a real edge of the garment, so it
+  // gets the page's stroke. Then the shard itself, inset by the member's gap
+  // on its walls and run across the attachment so it is one cell with the
+  // member inside; rounded where two walls meet, sharp where a wall meets
+  // the box, and stroked everywhere but the attachment.
+  drawShard(ctx, sh, dim) {
+    const m = sh.member, hv = sh.hv, box = sh.box;
+    const fade = Math.max(0, Math.min(1, (m.claim - CLAIM_MIN) / 0.14)) * dim;
+    const halfGap = config.gap * this.style.gap / 2;
+    const memGap = config.gap * sh.field.hive.style.gap / 2;
+    const corner = config.cornerRadius * sh.field.hive.style.corner;
+    const eps = 0.05;
+    const onBox = (p, q) => (Math.abs(p[0] - box[0]) < eps && Math.abs(q[0] - box[0]) < eps) || (Math.abs(p[0] - box[2]) < eps && Math.abs(q[0] - box[2]) < eps)
+                          || (Math.abs(p[1] - box[1]) < eps && Math.abs(q[1] - box[1]) < eps) || (Math.abs(p[1] - box[3]) < eps && Math.abs(q[1] - box[3]) < eps);
+    const outsideBox = () => { ctx.beginPath(); ctx.rect(-1e5, -1e5, 2e5, 2e5); ctx.rect(box[0], box[1], box[2] - box[0], box[3] - box[1]); ctx.clip('evenodd'); };
+    const path = (pts) => { ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]); ctx.closePath(); };
+    for (const loop of sh.loops) {
+      const n = loop.length;
+      const att = loop.map((p, k) => onBox(p, loop[(k + 1) % n]));
+      if (att.every(a => a)) continue;
+      const radii = loop.map((p, k) => (att[k] || att[(k + n - 1) % n]) ? 0 : corner);
+
+      // 1. the rectangle yields
+      const bite = insetPolygon(loop, att.map(a => a ? 0 : -halfGap));
+      if (bite.length < 3) continue;
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
+      path(bite); ctx.fill();
+      ctx.restore();
+      // the cut edge is the neighbour's edge now: give it the page's stroke
+      ctx.save();
+      ctx.beginPath(); ctx.rect(-1e5, -1e5, 2e5, 2e5); ctx.moveTo(bite[0][0], bite[0][1]); for (let k = 1; k < bite.length; k++) ctx.lineTo(bite[k][0], bite[k][1]); ctx.closePath(); ctx.clip('evenodd');
+      outsideBox();
+      ctx.globalAlpha = fade;
+      path(bite);
+      ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+
+      if (sh.whole) continue;
+      // no single outline could be chained: paint the shard on its own,
+      // run across the attachment so it reads as part of the cell inside
+      const body = insetPolygon(loop, att.map(a => a ? -2 : memGap));
+      if (body.length < 3) continue;
+      ctx.save();
+      roundedPath(ctx, body, radii);
+      ctx.globalAlpha = (0.52 + 0.38 * hv) * fade;
+      ctx.fillStyle = shade(m.color, -30);
+      ctx.fill();
+      ctx.restore();
+      ctx.save();
+      outsideBox();
+      roundedPath(ctx, body, radii);
+      ctx.clip();
+      ctx.globalAlpha = fade;
+      roundedPath(ctx, body, radii);
+      ctx.strokeStyle = `rgba(255,255,255,${0.16 + 0.5 * hv})`;
+      ctx.lineWidth = (1 + hv * 2.4) * 2;
+      if (hv > 0.02) { ctx.shadowColor = `rgba(255,255,255,${0.45 * hv})`; ctx.shadowBlur = 16 * hv; }
+      ctx.stroke();
+      ctx.restore();
+    }
+    if (!sh.whole) return;
+
+    // 2. the cell, whole: inner cell and shard as one outline, dressed the
+    // way its hive dresses a cell — inset, rounded, filled, stroked, numbered
+    const loop = sh.whole;
+    const rawPole = inscribedPole(loop, sh.anchor[0], sh.anchor[1]);
+    const pts = insetPolygon(loop, Math.min(memGap, 0.45 * rawPole.r));
+    if (pts.length < 3) return;
+    const pole = inscribedPole(pts, rawPole.x, rawPole.y);
+    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+    for (const p of pts) { bx0 = Math.min(bx0, p[0]); by0 = Math.min(by0, p[1]); bx1 = Math.max(bx1, p[0]); by1 = Math.max(by1, p[1]); }
+    ctx.save();
+    roundedPath(ctx, pts, corner);
+    ctx.clip();
+    const grad = ctx.createLinearGradient(bx0, by0, bx1, by1);
+    grad.addColorStop(0, shade(m.color, -14));
+    grad.addColorStop(1, shade(m.color, -68));
+    ctx.globalAlpha = (0.52 + 0.38 * hv) * fade;
+    ctx.fillStyle = grad;
+    ctx.fillRect(bx0, by0, bx1 - bx0, by1 - by0);
+    ctx.globalAlpha = fade;
+    roundedPath(ctx, pts, corner);
+    ctx.strokeStyle = `rgba(255,255,255,${0.16 + 0.5 * hv})`;
+    ctx.lineWidth = (1 + hv * 2.4) * 2;
+    if (hv > 0.02) { ctx.shadowColor = `rgba(255,255,255,${0.45 * hv})`; ctx.shadowBlur = 16 * hv; }
+    ctx.stroke();
+    ctx.restore();
+    if (pole.r > 17) {
+      ctx.save();
+      ctx.globalAlpha = 0.22 * fade;
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = `700 ${Math.round(pole.r * 0.8)}px system-ui, sans-serif`;
+      ctx.fillText(String(m.id + 1), pole.x, pole.y);
+      ctx.restore();
+    }
   }
 }
 
@@ -1783,15 +2020,16 @@ function tick(nowMs) {
     meterEls.iter.textContent = root.lastIters + 'it ' + root.solveMs.toFixed(1) + 'ms';
     meterEls.iter.className = root.lastIters <= 10 ? '' : 'bad';
   }
-  let fields = 0, innerErr = 0, innerMs = 0, innerLocked = 0;
+  let fields = 0, innerErr = 0, innerMs = 0, innerLocked = 0, carved = 0;
   root.walk(h => {
+    for (const sh of h.shards) carved += sh.beyond;
     if (h.depth === 0 || h.dormant || !h.solved) return;
     fields++; innerMs += h.solveMs; innerErr = Math.max(innerErr, h.solved.maxRelErr);
     if (h.crystal === 1) innerLocked++;
   });
   if (fields) {
     const e = innerErr * 100;
-    meterEls.inner.textContent = fields + (innerLocked ? ' (' + innerLocked + ' locked)' : '') + ' · err ' + (e < 1e-4 ? e.toExponential(1) : e.toFixed(3)) + '% · ' + innerMs.toFixed(1) + 'ms';
+    meterEls.inner.textContent = fields + (innerLocked ? ' (' + innerLocked + ' locked)' : '') + ' · err ' + (e < 1e-4 ? e.toExponential(1) : e.toFixed(3)) + '% · ' + innerMs.toFixed(1) + 'ms' + (carved > 0 ? ' · carved ' + Math.round(carved) + 'px²' : '');
     meterEls.inner.className = innerErr * 100 <= 1e-4 ? '' : 'bad';
   } else {
     meterEls.inner.textContent = '0';
