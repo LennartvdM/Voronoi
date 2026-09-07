@@ -1873,7 +1873,10 @@ class Hive {
       const next = [];
       for (const p of pieces) next.push(...subtractRect(p, h));
       pieces = next;
-      if (pieces.length > 400) break;                   // pathological: stop cutting
+      // never return a ground with a wall still in it — the wall is drawn, and
+      // a bidder standing on it would be drawn over it. Fall back to the sweep,
+      // which is exact for the walls whatever the cell's shape.
+      if (pieces.length > 400) return coverRects(0, 0, this.W, this.H, holes);
     }
     return pieces;
   }
@@ -1903,7 +1906,6 @@ class Hive {
       // nobody is bidding: clear the live flags too, or the first cell to melt
       // out of the walls comes back carrying a weight from another era
       for (const s of subs) s.live = false;
-      for (const b of this.bodies) b.wasWall = !!b.wall;
       this.solved = null; this.solvedSubs = []; this.ownerOf = []; this.lastSig = null; this.lastIters = 0; this.solveMs = 0; return;
     }
     // the solver's one silent failure is two coincident seeds: nudge the
@@ -1947,7 +1949,6 @@ class Hive {
     }
     for (const s of subs) s.live = false;
     for (const s of active) s.live = true;
-    for (const b of this.bodies) b.wasWall = !!b.wall;
     const domain = this.domainPolyActive();
     this.exact = this.domainIsCell !== false && (!this.domainPoly || !!domain);   // false: solved on a box that is not the cell
     if (tris && dArea <= 1e-6) { for (const q of subs) q.live = false; this.solved = null; this.solvedSubs = []; this.ownerOf = []; this.lastSig = null; return; }
@@ -2015,11 +2016,6 @@ class Hive {
     if (!b.loops || !b.loops.length) return null;
     let big = b.loops[0], bigA = Math.abs(ringArea(big));
     for (const l of b.loops) { const a = Math.abs(ringArea(l)); if (a > bigA) { bigA = a; big = l; } }
-    if (b.crystal === 1 && b.rect && big.length === 4 && !(b.holes && b.holes.length)) {
-      const x0 = b.rect[0] * this.PW, y0 = b.rect[1] * this.PH, x1 = b.rect[2] * this.PW, y1 = b.rect[3] * this.PH;
-      const near = (v, t) => Math.abs(v - t) < 0.05;
-      if (big.every(p => (near(p[0], x0) || near(p[0], x1)) && (near(p[1], y0) || near(p[1], y1)))) return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
-    }
     return big;
   }
 
