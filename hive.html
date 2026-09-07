@@ -710,39 +710,6 @@ function pointInPolygon(x, y, pts) {
 }
 
 // Chain a body's foreign edges into closed loops.
-function bodyOutlines(subIdx, cells, ownerOf, bodyId) {
-  const edges = [];
-  for (const i of subIdx) {
-    const { pts, labs } = cells[i];
-    for (let k = 0, m = pts.length; k < m; k++) {
-      const j = labs[k];
-      if (j >= 0 && ownerOf[j] === bodyId) continue;       // a seam
-      edges.push({ a: pts[k], b: pts[k + 1 === m ? 0 : k + 1], used: false });
-    }
-  }
-  const loops = [];
-  for (const e0 of edges) {
-    if (e0.used) continue;
-    const loop = [e0.a];
-    let cur = e0; cur.used = true;
-    for (let guard = 0; guard < edges.length; guard++) {
-      let next = null, best = 0.25;
-      for (const e of edges) {
-        if (e.used) continue;
-        const d = Math.hypot(e.a[0] - cur.b[0], e.a[1] - cur.b[1]);
-        if (d < best) { best = d; next = e; }
-      }
-      if (!next) break;
-      next.used = true;
-      loop.push(next.a);
-      cur = next;
-      if (Math.hypot(cur.b[0] - e0.a[0], cur.b[1] - e0.a[1]) < 0.25) break;
-    }
-    if (loop.length >= 3) loops.push(loop);
-  }
-  return loops;
-}
-
 // A body's outline is chained from its sub-cells' edges, so every seam
 // junction leaves a duplicate vertex and every straight run arrives split
 // into collinear pieces. Both are invisible in the polygon and fatal in the
@@ -945,8 +912,6 @@ const MELT = 0.30;         // a settled cell softens for this long before it tra
 const CLAIM_MIN = 0.02;
 const SEED_MARGIN = 10;
 const SEED_MIN_SEP = 5;
-const ENTRY_SEP = 25;      // a lattice seed joins its body's auction only this far from the core: seeds a few px
-                           // apart with slot-sized weights make Newton's system stiff, and it lags, then jolts
 const ACTIVE_MIN = 0.01;   // a seed joins the auction once it is worth this much of a slot: too small to see appear
 const MAX_DEPTH = 2;       // page > field > field-in-a-field; enough to prove the recursion
 const MAX_MEMBERS = 9;     // the largest roster a field shows
@@ -1268,8 +1233,6 @@ class Hive {
 
       rect: null,                 // lattice rect when seated (where it is going)
       formRect: null,             // the rect its formation reflects (where it is): swapped only at crystal 0
-      offs: [[0, 0]],             // seed offsets from the body centre at full crystal
-      core: 0,                    // the seed carrying the whole claim while melted
       subs: [],
 
       path: null, journey: null, progress: 1,
@@ -1309,36 +1272,11 @@ class Hive {
 
   // Describe a body's formation: the offsets of its lattice slots from the
   // rect centre. Derived, so a resize re-derives it for free.
+  // ONE seed, for every body, at every moment: a cell's edges are its
+  // neighbours, and a settled cell is a wall, not a lattice. Still a verb
+  // because the body's seed survives a re-seating, and its warm weight with it.
   refreshFormation(b) {
-    // ONE seed, for every body, at every moment. A cell's edges are its
-    // neighbours; a settled cell is a wall, not a lattice.
-    const coreSub = b.subs[b.core] || b.subs[0];
-    b.offs = [[0, 0]]; b.core = 0; b.subs.length = 1; b.subs[0] = coreSub;
-  }
-
-  refreshFormationOld(b) {
-    const rect = b.formRect;
-    const coreSub = b.subs[b.core] || b.subs[0];
-    if (!rect) { b.offs = [[0, 0]]; b.core = 0; b.subs.length = 1; b.subs[0] = coreSub; return; }
-    const [ex, ey] = this.rectCenter(rect);
-    const offs = [];
-    for (let r = rect[1]; r < rect[3]; r++) {
-      for (let c = rect[0]; c < rect[2]; c++) {
-        const [sx, sy] = this.slotCenter(c, r);
-        offs.push([sx - ex, sy - ey]);
-      }
-    }
-    // The core is the slot nearest the centre. While the field is liquid it
-    // carries the body's entire claim, so a melted element is ONE seed — one
-    // smooth convex cell — sitting where its rectangle will be.
-    let core = 0;
-    for (let i = 1; i < offs.length; i++) {
-      if (Math.hypot(offs[i][0], offs[i][1]) < Math.hypot(offs[core][0], offs[core][1])) core = i;
-    }
-      b.offs = offs; b.core = core;
-    while (b.subs.length < offs.length) b.subs.push(makeSub(b, b.x, b.y));
-    b.subs.length = offs.length;
-    if (b.subs[core] !== coreSub) { const k = b.subs.indexOf(coreSub); if (k >= 0) b.subs[k] = b.subs[core]; b.subs[core] = coreSub; }
+    b.subs.length = 1;
   }
 
   // --- seating: the one verb, spoken for a whole formation at once -------
