@@ -2793,13 +2793,14 @@ function tick(nowMs) {
   let fields = 0, innerErr = 0, innerMs = 0, innerLocked = 0;
   const carved = picture.carved;
   root.walk(h => {
-    if (h.depth === 0 || h.dormant || !h.solved) return;
-    fields++; innerMs += h.solveMs; innerErr = Math.max(innerErr, h.solved.maxRelErr);
+    if (h.depth === 0 || h.dormant || (!h.solved && !h.walls.length)) return;
+    fields++; innerMs += h.solveMs;
+    if (h.solved) innerErr = Math.max(innerErr, h.solved.maxRelErr);
     if (h.crystalMin === 1) innerLocked++;
   });
   if (fields) {
     const e = innerErr * 100;
-    meterEls.inner.textContent = fields + (innerLocked ? ' (' + innerLocked + ' locked)' : '') + ' · err ' + (e < 1e-4 ? e.toExponential(1) : e.toFixed(3)) + '% · ' + innerMs.toFixed(1) + 'ms' + (carved > 0 ? ' · carved ' + Math.round(carved) + 'px²' : '');
+    meterEls.inner.textContent = fields + (innerLocked ? ' (' + innerLocked + ' settled)' : '') + ' · err ' + (e < 1e-4 ? e.toExponential(1) : e.toFixed(3)) + '% · ' + innerMs.toFixed(1) + 'ms' + (carved > 0 ? ' · carved ' + Math.round(carved) + 'px²' : '');
     meterEls.inner.className = innerErr * 100 <= 1e-4 ? '' : 'bad';
   } else {
     meterEls.inner.textContent = '0';
