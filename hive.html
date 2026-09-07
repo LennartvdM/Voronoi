@@ -55,7 +55,7 @@
     <a class="back" href="index.html">&larr; Back</a>
     <canvas id="c"></canvas>
     <div class="meters" id="meters">
-      area err <b id="mArea">–</b> · gap <b id="mGap">–</b> · overlap <b id="mOver">–</b> · rect <b id="mRect">–</b> · seeds <b id="mSeeds">–</b> · solve <b id="mIter">–</b> · fields <b id="mInner">–</b>
+      area err <b id="mArea">–</b> · gap <b id="mGap">–</b> · overlap <b id="mOver">–</b> · rect <b id="mRect">–</b> · cells <b id="mSeeds">–</b> · solve <b id="mIter">–</b> · fields <b id="mInner">–</b>
     </div>
   </div>
   <div class="bar">
@@ -1812,18 +1812,10 @@ class Hive {
     }
   }
 
-  // Seeds are PLACED, not integrated: the body's position plus its formation
-  // offsets scaled by the crystal fraction, and the body's claim shared out
-  // the same way. Melted, every element is one seed holding its whole claim —
-  // a single smooth convex cell, nothing to segment. Crystallised, the
-  // offsets are exact lattice slots and the union is the exact rectangle.
-  // Everything between is one continuous interpolation of the same numbers.
-  // The crystal moves SEEDS, never claims. A lattice seed is out of the
-  // auction until the crystal has carried it a real distance from the core,
-  // then holds an equal share of its body until it leaves the same way; the
-  // core holds the shares of everyone not yet in. Claims that shrank with
-  // the crystal asked Newton to shrink seventy cells by a factor of hundreds
-  // in ten frames; it lagged, and released the error when they left.
+  // Seeds are PLACED, not integrated: a body's seed sits where the body is,
+  // holding the body's whole claim. One seed, all its life — so a cell is a
+  // single convex region with one edge per neighbour, and there is nothing
+  // to segment and nothing to interpolate. A wall bids nothing at all.
   placeSeeds() {
     for (const b of this.bodies) {
       if (b.formRect !== b.rect && b.crystal === 0) { b.formRect = b.rect; this.refreshFormation(b); }
