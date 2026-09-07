@@ -1865,6 +1865,27 @@ class Hive {
   // The auction's ground this frame: this hive's cell, less the walls. A
   // rectangle less rectangles is one sweep; anything else is clipped piece by
   // piece. Null means the plain box, which is the fast common case.
+  // The ground's connected pockets. Two swept rectangles belong to the same
+  // pocket when they share a stretch of edge; a body can only bid for the
+  // pocket it stands in, so a cell can never win an island across a wall, and
+  // a cell melting out of a ring of walls gets back exactly its own rectangle.
+  components(pieces) {
+    const n = pieces.length, up = new Array(n).fill(0).map((_, i) => i);
+    const find = (i) => { while (up[i] !== i) { up[i] = up[up[i]]; i = up[i]; } return i; };
+    const box = pieces.map(p => { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const q of p) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); } return [x0, y0, x1, y1]; });
+    const E = 1e-6;
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+      const a = box[i], b = box[j];
+      const touchX = (Math.abs(a[2] - b[0]) < E || Math.abs(b[2] - a[0]) < E) && Math.min(a[3], b[3]) - Math.max(a[1], b[1]) > E;
+      const touchY = (Math.abs(a[3] - b[1]) < E || Math.abs(b[3] - a[1]) < E) && Math.min(a[2], b[2]) - Math.max(a[0], b[0]) > E;
+      if (touchX || touchY) { const ri = find(i), rj = find(j); if (ri !== rj) up[ri] = rj; }
+    }
+    const groups = new Map();
+    for (let i = 0; i < n; i++) { const r = find(i); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(i); }
+    return { groups: [...groups.values()], box };
+  }
+
   domainPieces() {
     const poly = this.domainPolyActive();
     const holes = this.walls.map(b => b.wall);
@@ -1960,6 +1981,72 @@ class Hive {
     for (let i = 0; i < active.length; i++) sig += (seeds[i][0] * 8 | 0) + ',' + (seeds[i][1] * 8 | 0) + ',' + (claims[i] * 1e4 | 0) + ';';
     if (sig === this.lastSig && this.solved && this.solved.converged) return;
     const t0 = performance.now();
+    // ONE AUCTION PER POCKET. Walls can cut the ground into pieces that do not
+    // touch; a body bids only in the one it stands in. Without this a cell can
+    // win an island on the far side of a wall, and a cell melting out of a
+    // ring of walls does not simply get its own rectangle back.
+    const comp = (!domain && pieces && pieces.length > 1) ? this.components(pieces) : null;
+    if (comp && comp.groups.length > 1) {
+      const near = (bx, x, y) => { const dx = Math.max(bx[0] - x, 0, x - bx[2]), dy = Math.max(bx[1] - y, 0, y - bx[3]); return dx * dx + dy * dy; };
+      const mine = comp.groups.map(() => []);
+      for (let i = 0; i < active.length; i++) {
+        let g = 0, best = Infinity;
+        for (let k = 0; k < comp.groups.length; k++) for (const pi of comp.groups[k]) {
+          const d = near(comp.box[pi], seeds[i][0], seeds[i][1]);
+          if (d < best) { best = d; g = k; }
+        }
+        mine[g].push(i);
+      }
+      // a pocket nobody stands in joins the nearest pocket that has a bidder
+      const live2 = comp.groups.map((_, k) => mine[k].length > 0);
+      for (let k = 0; k < comp.groups.length; k++) {
+        if (live2[k]) continue;
+        let to = -1, best = Infinity;
+        for (let j = 0; j < comp.groups.length; j++) {
+          if (!live2[j] || j === k) continue;
+          for (const a of comp.groups[k]) for (const b of comp.groups[j]) {
+            const A = comp.box[a], B = comp.box[b];
+            const dx = Math.max(A[0] - B[2], B[0] - A[2], 0), dy = Math.max(A[1] - B[3], B[1] - A[3], 0);
+            const d = dx * dx + dy * dy; if (d < best) { best = d; to = j; }
+          }
+        }
+        if (to >= 0) { comp.groups[to] = comp.groups[to].concat(comp.groups[k]); comp.groups[k] = []; }
+      }
+      const cells = new Array(active.length), areas = new Float64Array(active.length), W = new Float64Array(active.length);
+      let err = 0, iters = 0, conv = true, ok = true;
+      for (let k = 0; k < comp.groups.length && ok; k++) {
+        const idx = mine[k];
+        if (!idx.length) continue;
+        const gp = comp.groups[k].map(pi => pieces[pi]);
+        let ga = 0; for (const p of gp) ga += Math.abs(ringArea(p));
+        if (!(ga > 1e-6)) { ok = false; break; }
+        const gt = gp.map(convexPlanes);
+        const gs = idx.map(i => seeds[i]), gc = idx.map(i => claims[i]), gw = idx.map(i => active[i].w);
+        const sol = idx.length === 1
+          ? { weights: [gw[0]], diagram: computeDiagram([gs[0]], [gw[0]], bounds, gt), maxRelErr: 0, converged: true, iterations: 0 }
+          : solveWeights(gs, gc, bounds, gw, { maxIter: 3, tris: gt, domainArea: ga });
+        err = Math.max(err, sol.maxRelErr); iters = Math.max(iters, sol.iterations); conv = conv && sol.converged;
+        for (let a = 0; a < idx.length; a++) {
+          const g2 = (j) => j < 0 ? j : idx[j];                 // pocket index -> auction index
+          const c = sol.diagram.cells[a];
+          const remap = (pc) => ({ pts: pc.pts, labs: pc.labs.map(g2) });
+          cells[idx[a]] = c.pieces ? { ...remap(c), pieces: c.pieces.map(remap) } : remap(c);
+          areas[idx[a]] = sol.diagram.areas[a];
+          W[idx[a]] = sol.weights[a];
+        }
+      }
+      if (ok) {
+        for (let i = 0; i < active.length; i++) if (!cells[i]) { cells[i] = { pts: [], labs: [], pieces: [] }; areas[i] = 0; W[i] = active[i].w; }
+        this.solveMs = performance.now() - t0;
+        this.lastIters = iters;
+        active.forEach((q, i) => { q.w = W[i]; });
+        this.solved = { weights: W, diagram: { cells, areas }, maxRelErr: err, converged: conv, iterations: iters };
+        this.solvedSubs = active;
+        this.ownerOf = active.map(q => q.body.id);
+        this.lastSig = sig;
+        return;
+      }
+    }
     if (active.length === 1) {
       // one bidder and no rival: the ground is all of it, no auction needed
       const diagram = computeDiagram(seeds, [active[0].w], bounds, tris);
