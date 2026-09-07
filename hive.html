@@ -709,8 +709,7 @@ function pointInPolygon(x, y, pts) {
   return inside;
 }
 
-// Chain a body's foreign edges into closed loops.
-// A body's outline is chained from its sub-cells' edges, so every seam
+// A body's outline is chained from its cells' edges, so every seam
 // junction leaves a duplicate vertex and every straight run arrives split
 // into collinear pieces. Both are invisible in the polygon and fatal in the
 // garment: insetPolygon cannot offset a zero-length edge, so it drops that
@@ -1270,8 +1269,6 @@ class Hive {
     return b;
   }
 
-  // Describe a body's formation: the offsets of its lattice slots from the
-  // rect centre. Derived, so a resize re-derives it for free.
   // ONE seed, for every body, at every moment: a cell's edges are its
   // neighbours, and a settled cell is a wall, not a lattice. Still a verb
   // because the body's seed survives a re-seating, and its warm weight with it.
@@ -1279,7 +1276,7 @@ class Hive {
     b.subs.length = 1;
   }
 
-  // --- seating: the one verb, spoken for a whole formation at once -------
+  // --- seating: the one verb -------------------------------------------
 
   // The formation is a rest-state fact. A body melting out of one rectangle
   // keeps that formation until the crystal reaches zero and only then takes
@@ -1918,10 +1915,10 @@ class Hive {
     const seeds = active.map(s => [s.x, s.y]);
     const claims = active.map(s => s.claim);
     // A seed entering the auction must not bring a stale weight: with the
-    // weight it had the last time it was live it grabs a whole slot at once
-    // and Newton needs frames to take it back. Start it at the weight that
-    // gives a cell of about its own size next to the nearest live seed, so
-    // the solve continues warm and the newcomer is as small as it looks.
+    // weight it had the last time it was live it grabs a whole rectangle at
+    // once and Newton needs frames to take it back. It enters at the weight
+    // that makes it exactly the size it claims (entryWeight), so the solve
+    // continues warm and the newcomer is the size it looks.
     const live = active.filter(q => q.live);
     // the ground first: this hive's cell, less the walls, as convex pieces
     const pieces = this.domainPieces();
