@@ -764,6 +764,154 @@ function insetPolygon(pts, d) {
   return out;
 }
 
+// Offset a loop by d (inward when positive) without letting a feature
+// shorter than the offset turn inside out. The mitered offset of an edge
+// that runs against its original is a collapsed feature, so drop that edge
+// and offset again, worst first, until every edge still runs its own way.
+// Returns null when nothing is left.
+function offsetLoop(pts, d) {
+  let src = pts;
+  for (let iter = 0; iter <= pts.length && src.length >= 3; iter++) {
+    const out = insetPolygon(src, d), n = src.length;
+    let flipped = -1, worst = -1e-9;
+    for (let k = 0; k < n; k++) {
+      const k1 = (k + 1) % n;
+      const ex = src[k1][0] - src[k][0], ey = src[k1][1] - src[k][1];
+      const L = Math.hypot(ex, ey) || 1;
+      const dot = ((out[k1][0] - out[k][0]) * ex + (out[k1][1] - out[k][1]) * ey) / L;
+      if (dot < worst) { worst = dot; flipped = k; }
+    }
+    if (flipped < 0) return out;
+    src = src.filter((_, k) => k !== flipped && k !== (flipped + 1) % n);
+  }
+  return null;
+}
+
+// Erode a loop by d, for the garment. The erosion of a convex loop is
+// exactly the intersection of its edges' offset half-planes, so a side
+// shorter than the inset vanishes instead of crossing its neighbours; a
+// loop with a notch (a wall's corner, a shard) takes the mitered offset
+// with collapsed features dropped. Never a crossed polygon; null when
+// nothing is left.
+function erodeLoop(pts, d) {
+  const n = pts.length;
+  if (n < 3) return null;
+  if (d <= 0) return pts;
+  const orient = ringArea(pts) > 0 ? 1 : -1;
+  let convex = true;
+  for (let k = 0; k < n && convex; k++) {
+    const a = pts[k], b = pts[(k + 1) % n], c = pts[(k + 2) % n];
+    if (((b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0])) * orient < -1e-6) convex = false;
+  }
+  if (!convex) {
+    const out = offsetLoop(pts, d);
+    return out && out.length >= 3 && Math.abs(ringArea(out)) > 1e-6 ? out : null;
+  }
+  let poly = pts;
+  for (let k = 0; k < n && poly; k++) {
+    const p = pts[k], q = pts[(k + 1) % n];
+    let nx = (q[1] - p[1]) * orient, ny = (p[0] - q[0]) * orient;
+    const len = Math.hypot(nx, ny);
+    if (len < 1e-9) continue;
+    nx /= len; ny /= len;
+    poly = clipPts(poly, nx, ny, nx * p[0] + ny * p[1] - d);
+  }
+  if (!poly) return null;
+  poly = simplifyLoop(poly, 0.05, 1e-4);
+  return poly.length >= 3 && Math.abs(ringArea(poly)) > 1e-6 ? poly : null;
+}
+
+// The garment of a loop is a morphological opening: erode the cell by the
+// gap plus the corner radius, then dilate the core by the radius with round
+// joins. Every convex corner is then an arc of exactly that radius, a side
+// too short for two arcs simply vanishes and its corners become one, and
+// the ink never leaves the eroded cell, so the gap holds along every
+// straight side. Where the cell is too thin to afford it, the radius gives
+// way first, down to INK_MIN, and then the gap, because the erosion by
+// (gap + R) is non-empty exactly when the ink can hold a disc of radius R.
+// Both concessions are continuous in the cell's shape: nothing snaps.
+const INK_MIN = 4;
+function garment(loop, gap, radius) {
+  const fit = (g, r) => erodeLoop(loop, g + r);
+  const want = Math.max(radius, INK_MIN);
+  let core = fit(gap, want);
+  if (core) return { inset: gap, radius, core: radius >= INK_MIN ? core : (radius > 0 ? fit(gap, radius) : erodeLoop(loop, gap) || loop) };
+  if (radius > INK_MIN && fit(gap, INK_MIN)) {
+    let lo = INK_MIN, hi = radius;
+    for (let it = 0; it < 10; it++) { const m = (lo + hi) / 2; if (fit(gap, m)) lo = m; else hi = m; }
+    return { inset: gap, radius: lo, core: fit(gap, lo) };
+  }
+  const r = Math.min(radius, INK_MIN);
+  let lo = 0, hi = gap;
+  for (let it = 0; it < 10; it++) { const m = (lo + hi) / 2; if (fit(m, INK_MIN)) lo = m; else hi = m; }
+  core = lo + r > 0 ? fit(lo, r) : loop;
+  if (core) return { inset: lo, radius: r, core };
+  return { inset: 0, radius: 0, core: loop };            // thinner than the ink minimum: the bare cell
+}
+
+// Trace the ink of a core dilated by r: an arc of radius r about every
+// convex vertex, from the outward normal of the edge in to that of the
+// edge out, joined by the offset sides; a reflex vertex (a notch) takes
+// the mitre of its two offset sides, rounded inward as far as the sides
+// allow. Returns a polygon inscribed in the ink, for content to stay in.
+function inkPath(ctx, core, r, cont) {
+  const n = core.length;
+  if (!cont) ctx.beginPath();
+  if (r <= 0.25) {
+    ctx.moveTo(core[0][0], core[0][1]);
+    for (let k = 1; k < n; k++) ctx.lineTo(core[k][0], core[k][1]);
+    ctx.closePath();
+    return core;
+  }
+  const orient = ringArea(core) > 0 ? 1 : -1;
+  const nx = [], ny = [], reflex = [];
+  for (let k = 0; k < n; k++) {
+    const p = core[k], q = core[(k + 1) % n];
+    let x = (q[1] - p[1]) * orient, y = (p[0] - q[0]) * orient;
+    const len = Math.hypot(x, y) || 1;
+    nx.push(x / len); ny.push(y / len);
+  }
+  let first = -1;
+  for (let k = 0; k < n; k++) {
+    const a = core[(k + n - 1) % n], b = core[k], c = core[(k + 1) % n];
+    reflex.push(((b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0])) * orient < 0);
+    if (first < 0 && !reflex[k]) first = k;
+  }
+  if (first < 0) first = 0;
+  const poly = [];
+  const startOf = (k) => {                       // where the path enters vertex k
+    const km = (k + n - 1) % n, v = core[k];
+    if (!reflex[k]) return [v[0] + r * nx[km], v[1] + r * ny[km]];
+    const d = 1 + nx[km] * nx[k] + ny[km] * ny[k];
+    return [v[0] + r * (nx[km] + nx[k]) / d, v[1] + r * (ny[km] + ny[k]) / d];
+  };
+  let prev = null;
+  for (let i = 0; i < n; i++) {
+    const k = (first + i) % n, km = (k + n - 1) % n, v = core[k];
+    if (!reflex[k]) {
+      const a0 = Math.atan2(ny[km], nx[km]), a1 = Math.atan2(ny[k], nx[k]);
+      ctx.arc(v[0], v[1], r, a0, a1, orient < 0);
+      poly.push([v[0] + r * nx[km], v[1] + r * ny[km]], [v[0] + r * nx[k], v[1] + r * ny[k]]);
+      prev = poly[poly.length - 1];
+    } else {
+      const m = startOf(k), nxt = startOf((k + 1) % n);
+      const v1x = prev[0] - m[0], v1y = prev[1] - m[1], v2x = nxt[0] - m[0], v2y = nxt[1] - m[1];
+      const l1 = Math.hypot(v1x, v1y), l2 = Math.hypot(v2x, v2y);
+      const dot = l1 > 1e-6 && l2 > 1e-6 ? (v1x * v2x + v1y * v2y) / (l1 * l2) : 1;
+      const theta = Math.acos(Math.min(1, Math.max(-1, dot)));
+      const tanHalf = Math.tan(theta / 2);
+      const tang = Math.min(r / (tanHalf || 1e9), l1, l2);
+      const rr = tang * tanHalf;
+      if (rr > 0.1 && theta < Math.PI - 0.02 && theta > 0.02) ctx.arcTo(m[0], m[1], nxt[0], nxt[1], rr);
+      else ctx.lineTo(m[0], m[1]);
+      poly.push(m);
+      prev = [m[0] + (v2x / (l2 || 1)) * tang, m[1] + (v2y / (l2 || 1)) * tang];
+    }
+  }
+  ctx.closePath();
+  return poly;
+}
+
 // Rounded path with the tangent budgeted, not just the radius. r may be an
 // array, one radius per vertex; 0 leaves that corner sharp.
 function roundedPath(ctx, pts, r, cont) {
@@ -2735,19 +2883,17 @@ function paintPicture(ctx, picture, hoveredPath, dt, t) {
     let bigPts = null;
     for (const loop of leaf.loops) {
       if (loop.hole) continue;
-      let lx0 = Infinity, ly0 = Infinity, lx1 = -Infinity, ly1 = -Infinity;
-      for (const p of loop) { lx0 = Math.min(lx0, p[0]); ly0 = Math.min(ly0, p[1]); lx1 = Math.max(lx1, p[0]); ly1 = Math.max(ly1, p[1]); }
-      const inset = Math.min(halfGap * (1 - lift), 0.25 * Math.min(lx1 - lx0, ly1 - ly0));
-      const pts = insetPolygon(loop, inset);
-      if (pts.length < 3) continue;
+      const { inset, radius, core } = garment(loop, halfGap * (1 - lift), corner);
+      if (core.length < 3) continue;
       // its holes, pushed OUT by the same inset: the gap around a cell born
       // inside this one is the one gap, from both sides
       const holes = [];
-      for (const h of leaf.loops) if (h.hole && pointInPolygon(h[0][0], h[0][1], loop)) { const hp = insetPolygon(h, -inset); if (hp.length >= 3) holes.push(hp); }
-      const trace = () => { roundedPath(ctx, pts, corner); for (const hp of holes) roundedPath(ctx, hp, corner, true); };
-      if (loop === big) bigPts = pts;
+      for (const h of leaf.loops) if (h.hole && pointInPolygon(h[0][0], h[0][1], loop)) { const hp = inset > 0 ? offsetLoop(h, -inset) : h; if (hp && hp.length >= 3) holes.push(hp); }
+      let pts = null;
+      const trace = () => { pts = inkPath(ctx, core, radius); for (const hp of holes) roundedPath(ctx, hp, corner, true); };
       ctx.save();
       trace();
+      if (loop === big) bigPts = pts;
       ctx.clip('evenodd');
       const grad = ctx.createLinearGradient(bx0, by0, bx1, by1);
       grad.addColorStop(0, shade(leaf.color, -14));
