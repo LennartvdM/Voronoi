@@ -14,6 +14,10 @@ const SRC = path.resolve(argv[0] || '/home/user/Voronoi/hive.html');
 const OUT = argv[1] && !argv[1].startsWith('--') ? argv[1] : null;
 const opt = (n, d) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : d; };
 const FRAMES = +opt('--frames', 330), DUMP = opt('--dump', null);
+// the clock, as in flicker.js: --dt <ms> fixed step (default 1000/60),
+// --jitter <ms> a deterministic +-jitter on every step. The owner watches at
+// real, uneven frame times; a number quoted at 60 fps is a number at 60 fps.
+const DT = +opt('--dt', 1000 / 60), JIT = +opt('--jitter', 0);
 const NAMES = ['root', 'buildPicture', 'ringArea', 'picture', 'rasterCheck', 'config', 'W', 'H'];
 
 function instrument(src) {
@@ -27,12 +31,14 @@ function instrument(src) {
 }
 
 const CLOCK = `(() => {
-  let t = 0; const q = []; const realNow = performance.now.bind(performance);
+  let t = 0, seed = 12345; const q = []; const realNow = performance.now.bind(performance);
+  const DT = ${DT}, JIT = ${JIT};
+  const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
   window.__realNow = realNow;
   window.requestAnimationFrame = (cb) => { q.push(cb); return q.length; };
   window.cancelAnimationFrame = () => {};
   performance.now = () => t;
-  window.__advance = (n) => { for (let i = 0; i < n; i++) { t += 1000 / 60; const cbs = q.splice(0); for (const cb of cbs) cb(t); } };
+  window.__advance = (n) => { for (let i = 0; i < n; i++) { t += DT + (JIT ? (2 * rnd() - 1) * JIT : 0); const cbs = q.splice(0); for (const cb of cbs) cb(t); } };
 })();`;
 
 const RUN = (FRAMES) => {
@@ -125,7 +131,7 @@ function metrics({ frames, marks }) {
   const data = await p.evaluate(RUN, FRAMES);
   await b.close();
   if (DUMP) fs.writeFileSync(DUMP, JSON.stringify(data));
-  const m = metrics(data); m.pageErrors = errs.length; if (errs.length) m.pageErrorSample = errs.slice(0, 3);
+  const m = metrics(data); m.clock = { dtMs: DT, jitterMs: JIT }; m.pageErrors = errs.length; if (errs.length) m.pageErrorSample = errs.slice(0, 3);
   if (OUT) fs.writeFileSync(OUT, JSON.stringify(m, null, 1));
   const { worst, ...head } = m;
   console.log(JSON.stringify(head));

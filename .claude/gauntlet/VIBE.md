@@ -108,6 +108,108 @@ continuity (a seedless pocket keeps its last painter) and the free-cell
 oscillation were the same event seen from two sides. The hover shard used to
 appear whole in one frame; fixed.
 
+## 3.5 WHAT THE DIAGNOSIS FOUND (supersedes section 4)
+
+Ten ablation lenses ran, each on its own copy, each verified against the
+baseline first. **Read this before designing anything; it kills most of
+section 4 and most of section 6.**
+
+**The headline: the last gauntlet's invariants are a 60 fps result, and the
+owner does not watch at 60 fps.** On the untouched file:
+
+| clock | jumps | reversals | shock px² |
+|---|---|---|---|
+| 60 fps steady | 14 | 1 | 157,637 |
+| 25 ± 12 ms | 47 | 5 | 613,164 |
+| 30 ms steady | 61 | 4 | 724,778 |
+
+Four times the jumps at the frame times a real browser gives. This, not the
+sub-threshold flicker, is most of what the owner is describing.
+
+**What is NOT the cause (do not design for these):**
+
+- *Path crossings.* The assignment (greedy + 2-opt on squared travel) is
+  already cyclically monotone, i.e. crossing-free by construction: 0-4
+  straight crossings per scene change out of 66 pairs. Correlation of
+  crossings with undone shape is r = 0.036; total shape motion correlates at
+  0.656. Forcing 200× more crossings *lowers* `fight`. Nothing to win.
+- *Cut-order flips.* Two holes swap crystal order in 10 of 1771 frames,
+  carrying ~0.2% of the undone motion. Hysteresis there wins nothing. The
+  sort is not stability, it is priority, and it is load-bearing: by body id
+  instead, jumps go 14 → 68 with a vanish.
+- *The carrot spring.* Gluing the seed to its carrot is WORSE at both clocks
+  (flips 50 → 66 steady, 53 → 85 jittered). The spring is a low-pass filter
+  and a speed limiter, not a noise source.
+- *Newton's iteration count, as an everyday matter.* Full convergence
+  (maxIter 30) drives the residual to 1e-7 and moves `shapeBackShare` by
+  0.000 at 60 fps.
+- *Harder sequencing.* stagger 0.30 → 0.90 shatters everything (jumps 143,
+  12 vanishes) and 0.05 (all at once) *lowers* the fight numbers. 0.30 is a
+  tuned valley. Simultaneity is not the fighter.
+- *The wobble.* Zeroing both noise terms leaves `shapeBackShare` at 0.023.
+  (It is worth 27% of `shockPx2` though, and it is cosmetic — a separate,
+  cheap decision for the owner, not a fix for this.)
+
+**What IS the cause, in order of measured size:**
+
+1. **Frame-rate dependence in three named places.** `maxIter: 3` is per
+   FRAME at three sites (~2581, ~2617, ~2707): at 25-45 ms the auction gets
+   1.5-2.7× fewer Newton iterations per second on a warm start 1.5-2.7×
+   staler. On a rare frame the residual explodes (54% at sidebar f878),
+   the frame paints a whole neighbourhood wrong — 34,000 px² reallocated
+   among five cells — and the next frame takes it all back. `LINGER_MAX = 40`
+   and its ramp `1 - lingerFrames/(LINGER_MAX-6)` are FRAME counts, so a
+   closing hole's catch-up stretches 0.67 s → 1.2 s at 30 ms (12 'opening'
+   jumps at 30 ms against 2 with the count in seconds).
+   `enforcePreconditions` damps `vx *= 0.5` and ejects 0.5 px per FRAME.
+   The semi-implicit integration adds an effective extra stiffness k1·dt²
+   (12.6% of the gap at 45 ms), which is why `lag` falls as dt rises: a long
+   frame tracks tighter and rings harder.
+2. **The weakest hole is carved by everyone.** The worst single event at
+   30 ms: Frame scene, body 9, painted area 37,936 → 8,413 → 20,589 px² in
+   two frames while its own target core sits steady at 39,000-41,000. It is
+   a hole at crystal 0 — the last in the cut order, so every wall and every
+   stronger hole subtracts from it — lingering while it waits to catch up
+   and close. It has no protection and no priority, and at coarse frames the
+   things crossing it move far enough per frame to carve it to a fifth of
+   itself and give it back.
+3. **Repulsion is what makes a seed fight its own path** — `separate()`
+   at F = 0 takes `fight` 0.225 → 0.085 (−62%), in every scene. But
+   `shapeBackShare` does not move (0.022 → 0.023), so THE SEED FIGHT AND THE
+   SHAPE OSCILLATION ARE DECOUPLED: calming the seeds does not calm the
+   picture. And repulsion is load-bearing for coverage — at F = 0, gapMax
+   8 → 1328 px² and overMax 0 → 20, a static hole in the landed picture.
+   Anything that removes it must carry a coverage guarantee.
+4. **A latent tie-break hole in the auction.** At flock0 f88
+   `enforcePreconditions` ejects bodies 8 and 9 out of the same wall on the
+   same side to exactly x = 840.5, both with claim exactly 1.000 — a
+   perfectly symmetric pair the auction cannot separate; body 8's cell
+   collapses to zero with maxRelErr 1.0 for ten frames. In the shipped
+   scenario the tie is broken only by a leftover hoverMix of 0.01 on body 9.
+   Park the pointer 350 px away and it reappears as vanish 1. The published
+   baseline's clean invariants are partly an accident of pointer placement.
+
+**A caution about the metric.** `shapeBackShare` grows with mean frame time
+(0.015 at 8 ms, 0.022 at 16.7, 0.038 at 30, 0.053 at 45) while total shape
+motion stays flat at ~25M px², and a control with the whole simulation on a
+fixed 1/60 s clock and only the SAMPLING coarsened reproduces the same
+curve. So most of that growth is the curvature of a legitimate trajectory
+sampled coarsely, not a worse trajectory. **Never compare `shapeBackShare`
+across clocks; compare at one clock.** `flipFrames` is chaos-noise at this
+sample size (a 1e-16 perturbation moved one scene from 9 to 16) — rank on
+`shapeBackPx2`, never on flip counts.
+
+**And a warning for any right-of-way design.** `easeClaims` moves a body's
+claim only with its own journey progress, so a body that yields keeps its
+OLD claim on ground that the bodies which already landed have had cut out
+from under it as walls. In the stagger ablation this starved the waiters:
+their summed claims no longer fit the ground left to them, the auction
+could not meet its targets, a body's leaf went 30k → 0 → 1k → 0 and
+`enforcePreconditions` finally teleported the seed 147 px out of a wall it
+was standing in. **A yielder must renegotiate its claim in step with its
+yield, or it starves.** This is the single most important constraint on the
+owner's own idea.
+
 ## 4. Hypotheses, ranked, with what would confirm each
 
 H1 **The seed fights itself.** Repulsion (`separate`) shoves a traveller off
@@ -180,10 +282,18 @@ boundaries never stored or tweened; continuity by construction, not by
 budget; no rate limit that hides a moving target; exact rectangles at rest;
 one auction per hive per frame at most beyond the two that exist.
 
-Score to minimise, in this order, at both clocks: `shapeBackShare`, then
-`flipFrames`, then `fight`, then `wasteC`, then `sliverP95`. `lag` and
-`settle` are diagnostic. A build that lowers these by holding shapes still
-against a moving target is a duck and ranks last; the refuters are told so.
+Score to minimise, in this order: **`jumps` and `shockPx2` at `--dt 30`**
+(the clock the owner watches, where the file scores 61 / 724,778 against
+14 / 157,637 at 60 fps — closing that gap is the prize), then
+`shapeBackPx2` at one fixed clock, then `fight`, then `wasteC`, then
+`sliverP95`. Never compare `shapeBackShare` across clocks. Never rank on
+`flipFrames` — it is chaos-noise. `lag` and `settle` are diagnostic only.
+A build that lowers these by holding shapes still against a moving target
+is a duck and ranks last; the refuters are told so.
+
+Report every number at all three clocks: default (60 fps), `--dt 30`, and
+`--dt 25 --jitter 12`. The 60 fps invariants (jumps ≤ 14, reversals ≤ 1,
+shock ≤ 160,000) must not regress, but they are no longer the target.
 
 ## 6. The design space (for the panel; builders get one design each)
 
