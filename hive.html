@@ -703,6 +703,7 @@ function solveWeights(seeds, targets, boundsPts, w0, opts = {}) {
     converged = maxRel <= tol;
   }
 
+
   let mean = 0;
   for (let i = 0; i < n; i++) mean += w[i];
   mean /= n;
@@ -971,12 +972,7 @@ function erosion(pts) {
   // or a vertex outside the loop; it passed those checks and was still
   // wrong two times in five, handing back a diagonal half of the cell or a
   // sliver of it, and which frames it passed flickered — the strobe.
-  //
-  // Dressing a loop asks the same inset more than once: the garment's two
-  // passes share their opening probes, and a bisection ends by eroding again
-  // at the inset it settled on. Each answer is kept, so the second ask is free.
-  const seen = new Map();
-  return { at: (s) => { let c = seen.get(s); if (!c) seen.set(s, c = s <= 0 ? [pts] : (convex || !tris ? convexErode(s) : exactErode(s))); return c; } };
+  return { at: (s) => s <= 0 ? [pts] : (convex || !tris ? convexErode(s) : exactErode(s)) };
 }
 
 // The garment of a loop is a morphological opening: erode the cell by the
@@ -992,21 +988,6 @@ function erosion(pts) {
 const INK_MIN = 4;
 function garment(loop, gap, radius) {
   const er = erosion(loop);
-  // Do all the pieces of a wide erosion sit in one piece of a narrow one?
-  // A vertex of a wide piece is strictly inside the narrow erosion, so the
-  // smallest outline of it that holds that vertex names the piece it is in.
-  const oneLobe = (wide, thin) => {
-    if (!thin.length) return false;              // nothing survives even the floor
-    if (wide.length < 2 || thin.length < 2) return true;
-    const lobe = (v) => {
-      let home = null, small = Infinity;
-      for (const t of thin) { const a = Math.abs(ringArea(t)); if (a < small && pointInPolygon(v[0], v[1], t)) { small = a; home = t; } }
-      return home;
-    };
-    const first = lobe(wide[0][0]);
-    for (let k = 1; k < wide.length; k++) if (lobe(wide[k][0]) !== first) return false;
-    return true;
-  };
   // A fit is one core. A cell dented to less than twice the gap plus the
   // radius erodes into two pieces, and two pieces dilated back overlap
   // where they meet — a waist at best, a hole under the even-odd fill —
@@ -1024,20 +1005,6 @@ function garment(loop, gap, radius) {
       return { inset: gap, radius: lo, cores: fit(gap, lo) };
     }
     const r = Math.min(radius, INK_MIN);
-    // Giving the gap away is a search for the inset at which the cell comes
-    // back together, and it is bisected as if a smaller inset always joined
-    // more. It does not. Two lobes on a neck thinner than twice the ink
-    // minimum are two pieces at every inset this pass can concede, and the
-    // whole descent — seven probes at a gap of 14, eight at 28 — answers no
-    // at a hair's erosion, the dearest answer there is, because a thin strip
-    // cuts every triangle of the cell and keeps every piece of it. So look at
-    // the floor of the search first: the least it can concede, no gap and the
-    // ink minimum. Eroding only ever takes away, so a piece of a wider erosion
-    // lies inside one piece of the floor, and two pieces the floor already
-    // holds apart are apart at every inset above it. Nothing between can join
-    // them, and the verdict is the one the descent would have reached, at one
-    // probe instead of eight: no whole fit, and the split pass runs.
-    if (whole && !oneLobe(er.at(gap + INK_MIN), er.at(r))) return null;
     let lo = 0, hi = gap;
     while (hi - lo > 0.25) { const m = (lo + hi) / 2; if (fit(m, INK_MIN)) lo = m; else hi = m; }
     cores = lo + r > 0 ? fit(lo, r) : [loop];
@@ -1264,8 +1231,10 @@ function rasterCheck(cells, W, H) {
 
 const MELT = 0.30;         // a settled cell softens for this long before it travels
 const HOLE_TAU = 0.08;     // s: a morphing cell's target follows the auction on this clock
-const LINGER_MAX = 40;     // frames a closing hole may chase its cell; its clock reaches
-                           // the cell first, so the budget never expires into a snap
+const LINGER_MAX_S = 40 / 60;   // s a closing hole may chase its cell; its clock reaches
+const LINGER_RAMP_S = 34 / 60;  // the cell first, so the budget never expires into a snap.
+                           // Seconds, not frames: at 30 ms a frame count stretched this
+                           // catch-up to 1.2 s and the hole closed by expiry instead.
 const CLAIM_MIN = 0.02;
 const SEED_MARGIN = 10;
 const SEED_MIN_SEP = 5;
@@ -2075,8 +2044,11 @@ class Hive {
   // domain, pairwise distinct — enforced on the BODY, so a formation moves as
   // one. Its own seeds are distinct by construction: they only enter the
   // field once the crystal fraction has spread them past the minimum.
-  enforcePreconditions() {
+  enforcePreconditions(h) {
     const bodies = this.bodies, W = this.W, H = this.H;
+    // the damping after an eviction is a RATE, not a per-frame haircut: half
+    // the speed per 1/60 s, whatever the step is
+    const damp = Math.pow(0.5, (h || 1 / 60) * 60);
     const poly = this.domainPolyActive();
     let cx = W / 2, cy = H / 2;
     if (poly) { cx = 0; cy = 0; for (const p of poly) { cx += p[0]; cy += p[1]; } cx /= poly.length; cy /= poly.length; }
@@ -2095,7 +2067,7 @@ class Hive {
             const m = Math.min(dl, dr, dt, db);
             if (m === dl) b.x = r[0] - 0.5; else if (m === dr) b.x = r[2] + 0.5;
             else if (m === dt) b.y = r[1] - 0.5; else b.y = r[3] + 0.5;
-            b.vx *= 0.5; b.vy *= 0.5; moved = true;
+            b.vx *= damp; b.vy *= damp; moved = true;
           }
           if (!moved) break;
         }
@@ -2106,7 +2078,7 @@ class Hive {
             if (!pointInPolygon(b.x, b.y, h.hole.pieces[k])) continue;
             let best = Infinity, bp = null;
             for (const p of h.hole.planes[k]) { const d = p.b - (p.ax * b.x + p.ay * b.y); if (d < best) { best = d; bp = p; } }
-            if (bp) { b.x += bp.ax * (best + 0.5); b.y += bp.ay * (best + 0.5); b.vx *= 0.5; b.vy *= 0.5; }
+            if (bp) { b.x += bp.ax * (best + 0.5); b.y += bp.ay * (best + 0.5); b.vx *= damp; b.vy *= damp; }
           }
         }
         b.x = Math.min(W - SEED_MARGIN, Math.max(SEED_MARGIN, b.x));
@@ -2117,7 +2089,7 @@ class Hive {
         // reach walks back toward the middle until it is inside
         for (let k = 0; k < 6 && !pointInPolygon(b.x, b.y, poly); k++) { b.x += (cx - b.x) * 0.5; b.y += (cy - b.y) * 0.5; }
         if (!pointInPolygon(b.x, b.y, poly)) { b.x = cx; b.y = cy; }
-        b.vx *= 0.5; b.vy *= 0.5;
+        b.vx *= damp; b.vy *= damp;
       }
     }
     for (let i = 0; i < bodies.length; i++) {
@@ -2462,6 +2434,14 @@ class Hive {
     return s;
   }
 
+  // NEWTON'S BUDGET IS PER SECOND. Three iterations per FRAME is three at
+  // 60 fps and half as many per second at 30 ms, on a warm start that is
+  // twice as stale. Scaled by dt it is the same work per second at every
+  // clock: floored at today's 3, so no clock gets less than it has now,
+  // and capped at 8, so a long frame cannot buy unbounded work.
+  iterBudget() { return Math.max(3, Math.min(8, Math.round(3 * (this.lastDt || 1 / 60) * 60))); }
+
+
   solveMain() {
     const subs = [];
     for (const b of this.bodies) for (const s of b.subs) subs.push(s);
@@ -2578,7 +2558,7 @@ class Hive {
         const gs = idx.map(i => seeds[i]), gc = idx.map(i => claims[i]), gw = idx.map(i => active[i].w);
         const sol = idx.length === 1
           ? { weights: [gw[0]], diagram: computeDiagram([gs[0]], [gw[0]], bounds, gt), maxRelErr: 0, converged: true, iterations: 0 }
-          : solveWeights(gs, gc, bounds, gw, { maxIter: 3, tris: gt, domainArea: ga });
+          : solveWeights(gs, gc, bounds, gw, { maxIter: this.iterBudget(), tris: gt, domainArea: ga });
         err = Math.max(err, sol.maxRelErr); iters = Math.max(iters, sol.iterations); conv = conv && sol.converged;
         for (let a = 0; a < idx.length; a++) {
           const g2 = (j) => j < 0 ? j : idx[j];                 // pocket index -> auction index
@@ -2614,7 +2594,7 @@ class Hive {
     // frames of small area error (the meter shows it) instead of one 60 ms
     // frame. The diagram is watertight at every step regardless; at rest
     // this converges to 1e-6 within a frame or two and then costs nothing.
-    const sol = solveWeights(seeds, claims, bounds, active.map(s => s.w), { maxIter: 3, tris, domainArea: tris ? dArea : undefined });
+    const sol = solveWeights(seeds, claims, bounds, active.map(s => s.w), { maxIter: this.iterBudget(), tris, domainArea: tris ? dArea : undefined });
     this.solveMs = performance.now() - t0;
     this.lastIters = sol.iterations;
     active.forEach((s, i) => { s.w = sol.weights[i]; });
@@ -2704,7 +2684,7 @@ class Hive {
       const seeds = idx.map(s => [s.x, s.y]), claims = idx.map(s => s.claim), w0 = idx.map(s => s.wShadow);
       const sol = idx.length === 1
         ? { weights: w0, diagram: computeDiagram(seeds, w0, bounds, gt) }
-        : solveWeights(seeds, claims, bounds, w0, { maxIter: 3, tris: gt, domainArea: ga });
+        : solveWeights(seeds, claims, bounds, w0, { maxIter: this.iterBudget(), tris: gt, domainArea: ga });
       for (let i = 0; i < idx.length; i++) { idx[i].wShadow = sol.weights[i]; cellOf.set(idx[i], sol.diagram.cells[i]); }
     }
     for (const s of subs) s.shadowLive = cellOf.has(s);
@@ -2714,7 +2694,7 @@ class Hive {
       const c = cellOf.get(b.subs[0]);
       const parts = c ? (c.pieces || [c]).filter(pc => pc.pts.length >= 3) : [];
       const shape = parts.length ? cellCoreAndArms(parts, b.hole.rect) : null;
-      if (!shape) { b.holeLinger = false; b.lingerFrames = 0; continue; }
+      if (!shape) { b.holeLinger = false; b.lingerTime = 0; continue; }
       // CAUGHT UP? The core against the cell the auction hands it, as a
       // share of that cell — and asked EVERY frame, not only at crystal 0.
       // Asked at 0 the answer arrives a frame after the hole has already
@@ -2727,15 +2707,15 @@ class Hive {
         const both = planesPoly(convexPlanes(prev), shape.core);
         caught = !(tgtA > 0) || Math.abs(ringArea(prev)) + tgtA - 2 * (both ? Math.abs(ringArea(both)) : 0) <= 0.03 * tgtA;
       }
-      b.lingerFrames = b.crystal > 0 ? 0 : (b.lingerFrames || 0) + 1;
-      b.holeLinger = !caught && b.lingerFrames < LINGER_MAX;
+      b.lingerTime = b.crystal > 0 ? 0 : (b.lingerTime || 0) + (this.lastDt || 1 / 60);
+      b.holeLinger = !caught && b.lingerTime < LINGER_MAX_S;
       // The core follows the cell it would have on a short clock, so the
       // auction's frame-to-frame reshuffling does not print on the hole. While
       // it lingers the clock shortens toward the instant, reaching it before
       // the budget does: a linger ends because the hole has caught up, never
       // because it ran out of frames. A budget that expires is a snap.
       let k = 1 - Math.exp(-(this.lastDt || 0.016) / HOLE_TAU);
-      if (b.lingerFrames) k = 1 - (1 - k) * Math.max(0, 1 - b.lingerFrames / (LINGER_MAX - 6));
+      if (b.lingerTime) k = 1 - (1 - k) * Math.max(0, 1 - b.lingerTime / LINGER_RAMP_S);
       const core = prev && prev.length >= 3 ? blendConvex(prev, shape.core, k, bounds) : null;
       b.holeCore = { core: core && core.length >= 3 ? core : shape.core, arms: shape.arms };
     }
@@ -2798,10 +2778,27 @@ class Hive {
 
     // 1. the hive moves — one spring per body, whatever its slot count;
     // each body's crystal runs on its own clock (steer -> updateCrystal)
-    this.steer(dt, t);
-    this.computeWalls();
-    this.separate(dt);
-    this.enforcePreconditions();
+    // THE MOTION PASS RUNS ON A FIXED STEP. The spring, the push and the
+    // evictions were tuned at 1/60 s; asked to act across a 30 or 50 ms
+    // frame they overshoot (the semi-implicit update adds an effective
+    // k1*dt^2 of stiffness) and each eject/damp fires once per FRAME rather
+    // than once per tuned step. So the cheap O(n^2) motion is subdivided
+    // into whole 1/60 s steps — N a function of dt alone, no accumulator,
+    // no remainder to alias — and the interpolated t goes with it, so the
+    // carrot, the crystal and the wobble advance inside the substeps. At
+    // 60 fps N is 1 and this is exactly the old call sequence.
+    const SUB_H = 1 / 60, MAX_SUB = 4;
+    // (the epsilon is float slack: a nominal 60 fps frame must stay at N = 1)
+    const N = Math.min(MAX_SUB, Math.max(1, Math.ceil(dt / SUB_H - 1e-6))), h = dt / N;
+    for (let i = 0; i < N; i++) {
+      this.steer(h, t - dt + (i + 1) * h);
+      if (i === 0) this.computeWalls();     // walls follow the crystal, which moves at most one substep in a frame
+      this.separate(h);
+      this.enforcePreconditions(h);
+    }
+    // and the frame ends the way a single step ended: the picture is cut by
+    // the walls the frame ENDS on, and no seed stands in one of them
+    if (N > 1) { this.computeWalls(); this.enforcePreconditions(h); }
     this.easeClaims(dt, t);
 
     // 2. the hive's two readings of its bodies' crystals
@@ -3327,33 +3324,15 @@ function clipPiecesToTriangles(pieces, tris) {
   return out;
 }
 
-// The box of a ring, for the cheap miss test before an exact cut.
-function boxOf(pts) {
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const p of pts) { if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; }
-  return [x0, y0, x1, y1];
-}
-
 // pieces minus a convex polygon F: a piece F does not reach is kept as it
 // is; one it does is replaced by the wedges outside F's edges — outside edge
 // k and inside edges 0..k-1 — which are disjoint, convex, and share their
 // edges exactly. Returns null when nothing was cut.
 function subtractConvex(pieces, F) {
   const hp = halfPlanes(F);
-  let fx0 = Infinity, fy0 = Infinity, fx1 = -Infinity, fy1 = -Infinity;
-  for (const p of F) { if (p[0] < fx0) fx0 = p[0]; if (p[0] > fx1) fx1 = p[0]; if (p[1] < fy0) fy0 = p[1]; if (p[1] > fy1) fy1 = p[1]; }
   let changed = false;
   const out = [];
   for (const pc of pieces) {
-    // F is convex, so it is inside its own box: a piece whose box misses
-    // that box misses F, and comes through whole without a clip per side.
-    // An erosion cuts a thin strip about every edge and a disc about every
-    // notch out of the same hundreds of fragments, and all but a handful
-    // of them are nowhere near the one being cut. The box is kept on the
-    // piece: a piece that survives a cut untouched is the same object, so
-    // it is measured once and rejected by the fifty cuts after it.
-    const bb = pc.bb || (pc.bb = boxOf(pc.pts));
-    if (bb[0] > fx1 || bb[2] < fx0 || bb[1] > fy1 || bb[3] < fy0) { out.push(pc); continue; }
     let inside = pc;
     for (const [ax, ay, b] of hp) { if (inside.pts.length < 3) break; inside = clipHalfPlane(inside, ax, ay, b, -8); }
     if (inside.pts.length < 3 || Math.abs(ringArea(inside.pts)) < 1e-6) { out.push(pc); continue; }
