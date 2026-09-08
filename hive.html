@@ -336,8 +336,8 @@ function convexCore(pts) {
  * is the support of the blend (1-c)·cell + c·rect in that direction. At
  * crystal 0 the planes are the cell's, at 1 the rectangle's, and in
  * between the hole is convex by construction and moves continuously.
- * The cell it would have is read from a side auction that includes the
- * body, run on the ground with its own hole given back (see solveSides),
+ * The cell it would have is read from the shadow auction, which includes the
+ * body, run on the ground with every hole given back (see solveShadow),
  * so the frame the hole closes and the first frame of the auction are the
  * same picture; and the frame it opens is the rectangle, which was the
  * wall. Nothing switches.
@@ -393,23 +393,26 @@ function cellCoreAndArms(pieces, rect) {
   return { core, arms: [] };
 }
 
-// Two convex shapes blended by their supports: every side of either, at
-// the blend of the two supports in its direction. At 0 it is A, at 1 B,
-// and for two shapes a frame apart it is the small step between them.
+// Two convex shapes blended by their supports: EVERY DIRECTION THAT IS A
+// SIDE OF EITHER, at the blend of the two supports in it — the same rule
+// holePlanes keeps. At 0 it is A, at 1 B, and for two shapes a frame apart
+// it is the small step between them. On B's directions alone it is not the
+// blend at all: at 0 it returns A read from outside on B's normals, which
+// for an A bent around a hole is larger than either shape, and larger again
+// every frame the two are held apart. A direction only binds while it cuts,
+// so the sides of past frames drop out as the blend arrives; what is left
+// is reduced to its real corners, hard, or near-parallel sides accumulate.
 function blendConvex(A, B, t, box) {
   const support = (P, nx, ny) => { let m = -Infinity; for (const p of P) m = Math.max(m, nx * p[0] + ny * p[1]); return m; };
   const planes = [];
-  // on B's sides only: the sides of A are last frame's, and carrying both
-  // sets forward piles up a side for every frame there has been
-  for (const P of [B]) for (const h of convexPlanes(P)) {
+  for (const P of [B, A]) for (const h of convexPlanes(P)) {
     const L = Math.hypot(h.ax, h.ay);
     if (L < 1e-9) continue;
     const nx = h.ax / L, ny = h.ay / L;
     planes.push({ ax: nx, ay: ny, b: (1 - t) * support(A, nx, ny) + t * support(B, nx, ny) });
   }
-  // reduced to its real corners, or the sides of every past frame pile up
   const q = planesPoly(planes, box);
-  return q ? simplifyLoop(q, 0.5, 5e-3) : null;
+  return q ? simplifyLoop(q, 2, 0.05) : null;
 }
 
 // The polygon of a set of inward half-planes, within a box.
@@ -1227,6 +1230,8 @@ function rasterCheck(cells, W, H) {
 
 const MELT = 0.30;         // a settled cell softens for this long before it travels
 const HOLE_TAU = 0.08;     // s: a morphing cell's target follows the auction on this clock
+const LINGER_MAX = 40;     // frames a closing hole may chase its cell; its clock reaches
+                           // the cell first, so the budget never expires into a snap
 const CLAIM_MIN = 0.02;
 const SEED_MARGIN = 10;
 const SEED_MIN_SEP = 5;
@@ -1373,7 +1378,10 @@ function passageTimes(graph, sources, S, salt, shift) {
 }
 
 function makeSub(body, x, y) {
-  return { body, x, y, claim: CLAIM_MIN, w: 0 };  // w: warm-start weight
+  // w: the warm weight in the main auction, wShadow the one in the shadow
+  // auction beside it. A weight means nothing outside the auction that found
+  // it, so each keeps its own and neither is ever read as the other.
+  return { body, x, y, claim: CLAIM_MIN, w: 0, wShadow: 0, shadowLive: false };
 }
 
 // Greedy nearest assignment + 2-opt on squared travel.
@@ -1560,10 +1568,10 @@ class Hive {
       crystal: 0,                 // its own order parameter: 0 = a bid in the auction, 1 = a wall
       wall: null,                 // its rectangle in px once it is a wall, else null
       hole: null,                 // its shape while its crystal is between: a hole in the ground
-      holeCore: null,             // the cell it would have, from its side auction
+      holeCore: null,             // the cell it would have, from the shadow auction
       holeExtra: [],              // ground nobody bid for that it draws meanwhile
       holeLinger: false,          // at crystal 0 and still chasing the cell it would have
-      sideW: null, sideOn: false, // the side auction's weights, to hand over when the hole closes
+      paintArea: 0,               // px² it painted last frame: what it carries across a switch
       pin: 0,                     // how hard its slot holds it: the lock part of the crystal alone
       T: 0,                       // when the last change reached it, after that change began
       entry: null,                // where the change came in — the facet it crossed, in this hive's px
@@ -2164,7 +2172,7 @@ class Hive {
   // The walls of this frame: every settled body, its rectangle, out of the
   // auction. Recomputed every frame, so a wall that melts is simply not one.
   // A body whose crystal is between is a HOLE: its shape this frame is the
-  // blend of the cell it would have (read from last frame's side auction,
+  // blend of the cell it would have (read from last frame's shadow auction,
   // or its own outline the first time) and its rectangle, at its crystal.
   computeWalls() {
     this.walls = []; this.holes = [];
@@ -2339,13 +2347,16 @@ class Hive {
     return g;
   }
 
-  domainPieces() {
+  // The ground, as convex pieces: the page less the walls less the holes.
+  // withHoles keeps the holes in — the page less the walls alone, which is
+  // the world at crystal 0 and the shadow auction's ground.
+  domainPieces(withHoles) {
     const poly = this.domainPolyActive();
     const rects = this.walls.map(b => b.wall);
     // each hole as its few uncut convex parts: what a stronger hole took
     // from it is cut from the ground by that hole anyway, and the fewer
     // the planes the fewer the fragments
-    const morphs = this.holes.flatMap(b => b.hole.raw.map(p => convexPlanes(p)));
+    const morphs = withHoles ? [] : this.holes.flatMap(b => b.hole.raw.map(p => convexPlanes(p)));
     if (!rects.length && !morphs.length) return poly ? triangulatePts(poly) : null;
     let pieces = null;
     if (!poly) pieces = rects.length ? coverRects(0, 0, this.W, this.H, rects) : [[[0, 0], [this.W, 0], [this.W, this.H], [0, this.H]]];
@@ -2388,19 +2399,44 @@ class Hive {
   // interior to its own body, where the seam hides it.
   solve() {
     this.solveMain();
-    this.solveSides();
+    this.solveShadow();
+    this.recordAreas();
+  }
+
+  // What every body paints this frame, in px². This is the one quantity a
+  // body carries across a switch: whichever auction it enters next, it
+  // enters at the weight that gives it exactly this, so the shape it is
+  // drawn at is the shape the auction hands back.
+  recordAreas() {
+    for (const b of this.bodies) b.paintArea = 0;
+    if (this.solved) { const ar = this.solved.diagram.areas; this.solvedSubs.forEach((s, i) => { s.body.paintArea += ar[i] || 0; }); }
+    for (const b of this.walls) b.paintArea = (b.wall[2] - b.wall[0]) * (b.wall[3] - b.wall[1]);
+    for (const b of this.holes) {
+      let a = 0;
+      for (const p of b.hole.pieces) a += Math.abs(ringArea(p));
+      for (const p of b.holeExtra) a += Math.abs(ringArea(p));
+      b.paintArea = a;
+    }
+  }
+
+  // The walls and the domain, as a string: what the shadow auction's ground
+  // was made of. If it still reads the same the frame the last hole closes,
+  // that ground is now the main auction's too.
+  shadowSig() {
+    let s = this.domainPolyActive() ? this.domainSig : '';
+    for (const b of this.walls) s += 'W' + b.id + ':' + b.wall.map(v => v * 8 | 0).join(',') + ';';
+    return s;
   }
 
   solveMain() {
     const subs = [];
     for (const b of this.bodies) for (const s of b.subs) subs.push(s);
-    // A hole that has just closed hands the auction the weights its side
-    // auction found: the ground and the bidders are now exactly those, so
-    // the solve is already converged and the picture does not move.
-    for (const b of this.bodies) {
-      if (!b.sideW) continue;
-      if (!b.hole && !b.wall) { for (const [q, w] of b.sideW) { q.w = w; q.live = true; } }
-      b.sideW = null;
+    // THE FRAME THE LAST HOLE CLOSES, the shadow auction and this one are one
+    // auction again: the ground is the page less the walls, the bidders are
+    // these, and the shadow's weights — one gauge, every seed — are already
+    // the answer. Taken whole, the solve is converged and nothing moves.
+    if (this.shadowOn && !this.holes.length && this.shadowAt === this.shadowSig()) {
+      for (const s of subs) if (s.shadowLive) { s.w = s.wShadow; s.live = true; }
     }
     const active = subs.filter(s => s.claim >= ACTIVE_MIN && !s.body.hole);
     this.ground = null;
@@ -2451,8 +2487,13 @@ class Hive {
       let scale = 4 * (this.W * this.W + this.H * this.H);
       for (const q of live) scale = Math.max(scale, 4 * Math.abs(q.w));
       for (const s of active) if (!s.live) {
-        if (!inSeeds.length) { s.w = s.claim * domainArea / tSum / Math.PI; continue; }
-        const target = s.claim * domainArea / tSum;
+        const fair = s.claim * domainArea / tSum;
+        if (!inSeeds.length) { s.w = fair / Math.PI; continue; }
+        // AT THE AREA IT IS PAINTED AT, not at the area it claims. A hole that
+        // has just closed is drawn its hole this instant; the auction has to
+        // hand that back before it moves it anywhere. A body that painted
+        // nothing (one just born) has only its claim to enter on.
+        const target = Math.min(s.body.paintArea > 1 ? s.body.paintArea : fair, 0.98 * domainArea);
         s.w = entryWeight(s.x, s.y, target, inSeeds, inW, bounds, tris, scale);
         inSeeds.push([s.x, s.y]); inW.push(s.w);
       }
@@ -2566,108 +2607,104 @@ class Hive {
     }
   }
 
-  // THE SIDE AUCTIONS. Each hole asks what cell it would have if it were
-  // bidding: the auction run once more with the body in and its own hole
-  // given back to the ground, everything else as it is — the other holes
-  // still holes, the walls still walls. That cell is where its shape is
-  // travelling to (or from), and it is exactly the cell the main auction
-  // hands it the frame the hole closes, because that frame the ground and
-  // the bidders are the same. One solve per hole, warm, in its own pocket.
-  solveSides() {
-    if (!this.holes.length) return;
-    const free = this.solvedSubs || [];
-    const bounds = this.domainPts();
-    const ground = this.ground || this.domainPieces() || [[[0, 0], [this.W, 0], [this.W, this.H], [0, this.H]]];
-    for (const b of this.holes) {
-      const s = b.subs[0];
-      if (!(s.claim >= ACTIVE_MIN)) { b.sideW = null; continue; }
-      // its pocket: the ground pieces its hole touches, and the bidders in them
-      const pieces = ground.concat(b.hole.pieces);
-      let pick = pieces, mine = free, compAll = null, gAll = -1;
-      if (pieces.length > 1) {
-        const comp = this.components(pieces);
-        const own = new Set(); for (let k = ground.length; k < pieces.length; k++) own.add(k);
-        let g = null; for (const gr of comp.groups) if (gr.some(k => own.has(k))) g = g ? g.concat(gr.filter(k => !g.includes(k))) : gr;
-        if (g && g.length < pieces.length) {
-          pick = g.map(i => pieces[i]);
-          const gi = new Set(g);
-          // one merged group for the pocket test below
-          comp.groups = [g].concat(comp.groups.filter(gr => !gr.some(k => gi.has(k))));
-          compAll = comp; gAll = 0;
-          mine = free.filter(q => this.pocketOf(comp, pieces, q.x, q.y) === 0);
-        }
-      }
-      if (!compAll) { compAll = { groups: [pieces.map((_, i) => i)], box: pieces.map(p => { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const q of p) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); } return [x0, y0, x1, y1]; }) }; gAll = 0; }
-      const tris = pick.map(convexPlanes);
-      let dArea = 0; for (const p of pick) dArea += Math.abs(ringArea(p));
-      if (!(dArea > 1e-6)) { b.sideW = null; continue; }
-      // nobody else in its pocket: its cell would be its rectangle and
-      // whatever ground lies about, and that ground it draws anyway (see
-      // adoptGround), so the rectangle is its core, or what is free of it
-      if (!mine.length) {
-        const r = b.hole.rect, R = [[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]]];
-        let best = null, bestA = 0;
-        for (const p of pick) { const q = planesPoly(convexPlanes(p), R); const a = q ? Math.abs(ringArea(q)) : 0; if (a > bestA) { bestA = a; best = q; } }
-        const rA = (r[2] - r[0]) * (r[3] - r[1]);
-        let inter = 0; for (const p of pick) { const q = planesPoly(convexPlanes(p), R); if (q) inter += Math.abs(ringArea(q)); }
-        const target = inter >= 0.95 * rA ? R : (best || R);
-        const prev0 = b.holeCore && b.holeCore.core;
-        const k0 = 1 - Math.exp(-(this.lastDt || 0.016) / HOLE_TAU);
-        const core0 = prev0 && prev0.length >= 3 ? blendConvex(prev0, target, k0, bounds) : null;
-        b.holeCore = { core: core0 && core0.length >= 3 ? core0 : target, arms: [] };
-        b.sideW = null; b.sideOn = false; b.sideWeights = null;
-        b.holeLinger = false;                 // alone: what it holds is what it would get
-        continue;
-      }
-      const others = [];
-      const seeds = mine.map(q => [q.x, q.y]).concat([[s.x, s.y]]);
-      const claims = mine.map(q => q.claim).concat([s.claim]);
-      let tSum = 0; for (const c of claims) tSum += c;
-      // warm from its own last solve: the main auction's weights are for a
-      // ground without this hole, and far from here when the hole is large
-      const prevW = b.sideWeights;
-      const w0 = mine.map(q => prevW && prevW.has(q) ? prevW.get(q) : q.w);
-      let scale = 4 * (this.W * this.W + this.H * this.H);
-      for (const q of mine) scale = Math.max(scale, 4 * Math.abs(q.w));
-      for (const h of others) {
-        const hs = h.subs[0];
-        let wh = prevW && prevW.has(hs) ? prevW.get(hs) : (isFinite(hs.wSide) ? hs.wSide : NaN);
-        if (!isFinite(wh)) wh = w0.length ? entryWeight(h.x, h.y, hs.claim * dArea / tSum, seeds.slice(0, w0.length), w0, bounds, tris, scale) : hs.claim * dArea / tSum / Math.PI;
-        w0.push(wh);
-      }
-      let wb = s.wSide;
-      if (!isFinite(wb) || !b.sideOn) {
-        wb = w0.length ? entryWeight(s.x, s.y, s.claim * dArea / tSum, seeds.slice(0, -1), w0, bounds, tris, scale) : s.claim * dArea / tSum / Math.PI;
-      }
-      w0.push(wb);
-      const sol = seeds.length === 1
-        ? { weights: [wb], diagram: computeDiagram(seeds, [wb], bounds, tris) }
-        : solveWeights(seeds, claims, bounds, w0, { maxIter: 3, tris, domainArea: dArea });
-      const last = seeds.length - 1;
-      s.wSide = sol.weights[last]; b.sideOn = true;
-      b.sideWeights = new Map(mine.map((q, i) => [q, sol.weights[i]]).concat(others.map((h, i) => [h.subs[0], sol.weights[mine.length + i]])));
-      b.sideW = mine.map((q, i) => [q, sol.weights[i]]).concat([[s, sol.weights[last]]]);
-      const c = sol.diagram.cells[last];
-      const shape = cellCoreAndArms(c.pieces || [c], b.hole.rect);
-      // caught up? the hole against the cell it would have, as a share of it
-      if (shape) {
-        let inter = 0, cellA = 0;
-        const parts = (c.pieces || [c]).filter(pc => pc.pts.length >= 3);
-        for (const pc of parts) { cellA += Math.abs(ringArea(pc.pts)); for (const hp of b.hole.pieces) { const q = planesPoly(convexPlanes(pc.pts), hp); if (q) inter += Math.abs(ringArea(q)); } }
-        let holeA = 0; for (const hp of b.hole.pieces) holeA += Math.abs(ringArea(hp));
-        b.holeLinger = !(b.crystal > 0) && cellA > 0 && (cellA + holeA - 2 * inter) > 0.03 * cellA && (b.lingerFrames = (b.lingerFrames || 0) + 1) < 40;
-        if (!b.holeLinger) b.lingerFrames = 0;
-      } else b.holeLinger = false;
-      if (shape) {
-        // the core follows the cell it would have on a short clock, so the
-        // auction's frame-to-frame reshuffling does not print on the hole
-        const prev = b.holeCore && b.holeCore.core;
-        const k = 1 - Math.exp(-(this.lastDt || 0.016) / HOLE_TAU);
-        const core = prev && prev.length >= 3 ? blendConvex(prev, shape.core, k, bounds) : null;
-        b.holeCore = { core: core && core.length >= 3 ? core : shape.core, arms: shape.arms };
-      }
+  // THE SHADOW AUCTION. Not one auction per hole but ONE beside the main
+  // one: the page as it would be if nothing were crystallising. Its ground
+  // is the page less the WALLS — the auction's ground plus every hole — and
+  // every body that is not a wall bids in it at its claim, the holes
+  // included. A hole's would-be cell is its cell here, so the holes' targets
+  // are one partition that adds up instead of N answers each pretending the
+  // others are not there; and one auction is one gauge, warm frame to frame,
+  // so no weight ever crosses from an auction that did not find it.
+  solveShadow() {
+    const subs = [];
+    for (const b of this.bodies) for (const s of b.subs) subs.push(s);
+    if (!this.holes.length) {
+      // no hole: the shadow and the main auction ARE the same auction — same
+      // ground, same bidders — so the main weights are the shadow's, and the
+      // gauge is already warm the frame a hole opens
+      for (const s of subs) { s.wShadow = s.w; s.shadowLive = s.live; }
+      this.shadowOn = false; this.shadowAt = null;
+      return;
     }
-    for (const b of this.bodies) if (!b.hole) { b.sideOn = false; b.sideWeights = null; }
+    const bidders = subs.filter(s => !s.body.wall && s.claim >= ACTIVE_MIN);
+    let pieces = this.domainPieces(true);
+    if (!pieces) pieces = [[[0, 0], [this.W, 0], [this.W, this.H], [0, this.H]]];
+    if (!bidders.length || !pieces.length) {
+      for (const s of subs) s.shadowLive = false;
+      for (const b of this.holes) b.holeLinger = false;
+      this.shadowOn = false; this.shadowAt = null;
+      return;
+    }
+    const bounds = this.domainPts();
+    // one auction per pocket, as the main one: a body bids only where it stands
+    const comp = pieces.length > 1 ? this.components(pieces) : null;
+    const groups = comp ? comp.groups : [[0]];
+    const mine = groups.map(() => []);
+    for (const s of bidders) mine[comp ? this.pocketOf(comp, pieces, s.x, s.y) : 0].push(s);
+    const cellOf = new Map();
+    for (let k = 0; k < groups.length; k++) {
+      const idx = mine[k];
+      if (!idx.length) continue;
+      const gp = groups[k].map(pi => pieces[pi]);
+      let ga = 0; for (const p of gp) ga += Math.abs(ringArea(p));
+      if (!(ga > 1e-6)) continue;
+      const gt = gp.map(convexPlanes);
+      let tSum = 0; for (const s of idx) tSum += s.claim;
+      // A SEED ENTERS AT THE AREA IT IS PAINTED AT. Whatever it carried in
+      // the other auction is that auction's gauge and means nothing here; the
+      // area it is drawn at this instant means the same in every gauge. It
+      // enters at the weight that gives it exactly that against everyone
+      // already in, and the auction moves it toward its claim from there.
+      const inSeeds = [], inW = [];
+      for (const s of idx) if (s.shadowLive) { inSeeds.push([s.x, s.y]); inW.push(s.wShadow); }
+      let scale = 4 * (this.W * this.W + this.H * this.H);
+      for (const w of inW) scale = Math.max(scale, 4 * Math.abs(w));
+      for (const s of idx) {
+        if (s.shadowLive) continue;
+        const fair = s.claim * ga / tSum;
+        if (!inSeeds.length) { s.wShadow = fair / Math.PI; inSeeds.push([s.x, s.y]); inW.push(s.wShadow); continue; }
+        const target = Math.min(s.body.paintArea > 1 ? s.body.paintArea : fair, 0.98 * ga);
+        s.wShadow = entryWeight(s.x, s.y, target, inSeeds, inW, bounds, gt, scale);
+        inSeeds.push([s.x, s.y]); inW.push(s.wShadow);
+      }
+      const seeds = idx.map(s => [s.x, s.y]), claims = idx.map(s => s.claim), w0 = idx.map(s => s.wShadow);
+      const sol = idx.length === 1
+        ? { weights: w0, diagram: computeDiagram(seeds, w0, bounds, gt) }
+        : solveWeights(seeds, claims, bounds, w0, { maxIter: 3, tris: gt, domainArea: ga });
+      for (let i = 0; i < idx.length; i++) { idx[i].wShadow = sol.weights[i]; cellOf.set(idx[i], sol.diagram.cells[i]); }
+    }
+    for (const s of subs) s.shadowLive = cellOf.has(s);
+    this.shadowOn = true; this.shadowAt = this.shadowSig();
+    // Each hole's target is its own cell in that one partition.
+    for (const b of this.holes) {
+      const c = cellOf.get(b.subs[0]);
+      const parts = c ? (c.pieces || [c]).filter(pc => pc.pts.length >= 3) : [];
+      const shape = parts.length ? cellCoreAndArms(parts, b.hole.rect) : null;
+      if (!shape) { b.holeLinger = false; b.lingerFrames = 0; continue; }
+      // CAUGHT UP? The core against the cell the auction hands it, as a
+      // share of that cell — and asked EVERY frame, not only at crystal 0.
+      // Asked at 0 the answer arrives a frame after the hole has already
+      // been dropped, so it is never read and a hole closes on whatever
+      // mismatch it has. Asked every frame it is already there.
+      const prev = b.holeCore && b.holeCore.core;
+      let caught = true;
+      if (prev && prev.length >= 3) {
+        const tgtA = Math.abs(ringArea(shape.core));
+        const both = planesPoly(convexPlanes(prev), shape.core);
+        caught = !(tgtA > 0) || Math.abs(ringArea(prev)) + tgtA - 2 * (both ? Math.abs(ringArea(both)) : 0) <= 0.03 * tgtA;
+      }
+      b.lingerFrames = b.crystal > 0 ? 0 : (b.lingerFrames || 0) + 1;
+      b.holeLinger = !caught && b.lingerFrames < LINGER_MAX;
+      // The core follows the cell it would have on a short clock, so the
+      // auction's frame-to-frame reshuffling does not print on the hole. While
+      // it lingers the clock shortens toward the instant, reaching it before
+      // the budget does: a linger ends because the hole has caught up, never
+      // because it ran out of frames. A budget that expires is a snap.
+      let k = 1 - Math.exp(-(this.lastDt || 0.016) / HOLE_TAU);
+      if (b.lingerFrames) k = 1 - (1 - k) * Math.max(0, 1 - b.lingerFrames / (LINGER_MAX - 6));
+      const core = prev && prev.length >= 3 ? blendConvex(prev, shape.core, k, bounds) : null;
+      b.holeCore = { core: core && core.length >= 3 ? core : shape.core, arms: shape.arms };
+    }
   }
 
   // --- the frame --------------------------------------------------------
@@ -2915,7 +2952,10 @@ class Hive {
       const dU = (Math.sqrt((rw + rh) * (rw + rh) + 4 * (config.hoverBoost - 1) * rw * rh) - (rw + rh)) / 4;
       const depth = b.hoverMix * b.crystal * dU / 0.75;
       if (!(depth > 0.05)) continue;
-      // what it holds already: its rectangle as a wall, its cell otherwise
+      // what it holds already: its rectangle as a wall, its cell otherwise.
+      // Exactly what its leaf paints, or the ring cut from its neighbours
+      // would be wider than the ring handed back to it, and the difference
+      // would be painted by nobody.
       let own = null;
       if (b.hole) own = b.hole.pieces.concat(b.holeExtra).map(p => ({ pts: p }));
       else if (!b.wall) {
@@ -2954,6 +2994,19 @@ class Hive {
       let poly = { pts: page, labs: [-1, -2, -3, -4] };
       const grown = [[1, 0, rect[2] + depth], [-1, 0, -(rect[0] - depth)], [0, 1, rect[3] + depth], [0, -1, -(rect[1] - depth)]];
       for (const [ax, ay, bb] of grown) { if (poly.pts.length < 3) break; poly = clipHalfPlane(poly, ax, ay, bb, -5); }
+      // AND WITHIN THE DEPTH OF WHAT IT HOLDS. The rectangle is where a
+      // travelling body is going, not what it stands on: a body at crystal
+      // 0.09 whose cell is elsewhere was handed its whole slot the frame the
+      // depth passed its floor, and gave it back the next. Asking only as
+      // far beyond its own shape as the depth reaches makes the ask vanish
+      // with the depth, which is what the depth was for.
+      if (b.hole && b.hole.raw.length && b.hole.raw[0].length >= 3) {
+        for (const h of convexPlanes(b.hole.raw[0])) {
+          const L = Math.hypot(h.ax, h.ay);
+          if (L < 1e-9 || poly.pts.length < 3) continue;
+          poly = clipHalfPlane(poly, h.ax / L, h.ay / L, h.b / L + depth, -5);
+        }
+      }
       for (const q of beyond) { if (poly.pts.length < 3) break; poly = clipHalfPlane(poly, q.x - sx, q.y - sy, (q.pot - potM) / 2, -6); }
       if (poly.pts.length < 3) continue;
       let pieces = [];
