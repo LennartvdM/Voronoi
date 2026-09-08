@@ -343,32 +343,25 @@ function convexCore(pts) {
  * wall. Nothing switches.
  */
 function holePlanes(core, rect, c) {
-  const R = [{ ax: -1, ay: 0 }, { ax: 1, ay: 0 }, { ax: 0, ay: -1 }, { ax: 0, ay: 1 }];
+  // THE BLEND IS A BLEND OF SUPPORTS, NOT OF SIDES. Every direction that is
+  // a side of either shape keeps its direction; only how far out the side
+  // stands is blended. That is the support function of (1-c)·cell + c·rect
+  // sampled on those directions, so the polygon holds that blend at every
+  // c and is never thinner than the thinner of the two. Turning the sides'
+  // directions instead, as a first version did, let two opposite sides
+  // cross mid-way and made a needle of the hole — which then cut every
+  // cell it lay across.
   const corners = [[rect[0], rect[1]], [rect[2], rect[1]], [rect[2], rect[3]], [rect[0], rect[3]]];
   const support = (P, nx, ny) => { let m = -Infinity; for (const p of P) m = Math.max(m, nx * p[0] + ny * p[1]); return m; };
-  const Cp = convexPlanes(core).filter(h => Math.hypot(h.ax, h.ay) > 1e-9).map(h => { const L = Math.hypot(h.ax, h.ay); return { ax: h.ax / L, ay: h.ay / L }; });
-  const blend = (a, r) => {
-    let nx = (1 - c) * a.ax + c * r.ax, ny = (1 - c) * a.ay + c * r.ay;
-    const L = Math.hypot(nx, ny);
-    if (L < 1e-6) return null;
-    nx /= L; ny /= L;
-    return { ax: nx, ay: ny, b: (1 - c) * support(core, nx, ny) + c * support(corners, nx, ny) };
-  };
-  const used = [false, false, false, false], out = [];
-  for (const a of Cp) {
-    let k = 0, best = -Infinity;
-    for (let i = 0; i < 4; i++) { const d = a.ax * R[i].ax + a.ay * R[i].ay; if (d > best) { best = d; k = i; } }
-    used[k] = true;
-    const h = blend(a, R[k]); if (h) out.push(h);
+  const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  for (const h of convexPlanes(core)) {
+    const L = Math.hypot(h.ax, h.ay);
+    if (L < 1e-9) continue;
+    const nx = h.ax / L, ny = h.ay / L;
+    if (dirs.some(d => d[0] * nx + d[1] * ny > 1 - 1e-6)) continue;   // an axis side already there
+    dirs.push([nx, ny]);
   }
-  for (let i = 0; i < 4; i++) {
-    if (used[i]) continue;
-    let a = null, best = -Infinity;
-    for (const q of Cp) { const d = q.ax * R[i].ax + q.ay * R[i].ay; if (d > best) { best = d; a = q; } }
-    const h = a ? blend(a, R[i]) : { ax: R[i].ax, ay: R[i].ay, b: support(corners, R[i].ax, R[i].ay) };
-    if (h) out.push(h);
-  }
-  return out;
+  return dirs.map(([nx, ny]) => ({ ax: nx, ay: ny, b: (1 - c) * support(core, nx, ny) + c * support(corners, nx, ny) }));
 }
 
 // A cell as the convex core of its outline plus the convex pieces outside
@@ -1020,7 +1013,10 @@ function garment(loop, gap, radius) {
   while (hi - lo > 0.25) { const m = (lo + hi) / 2; if (fit(m, INK_MIN)) lo = m; else hi = m; }
   cores = lo + r > 0 ? fit(lo, r) : [loop];
   if (cores) return { inset: lo, radius: r, cores };
-  return { inset: 0, radius: 0, cores: [loop] };          // thinner than the ink minimum: the bare cell
+  // thinner than the ink minimum: the bare cell, unless it is a hair — a
+  // sliver a cut left along an edge — which is no cell at all
+  let L = 0; for (let k = 0; k < loop.length; k++) { const a = loop[k], q = loop[(k + 1) % loop.length]; L += Math.hypot(q[0] - a[0], q[1] - a[1]); }
+  return { inset: 0, radius: 0, cores: L > 0 && 2 * Math.abs(ringArea(loop)) / L >= 3 ? [loop] : [] };
 }
 
 // Trace the ink of a core dilated by r: an arc of radius r about every
@@ -1569,6 +1565,7 @@ class Hive {
       hole: null,                 // its shape while its crystal is between: a hole in the ground
       holeCore: null,             // the cell it would have, from its side auction
       holeExtra: [],              // ground nobody bid for that it draws meanwhile
+      holeLinger: false,          // at crystal 0 and still chasing the cell it would have
       sideW: null, sideOn: false, // the side auction's weights, to hand over when the hole closes
       pin: 0,                     // how hard its slot holds it: the lock part of the crystal alone
       T: 0,                       // when the last change reached it, after that change began
@@ -2183,9 +2180,13 @@ class Hive {
         b.wall = rect; this.walls.push(b); b.holeCore = null;
         continue;
       }
-      // a void bids or stands, as before: its crystal follows its vacators'
-      // clocks, not its own, and it draws nothing that could snap
-      if (!(b.crystal > 0) || b.isVoid) { b.holeCore = null; continue; }
+      // A hole at crystal 0 does not close until its shape is the cell the
+      // auction would hand it: a bidder can arrive in its pocket in the
+      // very frame it lets go (a void opening beside it as the scene
+      // changes), and then the cell it gets is not the cell it was aiming
+      // at. It keeps chasing on its short clock, and closes when it has
+      // caught up.
+      if (!(b.crystal > 0) && !b.holeLinger) { b.holeCore = null; continue; }
       const corners = [[rect[0], rect[1]], [rect[2], rect[1]], [rect[2], rect[3]], [rect[0], rect[3]]];
       let shape = b.holeCore;
       if (!shape) {
@@ -2197,7 +2198,7 @@ class Hive {
         shape = parts ? cellCoreAndArms(parts, rect) : null;
         if (!shape) shape = { core: corners, arms: [] };
       }
-      const c = Math.min(1, b.crystal);
+      const c = Math.min(1, Math.max(0, b.crystal));
       const planes = holePlanes(shape.core, rect, c);
       const pts = planesPoly(planes, this.domainPts());
       if (!pts) { b.holeCore = null; continue; }
@@ -2239,7 +2240,10 @@ class Hive {
         }
         if (!pieces.length) break;
       }
-      pieces = pieces.map(p => simplifyLoop(p, 0.02, 1e-6)).filter(p => p.length >= 3 && Math.abs(ringArea(p)) > 1e-3);
+      // the pieces are kept exactly as cut, hairs included: wedges of one
+      // hole share their edges to the bit, and that is what chains them
+      // back into one outline. A hair the garment cannot dress it leaves out.
+      pieces = pieces.filter(p => p.length >= 3 && Math.abs(ringArea(p)) > 1e-3);
       if (!pieces.length) { b.hole = null; b.holeCore = null; continue; }
       let big = pieces[0], bigA = 0;
       for (const p of pieces) { const a = Math.abs(ringArea(p)); if (a > bigA) { bigA = a; big = p; } }
@@ -2615,6 +2619,7 @@ class Hive {
         const core0 = prev0 && prev0.length >= 3 ? blendConvex(prev0, target, k0, bounds) : null;
         b.holeCore = { core: core0 && core0.length >= 3 ? core0 : target, arms: [] };
         b.sideW = null; b.sideOn = false; b.sideWeights = null;
+        b.holeLinger = false;                 // alone: what it holds is what it would get
         continue;
       }
       const others = [];
@@ -2647,6 +2652,15 @@ class Hive {
       b.sideW = mine.map((q, i) => [q, sol.weights[i]]).concat([[s, sol.weights[last]]]);
       const c = sol.diagram.cells[last];
       const shape = cellCoreAndArms(c.pieces || [c], b.hole.rect);
+      // caught up? the hole against the cell it would have, as a share of it
+      if (shape) {
+        let inter = 0, cellA = 0;
+        const parts = (c.pieces || [c]).filter(pc => pc.pts.length >= 3);
+        for (const pc of parts) { cellA += Math.abs(ringArea(pc.pts)); for (const hp of b.hole.pieces) { const q = planesPoly(convexPlanes(pc.pts), hp); if (q) inter += Math.abs(ringArea(q)); } }
+        let holeA = 0; for (const hp of b.hole.pieces) holeA += Math.abs(ringArea(hp));
+        b.holeLinger = !(b.crystal > 0) && cellA > 0 && (cellA + holeA - 2 * inter) > 0.03 * cellA && (b.lingerFrames = (b.lingerFrames || 0) + 1) < 40;
+        if (!b.holeLinger) b.lingerFrames = 0;
+      } else b.holeLinger = false;
       if (shape) {
         // the core follows the cell it would have on a short clock, so the
         // auction's frame-to-frame reshuffling does not print on the hole
