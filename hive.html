@@ -289,6 +289,143 @@ function subtractRect(poly, r) {
   return out;
 }
 
+// A convex polygon minus a convex hole given as the inward half-planes of
+// its edges: one wedge per plane, disjoint, exact — subtractRect's sweep
+// spoken for any convex shape.
+function subtractPlanes(poly, planes) {
+  // a piece the hole does not reach comes back whole, in one piece
+  let hit = poly;
+  for (const h of planes) { if (!hit) break; if (Math.abs(h.ax) + Math.abs(h.ay) < 1e-9) continue; hit = clipPts(hit, h.ax, h.ay, h.b); }
+  if (!hit || Math.abs(ringArea(hit)) < 1e-9) return [poly];
+  const out = [];
+  let rest = poly;
+  for (const h of planes) {
+    if (!rest) break;
+    if (Math.abs(h.ax) + Math.abs(h.ay) < 1e-9) continue;          // a zero-length edge is no side
+    const o = clipPts(rest, -h.ax, -h.ay, -h.b);
+    if (o && Math.abs(ringArea(o)) > 1e-9) out.push(o);
+    rest = clipPts(rest, h.ax, h.ay, h.b);
+  }
+  return out;
+}
+
+// The largest convex shape inside a loop: its own edges taken as
+// half-planes. Always inside the loop, so nothing here is claimed twice.
+function convexCore(pts) {
+  const o = ringArea(pts) > 0 ? 1 : -1;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of pts) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
+  let q = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+  for (let k = 0, n = pts.length; k < n; k++) {
+    const p = pts[k], r = pts[k + 1 === n ? 0 : k + 1];
+    const ax = o * (r[1] - p[1]), ay = -o * (r[0] - p[0]);
+    if (ax * ax + ay * ay < 1e-18) continue;
+    q = clipPts(q, ax, ay, ax * p[0] + ay * p[1]);
+    if (!q) return null;
+  }
+  return q;
+}
+
+/* ------------------------------------------------------- MORPHING HOLES
+ * A cell does not become its rectangle in one frame, nor stop being one.
+ * While its crystal is between 0 and 1 the body is a HOLE in the auction's
+ * ground whose shape travels between the cell it would have (crystal 0)
+ * and its rectangle (crystal 1). The shape is carried as half-planes: the
+ * cell's sides and the rectangle's sides, paired by direction, each pair
+ * one plane whose normal turns from the one to the other and whose offset
+ * is the support of the blend (1-c)·cell + c·rect in that direction. At
+ * crystal 0 the planes are the cell's, at 1 the rectangle's, and in
+ * between the hole is convex by construction and moves continuously.
+ * The cell it would have is read from a side auction that includes the
+ * body, run on the ground with its own hole given back (see solveSides),
+ * so the frame the hole closes and the first frame of the auction are the
+ * same picture; and the frame it opens is the rectangle, which was the
+ * wall. Nothing switches.
+ */
+function holePlanes(core, rect, c) {
+  const R = [{ ax: -1, ay: 0 }, { ax: 1, ay: 0 }, { ax: 0, ay: -1 }, { ax: 0, ay: 1 }];
+  const corners = [[rect[0], rect[1]], [rect[2], rect[1]], [rect[2], rect[3]], [rect[0], rect[3]]];
+  const support = (P, nx, ny) => { let m = -Infinity; for (const p of P) m = Math.max(m, nx * p[0] + ny * p[1]); return m; };
+  const Cp = convexPlanes(core).filter(h => Math.hypot(h.ax, h.ay) > 1e-9).map(h => { const L = Math.hypot(h.ax, h.ay); return { ax: h.ax / L, ay: h.ay / L }; });
+  const blend = (a, r) => {
+    let nx = (1 - c) * a.ax + c * r.ax, ny = (1 - c) * a.ay + c * r.ay;
+    const L = Math.hypot(nx, ny);
+    if (L < 1e-6) return null;
+    nx /= L; ny /= L;
+    return { ax: nx, ay: ny, b: (1 - c) * support(core, nx, ny) + c * support(corners, nx, ny) };
+  };
+  const used = [false, false, false, false], out = [];
+  for (const a of Cp) {
+    let k = 0, best = -Infinity;
+    for (let i = 0; i < 4; i++) { const d = a.ax * R[i].ax + a.ay * R[i].ay; if (d > best) { best = d; k = i; } }
+    used[k] = true;
+    const h = blend(a, R[k]); if (h) out.push(h);
+  }
+  for (let i = 0; i < 4; i++) {
+    if (used[i]) continue;
+    let a = null, best = -Infinity;
+    for (const q of Cp) { const d = q.ax * R[i].ax + q.ay * R[i].ay; if (d > best) { best = d; a = q; } }
+    const h = a ? blend(a, R[i]) : { ax: R[i].ax, ay: R[i].ay, b: support(corners, R[i].ax, R[i].ay) };
+    if (h) out.push(h);
+  }
+  return out;
+}
+
+// A cell as the convex core of its outline plus the convex pieces outside
+// that core (the arms of a cell wrapped around a wall's corner). The core
+// blends toward the rectangle; the arms shrink away with the crystal.
+function cellCoreAndArms(pieces, rect) {
+  const parts = pieces.filter(pc => pc.pts.length >= 3);
+  if (!parts.length) return null;
+  // the outline reduced to its real corners: a cell read off a fragmented
+  // ground carries a vertex at every seam, and each would be an arm
+  const loops = (parts.length === 1 ? [parts[0].pts] : unionOutlines(splitAtVertices(parts)).map(l => l.pts)).map(l => simplifyLoop(l, 0.5, 2e-3)).filter(l => l.length >= 3);
+  let big = null, bigA = 0;
+  for (const l of loops) { const a = Math.abs(ringArea(l)); if (a > bigA) { bigA = a; big = l; } }
+  if (!big) return null;
+  // The core is the cell's convex HULL. A power cell is convex; what makes
+  // the cell it leaves behind bend is the ground's own cuts — a wall's
+  // corner, a stronger hole — and those are cut from the hole again. So the
+  // hull cut by the walls and the holes above it is exactly the cell, and
+  // the hole opens and closes on the cell itself, whatever its shape.
+  let core = convexHull(big);
+  if (core) core = simplifyLoop(core, 0.05, 1e-6);
+  if (!core || core.length < 3 || Math.abs(ringArea(core)) < 1e-3) return null;
+  // Only the core travels. What a cell holds beyond its core (an arm
+  // around a wall's corner) goes back to the ground when the hole opens
+  // and comes back to the cell when it closes: measured at a few events a
+  // cycle, and carrying the arms as shrinking pieces cost more than it
+  // bought — every arm is a cut in the ground, and the ground's fragments
+  // multiply.
+  return { core, arms: [] };
+}
+
+// Two convex shapes blended by their supports: every side of either, at
+// the blend of the two supports in its direction. At 0 it is A, at 1 B,
+// and for two shapes a frame apart it is the small step between them.
+function blendConvex(A, B, t, box) {
+  const support = (P, nx, ny) => { let m = -Infinity; for (const p of P) m = Math.max(m, nx * p[0] + ny * p[1]); return m; };
+  const planes = [];
+  // on B's sides only: the sides of A are last frame's, and carrying both
+  // sets forward piles up a side for every frame there has been
+  for (const P of [B]) for (const h of convexPlanes(P)) {
+    const L = Math.hypot(h.ax, h.ay);
+    if (L < 1e-9) continue;
+    const nx = h.ax / L, ny = h.ay / L;
+    planes.push({ ax: nx, ay: ny, b: (1 - t) * support(A, nx, ny) + t * support(B, nx, ny) });
+  }
+  // reduced to its real corners, or the sides of every past frame pile up
+  const q = planesPoly(planes, box);
+  return q ? simplifyLoop(q, 0.5, 5e-3) : null;
+}
+
+// The polygon of a set of inward half-planes, within a box.
+function planesPoly(planes, box) {
+  let q = box;
+  for (const h of planes) { q = clipPts(q, h.ax, h.ay, h.b); if (!q) return null; }
+  return q.length >= 3 && Math.abs(ringArea(q)) > 1e-6 ? q : null;
+}
+
 // A rectangle minus a set of rectangles, as axis-aligned rectangles: one
 // vertical sweep, exact, and as few pieces as the cut allows.
 function coverRects(x0, y0, x1, y1, holes) {
@@ -1096,6 +1233,7 @@ function rasterCheck(cells, W, H) {
  */
 
 const MELT = 0.30;         // a settled cell softens for this long before it travels
+const HOLE_TAU = 0.08;     // s: a morphing cell's target follows the auction on this clock
 const CLAIM_MIN = 0.02;
 const SEED_MARGIN = 10;
 const SEED_MIN_SEP = 5;
@@ -1325,6 +1463,8 @@ class Hive {
     this.domainSig = '';
     this.domainIsCell = true;
     this.shards = [];                              // this frame's shards: members carving into this hive's cells
+    this.holes = [];                               // this frame's morphing cells: holes in the ground, shapes travelling
+    this.ground = null;                            // this frame's ground, as convex pieces
     this.stable = true;                            // false while the cell this hive lives in is liquid
     this.dormant = false;                          // too small to run this frame
     this.layoutAt = -1;                            // time a re-layout was requested, or -1
@@ -1426,6 +1566,10 @@ class Hive {
       leaving: false,
       crystal: 0,                 // its own order parameter: 0 = a bid in the auction, 1 = a wall
       wall: null,                 // its rectangle in px once it is a wall, else null
+      hole: null,                 // its shape while its crystal is between: a hole in the ground
+      holeCore: null,             // the cell it would have, from its side auction
+      holeExtra: [],              // ground nobody bid for that it draws meanwhile
+      sideW: null, sideOn: false, // the side auction's weights, to hand over when the hole closes
       pin: 0,                     // how hard its slot holds it: the lock part of the crystal alone
       T: 0,                       // when the last change reached it, after that change began
       entry: null,                // where the change came in — the facet it crossed, in this hive's px
@@ -1919,6 +2063,16 @@ class Hive {
           }
           if (!moved) break;
         }
+        // nor is a hole: out through its nearest side
+        if (!b.hole) for (const h of this.holes) {
+          if (h === b) continue;
+          for (let k = 0; k < h.hole.pieces.length; k++) {
+            if (!pointInPolygon(b.x, b.y, h.hole.pieces[k])) continue;
+            let best = Infinity, bp = null;
+            for (const p of h.hole.planes[k]) { const d = p.b - (p.ax * b.x + p.ay * b.y); if (d < best) { best = d; bp = p; } }
+            if (bp) { b.x += bp.ax * (best + 0.5); b.y += bp.ay * (best + 0.5); b.vx *= 0.5; b.vy *= 0.5; }
+          }
+        }
         b.x = Math.min(W - SEED_MARGIN, Math.max(SEED_MARGIN, b.x));
         b.y = Math.min(H - SEED_MARGIN, Math.max(SEED_MARGIN, b.y));
       }
@@ -2015,16 +2169,85 @@ class Hive {
 
   // The walls of this frame: every settled body, its rectangle, out of the
   // auction. Recomputed every frame, so a wall that melts is simply not one.
+  // A body whose crystal is between is a HOLE: its shape this frame is the
+  // blend of the cell it would have (read from last frame's side auction,
+  // or its own outline the first time) and its rectangle, at its crystal.
   computeWalls() {
-    this.walls = [];
+    this.walls = []; this.holes = [];
     for (const b of this.bodies) {
-      b.wall = null;
+      b.wall = null; b.hole = null; b.holeExtra = [];
       const r = b.formRect;
-      if (b.isSelf || b.leaving || !r) continue;
-      if (!(b.crystal >= 1 || (b.pin > 0 && this.cellIsRect(b, r)))) continue;
-      b.wall = [r[0] * this.PW, r[1] * this.PH, r[2] * this.PW, r[3] * this.PH];
-      this.walls.push(b);
+      if (b.isSelf || !r) { b.holeCore = null; continue; }
+      const rect = [r[0] * this.PW, r[1] * this.PH, r[2] * this.PW, r[3] * this.PH];
+      if (!b.leaving && (b.crystal >= 1 || (b.pin > 0 && this.cellIsRect(b, r)))) {
+        b.wall = rect; this.walls.push(b); b.holeCore = null;
+        continue;
+      }
+      // a void bids or stands, as before: its crystal follows its vacators'
+      // clocks, not its own, and it draws nothing that could snap
+      if (!(b.crystal > 0) || b.isVoid) { b.holeCore = null; continue; }
+      const corners = [[rect[0], rect[1]], [rect[2], rect[1]], [rect[2], rect[3]], [rect[0], rect[3]]];
+      let shape = b.holeCore;
+      if (!shape) {
+        // the first frame: the cell it has this instant, from last frame's
+        // auction, or its outline, or, as a wall, its rectangle
+        let parts = null;
+        if (this.solved) for (let k = 0; k < this.solvedSubs.length; k++) if (this.solvedSubs[k].body === b) { const cell = this.solved.diagram.cells[k]; if (cell) parts = (cell.pieces || [cell]); }
+        if (!parts && b.loops && b.loops.length) parts = b.loops.map(l => ({ pts: l, labs: l.map(() => WALL_TRI) }));
+        shape = parts ? cellCoreAndArms(parts, rect) : null;
+        if (!shape) shape = { core: corners, arms: [] };
+      }
+      const c = Math.min(1, b.crystal);
+      const planes = holePlanes(shape.core, rect, c);
+      const pts = planesPoly(planes, this.domainPts());
+      if (!pts) { b.holeCore = null; continue; }
+      const pieces = [pts];
+      for (const arm of shape.arms) {
+        // an arm shrinks into the core: about the point of the core nearest
+        // its centre, so it stays attached while it goes
+        let cx = 0, cy = 0; for (const q of arm) { cx += q[0]; cy += q[1]; } cx /= arm.length; cy /= arm.length;
+        let px = cx, py = cy, bd = Infinity;
+        const K = shape.core;
+        for (let i = 0, n = K.length; i < n; i++) {
+          const p = K[i], q = K[(i + 1) % n];
+          const ex = q[0] - p[0], ey = q[1] - p[1], L2 = ex * ex + ey * ey || 1e-9;
+          let t = ((cx - p[0]) * ex + (cy - p[1]) * ey) / L2; t = Math.max(0, Math.min(1, t));
+          const x = p[0] + t * ex, y = p[1] + t * ey, d = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+          if (d < bd) { bd = d; px = x; py = y; }
+        }
+        const sh = arm.map(q => [px + (q[0] - px) * (1 - c), py + (q[1] - py) * (1 - c)]);
+        if (Math.abs(ringArea(sh)) > 1e-3) pieces.push(sh);
+      }
+      b.hole = { pieces, planes: pieces.map(p => convexPlanes(p)), rect, pts, raw: pieces.slice() };
+      b.holeCore = shape;
+      this.holes.push(b);
     }
+    // Holes never overlap a wall or each other: a blend of two shapes can
+    // bulge past both. The more settled keeps its shape; the other loses
+    // exactly the overlap, as convex pieces, and nothing beyond it.
+    this.holes.sort((a, b) => b.crystal - a.crystal);
+    const unit = (hp) => hp.filter(h => Math.hypot(h.ax, h.ay) > 1e-9).map(h => { const L = Math.hypot(h.ax, h.ay); return { ax: h.ax / L, ay: h.ay / L, b: h.b / L }; });
+    const placed = this.walls.map(w => { const r = w.wall; return [[{ ax: -1, ay: 0, b: -r[0] }, { ax: 1, ay: 0, b: r[2] }, { ax: 0, ay: -1, b: -r[1] }, { ax: 0, ay: 1, b: r[3] }]]; });
+    const kept = [];
+    for (const b of this.holes) {
+      let pieces = b.hole.pieces;
+      for (const other of placed) {
+        for (const op of other) {
+          const next = [];
+          for (const p of pieces) next.push(...subtractPlanes(p, op));
+          pieces = next;
+        }
+        if (!pieces.length) break;
+      }
+      pieces = pieces.map(p => simplifyLoop(p, 0.02, 1e-6)).filter(p => p.length >= 3 && Math.abs(ringArea(p)) > 1e-3);
+      if (!pieces.length) { b.hole = null; b.holeCore = null; continue; }
+      let big = pieces[0], bigA = 0;
+      for (const p of pieces) { const a = Math.abs(ringArea(p)); if (a > bigA) { bigA = a; big = p; } }
+      b.hole = { pieces, planes: pieces.map(p => unit(convexPlanes(p))), rect: b.hole.rect, pts: big, raw: b.hole.raw };
+      b.holeExtra = [];
+      kept.push(b); placed.push(b.hole.planes);
+    }
+    this.holes = kept;
   }
 
   // A CELL MAY BECOME A WALL AS SOON AS IT ALREADY IS ONE. A body landing
@@ -2060,32 +2283,89 @@ class Hive {
     const box = pieces.map(p => { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (const q of p) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); } return [x0, y0, x1, y1]; });
     const E = 1e-6;
+    // two pieces share a stretch of edge: an edge of one lies along an edge
+    // of the other, and their extents overlap by more than a point. The
+    // pieces are convex and cut exactly, so a shared edge is collinear to
+    // rounding; boxes only screen the pairs
+    const shareEdge = (A, B) => {
+      for (let a = 0; a < A.length; a++) {
+        const p = A[a], q = A[(a + 1) % A.length];
+        const ex = q[0] - p[0], ey = q[1] - p[1], L = Math.hypot(ex, ey);
+        if (L < E) continue;
+        const ux = ex / L, uy = ey / L;
+        for (let b = 0; b < B.length; b++) {
+          const r = B[b], t = B[(b + 1) % B.length];
+          const d1 = Math.abs((r[0] - p[0]) * uy - (r[1] - p[1]) * ux), d2 = Math.abs((t[0] - p[0]) * uy - (t[1] - p[1]) * ux);
+          if (d1 > 1e-4 || d2 > 1e-4) continue;
+          const s1 = (r[0] - p[0]) * ux + (r[1] - p[1]) * uy, s2 = (t[0] - p[0]) * ux + (t[1] - p[1]) * uy;
+          if (Math.min(L, Math.max(s1, s2)) - Math.max(0, Math.min(s1, s2)) > 1e-4) return true;
+        }
+      }
+      return false;
+    };
     for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
       const a = box[i], b = box[j];
-      const touchX = (Math.abs(a[2] - b[0]) < E || Math.abs(b[2] - a[0]) < E) && Math.min(a[3], b[3]) - Math.max(a[1], b[1]) > E;
-      const touchY = (Math.abs(a[3] - b[1]) < E || Math.abs(b[3] - a[1]) < E) && Math.min(a[2], b[2]) - Math.max(a[0], b[0]) > E;
-      if (touchX || touchY) { const ri = find(i), rj = find(j); if (ri !== rj) up[ri] = rj; }
+      if (a[2] < b[0] - E || b[2] < a[0] - E || a[3] < b[1] - E || b[3] < a[1] - E) continue;
+      if (find(i) === find(j)) continue;
+      if (shareEdge(pieces[i], pieces[j])) { const ri = find(i), rj = find(j); if (ri !== rj) up[ri] = rj; }
     }
     const groups = new Map();
     for (let i = 0; i < n; i++) { const r = find(i); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(i); }
     return { groups: [...groups.values()], box };
   }
 
+  // The pocket a point stands in: the piece it is inside, else the piece
+  // it is nearest to, by true distance. Boxes are not enough once the
+  // pieces are wedges, whose boxes overlap.
+  pocketOf(comp, pieces, x, y) {
+    let best = Infinity, g = 0;
+    for (let k = 0; k < comp.groups.length; k++) for (const pi of comp.groups[k]) {
+      const bx = comp.box[pi];
+      const dx = Math.max(bx[0] - x, 0, x - bx[2]), dy = Math.max(bx[1] - y, 0, y - bx[3]);
+      if (dx * dx + dy * dy >= best) continue;
+      const P = pieces[pi];
+      if (pointInPolygon(x, y, P)) return k;
+      let d = Infinity;
+      for (let i = 0, n = P.length; i < n; i++) {
+        const p = P[i], q = P[(i + 1) % n];
+        const ex = q[0] - p[0], ey = q[1] - p[1], L2 = ex * ex + ey * ey || 1e-9;
+        let t = ((x - p[0]) * ex + (y - p[1]) * ey) / L2; t = Math.max(0, Math.min(1, t));
+        const ddx = x - (p[0] + t * ex), ddy = y - (p[1] + t * ey);
+        d = Math.min(d, ddx * ddx + ddy * ddy);
+      }
+      if (d < best) { best = d; g = k; }
+    }
+    return g;
+  }
+
   domainPieces() {
     const poly = this.domainPolyActive();
-    const holes = this.walls.map(b => b.wall);
-    if (!holes.length) return poly ? triangulatePts(poly) : null;
-    if (!poly) return coverRects(0, 0, this.W, this.H, holes);
-    let pieces = triangulatePts(poly);
-    if (!pieces) return coverRects(0, 0, this.W, this.H, holes);
-    for (const h of holes) {
+    const rects = this.walls.map(b => b.wall);
+    // each hole as its few uncut convex parts: what a stronger hole took
+    // from it is cut from the ground by that hole anyway, and the fewer
+    // the planes the fewer the fragments
+    const morphs = this.holes.flatMap(b => b.hole.raw.map(p => convexPlanes(p)));
+    if (!rects.length && !morphs.length) return poly ? triangulatePts(poly) : null;
+    let pieces = null;
+    if (!poly) pieces = rects.length ? coverRects(0, 0, this.W, this.H, rects) : [[[0, 0], [this.W, 0], [this.W, this.H], [0, this.H]]];
+    else {
+      pieces = triangulatePts(poly);
+      if (!pieces) pieces = coverRects(0, 0, this.W, this.H, rects);
+      else for (const h of rects) {
+        const next = [];
+        for (const p of pieces) next.push(...subtractRect(p, h));
+        pieces = next;
+        // never return a ground with a wall still in it — the wall is drawn,
+        // and a bidder standing on it would be drawn over it. Fall back to the
+        // sweep, which is exact for the walls whatever the cell's shape.
+        if (pieces.length > 400) { pieces = coverRects(0, 0, this.W, this.H, rects); break; }
+      }
+    }
+    // the holes: a morphing cell's ground is not the auction's either
+    for (const planes of morphs) {
       const next = [];
-      for (const p of pieces) next.push(...subtractRect(p, h));
+      for (const p of pieces) next.push(...subtractPlanes(p, planes));
       pieces = next;
-      // never return a ground with a wall still in it — the wall is drawn, and
-      // a bidder standing on it would be drawn over it. Fall back to the sweep,
-      // which is exact for the walls whatever the cell's shape.
-      if (pieces.length > 400) return coverRects(0, 0, this.W, this.H, holes);
     }
     return pieces;
   }
@@ -2106,16 +2386,35 @@ class Hive {
   // element; they fade in as the crystal spreads them, each carving a cell
   // interior to its own body, where the seam hides it.
   solve() {
+    this.solveMain();
+    this.solveSides();
+  }
+
+  solveMain() {
     const subs = [];
     for (const b of this.bodies) for (const s of b.subs) subs.push(s);
-    const active = subs.filter(s => s.claim >= ACTIVE_MIN);
+    // A hole that has just closed hands the auction the weights its side
+    // auction found: the ground and the bidders are now exactly those, so
+    // the solve is already converged and the picture does not move.
+    for (const b of this.bodies) {
+      if (!b.sideW) continue;
+      if (!b.hole && !b.wall) { for (const [q, w] of b.sideW) { q.w = w; q.live = true; } }
+      b.sideW = null;
+    }
+    const active = subs.filter(s => s.claim >= ACTIVE_MIN && !s.body.hole);
+    this.ground = null;
+    const domain = this.domainPolyActive();
+    this.exact = this.domainIsCell !== false && (!this.domainPoly || !!domain);   // false: solved on a box that is not the cell
     // a page whose cells have all settled has nothing to auction: the walls
     // ARE the picture, and the frame costs nothing
     if (!active.length) {
       // nobody is bidding: clear the live flags too, or the first cell to melt
       // out of the walls comes back carrying a weight from another era
       for (const s of subs) s.live = false;
-      this.solved = null; this.solvedSubs = []; this.ownerOf = []; this.lastSig = null; this.lastIters = 0; this.solveMs = 0; return;
+      this.solved = null; this.solvedSubs = []; this.ownerOf = []; this.lastSig = null; this.lastIters = 0; this.solveMs = 0;
+      // ground nobody bids for, between the holes: the nearest hole takes it
+      if (this.holes.length) { this.ground = this.domainPieces(); if (this.ground) this.adoptGround(this.ground); }
+      return;
     }
     // the solver's one silent failure is two coincident seeds: nudge the
     // later of any pair closer than the precondition allows
@@ -2133,6 +2432,7 @@ class Hive {
     const live = active.filter(q => q.live);
     // the ground first: this hive's cell, less the walls, as convex pieces
     const pieces = this.domainPieces();
+    this.ground = pieces;
     let tris = null, dArea = 0;
     if (pieces && pieces.length) { tris = pieces.map(convexPlanes); for (const p of pieces) dArea += Math.abs(ringArea(p)); }
     if (pieces && !pieces.length) { for (const q of subs) q.live = false; this.solved = null; this.solvedSubs = []; this.ownerOf = []; this.lastSig = null; return; }
@@ -2158,11 +2458,10 @@ class Hive {
     }
     for (const s of subs) s.live = false;
     for (const s of active) s.live = true;
-    const domain = this.domainPolyActive();
-    this.exact = this.domainIsCell !== false && (!this.domainPoly || !!domain);   // false: solved on a box that is not the cell
     if (tris && dArea <= 1e-6) { for (const q of subs) q.live = false; this.solved = null; this.solvedSubs = []; this.ownerOf = []; this.lastSig = null; return; }
     let sig = active.length + '|' + (this.W * 8 | 0) + 'x' + (this.H * 8 | 0) + '|' + (domain ? this.domainSig : '') + '|';
     for (const b of this.walls) sig += 'W' + b.id + ':' + b.wall.map(v => v * 8 | 0).join(',') + ';';
+    for (const b of this.holes) for (const pc of b.hole.pieces) sig += 'H' + b.id + ':' + pc.map(p => (p[0] * 8 | 0) + ',' + (p[1] * 8 | 0)).join(';') + ';';
     for (let i = 0; i < active.length; i++) sig += (seeds[i][0] * 8 | 0) + ',' + (seeds[i][1] * 8 | 0) + ',' + (claims[i] * 1e4 | 0) + ';';
     if (sig === this.lastSig && this.solved && this.solved.converged) return;
     const t0 = performance.now();
@@ -2172,20 +2471,14 @@ class Hive {
     // ring of walls does not simply get its own rectangle back.
     const comp = (!domain && pieces && pieces.length > 1) ? this.components(pieces) : null;
     if (comp && comp.groups.length > 1) {
-      const near = (bx, x, y) => { const dx = Math.max(bx[0] - x, 0, x - bx[2]), dy = Math.max(bx[1] - y, 0, y - bx[3]); return dx * dx + dy * dy; };
       const mine = comp.groups.map(() => []);
-      for (let i = 0; i < active.length; i++) {
-        let g = 0, best = Infinity;
-        for (let k = 0; k < comp.groups.length; k++) for (const pi of comp.groups[k]) {
-          const d = near(comp.box[pi], seeds[i][0], seeds[i][1]);
-          if (d < best) { best = d; g = k; }
-        }
-        mine[g].push(i);
-      }
+      for (let i = 0; i < active.length; i++) mine[this.pocketOf(comp, pieces, seeds[i][0], seeds[i][1])].push(i);
       // a pocket nobody stands in joins the nearest pocket that has a bidder
+      // — unless a hole is there to take it, which shows less than an island
       const live2 = comp.groups.map((_, k) => mine[k].length > 0);
       for (let k = 0; k < comp.groups.length; k++) {
         if (live2[k]) continue;
+        if (this.holes.length) { this.adoptGround(comp.groups[k].map(pi => pieces[pi])); comp.groups[k] = []; continue; }
         let to = -1, best = Infinity;
         for (let j = 0; j < comp.groups.length; j++) {
           if (!live2[j] || j === k) continue;
@@ -2255,6 +2548,117 @@ class Hive {
     this.lastSig = sig;
   }
 
+  // Ground with no bidder in its pocket is drawn by the nearest hole, so
+  // the picture stays whole while the holes' shapes travel.
+  adoptGround(pieces) {
+    for (const p of pieces) {
+      let cx = 0, cy = 0; for (const q of p) { cx += q[0]; cy += q[1]; } cx /= p.length; cy /= p.length;
+      let best = null, bd = Infinity;
+      for (const b of this.holes) {
+        for (const hp of b.hole.pieces) {
+          let hx = 0, hy = 0; for (const q of hp) { hx += q[0]; hy += q[1]; } hx /= hp.length; hy /= hp.length;
+          const d = (hx - cx) * (hx - cx) + (hy - cy) * (hy - cy);
+          if (d < bd) { bd = d; best = b; }
+        }
+      }
+      if (best) best.holeExtra.push(p);
+    }
+  }
+
+  // THE SIDE AUCTIONS. Each hole asks what cell it would have if it were
+  // bidding: the auction run once more with the body in and its own hole
+  // given back to the ground, everything else as it is — the other holes
+  // still holes, the walls still walls. That cell is where its shape is
+  // travelling to (or from), and it is exactly the cell the main auction
+  // hands it the frame the hole closes, because that frame the ground and
+  // the bidders are the same. One solve per hole, warm, in its own pocket.
+  solveSides() {
+    if (!this.holes.length) return;
+    const free = this.solvedSubs || [];
+    const bounds = this.domainPts();
+    const ground = this.ground || this.domainPieces() || [[[0, 0], [this.W, 0], [this.W, this.H], [0, this.H]]];
+    for (const b of this.holes) {
+      const s = b.subs[0];
+      if (!(s.claim >= ACTIVE_MIN)) { b.sideW = null; continue; }
+      // its pocket: the ground pieces its hole touches, and the bidders in them
+      const pieces = ground.concat(b.hole.pieces);
+      let pick = pieces, mine = free, compAll = null, gAll = -1;
+      if (pieces.length > 1) {
+        const comp = this.components(pieces);
+        const own = new Set(); for (let k = ground.length; k < pieces.length; k++) own.add(k);
+        let g = null; for (const gr of comp.groups) if (gr.some(k => own.has(k))) g = g ? g.concat(gr.filter(k => !g.includes(k))) : gr;
+        if (g && g.length < pieces.length) {
+          pick = g.map(i => pieces[i]);
+          const gi = new Set(g);
+          // one merged group for the pocket test below
+          comp.groups = [g].concat(comp.groups.filter(gr => !gr.some(k => gi.has(k))));
+          compAll = comp; gAll = 0;
+          mine = free.filter(q => this.pocketOf(comp, pieces, q.x, q.y) === 0);
+        }
+      }
+      if (!compAll) { compAll = { groups: [pieces.map((_, i) => i)], box: pieces.map(p => { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const q of p) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); } return [x0, y0, x1, y1]; }) }; gAll = 0; }
+      const tris = pick.map(convexPlanes);
+      let dArea = 0; for (const p of pick) dArea += Math.abs(ringArea(p));
+      if (!(dArea > 1e-6)) { b.sideW = null; continue; }
+      // nobody else in its pocket: its cell would be its rectangle and
+      // whatever ground lies about, and that ground it draws anyway (see
+      // adoptGround), so the rectangle is its core, or what is free of it
+      if (!mine.length) {
+        const r = b.hole.rect, R = [[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]]];
+        let best = null, bestA = 0;
+        for (const p of pick) { const q = planesPoly(convexPlanes(p), R); const a = q ? Math.abs(ringArea(q)) : 0; if (a > bestA) { bestA = a; best = q; } }
+        const rA = (r[2] - r[0]) * (r[3] - r[1]);
+        let inter = 0; for (const p of pick) { const q = planesPoly(convexPlanes(p), R); if (q) inter += Math.abs(ringArea(q)); }
+        const target = inter >= 0.95 * rA ? R : (best || R);
+        const prev0 = b.holeCore && b.holeCore.core;
+        const k0 = 1 - Math.exp(-(this.lastDt || 0.016) / HOLE_TAU);
+        const core0 = prev0 && prev0.length >= 3 ? blendConvex(prev0, target, k0, bounds) : null;
+        b.holeCore = { core: core0 && core0.length >= 3 ? core0 : target, arms: [] };
+        b.sideW = null; b.sideOn = false; b.sideWeights = null;
+        continue;
+      }
+      const others = [];
+      const seeds = mine.map(q => [q.x, q.y]).concat([[s.x, s.y]]);
+      const claims = mine.map(q => q.claim).concat([s.claim]);
+      let tSum = 0; for (const c of claims) tSum += c;
+      // warm from its own last solve: the main auction's weights are for a
+      // ground without this hole, and far from here when the hole is large
+      const prevW = b.sideWeights;
+      const w0 = mine.map(q => prevW && prevW.has(q) ? prevW.get(q) : q.w);
+      let scale = 4 * (this.W * this.W + this.H * this.H);
+      for (const q of mine) scale = Math.max(scale, 4 * Math.abs(q.w));
+      for (const h of others) {
+        const hs = h.subs[0];
+        let wh = prevW && prevW.has(hs) ? prevW.get(hs) : (isFinite(hs.wSide) ? hs.wSide : NaN);
+        if (!isFinite(wh)) wh = w0.length ? entryWeight(h.x, h.y, hs.claim * dArea / tSum, seeds.slice(0, w0.length), w0, bounds, tris, scale) : hs.claim * dArea / tSum / Math.PI;
+        w0.push(wh);
+      }
+      let wb = s.wSide;
+      if (!isFinite(wb) || !b.sideOn) {
+        wb = w0.length ? entryWeight(s.x, s.y, s.claim * dArea / tSum, seeds.slice(0, -1), w0, bounds, tris, scale) : s.claim * dArea / tSum / Math.PI;
+      }
+      w0.push(wb);
+      const sol = seeds.length === 1
+        ? { weights: [wb], diagram: computeDiagram(seeds, [wb], bounds, tris) }
+        : solveWeights(seeds, claims, bounds, w0, { maxIter: 3, tris, domainArea: dArea });
+      const last = seeds.length - 1;
+      s.wSide = sol.weights[last]; b.sideOn = true;
+      b.sideWeights = new Map(mine.map((q, i) => [q, sol.weights[i]]).concat(others.map((h, i) => [h.subs[0], sol.weights[mine.length + i]])));
+      b.sideW = mine.map((q, i) => [q, sol.weights[i]]).concat([[s, sol.weights[last]]]);
+      const c = sol.diagram.cells[last];
+      const shape = cellCoreAndArms(c.pieces || [c], b.hole.rect);
+      if (shape) {
+        // the core follows the cell it would have on a short clock, so the
+        // auction's frame-to-frame reshuffling does not print on the hole
+        const prev = b.holeCore && b.holeCore.core;
+        const k = 1 - Math.exp(-(this.lastDt || 0.016) / HOLE_TAU);
+        const core = prev && prev.length >= 3 ? blendConvex(prev, shape.core, k, bounds) : null;
+        b.holeCore = { core: core && core.length >= 3 ? core : shape.core, arms: shape.arms };
+      }
+    }
+    for (const b of this.bodies) if (!b.hole) { b.sideOn = false; b.sideWeights = null; }
+  }
+
   // --- the frame --------------------------------------------------------
 
   // The parent calls this with the cell this hive lives in, every frame.
@@ -2295,7 +2699,7 @@ class Hive {
   }
 
   step(dt, t) {
-    this.t = t;
+    this.t = t; this.lastDt = dt;
     // a pending re-layout waits for stillness: the cell locked and the size
     // quiet for a moment — content reflows when the card has landed
     if (this.layoutAt >= 0 && this.stable && t - this.layoutAt > 0.15) {
@@ -2408,6 +2812,7 @@ class Hive {
         const cx = (q.wall[0] + q.wall[2]) / 2, cy = (q.wall[1] + q.wall[3]) / 2;
         beyond.push({ x: cx, y: cy, w: 0, pot: cx * cx + cy * cy });
       }
+      for (const q of this.holes) if (q !== b) beyond.push({ x: q.x, y: q.y, w: 0, pot: q.x * q.x + q.y * q.y });
       if (!beyond.length) continue;
       for (let i = 0; i < kids.length; i++) {
         const m = kids[i].body;
@@ -2490,7 +2895,7 @@ class Hive {
     for (const b of this.bodies) {
       const h = b.hive;
       if (b.isVoid || b.isSelf || b.hoverMix < 0.02 || !(b.crystal > 0) || !b.formRect) continue;
-      if (h && !h.dormant && (h.solved || h.walls.length)) continue;
+      if (h && !h.dormant && (h.solved || h.walls.length || h.holes.length)) continue;
       const r = b.formRect, rect = b.wall || [r[0] * this.PW, r[1] * this.PH, r[2] * this.PW, r[3] * this.PH];
       const rw = rect[2] - rect[0], rh = rect[3] - rect[1];
       // the depth a uniform growth would need to gain what a cell gains at
@@ -2501,7 +2906,8 @@ class Hive {
       if (!(depth > 0.05)) continue;
       // what it holds already: its rectangle as a wall, its cell otherwise
       let own = null;
-      if (!b.wall) {
+      if (b.hole) own = b.hole.pieces.concat(b.holeExtra).map(p => ({ pts: p }));
+      else if (!b.wall) {
         for (let k = 0; k < subs.length && this.solved; k++) {
           if (subs[k].body !== b) continue;
           const cell = this.solved.diagram.cells[k];
@@ -2521,6 +2927,7 @@ class Hive {
         const cx = (q.wall[0] + q.wall[2]) / 2, cy = (q.wall[1] + q.wall[3]) / 2;
         beyond.push({ x: cx, y: cy, w: 0, pot: cx * cx + cy * cy });
       }
+      for (const q of this.holes) if (q !== b) beyond.push({ x: q.x, y: q.y, w: 0, pot: q.x * q.x + q.y * q.y });
       if (!beyond.length) continue;
       let Wm = -Infinity;
       const sides = [[rect[0], rect[1], rect[2], rect[1], 0, -1], [rect[2], rect[1], rect[2], rect[3], 1, 0], [rect[2], rect[3], rect[0], rect[3], 0, 1], [rect[0], rect[3], rect[0], rect[1], -1, 0]];
@@ -2578,6 +2985,7 @@ class Hive {
   // The body under a point, voids included, or null.
   wallAt(x, y) {
     for (const b of this.walls) { const r = b.wall; if (x >= r[0] && x <= r[2] && y >= r[1] && y <= r[3]) return b; }
+    for (const b of this.holes) for (const p of b.hole.pieces.concat(b.holeExtra)) if (pointInPolygon(x, y, p)) return b;
     return null;
   }
 
@@ -2628,6 +3036,22 @@ class Hive {
     let axisLen = 0, totalLen = 0;
     // a wall's outline is its rectangle: no auction, no convergence, exact
     for (const b of this.walls) { const r = b.wall; b.loops = [[[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]]]]; b.holes = []; totalLen += 2 * ((r[2] - r[0]) + (r[3] - r[1])); axisLen += 2 * ((r[2] - r[0]) + (r[3] - r[1])); }
+    // a hole's outline is its shape this frame, exact too, with the ground
+    // it has taken in
+    for (const b of this.holes) {
+      const parts = b.hole.pieces.concat(b.holeExtra).map(p => ({ pts: p, labs: p.map(() => WALL_TRI) }));
+      const loops = parts.length === 1 ? [parts[0].pts] : unionOutlines(splitAtVertices(parts)).map(l => simplifyLoop(l.pts, 0.05, 1e-5)).filter(l => l.length >= 3);
+      const la = loops.map(l => Math.abs(ringArea(l)));
+      const cen = loops.map(l => { let x = 0, y = 0; for (const p of l) { x += p[0]; y += p[1]; } return [x / l.length, y / l.length]; });
+      const hole = loops.map((l, i) => loops.some((o, j) => j !== i && la[j] > la[i] && pointInPolygon(cen[i][0], cen[i][1], o)));
+      b.loops = loops.filter((l, i) => !hole[i]);
+      b.holes = loops.filter((l, i) => hole[i]);
+      for (const loop of b.loops) for (let k = 0; k < loop.length; k++) {
+        const p = loop[k], q = loop[(k + 1) % loop.length];
+        const dx = Math.abs(q[0] - p[0]), dy = Math.abs(q[1] - p[1]), L = Math.hypot(dx, dy);
+        totalLen += L; if (Math.min(dx, dy) < 0.05) axisLen += L;
+      }
+    }
     if (!this.solved) { this.rectPct = totalLen > 0 ? 100 : 100; return; }
     const cells = this.solved.diagram.cells, areas = this.solved.diagram.areas;
     const idx = new Map();
@@ -2665,7 +3089,7 @@ class Hive {
     const idx = new Map();
     if (cells) this.solvedSubs.forEach((s, i) => { if (!idx.has(s.body)) idx.set(s.body, []); idx.get(s.body).push(i); });
     const order = [];
-    for (const b of this.bodies) if (b.wall || idx.has(b)) order.push(b);
+    for (const b of this.bodies) if (b.wall || b.hole || idx.has(b)) order.push(b);
     for (const b of order) {
       const subIdx = idx.get(b) || [];
       const f = fade * Math.max(0, Math.min(1, (b.claim - CLAIM_MIN) / 0.14));
@@ -2676,6 +3100,7 @@ class Hive {
           const pts = [[r[0] + ox, r[1] + oy], [r[2] + ox, r[1] + oy], [r[2] + ox, r[3] + oy], [r[0] + ox, r[3] + oy]];
           return [{ pts, labs: [WALL_TRI, WALL_TRI, WALL_TRI, WALL_TRI] }];
         }
+        if (b.hole) return b.hole.pieces.concat(b.holeExtra).map(p => ({ pts: p.map(q => [q[0] + ox, q[1] + oy]), labs: p.map(() => WALL_TRI) }));
         const pieces = [];
         for (const i of subIdx) {
           const c = cells[i];
@@ -2685,7 +3110,7 @@ class Hive {
       };
       // a field whose members have all settled has no auction at all — its
       // walls are its picture, so "has it solved anything" is the wrong test
-      if (h && !h.dormant && (h.solved || h.walls.length)) {
+      if (h && !h.dormant && (h.solved || h.walls.length || h.holes.length)) {
         const n0 = out.length;
         h.collectLeaves(out, ox + h.ox, oy + h.oy, f);
         if (out.length > n0) {
@@ -2762,6 +3187,7 @@ function halfPlanes(poly) {
   const o = ringArea(poly) > 0 ? 1 : -1, hp = [];
   for (let k = 0, n = poly.length; k < n; k++) {
     const p = poly[k], q = poly[(k + 1) % n];
+    if (Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]) < 1e-9) continue;    // a repeated vertex is no side
     hp.push([o * (q[1] - p[1]), -o * (q[0] - p[0]), o * ((q[1] - p[1]) * p[0] - (q[0] - p[0]) * p[1])]);
   }
   return hp;
@@ -3129,7 +3555,7 @@ function tick(nowMs) {
 
   // 9. meters — the page's own row, plus the worst of the fields. Gap and
   // overlap are measured on the picture itself, shards included.
-  if (root.solved || root.walls.length) {
+  if (root.solved || root.walls.length || root.holes.length) {
     if (frame % 12 === 0) raster = rasterCheck(picture.leaves.flatMap(l => l.loops.map(pts => ({ pts, hole: !!pts.hole }))), W, H);
     const errPct = (root.solved ? root.solved.maxRelErr : 0) * 100;
     meterEls.area.textContent = errPct < 1e-4 ? errPct.toExponential(1) + '%' : errPct.toFixed(3) + '%';
@@ -3142,14 +3568,14 @@ function tick(nowMs) {
     meterEls.rect.className = root.rectPct >= 99.95 ? '' : 'soft';
     let seated = 0, lockedN = 0;
     for (const b of root.bodies) if (b.rect && !b.leaving) { seated++; if (b.crystal === 1) lockedN++; }
-    meterEls.seeds.textContent = (root.walls.length ? root.walls.length + ' wall' + (root.walls.length > 1 ? 's' : '') + (root.solvedSubs.length ? ' + ' + root.solvedSubs.length : '') : root.solvedSubs.length + ' bidding') + (!seated ? ' · liquid' : lockedN === seated ? ' · settled' : ' · ' + lockedN + '/' + seated);
+    meterEls.seeds.textContent = (root.walls.length ? root.walls.length + ' wall' + (root.walls.length > 1 ? 's' : '') + (root.solvedSubs.length ? ' + ' + root.solvedSubs.length : '') : root.solvedSubs.length + ' bidding') + (root.holes.length ? ' + ' + root.holes.length + ' morphing' : '') + (!seated ? ' · liquid' : lockedN === seated ? ' · settled' : ' · ' + lockedN + '/' + seated);
     meterEls.iter.textContent = root.lastIters + 'it ' + root.solveMs.toFixed(1) + 'ms';
     meterEls.iter.className = root.lastIters <= 10 ? '' : 'bad';
   }
   let fields = 0, innerErr = 0, innerMs = 0, innerLocked = 0;
   const carved = picture.carved;
   root.walk(h => {
-    if (h.depth === 0 || h.dormant || (!h.solved && !h.walls.length)) return;
+    if (h.depth === 0 || h.dormant || (!h.solved && !h.walls.length && !h.holes.length)) return;
     fields++; innerMs += h.solveMs;
     if (h.solved) innerErr = Math.max(innerErr, h.solved.maxRelErr);
     if (h.crystalMin === 1) innerLocked++;
