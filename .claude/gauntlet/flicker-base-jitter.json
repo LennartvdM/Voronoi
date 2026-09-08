@@ -1,0 +1,133 @@
+{
+ "frames": 1770,
+ "shapeMotionPx2": 25027168,
+ "shapeBackPx2": 916624,
+ "shapeBackShare": 0.037,
+ "flipFrames": 53,
+ "worstBodies": [
+  {
+   "id": 9,
+   "back": 122720,
+   "sd": 2336672,
+   "flips": 3
+  },
+  {
+   "id": 0,
+   "back": 97568,
+   "sd": 1704128,
+   "flips": 4
+  },
+  {
+   "id": 7,
+   "back": 96160,
+   "sd": 2413840,
+   "flips": 6
+  },
+  {
+   "id": 8,
+   "back": 93424,
+   "sd": 2580416,
+   "flips": 7
+  },
+  {
+   "id": 1,
+   "back": 80864,
+   "sd": 1832000,
+   "flips": 4
+  }
+ ],
+ "sliverMean": 2.59,
+ "sliverP95": 8.4,
+ "clock": {
+  "dtMs": 25,
+  "jitterMs": 12
+ },
+ "wasteC": 0.076,
+ "wasteA": 0.087,
+ "windows": 2299,
+ "revA": 0.039,
+ "revC": 0.035,
+ "movingBodyFrames": 6619,
+ "fight": 0.217,
+ "lag": 51.3,
+ "travelBodyFrames": 3616,
+ "seedReversals": 7,
+ "pressureMean": 0.00271,
+ "pressureP95": 0.000002,
+ "pressureOver1pct": 0.005,
+ "settleTotal": 312,
+ "scenes": {
+  "flock0": {
+   "shapeBackShare": 0.047,
+   "shapeBackPx2": 419088,
+   "flipFrames": 18,
+   "wasteC": 0.124,
+   "wasteA": 0.111,
+   "revA": 0.065,
+   "revC": 0.061,
+   "fight": 0.437,
+   "settle": null
+  },
+  "bento": {
+   "shapeBackShare": 0.004,
+   "shapeBackPx2": 192,
+   "flipFrames": 0,
+   "wasteC": 0.008,
+   "wasteA": 0.006,
+   "revA": 0,
+   "revC": 0,
+   "fight": 0.97,
+   "lastSwitch": 56,
+   "settle": 1
+  },
+  "hero": {
+   "shapeBackShare": 0.018,
+   "shapeBackPx2": 83904,
+   "flipFrames": 13,
+   "wasteC": 0.081,
+   "wasteA": 0.106,
+   "revA": 0.057,
+   "revC": 0.034,
+   "fight": 0.132,
+   "lastSwitch": 101,
+   "settle": 6
+  },
+  "sidebar": {
+   "shapeBackShare": 0.043,
+   "shapeBackPx2": 240800,
+   "flipFrames": 10,
+   "wasteC": 0.092,
+   "wasteA": 0.109,
+   "revA": 0.047,
+   "revC": 0.042,
+   "fight": 0.096,
+   "lastSwitch": 122,
+   "settle": 1
+  },
+  "frame": {
+   "shapeBackShare": 0.035,
+   "shapeBackPx2": 91504,
+   "flipFrames": 8,
+   "wasteC": 0.113,
+   "wasteA": 0.136,
+   "revA": 0.045,
+   "revC": 0.053,
+   "fight": 0.123,
+   "lastSwitch": 110,
+   "settle": 1
+  },
+  "flock": {
+   "shapeBackShare": 0.025,
+   "shapeBackPx2": 81136,
+   "flipFrames": 4,
+   "wasteC": 0.028,
+   "wasteA": 0.035,
+   "revA": 0.01,
+   "revC": 0.01,
+   "fight": 0,
+   "lastSwitch": 27,
+   "settle": 303
+  }
+ },
+ "pageErrors": 0
+}
