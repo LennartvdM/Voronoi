@@ -971,7 +971,12 @@ function erosion(pts) {
   // or a vertex outside the loop; it passed those checks and was still
   // wrong two times in five, handing back a diagonal half of the cell or a
   // sliver of it, and which frames it passed flickered — the strobe.
-  return { at: (s) => s <= 0 ? [pts] : (convex || !tris ? convexErode(s) : exactErode(s)) };
+  //
+  // Dressing a loop asks the same inset more than once: the garment's two
+  // passes share their opening probes, and a bisection ends by eroding again
+  // at the inset it settled on. Each answer is kept, so the second ask is free.
+  const seen = new Map();
+  return { at: (s) => { let c = seen.get(s); if (!c) seen.set(s, c = s <= 0 ? [pts] : (convex || !tris ? convexErode(s) : exactErode(s))); return c; } };
 }
 
 // The garment of a loop is a morphological opening: erode the cell by the
@@ -987,6 +992,21 @@ function erosion(pts) {
 const INK_MIN = 4;
 function garment(loop, gap, radius) {
   const er = erosion(loop);
+  // Do all the pieces of a wide erosion sit in one piece of a narrow one?
+  // A vertex of a wide piece is strictly inside the narrow erosion, so the
+  // smallest outline of it that holds that vertex names the piece it is in.
+  const oneLobe = (wide, thin) => {
+    if (!thin.length) return false;              // nothing survives even the floor
+    if (wide.length < 2 || thin.length < 2) return true;
+    const lobe = (v) => {
+      let home = null, small = Infinity;
+      for (const t of thin) { const a = Math.abs(ringArea(t)); if (a < small && pointInPolygon(v[0], v[1], t)) { small = a; home = t; } }
+      return home;
+    };
+    const first = lobe(wide[0][0]);
+    for (let k = 1; k < wide.length; k++) if (lobe(wide[k][0]) !== first) return false;
+    return true;
+  };
   // A fit is one core. A cell dented to less than twice the gap plus the
   // radius erodes into two pieces, and two pieces dilated back overlap
   // where they meet — a waist at best, a hole under the even-odd fill —
@@ -1004,6 +1024,20 @@ function garment(loop, gap, radius) {
       return { inset: gap, radius: lo, cores: fit(gap, lo) };
     }
     const r = Math.min(radius, INK_MIN);
+    // Giving the gap away is a search for the inset at which the cell comes
+    // back together, and it is bisected as if a smaller inset always joined
+    // more. It does not. Two lobes on a neck thinner than twice the ink
+    // minimum are two pieces at every inset this pass can concede, and the
+    // whole descent — seven probes at a gap of 14, eight at 28 — answers no
+    // at a hair's erosion, the dearest answer there is, because a thin strip
+    // cuts every triangle of the cell and keeps every piece of it. So look at
+    // the floor of the search first: the least it can concede, no gap and the
+    // ink minimum. Eroding only ever takes away, so a piece of a wider erosion
+    // lies inside one piece of the floor, and two pieces the floor already
+    // holds apart are apart at every inset above it. Nothing between can join
+    // them, and the verdict is the one the descent would have reached, at one
+    // probe instead of eight: no whole fit, and the split pass runs.
+    if (whole && !oneLobe(er.at(gap + INK_MIN), er.at(r))) return null;
     let lo = 0, hi = gap;
     while (hi - lo > 0.25) { const m = (lo + hi) / 2; if (fit(m, INK_MIN)) lo = m; else hi = m; }
     cores = lo + r > 0 ? fit(lo, r) : [loop];
@@ -3293,15 +3327,33 @@ function clipPiecesToTriangles(pieces, tris) {
   return out;
 }
 
+// The box of a ring, for the cheap miss test before an exact cut.
+function boxOf(pts) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of pts) { if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; }
+  return [x0, y0, x1, y1];
+}
+
 // pieces minus a convex polygon F: a piece F does not reach is kept as it
 // is; one it does is replaced by the wedges outside F's edges — outside edge
 // k and inside edges 0..k-1 — which are disjoint, convex, and share their
 // edges exactly. Returns null when nothing was cut.
 function subtractConvex(pieces, F) {
   const hp = halfPlanes(F);
+  let fx0 = Infinity, fy0 = Infinity, fx1 = -Infinity, fy1 = -Infinity;
+  for (const p of F) { if (p[0] < fx0) fx0 = p[0]; if (p[0] > fx1) fx1 = p[0]; if (p[1] < fy0) fy0 = p[1]; if (p[1] > fy1) fy1 = p[1]; }
   let changed = false;
   const out = [];
   for (const pc of pieces) {
+    // F is convex, so it is inside its own box: a piece whose box misses
+    // that box misses F, and comes through whole without a clip per side.
+    // An erosion cuts a thin strip about every edge and a disc about every
+    // notch out of the same hundreds of fragments, and all but a handful
+    // of them are nowhere near the one being cut. The box is kept on the
+    // piece: a piece that survives a cut untouched is the same object, so
+    // it is measured once and rejected by the fifty cuts after it.
+    const bb = pc.bb || (pc.bb = boxOf(pc.pts));
+    if (bb[0] > fx1 || bb[2] < fx0 || bb[1] > fy1 || bb[3] < fy0) { out.push(pc); continue; }
     let inside = pc;
     for (const [ax, ay, b] of hp) { if (inside.pts.length < 3) break; inside = clipHalfPlane(inside, ax, ay, b, -8); }
     if (inside.pts.length < 3 || Math.abs(ringArea(inside.pts)) < 1e-6) { out.push(pc); continue; }
