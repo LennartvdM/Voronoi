@@ -984,20 +984,32 @@ function erosion(pts) {
 const INK_MIN = 4;
 function garment(loop, gap, radius) {
   const er = erosion(loop);
-  const fit = (g, r) => { const c = er.at(g + r); return c.length ? c : null; };
-  const want = Math.max(radius, INK_MIN);
-  let cores = fit(gap, want);
-  if (cores) return { inset: gap, radius, cores: radius >= INK_MIN ? cores : (fit(gap, radius) || [loop]) };
-  if (radius > INK_MIN && fit(gap, INK_MIN)) {
-    let lo = INK_MIN, hi = radius;
-    while (hi - lo > 0.25) { const m = (lo + hi) / 2; if (fit(gap, m)) lo = m; else hi = m; }
-    return { inset: gap, radius: lo, cores: fit(gap, lo) };
-  }
-  const r = Math.min(radius, INK_MIN);
-  let lo = 0, hi = gap;
-  while (hi - lo > 0.25) { const m = (lo + hi) / 2; if (fit(m, INK_MIN)) lo = m; else hi = m; }
-  cores = lo + r > 0 ? fit(lo, r) : [loop];
-  if (cores) return { inset: lo, radius: r, cores };
+  // A fit is one core. A cell dented to less than twice the gap plus the
+  // radius erodes into two pieces, and two pieces dilated back overlap
+  // where they meet — a waist at best, a hole under the even-odd fill —
+  // so a split counts as not fitting and the radius gives way first, as
+  // it does for a cell too thin to hold it. Only if the cell cannot be
+  // kept whole even at the ink minimum is a split accepted.
+  const dress = (whole) => {
+    const fit = (g, r) => { const c = er.at(g + r); return c.length && (!whole || c.length === 1) ? c : null; };
+    const want = Math.max(radius, INK_MIN);
+    let cores = fit(gap, want);
+    if (cores) return { inset: gap, radius, cores: radius >= INK_MIN ? cores : (fit(gap, radius) || [loop]) };
+    if (radius > INK_MIN && fit(gap, INK_MIN)) {
+      let lo = INK_MIN, hi = radius;
+      while (hi - lo > 0.25) { const m = (lo + hi) / 2; if (fit(gap, m)) lo = m; else hi = m; }
+      return { inset: gap, radius: lo, cores: fit(gap, lo) };
+    }
+    const r = Math.min(radius, INK_MIN);
+    let lo = 0, hi = gap;
+    while (hi - lo > 0.25) { const m = (lo + hi) / 2; if (fit(m, INK_MIN)) lo = m; else hi = m; }
+    cores = lo + r > 0 ? fit(lo, r) : [loop];
+    return cores ? { inset: lo, radius: r, cores } : null;
+  };
+  const one = dress(true);
+  if (one) return one;
+  const any = dress(false);
+  if (any) return any;
   // thinner than the ink minimum: the bare cell, unless it is a hair — a
   // sliver a cut left along an edge — which is no cell at all
   let L = 0; for (let k = 0; k < loop.length; k++) { const a = loop[k], q = loop[(k + 1) % loop.length]; L += Math.hypot(q[0] - a[0], q[1] - a[1]); }
@@ -3442,7 +3454,7 @@ function paintPicture(ctx, picture, hoveredPath, dt, t) {
       ctx.save();
       trace();
       if (loop === big) bigPts = pts;
-      ctx.clip('evenodd');
+      ctx.clip('nonzero');                       // a path that overlaps itself paints solid; holes are wound the other way
       const grad = ctx.createLinearGradient(bx0, by0, bx1, by1);
       grad.addColorStop(0, shade(leaf.color, -14));
       grad.addColorStop(1, shade(leaf.color, -68));
