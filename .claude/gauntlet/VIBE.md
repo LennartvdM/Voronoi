@@ -120,6 +120,8 @@ owner does not watch at 60 fps.** On the untouched file:
 | clock | jumps | reversals | shock px² |
 |---|---|---|---|
 | 60 fps steady | 14 | 1 | 157,637 |
+
+*(Superseded twice since: the clock fix, then the swerve. On `claude/anticipation` the 60 fps row is 13 / 1 / 135,279 with gapMax 4. Always re-measure the baseline on the file you are actually building from — four agents in one round independently caught a stale row here.)*
 | 25 ± 12 ms | 47 | 5 | 613,164 |
 | 30 ms steady | 61 | 4 | 724,778 |
 
