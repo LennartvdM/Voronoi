@@ -1,2 +1,4 @@
 .claude/worktrees/
 .claude/gauntlet/*.png
+.claude/gauntlet/*-loops.json
+.claude/gauntlet/*-loops.svg
