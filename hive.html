@@ -641,20 +641,32 @@ function solveWeights(seeds, targets, boundsPts, w0, opts = {}) {
     // discard everyone's warm weights (a cold solve, 5-6 iterations), repair
     // only the empty seeds and let Newton grow them — a few warm iterations
     // instead of a cold restart.
-    // give each empty seed a sliver a few px wide beside its nearest live
-    // neighbour: alive, so the system stays nonsingular, and small, so the
-    // fix takes nothing from anyone that Newton must then give back
-    const empties = [];
-    for (let i = 0; i < n; i++) if (diag.areas[i] <= 0) empties.push(i);
-    const lifted = new Float64Array(n);
-    for (const i of empties) {
-      let nj = -1, nd = Infinity;
-      for (let j = 0; j < n; j++) if (j !== i && diag.areas[j] > 0) { const d = Math.hypot(seeds[j][0] - seeds[i][0], seeds[j][1] - seeds[i][1]); if (d < nd) { nd = d; nj = j; } }
-      lifted[i] = nj >= 0 ? w[nj] - nd * nd + 2 * nd * 3 : 0;
+    // AGAINST EVERYONE, AT THE AREA IT IS PAINTED AT — a newcomer's own rule
+    // (see entryWeight), because an emptied seed is a newcomer to this warm
+    // start. Lifted beside its NEAREST neighbour it bids against one rival
+    // only, so a seed buried under a third stays empty and this falls through
+    // to the cold restart below — which throws every OTHER seed's warm weight
+    // away too, so one seed's bad frame becomes ten frames of the whole hive
+    // hunting for weights it already had. Entering at what it is drawn at
+    // costs the picture nothing: the shape handed back is the shape it had.
+    const paint = opts.paint;
+    let scale = 0;
+    for (const p of boundsPts) scale = Math.max(scale, 4 * (p[0] * p[0] + p[1] * p[1]));
+    for (const q of w) scale = Math.max(scale, 4 * Math.abs(q));
+    // a seed the repair itself empties is repaired in its turn; the cold
+    // restart is for a warm start no round of this can save
+    for (let round = 0; round < 3 && minOf(diag.areas) <= 0; round++) {
+      const empties = [], inS = [], inW = [];
+      for (let i = 0; i < n; i++) { if (diag.areas[i] > 0) { inS.push(seeds[i]); inW.push(w[i]); } else empties.push(i); }
+      if (!inS.length) break;
+      for (const i of empties) {
+        const want = paint && paint[i] > 1 ? paint[i] : tgt[i];
+        w[i] = entryWeight(seeds[i][0], seeds[i][1], Math.min(want, 0.98 * domainArea), inS, inW, boundsPts, tris, scale);
+        inS.push(seeds[i]); inW.push(w[i]);
+      }
+      solveWeights.lifts = (solveWeights.lifts || 0) + empties.length;
+      diag = computeDiagram(seeds, w, boundsPts, tris); evals++;
     }
-    for (const i of empties) w[i] = lifted[i];
-    solveWeights.lifts = (solveWeights.lifts || 0) + empties.length;
-    diag = computeDiagram(seeds, w, boundsPts, tris); evals++;
     if (minOf(diag.areas) <= 0) {                  // still empty: the true cold restart
       w = new Float64Array(n);
       diag = computeDiagram(seeds, w, boundsPts, tris); evals++;
@@ -2135,8 +2147,24 @@ class Hive {
     const k = 1 - Math.exp(-6 * dt);
     for (const b of this.bodies) {
       const hovered = b.id === this.hoveredId;
-      const hm = 1 - Math.exp(-(hovered ? 10 : 5) * dt);
-      b.hoverMix += ((hovered ? 1 : 0) - b.hoverMix) * hm;
+      // HOVER IS GROUND CHANGING HANDS, SO IT MOVES AT THE PACE GROUND MOVES
+      // HERE. What hover buys a settled cell is a shard worth 60% of its
+      // rectangle, and every px² of it is cut out of a neighbour. Taken over
+      // a tenth of a second that is a seventh of the shard in one frame on a
+      // page otherwise at rest — a bigger step than any the transitions make,
+      // and the largest single thing in the picture. Taken over a journey
+      // (~0.9 s) instead, it is the same size arriving at the speed a body
+      // travels, and the neighbour never loses more in a frame than a
+      // travelling cell does.
+      if (hovered) b.hoverMix += (1 - b.hoverMix) * (1 - Math.exp(-3 * dt));
+      // AND A GUEST DOES NOT DROP WHAT IT IS HOLDING ON THE FLOOR. While the
+      // page is changing the pointer may take no new cell (see tick) and gives
+      // up the one it had — but across the change, not in the fifth of a
+      // second a pointer-leave takes, because every px² of that shard has to
+      // go back to a neighbour that is already moving. Linear, so it is gone
+      // exactly when the change is: the moment the pointer may take a cell.
+      else if (guestLeft > dt) b.hoverMix *= 1 - dt / guestLeft;
+      else b.hoverMix *= Math.exp(-5 * dt);
       if (b.isSelf) {
         // the self holds whatever the members do not hold yet — derived, so a
         // split and a merge are the same curve run in opposite directions;
@@ -2557,19 +2585,38 @@ class Hive {
       // a pocket nobody stands in joins the nearest pocket that has a bidder
       // — unless a hole is there to take it, which shows less than an island
       const live2 = comp.groups.map((_, k) => mine[k].length > 0);
+      // A CRACK IS NOT A POCKET. A body that would stand in a wall or a hole
+      // is put half a pixel clear of its nearest side, and half a pixel of
+      // ground between two holes is a crack — a few px² that the pocket rule
+      // would then hand a body as the whole of its cell, so its auction is
+      // asked for thirty thousand px² out of two and hands back nothing. Two
+      // bodies ejected out of the same side into the same crack are the pair
+      // that empties at flock0. A body standing in one bids in the pocket
+      // next door instead, and takes the crack with it: the mirror of the
+      // rule above, where ground with no bidder joins the pocket that has one.
+      const gArea = comp.groups.map(g => { let a = 0; for (const pi of g) a += Math.abs(ringArea(pieces[pi])); return a; });
+      const crack = comp.groups.map((_, k) => {
+        if (!live2[k]) return false;
+        let least = Infinity;
+        for (const i of mine[k]) least = Math.min(least, claims[i] * domainArea / tSum);
+        return gArea[k] < 0.1 * least;          // cannot pay a tenth of the smallest claim in it
+      });
       for (let k = 0; k < comp.groups.length; k++) {
-        if (live2[k]) continue;
-        if (this.holes.length) { this.adoptGround(comp.groups[k].map(pi => pieces[pi])); comp.groups[k] = []; continue; }
+        if (live2[k] && !crack[k]) continue;
+        if (!live2[k] && this.holes.length) { this.adoptGround(comp.groups[k].map(pi => pieces[pi])); comp.groups[k] = []; continue; }
         let to = -1, best = Infinity;
         for (let j = 0; j < comp.groups.length; j++) {
-          if (!live2[j] || j === k) continue;
+          if (!live2[j] || j === k || crack[j]) continue;
           for (const a of comp.groups[k]) for (const b of comp.groups[j]) {
             const A = comp.box[a], B = comp.box[b];
             const dx = Math.max(A[0] - B[2], B[0] - A[2], 0), dy = Math.max(A[1] - B[3], B[1] - A[3], 0);
             const d = dx * dx + dy * dy; if (d < best) { best = d; to = j; }
           }
         }
-        if (to >= 0) { comp.groups[to] = comp.groups[to].concat(comp.groups[k]); comp.groups[k] = []; }
+        if (to >= 0) {
+          comp.groups[to] = comp.groups[to].concat(comp.groups[k]); comp.groups[k] = [];
+          mine[to] = mine[to].concat(mine[k]); mine[k] = [];
+        }
       }
       const cells = new Array(active.length), areas = new Float64Array(active.length), W = new Float64Array(active.length);
       let err = 0, iters = 0, conv = true, ok = true;
@@ -2583,7 +2630,7 @@ class Hive {
         const gs = idx.map(i => seeds[i]), gc = idx.map(i => claims[i]), gw = idx.map(i => active[i].w);
         const sol = idx.length === 1
           ? { weights: [gw[0]], diagram: computeDiagram([gs[0]], [gw[0]], bounds, gt), maxRelErr: 0, converged: true, iterations: 0 }
-          : solveWeights(gs, gc, bounds, gw, { maxIter: this.iterBudget(), tris: gt, domainArea: ga });
+          : solveWeights(gs, gc, bounds, gw, { maxIter: this.iterBudget(), tris: gt, domainArea: ga, paint: idx.map(i => active[i].body.paintArea) });
         err = Math.max(err, sol.maxRelErr); iters = Math.max(iters, sol.iterations); conv = conv && sol.converged;
         for (let a = 0; a < idx.length; a++) {
           const g2 = (j) => j < 0 ? j : idx[j];                 // pocket index -> auction index
@@ -2619,7 +2666,7 @@ class Hive {
     // frames of small area error (the meter shows it) instead of one 60 ms
     // frame. The diagram is watertight at every step regardless; at rest
     // this converges to 1e-6 within a frame or two and then costs nothing.
-    const sol = solveWeights(seeds, claims, bounds, active.map(s => s.w), { maxIter: this.iterBudget(), tris, domainArea: tris ? dArea : undefined });
+    const sol = solveWeights(seeds, claims, bounds, active.map(s => s.w), { maxIter: this.iterBudget(), tris, domainArea: tris ? dArea : undefined, paint: active.map(s => s.body.paintArea) });
     this.solveMs = performance.now() - t0;
     this.lastIters = sol.iterations;
     active.forEach((s, i) => { s.w = sol.weights[i]; });
@@ -2709,7 +2756,7 @@ class Hive {
       const seeds = idx.map(s => [s.x, s.y]), claims = idx.map(s => s.claim), w0 = idx.map(s => s.wShadow);
       const sol = idx.length === 1
         ? { weights: w0, diagram: computeDiagram(seeds, w0, bounds, gt) }
-        : solveWeights(seeds, claims, bounds, w0, { maxIter: this.iterBudget(), tris: gt, domainArea: ga });
+        : solveWeights(seeds, claims, bounds, w0, { maxIter: this.iterBudget(), tris: gt, domainArea: ga, paint: idx.map(s => s.body.paintArea) });
       for (let i = 0; i < idx.length; i++) { idx[i].wShadow = sol.weights[i]; cellOf.set(idx[i], sol.diagram.cells[i]); }
     }
     for (const s of subs) s.shadowLive = cellOf.has(s);
@@ -3648,6 +3695,34 @@ let simTime = 0;
 let raster = { gap: 0, over: 0 };
 let frame = 0;
 
+// WHEN THE CHANGE IS OVER: the last clock the change handed out, run to its
+// end — a journey's delay, its melt, its travel, and the 0.15 s its lock takes
+// after (see updateCrystal). Not a flag set at the button and cleared by a
+// timer, and not "when everything looks quiet" (the flock is liquid and never
+// does): it is read off the bodies every frame, like everything else here. So
+// a second change arriving mid-flight hands out later clocks and the horizon
+// moves out with them, a body reaped or re-seated takes its clock away with
+// it, and a landed body's spent journey is already in the past and counts for
+// nothing.
+function changeEnds(h) {
+  let e = 0;
+  h.walk(g => {
+    for (const b of g.bodies) {
+      const j = b.journey;
+      if (!j) continue;
+      const end = j.t0 + (j.delay || 0) + (j.hold || 0) + (j.dur || 0) + 0.15;
+      if (end > e) e = end;
+    }
+  });
+  return e;
+}
+
+// How much of the change is still to run, in seconds: > 0 is a page mid-change
+// and a pointer that is only a guest on it. Read once a frame, before anything
+// reads it back (easeClaims for the hold being handed back, tick for the cell
+// that may not be taken).
+let guestLeft = 0;
+
 let lastT = 0;
 function tick(nowMs) {
   const now = nowMs / 1000;
@@ -3657,15 +3732,28 @@ function tick(nowMs) {
   simTime += dt;
   frame++;
 
+  guestLeft = changeEnds(root) - simTime;
+
   // 1-5. the page, and every hive inside it
   root.step(dt, simTime);
 
   // 6. the picture: leaves gathered, shards joined and cut, outlines chained
   picture = buildPicture(root);
 
-  // 7. hover: the chain of bodies under the pointer, page first
+  // 7. hover: the chain of bodies under the pointer, page first.
+  //
+  // THE POINTER IS A GUEST WHILE THE PAGE IS CHANGING. A cursor left resting
+  // where it was is a MOVING pointer relative to a page rearranging under it:
+  // it catches every cell that flies past, and each catch is a claim boost
+  // and a shard the auction must hand out and take straight back — the cells
+  // fighting over ground the pointer, not the layout, asked for. So from the
+  // moment a change is asked for until the change is over, no cell is
+  // ACQUIRED. A hover that was already there is not cut: hoveredId stops
+  // naming it and it is handed back across the change (see easeClaims). When
+  // the change is over the pointer takes whatever it is over now, ramping the
+  // way any acquisition ramps.
   root.walk(h => { h.hoveredId = -1; });
-  const path = hitLeaves(picture, mouseX, mouseY) || root.hitPath(mouseX, mouseY);
+  const path = guestLeft > 0 ? [] : (hitLeaves(picture, mouseX, mouseY) || root.hitPath(mouseX, mouseY));
   for (const e of path) e.hive.hoveredId = e.body.id;
   canvas.style.cursor = 'default';
 
