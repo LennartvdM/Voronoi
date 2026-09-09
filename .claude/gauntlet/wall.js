@@ -90,11 +90,12 @@ const stat = (v) => {
 
 function metrics({ L, marks }, W) {
   const sceneOf = (f) => { let s = 'flock0'; for (const m of marks) if (f >= m.f) s = m.scene; return s; };
-  const all = { dec: [], trav: [], reach: [] }, scenes = {}, worst = [];
+  const all = { dec: [], trav: [], reach: [] }, scenes = {}, worst = [], trackByScene = {};
   let slid = 0, reachOut = 0;
   for (let k = 1; k < L.length; k++) {
     const F = L[k], P = L[k - 1], sc = sceneOf(F.f);
-    const S = scenes[sc] = scenes[sc] || { dec: [], trav: [], reach: [], slid: 0, reachOut: 0 };
+    const S = scenes[sc] = scenes[sc] || { dec: [], trav: [], reach: [], slid: 0, reachOut: 0, pairs: new Set() };
+    const track = trackByScene[sc] = trackByScene[sc] || {};
     const done = {};
     for (const id in F.nb) {
       if (!(id in P.w)) continue;
@@ -104,16 +105,41 @@ function metrics({ L, marks }, W) {
         if (done[key]) continue; done[key] = 1;
         const d = Math.hypot(F.x[id] - F.x[j], F.y[id] - F.y[j]);
         if (!(d > 1)) continue;
+        const lo = Math.min(+id, +j), hi = Math.max(+id, +j), sgn = (+id === lo) ? 1 : -1;
+        const oF = sgn * (F.w[id] - F.w[j]) / (2 * d), oP = sgn * (P.w[id] - P.w[j]) / (2 * Math.max(1, Math.hypot(P.x[id] - P.x[j], P.y[id] - P.y[j])));
+        (track[key] = track[key] || []).push(oF - oP);
         const dec = Math.abs((F.w[id] - F.w[j]) - (P.w[id] - P.w[j])) / (2 * d);
         const trav = 0.5 * (Math.hypot(F.x[id] - P.x[id], F.y[id] - P.y[id]) + Math.hypot(F.x[j] - P.x[j], F.y[j] - P.y[j]));
         const reach = Math.abs(F.w[id] - F.w[j]) / (2 * d);
         all.dec.push(dec); all.trav.push(trav); all.reach.push(reach);
-        S.dec.push(dec); S.trav.push(trav); S.reach.push(reach);
+        S.dec.push(dec); S.trav.push(trav); S.reach.push(reach); S.pairs.add(key);
         if (dec > 40) { slid++; S.slid++; if (worst.length < 4000) worst.push({ f: F.f, scene: sc, pair: key, decidedPx: Math.round(dec), travelPx: +trav.toFixed(1), sepPx: Math.round(d) }); }
         if (reach > W) { reachOut++; S.reachOut++; }
       }
     }
   }
+  // IS A WALL CATCHING UP, OR CHANGING ITS MIND? Over a short window a wall
+  // that is travelling to somewhere sums its steps: |sum| is close to sum|.|.
+  // A wall being re-decided in place goes back and forth and |sum| collapses.
+  // `carry` is the share of a wall's motion that got it anywhere; 1 is pure
+  // travel, 0 is pure argument. Windowed at 8 frames, which is a fifth of a
+  // second at the owner's clock: long enough to contain a real slide, short
+  // enough that an honest journey has not turned around inside it.
+  const WIN = 8;
+  const carryAll = [];
+  const carryScene = {};
+  for (const sc in trackByScene) {
+    const cs = carryScene[sc] = [];
+    for (const key in trackByScene[sc]) {
+      const v = trackByScene[sc][key];
+      for (let a = 0; a + WIN <= v.length; a += WIN) {
+        let sum = 0, abs = 0;
+        for (let b = a; b < a + WIN; b++) { sum += v[b]; abs += Math.abs(v[b]); }
+        if (abs > 4) { const c = Math.abs(sum) / abs; carryAll.push(c); cs.push(c); }
+      }
+    }
+  }
+  const mean = (v) => v.length ? +(v.reduce((a, b) => a + b, 0) / v.length).toFixed(3) : null;
   const decS = stat(all.dec), travS = stat(all.trav);
   return {
     clock: { dtMs: +DT.toFixed(3), jitterMs: JIT }, pairFrames: decS.n,
@@ -122,10 +148,19 @@ function metrics({ L, marks }, W) {
     strobeRatio: +(decS.mean / Math.max(1e-9, travS.mean)).toFixed(2),
     decidedPx: decS, travelPx: travS, reachPx: stat(all.reach),
     slidOver40: slid, reachOffPage: reachOut,
+    // 1 = every pixel of wall motion got the wall somewhere; 0 = the wall
+    // argued with itself and ended where it started
+    carry: mean(carryAll), carryWindows: carryAll.length,
     scenes: Object.fromEntries(Object.entries(scenes).map(([k, v]) => [k, {
       strobeRatio: +(stat(v.dec).mean / Math.max(1e-9, stat(v.trav).mean)).toFixed(2),
       decidedMean: stat(v.dec).mean, decidedP99: stat(v.dec).p99, decidedMax: stat(v.dec).max,
       travelMean: stat(v.trav).mean, slidOver40: v.slid, reachOffPage: v.reachOut,
+      // THE SAMPLE. wall.js sees only pairs among the root main auction's live
+      // bidders. A change that pushes cells into the hole or shadow path
+      // lowers decidedPx by deleting pair-frames, not motion, so every mean
+      // above is only comparable against a run with a comparable sample.
+      pairFrames: stat(v.dec).n, distinctPairs: v.pairs.size,
+      carry: mean(carryScene[k] || []),
     }])),
     worstSlides: worst.sort((a, b) => b.decidedPx - a.decidedPx).slice(0, 12),
   };
