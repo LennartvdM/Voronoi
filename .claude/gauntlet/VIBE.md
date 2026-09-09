@@ -465,11 +465,24 @@ runs the same file three times at `dt` and `dt·(1 ± 1e-12)`. Nothing about the
 file changes, so the spread is the page's own chaos and any difference smaller
 than it is a coin toss. Measured on the current file, at three clocks:
 
-| metric | across six twin runs |
-|---|---|
-| `jumps`, `reversals`, `vanish`, `overMax`, `settledScenes` | **stable** — identical every run |
-| `shockPx2` | within 0.8% |
-| `gapMax` | **8 → 24 at 60 fps.** Not an acceptance test. |
+| metric | 60 fps and jitter | `--dt 30` |
+|---|---|---|
+| `vanish`, `overMax`, `settledScenes` | stable | stable |
+| `jumps` | stable (11, 18) | **25–27** |
+| `reversals` | stable (1) | **1–2** |
+| `shockPx2` | within 0.8% | **2.71%** |
+| `gapMax` | **8 → 24.** Not an acceptance test. | unstable |
+
+An earlier reading of this section said `jumps` and `reversals` were stable at
+every clock. They are not stable at `--dt 30`, which is the ranked clock; two
+builders and a refuter caught it. And there is a floor below the clock band
+that is worse: two **mathematically null** rewrites of the file's own target
+arithmetic — changes that provably compute the same numbers — land at 25/1/193,273
+and 24/1/167,378 against base's 27/2/202,939, purely from floating-point
+re-association over 1,770 frames. **Any build that touches the target arithmetic
+is comparable only to about ±3 jumps and ±17% of shock at `--dt 30`.** Run an
+identity-rewrite control of your own change alongside `twins.js`, or your win is
+arithmetic.
 
 Note this band belongs to `02b52b7`. On the stale `852d235` the same
 perturbations moved `gapMax` 20 → 164 and `shockPx2` ±30%; the clock fix
@@ -494,6 +507,124 @@ those auctions were being answered — one build took the worst nested residual
 from 0.4% to 6,180% and scored clean everywhere. On the current file the
 nested auctions are healthy: median relative error 1e-11, p99 9.3e-7, 5
 unconverged hive-frames in 5,649. **Every build reports this.**
+
+## 3.9 THE SCOREBOARD WAS PARTLY MEASURING THE MOUSE
+
+Round two shipped nothing — three builds, six refuters, six refutations — and
+its most useful residual was a jump cluster nobody had diagnosed: **17 of the
+27 jumps at the ranked clock are Sidebar**, and eight of them are `W>W`, a
+settled wall changing area with its crystal pinned at 1 at both ends and every
+claim on the page standing still. Three builders reproduced it to the pixel and
+every build reproduced it bit-identically, so it is upstream of everything the
+two rounds were building.
+
+It is upstream of the auction entirely. Watched frame by frame, bodies 3, 4 and
+6 enter Sidebar as settled walls painting **5% of their own rectangles** and
+climb back: body 6 goes 2,579 → 7,184 → 13,631 → 21,229 → 29,283 → 36,999 →
+43,499 → 47,116 px² against a rectangle of 55,474 that never moves. They are not
+growing. **They are being uncrushed.** The pointer is parked at (700, 400) for
+the whole run, in Hero that lands inside the hero card, the card expands on
+hover and flattens its neighbours to slivers, and when the scene changes and the
+boost is handed back the slivers spring out to their rectangles in eight frames.
+
+`score.js` now takes `--parkx` / `--parky` and prints the pointer in its output.
+Move it, at `--dt 30`:
+
+| pointer | jumps | shock px² | byScene |
+|---|---|---|---|
+| **700, 400** (inside the hero card) | **27** | 202,939 | flock0 6, hero 1, **sidebar 17**, flock 3 |
+| **40, 860** (bottom-left corner) | **16** | 164,060 | flock0 6, hero 3, **sidebar 2**, frame 2, flock 3 |
+| **1400, 40** (top-right corner) | **40** | 907,782 | flock0 6, **hero 30**, sidebar 1, flock 3 |
+
+The whole Sidebar cluster — all eight `W>W` jumps with it — evaporates when the
+pointer is not leaning on a cell that expands, and a different park invents
+thirty jumps in Hero instead. The score moves by 2.5× on the pointer alone.
+Three rounds of ranking have therefore been ranking, in part, on where the mouse
+happened to sit.
+
+**Binding from here: every claim at three parks.** (700, 400), (40, 860) and
+(1400, 40), at each clock you quote. A win at one park is not a win. Report the
+pointer beside every number; the field is in `score.js`'s output so that a row
+can never again be read without it.
+
+Two things follow that are worth more than the correction.
+
+**The Sidebar cluster is a real thing the owner can see, and it is not the
+strobe.** A cell crushed to a sliver by its neighbour's hover, springing back
+eighteenfold in a quarter of a second when the page changes, is a visible snap
+with a named cause. The guest-pointer rule already says the held hover is handed
+back across the change; the hand-back is linear in the boost and the area
+response to it is not. That is its own problem, at its own site, and it has been
+sitting in the middle of the scoreboard being counted as an auction defect.
+
+**And the hard floors move with the pointer too.** At (1400, 40) at 60 fps the
+untouched file reports `overMax` 4 — cells overlapping — where the standard park
+reports 0. It is four square pixels and invisible, but it means the coverage
+invariants were being certified at one pointer position and asserted generally.
+
+## 3.10 ROUND TWO, AND THE ONE LIVE LEAD
+
+Three builds, all refuted by both their refuters, on the round's own rules:
+
+- **A held exchange rate between the claim and the ground** (low-pass the
+  denominator, route the mismatch). Refuted by its own algebra: it deletes a
+  per-frame step worth a fraction of a percent of the ground and then spends the
+  *accumulated* lag, which in a transition is many times larger than the step.
+  Transition jumps 21 → 22, whole-run shock 202,939 → 576,545, `overMax` 0 → 4,
+  nested `bodyMiss` median 3.05e-12 → 1.88e-4, `carry` down in three scenes.
+- **One clock for the area handover** (round one's survivor, rebuilt). Refuted
+  again and now with a mechanism that generalises: gating a claim to the last
+  melt-end forces every body but the last to **lock with a part-moved claim**,
+  and a crystallising body's shadow cell is sized by that claim — the same
+  disagreement it set out to remove, moved from the melt to the landing.
+  Transition jumps 21 → 44, hero 1 → 19, `overMax` 0 → 2,380. Its whole-run
+  improvements were 82–88% the cold settle.
+- **The orphan pocket divided rather than awarded** (ground nobody bid for, cut
+  up among every hole that borders it). The only build with a transition gain
+  anywhere, and inert: deleting the division while keeping the rest reproduces
+  its headline with an identical `kinds` and `byScene` histogram. **86% of its
+  win was in which hole the argmax picks, not in dividing anything.** It also
+  regressed the nested hives, and it found the coupling any successor must avoid:
+  `holeExtra` reaches `b.loops`, `b.loops` gates `cellIsRect`, `cellIsRect` is
+  the early-wall shortcut, and `b.hole.pieces.concat(b.holeExtra)` is a nested
+  field's whole domain. **A hole holding a share of somebody else's pocket is no
+  longer a rectangle.**
+
+### The seed yardstick
+
+What the third refutation leaves is six lines at the same site. `adoptGround`
+picks the hole that receives an orphan pocket by comparing the pocket's centroid
+to the centroids of the hole's **drawn pieces** — a shape re-derived every frame,
+whose middle hops as the shape morphs, so the winner can change with nothing
+having moved and a whole pocket changes colour. Pick by the hole's own **seed**
+instead: the one thing about a hole that travels.
+
+Measured on the shipped file, three parks, three clocks, by the operator:
+
+| clock | park | base jumps / shock | seed yardstick |
+|---|---|---|---|
+| 60 fps | 700,400 | 11 / 65,777 | **9 / 52,635 (−20.0%)** |
+| 60 fps | 40,860 | 9 / 74,270 | **7 / 64,745 (−12.8%)** |
+| 60 fps | 1400,40 | 28 / 701,688 | 27 / 724,039 (+3.2%) |
+| `--dt 30` | 700,400 | 27 / 202,939 | 26 / 208,871 (+2.9%) |
+| `--dt 30` | 40,860 | 16 / 164,060 | 16 / 174,647 (+6.5%) |
+| `--dt 30` | 1400,40 | 40 / 907,782 | 40 / 937,500 (+3.3%) |
+| jitter | 700,400 | 18 / 132,275 | 18 / 134,771 (+1.9%) |
+
+Floors clean: `nesterr` identical to base (median 1.31e-11, p99 9.31e-7, 5
+unconverged of 5,649, over-5% 1); `carry` 0.917 against 0.919 with flock0, hero,
+sidebar and frame **bit-identical** on carry, strobeRatio and pairFrames;
+`vanish` 0, `overMax` unchanged at every park, settled 5/5.
+
+Read it honestly. **Transition jumps fall at all six park-and-clock
+combinations** (21→18, 10→8, 34→32 at `--dt 30`; 11→9, 9→7, 28→27 at 60 fps),
+the Hero adoption jump is removed outright rather than demoted, and the 60 fps
+shock win is far outside the 0.67% band at two parks of three. Against that:
+**flock0 gains two jumps at every park**, and the `--dt 30` shock rise of
+2.9–6.5% straddles a band of 2.71%.
+
+It has never faced a refuter. It goes into the next round as the starting
+position at that site, not as a ship.
 
 ## 4. Hypotheses, ranked, with what would confirm each
 
