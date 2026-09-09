@@ -402,14 +402,42 @@ bothering to travel there" actually looks like from the inside. So:
 > catching up, and a wall that arrives late arrives further. Slow the world
 > that invalidates the warm start, not the answer that repairs it.
 
-That is the brief for the next round, and it points at exactly one place. The
-seeds travel smoothly because springs see to it. The other two inputs do not:
-`tgt_i = claim_i × groundArea / Σclaims`, and the ground area collapses and
-recovers by 16%, 29%, 45% in single frames as walls appear and holes morph,
-while Σclaims steps every time a bidder crosses `ACTIVE_MIN` in or out of the
-auction. **This page has a continuous position field and a discontinuous area
-field.** A body entering or leaving the auction is a step discontinuity in the
-denominator by construction — a bidder should fade in and out, not appear.
+That is the brief for the next round, and one more measurement says where to
+aim it. The seeds travel smoothly because springs see to it; the target does
+not. `tgt_i = claim_i × groundArea / Σclaims`, so rank the wall's slide against
+each term over the 9,857 transition pair-frames (Spearman, `flock0` and
+`bento` excluded because the cold settle is not the complaint):
+
+| the wall's slide against | ρ |
+|---|---|
+| the change in Σclaims — **the denominator** | **0.697** |
+| the seeds' own travel | 0.664 |
+| the change in this pair's own target | 0.627 |
+| the change in the ground's area | **−0.013** |
+
+**The ground's area is innocent, and an earlier reading of this brief that
+blamed it was wrong.** It swings by 16%, 29%, 45% in single frames and it
+moves no wall at all, because the normalisation divides it straight back out
+— exactly as the algebra says it should. What is left is the denominator and
+the claims: a body crossing `ACTIVE_MIN` in or out of the auction is a step in
+Σclaims by construction, and one such step moves **every** target on the page
+at once, including the targets of bodies that are standing still.
+
+The deciles say the same thing and say where it hurts:
+
+| decile of |dTarget| | mean |dTarget| | mean wall slide | mean seed travel |
+|---|---|---|---|
+| 1–5 | 0.04–0.12% | 0.44–0.75 px | 0.86–1.71 px |
+| 6–9 | 0.15–3.44% | 1.34–7.58 px | 2.63–8.87 px |
+| **10** | **12.91%** | **10.71 px** | **7.38 px** |
+
+In nine deciles out of ten the seeds outrun the wall: the page is travelling
+and its walls are coming along. **In the top decile alone the wall outruns the
+seeds**, and that decile is where the strobe lives. It is a tenth of the
+pair-frames, and it is bought entirely by the target stepping.
+
+**This page has a continuous position field and a discontinuous area field.**
+A bidder should fade in and out, not appear.
 
 The chewing gum is a separate tail and still stands: the offset divides by the
 separation, `SEED_MIN_SEP` is 5 px and only separates pairs already closer than
