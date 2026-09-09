@@ -3592,7 +3592,7 @@ function paintPicture(ctx, picture, hoveredPath, dt, t) {
     for (const l of leaf.loops) for (const p of l) { bx0 = Math.min(bx0, p[0]); by0 = Math.min(by0, p[1]); bx1 = Math.max(bx1, p[0]); by1 = Math.max(by1, p[1]); }
     let big = leaf.loops[0], bigA = 0;
     for (const l of leaf.loops) { const a = Math.abs(ringArea(l)); if (a > bigA) { bigA = a; big = l; } }
-    let bigPts = null;
+    let bigPts = null, bigTrace = null;
     for (const loop of leaf.loops) {
       if (loop.hole) continue;
       const { inset, radius, cores } = garment(loop, halfGap * (1 - lift), corner);
@@ -3609,7 +3609,7 @@ function paintPicture(ctx, picture, hoveredPath, dt, t) {
       };
       ctx.save();
       trace();
-      if (loop === big) bigPts = pts;
+      if (loop === big) { bigPts = pts; bigTrace = trace; }
       ctx.clip('nonzero');                       // a path that overlaps itself paints solid; holes are wound the other way
       const grad = ctx.createLinearGradient(bx0, by0, bx1, by1);
       grad.addColorStop(0, shade(leaf.color, -14));
@@ -3634,6 +3634,15 @@ function paintPicture(ctx, picture, hoveredPath, dt, t) {
     const rr = Math.round(c.r / 2) * 2;
     if (rr > (leaf.labels ? 20 : 17)) {
       ctx.save();
+      // THE CONTENT IS MASKED BY ITS OWN INK. The label follows its cell on a
+      // slower clock than the cell moves — that lag is the point, it reads as
+      // weight — but a number drawn straight onto the canvas trails OUTSIDE
+      // the cell it belongs to and across whatever is behind it, and a page
+      // of labels sliding over each other's cells is clutter the lag never
+      // asked for. The same path that painted the cell clips what it holds,
+      // so the lag shows as the content sliding under its own border, and a
+      // cell that has moved away simply does not show what is not inside it.
+      if (bigTrace) { bigTrace(); ctx.clip('nonzero'); }
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       if (leaf.labels) {
