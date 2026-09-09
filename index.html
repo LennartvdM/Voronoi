@@ -96,6 +96,37 @@
             color: #b08fda;
         }
 
+        .tag.preview {
+            background: #4a2a3a;
+            color: #da8fb0;
+        }
+
+        /* the two live builds sit above the archive, and read as a pair */
+        .previews {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            justify-content: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .previews .version-card {
+            border-color: #4a3a4a;
+            background: #1a151f;
+        }
+
+        .previews .version-card:hover {
+            border-color: #7a5a7a;
+            background: #221a28;
+        }
+
+        .rule {
+            border: 0;
+            border-top: 1px solid #2a2a3a;
+            width: min(680px, 80vw);
+            margin: 0 auto 2.5rem;
+        }
+
         .version-card p {
             color: #999;
             font-size: 0.95rem;
@@ -117,6 +148,33 @@
 <body>
     <h1>Voronoi Experiments</h1>
     <p class="subtitle">Exploring organic cell-based navigation</p>
+
+    <div class="previews">
+        <a href="https://deploy-preview-228--voronoi-bento.netlify.app/hive.html" class="version-card">
+            <h2>Hive &middot; Clocks</h2>
+            <span class="tag preview">Live preview</span>
+            <p>Every clock in the file measured in seconds. The cells fought and every measurement said they had stopped, because the whole harness ran at a flawless 60 fps and a browser gives whatever frame times it likes. Asked at 30 ms a frame, the same file scored four times the jumps. Three clocks were counted in frames: the auction's solving budget, a closing cell's catch-up, and the push that keeps a seed out of a wall. Now none of them are.</p>
+            <ul>
+                <li>Jumps at 30 ms frames: 61 to 48</li>
+                <li>Auction error at 30 ms: 0.32% to 0.002%</li>
+                <li>Uncovered ground: 20 px&sup2; to 4</li>
+                <li>At 60 fps, exactly the identity</li>
+            </ul>
+        </a>
+
+        <a href="https://deploy-preview-229--voronoi-bento.netlify.app/hive.html" class="version-card">
+            <h2>Hive &middot; Anticipation</h2>
+            <span class="tag preview">Live preview</span>
+            <p>The clock round, plus the one anticipation that survived. Two bodies used to be told only how far apart they are right now, so neither yielded until both were already in the other's way and the push landed late and head-on. Now they are told how far apart they will be one spring's response time from now, so they swerve early and gently, and two already drawing apart are not pushed at all. Two other anticipations were built beside it and both failed honestly.</p>
+            <ul>
+                <li>Cells read a neighbour's velocity and yield before contact</li>
+                <li>At rest it is the old law byte for byte, so the landed picture is whole</li>
+                <li>Costs one square root per pair</li>
+            </ul>
+        </a>
+    </div>
+
+    <hr class="rule">
 
     <div class="versions">
         <a href="hive.html" class="version-card">

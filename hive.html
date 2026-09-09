@@ -703,6 +703,7 @@ function solveWeights(seeds, targets, boundsPts, w0, opts = {}) {
     converged = maxRel <= tol;
   }
 
+
   let mean = 0;
   for (let i = 0; i < n; i++) mean += w[i];
   mean /= n;
@@ -1230,8 +1231,16 @@ function rasterCheck(cells, W, H) {
 
 const MELT = 0.30;         // a settled cell softens for this long before it travels
 const HOLE_TAU = 0.08;     // s: a morphing cell's target follows the auction on this clock
-const LINGER_MAX = 40;     // frames a closing hole may chase its cell; its clock reaches
-                           // the cell first, so the budget never expires into a snap
+const LINGER_MAX_S = 40 / 60;   // s a closing hole may chase its cell; its clock reaches
+const LINGER_RAMP_S = 34 / 60;  // the cell first, so the budget never expires into a snap.
+                           // Seconds, not frames: at 30 ms a frame count stretched this
+                           // catch-up to 1.2 s and the hole closed by expiry instead.
+const SWERVE_LEAD = 0.15;  // s the repulsion looks ahead. It is the seed spring's own
+                           // response time (2/k2): a body yields over exactly the
+                           // span its spring would need to answer, so the swerve is
+                           // spent before the spring can argue with it. Longer and
+                           // it releases pairs that still need each other apart —
+                           // at 0.22 s the landed picture opens a 312 px2 hole
 const CLAIM_MIN = 0.02;
 const SEED_MARGIN = 10;
 const SEED_MIN_SEP = 5;
@@ -2012,6 +2021,23 @@ class Hive {
   // Bodies push apart while liquid, so a traveller never wedges between
   // two neighbours. A locked body is immovable: it pushes, and is not
   // pushed, so a traveller passing a landed neighbour goes around it.
+  //
+  // THE PAIR IS TESTED WHERE IT IS GOING, NOT WHERE IT IS. Read only at the
+  // distance they have right now, this is a collision resolver: two bodies
+  // must already be in each other's way before either yields, so the push
+  // lands late and head-on, and the spring spends the next frames taking it
+  // back. A flock reads velocities. So the distance this law is given is the
+  // one the pair will have SWERVE_LEAD from now at today's velocities. Two
+  // bodies converging are pushed while they are still apart, and gently,
+  // because the ramp reads a gap that is closing; two already opening are
+  // pushed less, and once they will be clear of R they are not pushed at
+  // all. Everything else — F, the radii, the 0.85, the crystal gates, the
+  // dt — is untouched, and the push still runs along the offset they have
+  // NOW: aiming it at the predicted offset instead turns a head-on pair
+  // sideways with a direction made of noise, and costs coverage (a 2,300 px2
+  // hole at 30 ms). When nothing moves relative to anything the horizon
+  // distance IS today's distance and this is the old law byte for byte —
+  // which is what keeps the landed picture whole. A lead, not a licence.
   separate(dt) {
     const bodies = this.bodies;
     if (bodies.every(b => b.isSelf || b.crystal > 0.995)) return;
@@ -2027,9 +2053,11 @@ class Hive {
         const B = bodies[j];
         if (B.isSelf) continue;
         const R = 0.85 * (rad[i] + rad[j]);
-        const dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy);
-        if (d > 1e-6 && d < R) {
-          const f = F * (1 - Math.min(A.crystal, B.crystal)) * (1 - d / R) * dt / d;
+        const dx = B.x - A.x, dy = B.y - A.y, dn = Math.hypot(dx, dy);
+        // where the pair will be one short horizon from now
+        const ox = dx + (B.vx - A.vx) * SWERVE_LEAD, oy = dy + (B.vy - A.vy) * SWERVE_LEAD, d = Math.hypot(ox, oy);
+        if (dn > 1e-6 && d < R) {
+          const f = F * (1 - Math.min(A.crystal, B.crystal)) * (1 - d / R) * dt / dn;
           A.vx -= dx * f * (1 - A.crystal); A.vy -= dy * f * (1 - A.crystal);
           B.vx += dx * f * (1 - B.crystal); B.vy += dy * f * (1 - B.crystal);
         }
@@ -2041,8 +2069,11 @@ class Hive {
   // domain, pairwise distinct — enforced on the BODY, so a formation moves as
   // one. Its own seeds are distinct by construction: they only enter the
   // field once the crystal fraction has spread them past the minimum.
-  enforcePreconditions() {
+  enforcePreconditions(h) {
     const bodies = this.bodies, W = this.W, H = this.H;
+    // the damping after an eviction is a RATE, not a per-frame haircut: half
+    // the speed per 1/60 s, whatever the step is
+    const damp = Math.pow(0.5, (h || 1 / 60) * 60);
     const poly = this.domainPolyActive();
     let cx = W / 2, cy = H / 2;
     if (poly) { cx = 0; cy = 0; for (const p of poly) { cx += p[0]; cy += p[1]; } cx /= poly.length; cy /= poly.length; }
@@ -2061,7 +2092,7 @@ class Hive {
             const m = Math.min(dl, dr, dt, db);
             if (m === dl) b.x = r[0] - 0.5; else if (m === dr) b.x = r[2] + 0.5;
             else if (m === dt) b.y = r[1] - 0.5; else b.y = r[3] + 0.5;
-            b.vx *= 0.5; b.vy *= 0.5; moved = true;
+            b.vx *= damp; b.vy *= damp; moved = true;
           }
           if (!moved) break;
         }
@@ -2072,7 +2103,7 @@ class Hive {
             if (!pointInPolygon(b.x, b.y, h.hole.pieces[k])) continue;
             let best = Infinity, bp = null;
             for (const p of h.hole.planes[k]) { const d = p.b - (p.ax * b.x + p.ay * b.y); if (d < best) { best = d; bp = p; } }
-            if (bp) { b.x += bp.ax * (best + 0.5); b.y += bp.ay * (best + 0.5); b.vx *= 0.5; b.vy *= 0.5; }
+            if (bp) { b.x += bp.ax * (best + 0.5); b.y += bp.ay * (best + 0.5); b.vx *= damp; b.vy *= damp; }
           }
         }
         b.x = Math.min(W - SEED_MARGIN, Math.max(SEED_MARGIN, b.x));
@@ -2083,7 +2114,7 @@ class Hive {
         // reach walks back toward the middle until it is inside
         for (let k = 0; k < 6 && !pointInPolygon(b.x, b.y, poly); k++) { b.x += (cx - b.x) * 0.5; b.y += (cy - b.y) * 0.5; }
         if (!pointInPolygon(b.x, b.y, poly)) { b.x = cx; b.y = cy; }
-        b.vx *= 0.5; b.vy *= 0.5;
+        b.vx *= damp; b.vy *= damp;
       }
     }
     for (let i = 0; i < bodies.length; i++) {
@@ -2428,6 +2459,14 @@ class Hive {
     return s;
   }
 
+  // NEWTON'S BUDGET IS PER SECOND. Three iterations per FRAME is three at
+  // 60 fps and half as many per second at 30 ms, on a warm start that is
+  // twice as stale. Scaled by dt it is the same work per second at every
+  // clock: floored at today's 3, so no clock gets less than it has now,
+  // and capped at 8, so a long frame cannot buy unbounded work.
+  iterBudget() { return Math.max(3, Math.min(8, Math.round(3 * (this.lastDt || 1 / 60) * 60))); }
+
+
   solveMain() {
     const subs = [];
     for (const b of this.bodies) for (const s of b.subs) subs.push(s);
@@ -2544,7 +2583,7 @@ class Hive {
         const gs = idx.map(i => seeds[i]), gc = idx.map(i => claims[i]), gw = idx.map(i => active[i].w);
         const sol = idx.length === 1
           ? { weights: [gw[0]], diagram: computeDiagram([gs[0]], [gw[0]], bounds, gt), maxRelErr: 0, converged: true, iterations: 0 }
-          : solveWeights(gs, gc, bounds, gw, { maxIter: 3, tris: gt, domainArea: ga });
+          : solveWeights(gs, gc, bounds, gw, { maxIter: this.iterBudget(), tris: gt, domainArea: ga });
         err = Math.max(err, sol.maxRelErr); iters = Math.max(iters, sol.iterations); conv = conv && sol.converged;
         for (let a = 0; a < idx.length; a++) {
           const g2 = (j) => j < 0 ? j : idx[j];                 // pocket index -> auction index
@@ -2580,7 +2619,7 @@ class Hive {
     // frames of small area error (the meter shows it) instead of one 60 ms
     // frame. The diagram is watertight at every step regardless; at rest
     // this converges to 1e-6 within a frame or two and then costs nothing.
-    const sol = solveWeights(seeds, claims, bounds, active.map(s => s.w), { maxIter: 3, tris, domainArea: tris ? dArea : undefined });
+    const sol = solveWeights(seeds, claims, bounds, active.map(s => s.w), { maxIter: this.iterBudget(), tris, domainArea: tris ? dArea : undefined });
     this.solveMs = performance.now() - t0;
     this.lastIters = sol.iterations;
     active.forEach((s, i) => { s.w = sol.weights[i]; });
@@ -2670,7 +2709,7 @@ class Hive {
       const seeds = idx.map(s => [s.x, s.y]), claims = idx.map(s => s.claim), w0 = idx.map(s => s.wShadow);
       const sol = idx.length === 1
         ? { weights: w0, diagram: computeDiagram(seeds, w0, bounds, gt) }
-        : solveWeights(seeds, claims, bounds, w0, { maxIter: 3, tris: gt, domainArea: ga });
+        : solveWeights(seeds, claims, bounds, w0, { maxIter: this.iterBudget(), tris: gt, domainArea: ga });
       for (let i = 0; i < idx.length; i++) { idx[i].wShadow = sol.weights[i]; cellOf.set(idx[i], sol.diagram.cells[i]); }
     }
     for (const s of subs) s.shadowLive = cellOf.has(s);
@@ -2680,7 +2719,7 @@ class Hive {
       const c = cellOf.get(b.subs[0]);
       const parts = c ? (c.pieces || [c]).filter(pc => pc.pts.length >= 3) : [];
       const shape = parts.length ? cellCoreAndArms(parts, b.hole.rect) : null;
-      if (!shape) { b.holeLinger = false; b.lingerFrames = 0; continue; }
+      if (!shape) { b.holeLinger = false; b.lingerTime = 0; continue; }
       // CAUGHT UP? The core against the cell the auction hands it, as a
       // share of that cell — and asked EVERY frame, not only at crystal 0.
       // Asked at 0 the answer arrives a frame after the hole has already
@@ -2693,15 +2732,15 @@ class Hive {
         const both = planesPoly(convexPlanes(prev), shape.core);
         caught = !(tgtA > 0) || Math.abs(ringArea(prev)) + tgtA - 2 * (both ? Math.abs(ringArea(both)) : 0) <= 0.03 * tgtA;
       }
-      b.lingerFrames = b.crystal > 0 ? 0 : (b.lingerFrames || 0) + 1;
-      b.holeLinger = !caught && b.lingerFrames < LINGER_MAX;
+      b.lingerTime = b.crystal > 0 ? 0 : (b.lingerTime || 0) + (this.lastDt || 1 / 60);
+      b.holeLinger = !caught && b.lingerTime < LINGER_MAX_S;
       // The core follows the cell it would have on a short clock, so the
       // auction's frame-to-frame reshuffling does not print on the hole. While
       // it lingers the clock shortens toward the instant, reaching it before
       // the budget does: a linger ends because the hole has caught up, never
       // because it ran out of frames. A budget that expires is a snap.
       let k = 1 - Math.exp(-(this.lastDt || 0.016) / HOLE_TAU);
-      if (b.lingerFrames) k = 1 - (1 - k) * Math.max(0, 1 - b.lingerFrames / (LINGER_MAX - 6));
+      if (b.lingerTime) k = 1 - (1 - k) * Math.max(0, 1 - b.lingerTime / LINGER_RAMP_S);
       const core = prev && prev.length >= 3 ? blendConvex(prev, shape.core, k, bounds) : null;
       b.holeCore = { core: core && core.length >= 3 ? core : shape.core, arms: shape.arms };
     }
@@ -2764,10 +2803,27 @@ class Hive {
 
     // 1. the hive moves — one spring per body, whatever its slot count;
     // each body's crystal runs on its own clock (steer -> updateCrystal)
-    this.steer(dt, t);
-    this.computeWalls();
-    this.separate(dt);
-    this.enforcePreconditions();
+    // THE MOTION PASS RUNS ON A FIXED STEP. The spring, the push and the
+    // evictions were tuned at 1/60 s; asked to act across a 30 or 50 ms
+    // frame they overshoot (the semi-implicit update adds an effective
+    // k1*dt^2 of stiffness) and each eject/damp fires once per FRAME rather
+    // than once per tuned step. So the cheap O(n^2) motion is subdivided
+    // into whole 1/60 s steps — N a function of dt alone, no accumulator,
+    // no remainder to alias — and the interpolated t goes with it, so the
+    // carrot, the crystal and the wobble advance inside the substeps. At
+    // 60 fps N is 1 and this is exactly the old call sequence.
+    const SUB_H = 1 / 60, MAX_SUB = 4;
+    // (the epsilon is float slack: a nominal 60 fps frame must stay at N = 1)
+    const N = Math.min(MAX_SUB, Math.max(1, Math.ceil(dt / SUB_H - 1e-6))), h = dt / N;
+    for (let i = 0; i < N; i++) {
+      this.steer(h, t - dt + (i + 1) * h);
+      if (i === 0) this.computeWalls();     // walls follow the crystal, which moves at most one substep in a frame
+      this.separate(h);
+      this.enforcePreconditions(h);
+    }
+    // and the frame ends the way a single step ended: the picture is cut by
+    // the walls the frame ENDS on, and no seed stands in one of them
+    if (N > 1) { this.computeWalls(); this.enforcePreconditions(h); }
     this.easeClaims(dt, t);
 
     // 2. the hive's two readings of its bodies' crystals
