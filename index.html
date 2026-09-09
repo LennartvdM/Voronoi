@@ -101,6 +101,38 @@
             color: #da8fb0;
         }
 
+        /* The number is the point: which one is last should be readable from
+           across the room, so it is a badge and not another small tag. */
+        .version-card { position: relative; }
+
+        .mk {
+            position: absolute;
+            top: 1.1rem;
+            right: 1.2rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 1.05rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            color: #4a4a5e;
+        }
+
+        .version-card.latest { border-color: #7a5a8a; background: #1d1626; }
+        .version-card.latest:hover { border-color: #a87ac0; }
+        .version-card.latest .mk { color: #d0a0e8; }
+
+        .latest-flag {
+            display: inline-block;
+            font-size: 0.62rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #d0a0e8;
+            border: 1px solid #6a4a7a;
+            border-radius: 3px;
+            padding: 0.1rem 0.35rem;
+            margin-left: 0.5rem;
+            vertical-align: 0.15em;
+        }
+
         /* the two live builds sit above the archive, and read as a pair */
         .previews {
             display: flex;
@@ -150,20 +182,9 @@
     <p class="subtitle">Exploring organic cell-based navigation</p>
 
     <div class="previews">
-        <a href="https://deploy-preview-228--voronoi-bento.netlify.app/hive.html" class="version-card">
-            <h2>Hive &middot; Clocks</h2>
-            <span class="tag preview">Live preview</span>
-            <p>Every clock in the file measured in seconds. The cells fought and every measurement said they had stopped, because the whole harness ran at a flawless 60 fps and a browser gives whatever frame times it likes. Asked at 30 ms a frame, the same file scored four times the jumps. Three clocks were counted in frames: the auction's solving budget, a closing cell's catch-up, and the push that keeps a seed out of a wall. Now none of them are.</p>
-            <ul>
-                <li>Jumps at 30 ms frames: 61 to 48</li>
-                <li>Auction error at 30 ms: 0.32% to 0.002%</li>
-                <li>Uncovered ground: 20 px&sup2; to 4</li>
-                <li>At 60 fps, exactly the identity</li>
-            </ul>
-        </a>
-
-        <a href="https://deploy-preview-230--voronoi-bento.netlify.app/hive.html" class="version-card">
-            <h2>Hive &middot; Guest</h2>
+        <a href="https://deploy-preview-230--voronoi-bento.netlify.app/hive.html" class="version-card latest">
+            <h2>Hive &middot; Guest</h2><span class="latest-flag">Latest</span>
+            <span class="mk">mk12</span>
             <span class="tag preview">Live preview</span>
             <p>Everything below, plus the pointer stops interfering. A cursor resting where it was is a moving cursor relative to a page rearranging under it: it catches every cell that flies past, and each catch is ground the auction hands out and takes straight back. So while a change runs the pointer may take no new cell, and the one it was holding is handed back across the change rather than dropped. Measured with a sweeping cursor, the jumping falls by 72%.</p>
             <ul>
@@ -175,12 +196,26 @@
 
         <a href="https://deploy-preview-229--voronoi-bento.netlify.app/hive.html" class="version-card">
             <h2>Hive &middot; Anticipation</h2>
+            <span class="mk">mk11</span>
             <span class="tag preview">Live preview</span>
             <p>The clock round, plus the one anticipation that survived. Two bodies used to be told only how far apart they are right now, so neither yielded until both were already in the other's way and the push landed late and head-on. Now they are told how far apart they will be one spring's response time from now, so they swerve early and gently, and two already drawing apart are not pushed at all. Two other anticipations were built beside it and both failed honestly.</p>
             <ul>
                 <li>Cells read a neighbour's velocity and yield before contact</li>
                 <li>At rest it is the old law byte for byte, so the landed picture is whole</li>
                 <li>Costs one square root per pair</li>
+            </ul>
+        </a>
+
+        <a href="https://deploy-preview-228--voronoi-bento.netlify.app/hive.html" class="version-card">
+            <h2>Hive &middot; Clocks</h2>
+            <span class="mk">mk10</span>
+            <span class="tag preview">Live preview</span>
+            <p>Every clock in the file measured in seconds. The cells fought and every measurement said they had stopped, because the whole harness ran at a flawless 60 fps and a browser gives whatever frame times it likes. Asked at 30 ms a frame, the same file scored four times the jumps. Three clocks were counted in frames: the auction's solving budget, a closing cell's catch-up, and the push that keeps a seed out of a wall. Now none of them are.</p>
+            <ul>
+                <li>Jumps at 30 ms frames: 61 to 48</li>
+                <li>Auction error at 30 ms: 0.32% to 0.002%</li>
+                <li>Uncovered ground: 20 px&sup2; to 4</li>
+                <li>At 60 fps, exactly the identity</li>
             </ul>
         </a>
     </div>
@@ -190,6 +225,7 @@
     <div class="versions">
         <a href="hive.html" class="version-card">
             <h2>Hive</h2>
+            <span class="mk">mk9</span>
             <span class="tag kernel">Kernel</span>
             <p>The kernel, built from SEED.md. Agents own position and an area claim; a power-diagram auction honors every claim exactly, every frame. One verb — an agent changes its claim — covers layout, hover, insertion, removal. Exact rectangles at rest, organic in motion; a cell that holds cells is the same hive one level down. A scene change percolates: it reaches the cells through their shared edges, and each melts, travels and locks on its own clock. A settled cell leaves the auction and becomes a wall, so a moving cell has as many sides as it has neighbours; it becomes its rectangle by degrees, the way it became a cell. A hovered card grows the way a cell does, and the garment never draws a corner it cannot round.</p>
             <ul>
@@ -200,21 +236,81 @@
                 <li>Pressure: a hovered cell bites through its border</li>
             </ul>
         </a>
-
-        <a href="voronoi.html" class="version-card">
-            <h2>Computed Voronoi</h2>
-            <span class="tag current">Current</span>
-            <p>Cells with computed Voronoi tessellation. Seeds have base positions, displacement on hover, flock transitions between layouts.</p>
+        <a href="mk8.html" class="version-card">
+            <h2>Voronoi &times; Morph</h2>
+            <span class="mk">mk8</span>
+            <span class="tag new">Prototype</span>
+            <p>voronoi.html's renderer married to morph.html's transition engine. Cell identity persists across layouts; a hivemind-melt between bento, hex, spiral, hero, sidebar. Power-diagram weights + water-balloon pressure.</p>
             <ul>
-                <li>Voronoi computed from seed positions</li>
-                <li>Displacement-based hover effects</li>
-                <li>Mode-switching for transitions</li>
-                <li>Full visual polish</li>
+                <li>Role-aware, non-crossing assignment</li>
+                <li>Power-diagram weights (hero bigger than carousel)</li>
+                <li>Void cells as whitespace anchors</li>
+                <li>All mk0 visual polish preserved</li>
             </ul>
         </a>
-
+        <a href="mk7.html" class="version-card">
+            <h2>Voroboids III</h2>
+            <span class="mk">mk7</span>
+            <span class="tag new">Prototype</span>
+            <p>Edge-first architecture. Voronoi scaffolding provides exact edges and vertices. Cells blend between scaffolding (when packed) and their own default shape (when separated). Edges disengage smoothly.</p>
+            <ul>
+                <li>Edges are primary objects</li>
+                <li>Per-edge engagement blending</li>
+                <li>Max reach constraint (no starburst)</li>
+                <li>Builds on mk6 edge-first pipeline</li>
+            </ul>
+        </a>
+        <a href="mk6.html" class="version-card">
+            <h2>Voroboids II</h2>
+            <span class="mk">mk6</span>
+            <span class="tag new">Prototype</span>
+            <p>Dual northstar system. Bisector-intersection targets pull cells toward where corners should meet. Corner-clustering northstars detect where they are meeting and snap them. Force + precision close the tessellation.</p>
+            <ul>
+                <li>Triple-target attractors (the force)</li>
+                <li>Corner-cluster northstars (the snap)</li>
+                <li>Confidence-weighted alignment</li>
+                <li>Builds on mk5 atomic architecture</li>
+            </ul>
+        </a>
+        <a href="mk5.html" class="version-card">
+            <h2>Voroboids</h2>
+            <span class="mk">mk5</span>
+            <span class="tag new">Prototype</span>
+            <p>Atomic cells with local contact. Each cell is a sovereign body with its own shape. Pairwise bisector clipping produces shared edges only where cells touch. Cells separate freely. No global tessellation, no shared mesh.</p>
+            <ul>
+                <li>Cells are independent atoms</li>
+                <li>Contact is local and transient</li>
+                <li>Gaps are real empty space</li>
+                <li>Add/remove cells dynamically</li>
+            </ul>
+        </a>
+        <a href="mk4.html" class="version-card">
+            <h2>Mesh Morph</h2>
+            <span class="mk">mk4</span>
+            <span class="tag new">Prototype</span>
+            <p>Half-edge mesh with fixed topology. Cells are persistent identities; layouts are vertex positions; transitions interpolate vertices. Per-cell rest areas with bounded elasticity — water balloons, not over-hydrated pizza.</p>
+            <ul>
+                <li>Topology fixed at canonical mesh time</li>
+                <li>No Voronoi at runtime</li>
+                <li>Per-cell comfort ranges (upper + lower bounds)</li>
+                <li>Pops impossible by construction</li>
+            </ul>
+        </a>
+        <a href="morph.html" class="version-card">
+            <h2>Morph</h2>
+            <span class="mk">mk2</span>
+            <span class="tag new">Prototype</span>
+            <p>Universal cell primitive. Cells morph between any target layout — bento, hex, tetris, diagonal, spiral — with Voronoi guaranteeing valid tiling mid-flight.</p>
+            <ul>
+                <li>Multiple target layouts as seed configs</li>
+                <li>Voronoi tiling valid at every frame</li>
+                <li>Collision-avoiding seed transitions</li>
+                <li>The travel is the hard problem</li>
+            </ul>
+        </a>
         <a href="softbody.html" class="version-card">
             <h2>Soft Body Physics</h2>
+            <span class="mk">mk1</span>
             <span class="tag experimental">Experimental</span>
             <p>Pure pressure-membrane physics. No computed Voronoi. Tessellation emerges from water balloons pressing against each other.</p>
             <ul>
@@ -224,76 +320,16 @@
                 <li>Shapes emerge from forces</li>
             </ul>
         </a>
-
-        <a href="morph.html" class="version-card">
-            <h2>Morph</h2>
-            <span class="tag experimental">New</span>
-            <p>Universal cell primitive. Cells morph between any target layout — bento, hex, tetris, diagonal, spiral — with Voronoi guaranteeing valid tiling mid-flight.</p>
+        <a href="voronoi.html" class="version-card">
+            <h2>Computed Voronoi</h2>
+            <span class="mk">mk0</span>
+            <span class="tag current">Origin</span>
+            <p>Cells with computed Voronoi tessellation. Seeds have base positions, displacement on hover, flock transitions between layouts.</p>
             <ul>
-                <li>Multiple target layouts as seed configs</li>
-                <li>Voronoi tiling valid at every frame</li>
-                <li>Collision-avoiding seed transitions</li>
-                <li>The travel is the hard problem</li>
-            </ul>
-        </a>
-
-        <a href="mk4.html" class="version-card">
-            <h2>Mesh Morph</h2>
-            <span class="tag new">mk4</span>
-            <p>Half-edge mesh with fixed topology. Cells are persistent identities; layouts are vertex positions; transitions interpolate vertices. Per-cell rest areas with bounded elasticity — water balloons, not over-hydrated pizza.</p>
-            <ul>
-                <li>Topology fixed at canonical mesh time</li>
-                <li>No Voronoi at runtime</li>
-                <li>Per-cell comfort ranges (upper + lower bounds)</li>
-                <li>Pops impossible by construction</li>
-            </ul>
-        </a>
-
-        <a href="mk5.html" class="version-card">
-            <h2>Voroboids</h2>
-            <span class="tag new">mk5</span>
-            <p>Atomic cells with local contact. Each cell is a sovereign body with its own shape. Pairwise bisector clipping produces shared edges only where cells touch. Cells separate freely. No global tessellation, no shared mesh.</p>
-            <ul>
-                <li>Cells are independent atoms</li>
-                <li>Contact is local and transient</li>
-                <li>Gaps are real empty space</li>
-                <li>Add/remove cells dynamically</li>
-            </ul>
-        </a>
-
-        <a href="mk6.html" class="version-card">
-            <h2>Voroboids II</h2>
-            <span class="tag new">mk6</span>
-            <p>Dual northstar system. Bisector-intersection targets pull cells toward where corners should meet. Corner-clustering northstars detect where they are meeting and snap them. Force + precision close the tessellation.</p>
-            <ul>
-                <li>Triple-target attractors (the force)</li>
-                <li>Corner-cluster northstars (the snap)</li>
-                <li>Confidence-weighted alignment</li>
-                <li>Builds on mk5 atomic architecture</li>
-            </ul>
-        </a>
-
-        <a href="mk7.html" class="version-card">
-            <h2>Voroboids III</h2>
-            <span class="tag new">mk7</span>
-            <p>Edge-first architecture. Voronoi scaffolding provides exact edges and vertices. Cells blend between scaffolding (when packed) and their own default shape (when separated). Edges disengage smoothly.</p>
-            <ul>
-                <li>Edges are primary objects</li>
-                <li>Per-edge engagement blending</li>
-                <li>Max reach constraint (no starburst)</li>
-                <li>Builds on mk6 edge-first pipeline</li>
-            </ul>
-        </a>
-
-        <a href="mk8.html" class="version-card">
-            <h2>Voronoi &times; Morph</h2>
-            <span class="tag new">mk8</span>
-            <p>voronoi.html's renderer married to morph.html's transition engine. Cell identity persists across layouts; a hivemind-melt between bento, hex, spiral, hero, sidebar. Power-diagram weights + water-balloon pressure.</p>
-            <ul>
-                <li>Role-aware, non-crossing assignment</li>
-                <li>Power-diagram weights (hero bigger than carousel)</li>
-                <li>Void cells as whitespace anchors</li>
-                <li>All mk0 visual polish preserved</li>
+                <li>Voronoi computed from seed positions</li>
+                <li>Displacement-based hover effects</li>
+                <li>Mode-switching for transitions</li>
+                <li>Full visual polish</li>
             </ul>
         </a>
     </div>
