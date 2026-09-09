@@ -1235,6 +1235,12 @@ const LINGER_MAX_S = 40 / 60;   // s a closing hole may chase its cell; its cloc
 const LINGER_RAMP_S = 34 / 60;  // the cell first, so the budget never expires into a snap.
                            // Seconds, not frames: at 30 ms a frame count stretched this
                            // catch-up to 1.2 s and the hole closed by expiry instead.
+const SWERVE_LEAD = 0.15;  // s the repulsion looks ahead. It is the seed spring's own
+                           // response time (2/k2): a body yields over exactly the
+                           // span its spring would need to answer, so the swerve is
+                           // spent before the spring can argue with it. Longer and
+                           // it releases pairs that still need each other apart —
+                           // at 0.22 s the landed picture opens a 312 px2 hole
 const CLAIM_MIN = 0.02;
 const SEED_MARGIN = 10;
 const SEED_MIN_SEP = 5;
@@ -2015,6 +2021,23 @@ class Hive {
   // Bodies push apart while liquid, so a traveller never wedges between
   // two neighbours. A locked body is immovable: it pushes, and is not
   // pushed, so a traveller passing a landed neighbour goes around it.
+  //
+  // THE PAIR IS TESTED WHERE IT IS GOING, NOT WHERE IT IS. Read only at the
+  // distance they have right now, this is a collision resolver: two bodies
+  // must already be in each other's way before either yields, so the push
+  // lands late and head-on, and the spring spends the next frames taking it
+  // back. A flock reads velocities. So the distance this law is given is the
+  // one the pair will have SWERVE_LEAD from now at today's velocities. Two
+  // bodies converging are pushed while they are still apart, and gently,
+  // because the ramp reads a gap that is closing; two already opening are
+  // pushed less, and once they will be clear of R they are not pushed at
+  // all. Everything else — F, the radii, the 0.85, the crystal gates, the
+  // dt — is untouched, and the push still runs along the offset they have
+  // NOW: aiming it at the predicted offset instead turns a head-on pair
+  // sideways with a direction made of noise, and costs coverage (a 2,300 px2
+  // hole at 30 ms). When nothing moves relative to anything the horizon
+  // distance IS today's distance and this is the old law byte for byte —
+  // which is what keeps the landed picture whole. A lead, not a licence.
   separate(dt) {
     const bodies = this.bodies;
     if (bodies.every(b => b.isSelf || b.crystal > 0.995)) return;
@@ -2030,9 +2053,11 @@ class Hive {
         const B = bodies[j];
         if (B.isSelf) continue;
         const R = 0.85 * (rad[i] + rad[j]);
-        const dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy);
-        if (d > 1e-6 && d < R) {
-          const f = F * (1 - Math.min(A.crystal, B.crystal)) * (1 - d / R) * dt / d;
+        const dx = B.x - A.x, dy = B.y - A.y, dn = Math.hypot(dx, dy);
+        // where the pair will be one short horizon from now
+        const ox = dx + (B.vx - A.vx) * SWERVE_LEAD, oy = dy + (B.vy - A.vy) * SWERVE_LEAD, d = Math.hypot(ox, oy);
+        if (dn > 1e-6 && d < R) {
+          const f = F * (1 - Math.min(A.crystal, B.crystal)) * (1 - d / R) * dt / dn;
           A.vx -= dx * f * (1 - A.crystal); A.vy -= dy * f * (1 - A.crystal);
           B.vx += dx * f * (1 - B.crystal); B.vy += dy * f * (1 - B.crystal);
         }
