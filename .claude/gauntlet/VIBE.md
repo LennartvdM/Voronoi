@@ -212,6 +212,113 @@ was standing in. **A yielder must renegotiate its claim in step with its
 yield, or it starves.** This is the single most important constraint on the
 owner's own idea.
 
+## 3.6 THE STROBE — what the owner is looking at now (read this first)
+
+The owner came back with two complaints and one of them cannot be
+screenshotted:
+
+> "a corner of a cell is stuck behind other cells and stretched like chewing
+> gum across the screen ... but that's not the only issue. The other issue is
+> one that I can't screenshot because each individual frame looks fine. but
+> when you move frame by frame the cells jump all over the place. Each frame
+> they got a new position without even bothering to travel there."
+
+Six probes ran on the current file. Here is what they found, including two
+things that are **not** the cause, which are as useful as the one that is.
+
+**The auction is not broken.** It converges to a relative residual of 1e-8 to
+1e-12 in two to four iterations, every frame, in every scene. Per body the
+gap between the cell it painted and the area it was asked for is 0.0% almost
+everywhere. Nothing here is a solver bug and nothing here is fixed by more
+iterations or a tighter tolerance.
+
+**The pocket partition is not the cause.** Suspecting that a body carried a
+warm weight across a change of auction — weights are only defined up to a
+constant *per auction*, so a repartition would arrive in a new gauge — the
+partition was recorded frame by frame. It changes in 1% of frames, 62 body
+frames in the whole run. Meanwhile 4,733 body frames whose auction did not
+change at all carry weight changes with a mean of 1,900 and a maximum of
+219,051. Refuted: the strobe happens inside a stable auction.
+
+**What it is: nothing bounds how far a wall may move.** The wall between two
+cells is where |x−sᵢ|² − wᵢ = |x−sⱼ|² − wⱼ. It is perpendicular to the line
+joining the seeds and it sits offset from their midpoint by
+
+        (wᵢ − wⱼ) / (2 d),     d = the seed separation
+
+so a wall moves for exactly two reasons: the seeds travelled and it came
+with them, or the seeds stood still and the auction handed back a different
+weight difference than last frame. `wall.js` measures both, in pixels:
+
+| clock | walls decided (mean px/frame) | walls travelled (mean px/frame) | ratio |
+|---|---|---|---|
+| 60 fps | 3.26 | 2.80 | **1.16** |
+| `--dt 30` | 4.22 | 3.82 | **1.10** |
+
+**The walls of this page move further from being re-decided than from
+anything moving.** Per scene at `--dt 30` the ratio is 3.45 in the opening
+Flock, 1.09 in Frame, 1.21 in Flock, 0.72 in Sidebar, 0.54 in Hero. In the
+Flock the decision is three and a half times the travel. That is the thing
+that has no screenshot: every frame is a correct picture of a slightly
+different page.
+
+The tail is worse than the mean. 127 walls at `--dt 30` slid more than 40 px
+in a single frame; the worst slid **1,720 px** between two seeds **13 px
+apart**. Which is the second complaint:
+
+**The chewing gum is the same equation with a small d.** The offset divides
+by the separation, so as two seeds drift together the wall between them runs
+away — a weight difference of 20,000 across a pair 8 px apart puts their
+shared wall 1,250 px from the midpoint, and the cell that owns that side
+becomes a wedge stretched across the page. `strobe.js` counts 1,073 of these
+at `--dt 30` (a painted piece further than 3.5 equivalent radii from its own
+seed). The worst is a free cell of 2,065 px² — a disc 26 px across — with a
+vertex **405 px** away. `SEED_MIN_SEP` is 5 px and only separates pairs
+closer than 1 px, so nothing in the file stops d from going where the
+division cannot follow.
+
+Both complaints are one sentence: **a weight is a place, and unlike every
+other place in this file it is teleported to rather than travelled to.**
+
+The two instruments for it:
+
+    node .claude/gauntlet/wall.js   <hive.html> [out.json] [--dt 30] [--jitter 12]
+    node .claude/gauntlet/strobe.js <hive.html> [out.json] [--dt 30] [--jitter 12]
+
+`wall.js` fields: `strobeRatio` (decided ÷ travelled, the headline),
+`decidedPx`/`travelPx` (mean/med/p90/p99/max px per pair-frame),
+`reachPx` (|wᵢ−wⱼ|/2d, how far outside its own pair a wall sits),
+`slidOver40`, `reachOffPage`, per-scene breakdown, `worstSlides`.
+`strobe.js` fields: `teleports` (a painted mask that changed more than its
+own seed's travel can explain), `reaches` (a piece more than 3.5 equivalent
+radii from its own seed), `reachNested`, `churnShareMean`.
+
+**Baseline on the current file** (`claude/masked`, after the clock, the
+anticipation, the guest pointer and the mask), so nobody quotes a stale row
+again:
+
+| clock | jumps | reversals | shock px² | gapMax | teleports | reaches | strobeRatio |
+|---|---|---|---|---|---|---|---|
+| 60 fps | 11 | 1 | 65,777 | 8 | 85 | 777 | 1.16 |
+| `--dt 30` | 27 | 2 | 202,939 | 8 | 119 | 1,073 | 1.10 |
+| `--dt 25 --jitter 12` | 18 | 1 | 132,275 | 4 | — | — | — |
+
+`vanish` 0, `overMax` 0, `settledScenes` 5/5, `pageErrors` 0 at all three.
+Section 5's invariants are superseded by this row: do not give any of it back.
+
+**The design question this opens.** Every weight vector gives a watertight
+power diagram — a valid, gap-free, overlap-free partition of the ground.
+The weights do not have to be the exact answer for the picture to be
+correct; they only have to be the exact answer for the *areas* to be what
+the claims asked for. So the file is free to let a weight travel to its
+answer instead of arriving at it, exactly as a seed travels to its carrot,
+and pay for it in area lag rather than in position. That is one direction of
+many and the panel should not treat it as the brief; a rate limit that
+merely holds shapes still against a moving target is the duck this brief has
+rejected twice, and the difference between the two is whether the areas
+converge when the page stops. They must: `settledScenes` 5/5 and exact
+rectangles at rest are still hard invariants.
+
 ## 4. Hypotheses, ranked, with what would confirm each
 
 H1 **The seed fights itself.** Repulsion (`separate`) shoves a traveller off
