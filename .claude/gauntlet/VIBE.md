@@ -716,6 +716,71 @@ while it waits, not from ground.
 shipped file: 16 / 164,060 before and after), so a cell that spills is not
 scored as having grown.
 
+## 3.12 WHAT MOVES A WALL WHOSE SEED IS STILL
+
+Everything below is `--dt 30`, pointer off the canvas, the shipped file.
+
+**Refuted this round, each by its own control:**
+
+- *The 80 ms shadow relocation of a newborn hole.* A locking hole kept at its
+  birth core and blended to its rectangle on the crystal alone (`pin > 0`
+  skips the pull): FH enrichment 5.6 → 5.58, HW 7.34 → 7.27, `out` 4.84 →
+  4.84. Nothing moved. A control skipping the pull for every hole: the same.
+  In a transition a hole's birth cell is already close to its shadow cell; the
+  pull moves it little. (It also wrecks the cold settle, 6 → 31 jumps, where
+  birth cells are bad and the pull was correcting them.)
+- *The hole cut from the ground is not the cell it replaces.* It is: 0.99 by
+  area at every FH. *The pockets are re-cut at the event.* One pocket before
+  and after, every time. *A wall's seed keeps bidding.* `s.claim = b.wall ? 0
+  : …`. All three dead at the event frames (`atevent.js`, scratch).
+- *The lock's rate.* Ramp 0.50 → 1.00 s: mean slide in event frames 6.38 →
+  5.81 px (−9%), jumps 16 → 22, shock +121%, a 1,060 px² gap opens. The morph's
+  speed is not what sets the slide.
+- *The stagger.* 0.30 → 0.60 s per edge: jumps 16 → **54**, Hero 3 → 27, Hero
+  walls 3.98 → 10.11 px mean and 15.7 → 200 px at p99, an overlap of 2,316 px².
+  Spreading the departures out makes bodies travel through each other's slots
+  in sequence instead of together. **A short stagger is protective.**
+
+**What stands (`holemorph.js`):** frames with no hole, the free walls slide
+**1.44 px**; frames with a hole, **9.27 px**. In the top quintile of hole
+motion — 100,000 px² of hole boundary moving per frame, ~5 holes at once —
+11.7 px. And holding the seeds' own travel fixed:
+
+| seed travel (px/frame) | wall slide, no hole | wall slide, holes present |
+|---|---|---|
+| 0–2 | **0.85** | **4.76** |
+| 2–5 | 1.64 | 4.86 |
+| 10–30 | 8.91 | 10.44 |
+
+Per pixel of seed travel: 0.74 px of wall without holes, 1.16 with. When the
+seeds are fast the seeds drive the walls and the holes add a fifth — that is
+the page rearranging, and it is the design. **When the seeds are still, the
+walls slide 5.6× more if a hole is present anywhere in the pocket** — and that
+is the complaint: a cell that is not moving, handed a new position each frame
+because a neighbour is crystallising, because the auction re-partitions the
+whole pocket on every change to its ground and every wall in it answers.
+
+The strobe, then, is not a step and not a rate. It is **locality**: a change
+anywhere in a pocket is paid for everywhere in it. Two designs follow, both
+well posed and neither yet built:
+
+1. **A cell that is not moving is not re-decided.** A free cell whose seed is
+   still and whose neighbours' seeds are still keeps its weight; its target
+   is what it holds; the cells that are moving are solved over what is left.
+   Exact, watertight, converged — a power diagram with some weights held is
+   still a power diagram. The still cell's walls against still cells do not
+   move; its walls against moving cells move by the mover's weight alone. A
+   change is absorbed by the cells around it. When the still cell next moves
+   it re-enters at what it holds (the paintArea handover) and converges to
+   its share while it travels — the one moment motion is expected anyway.
+   This is not the refuted family: it holds a weight *whose problem has not
+   changed*, not a partial step toward one that has.
+2. **Right of way.** The ground gridlock (3.11) is a queue: a body's slot is
+   under a body that is late, in chains. Order the departures so a body whose
+   slot is wanted leaves first — the dependency graph, sorted — and the
+   blocked wedges (the chewing gum) never form. The owner's original idea,
+   never built.
+
 ## 4. Hypotheses, ranked, with what would confirm each
 
 H1 **The seed fights itself.** Repulsion (`separate`) shoves a traveller off
