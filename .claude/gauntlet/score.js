@@ -58,7 +58,20 @@ const RUN = ({ FRAMES, PX, PY }) => {
     const ms = window.__realNow() - t0;
     const pic = X.fn('picture'), W = X.fn('W'), H = X.fn('H');
     const rec = { f: n++, ms: +ms.toFixed(2), a: {}, st: {} };
-    if (pic) for (const l of pic.leaves) { const rb = l.path[0].body; let a = 0; for (const lp of l.loops) a += (lp.hole ? -1 : 1) * Math.abs(ra(lp)); rec.a[rb.id] = (rec.a[rb.id] || 0) + a; }
+    // a loop's area is the part of it ON THE PAGE: a cell that spills past the
+    // edge has not grown by what it spilled. Sutherland-Hodgman against the
+    // page box; exact for area whatever the loop's shape.
+    const clipBox = (pts) => {
+      let poly = pts;
+      const edges = [[p => p[0] >= 0, (a, b) => (0 - a[0]) / (b[0] - a[0])], [p => p[0] <= W, (a, b) => (W - a[0]) / (b[0] - a[0])], [p => p[1] >= 0, (a, b) => (0 - a[1]) / (b[1] - a[1])], [p => p[1] <= H, (a, b) => (H - a[1]) / (b[1] - a[1])]];
+      for (const [keep, ix] of edges) {
+        const out = [];
+        for (let k = 0; k < poly.length; k++) { const a = poly[k], b = poly[(k + 1) % poly.length], ka = keep(a), kb = keep(b); if (ka) out.push(a); if (ka !== kb) { const t = ix(a, b); out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); } }
+        poly = out; if (poly.length < 3) return [];
+      }
+      return poly;
+    };
+    if (pic) for (const l of pic.leaves) { const rb = l.path[0].body; let a = 0; for (const lp of l.loops) { const c = clipBox(lp); if (c.length >= 3) a += (lp.hole ? -1 : 1) * Math.abs(ra(c)); } rec.a[rb.id] = (rec.a[rb.id] || 0) + a; }
     for (const bd of r.bodies) { if (bd.isSelf) continue; rec.st[bd.id] = { cr: +bd.crystal.toFixed(4), w: !!bd.wall, h: !!bd.hole, v: !!bd.isVoid, lv: !!bd.leaving, ex: bd.holeExtra ? Math.round(bd.holeExtra.reduce((s, pc) => s + Math.abs(ra(pc)), 0)) : 0, core: bd.holeCore && bd.holeCore.core ? Math.round(Math.abs(ra(bd.holeCore.core))) : 0 }; }
     if (pic && n % 6 === 0) { const rr = rc(pic.leaves.flatMap(l => l.loops.map(pts => ({ pts, hole: !!pts.hole }))), W, H); rec.gap = rr.gap; rec.over = rr.over; }
     rec.err = r.solved ? +r.solved.maxRelErr.toExponential(2) : 0;

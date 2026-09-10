@@ -30,6 +30,9 @@ const SRC = path.resolve(argv[0] || path.join(__dirname, '..', '..', 'hive.html'
 const OUT = argv[1] && !argv[1].startsWith('--') ? argv[1] : null;
 const opt = (n, d) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : d; };
 const DT = +opt('--dt', 1000 / 60), JIT = +opt('--jitter', 0);
+// where the pointer sits. Off the canvas (-100,-100) it hovers nothing, and the
+// run measures the transitions alone.
+const PX = +opt('--parkx', 700), PY = +opt('--parky', 400);
 const FRAMES = +opt('--frames', 330), DUMP = opt('--dump', null);
 const NAMES = ['root', 'ringArea', 'picture', 'W', 'H'];
 
@@ -53,9 +56,9 @@ const CLOCK = `(() => {
   window.__advance = (n) => { for (let i = 0; i < n; i++) { t += DT + (JIT ? (2 * rnd() - 1) * JIT : 0); const cbs = q.splice(0); for (const cb of cbs) cb(t); } };
 })();`;
 
-const RUN = (FRAMES) => {
+const RUN = ({ FRAMES, PX, PY }) => {
   const X = window.__X, r = X.fn('root'), ra = X.fn('ringArea');
-  X.setMouse(700, 400);
+  X.setMouse(PX, PY);
   const W = X.fn('W'), H = X.fn('H');
   const CELL = 4, GW = Math.ceil(W / CELL), GH = Math.ceil(H / CELL);
   const masks = {};
@@ -153,7 +156,7 @@ function metrics({ frames, marks }) {
   const worstT = tele.slice().sort((a, b) => b.excessShare - a.excessShare).slice(0, 10);
   const worstR = reach.slice().sort((a, b) => b.rr - a.rr).slice(0, 10);
   return {
-    frames: frames.length, clock: { dtMs: DT, jitterMs: JIT }, bodyFrames,
+    frames: frames.length, clock: { dtMs: DT, jitterMs: JIT }, pointer: [PX, PY], bodyFrames,
     churnShareMean: +(sdSum / Math.max(1, aSum)).toFixed(4),
     teleports: tele.length, teleportByScene: byScene,
     reaches: reach.length, reachByScene: reachScene,
@@ -170,7 +173,7 @@ function metrics({ frames, marks }) {
   const errs = []; p.on('pageerror', e => errs.push(String(e.message || e)));
   await p.goto('file://' + dst);
   await p.waitForTimeout(300);
-  const data = await p.evaluate(RUN, FRAMES);
+  const data = await p.evaluate(RUN, { FRAMES, PX, PY });
   await b.close();
   if (DUMP) fs.writeFileSync(DUMP, JSON.stringify(data));
   const m = metrics(data); m.pageErrors = errs.length;

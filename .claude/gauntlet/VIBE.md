@@ -626,6 +626,96 @@ shock win is far outside the 0.67% band at two parks of three. Against that:
 It has never faced a refuter. It goes into the next round as the starting
 position at that site, not as a ship.
 
+## 3.11 THE OWNER WAS RIGHT ABOUT WHERE, AND THE INSTRUMENTS NOW SAY EXACTLY WHERE
+
+The owner's correction, after mk14: the hover crush is real but negligible in
+his hands; the strobe is in the layout transitions, from gridlocks; and the
+bleed was rejected on a build that never tested it. All three were taken as
+hypotheses and measured, with the pointer **off the canvas** so nothing is
+hovered and the run is the transitions alone. That is now the primary park:
+`--parkx -100 --parky -100`, and every instrument takes it.
+
+**No-hover baseline** (`--dt 30`): 16 jumps / 164,060 shock, byScene flock0 6,
+hero 3, sidebar 2, frame 2, flock 3; `carry` 0.915, `strobeRatio` 1.10,
+decided 4.11 px against travelled 3.74, 123 slides over 40 px; teleports 99,
+reaches 867 (451 nested). 60 fps: 9 / 74,270. Jitter: 13 / 127,827.
+
+**The seed gridlock does not exist.** `stuck.js` — a body on a journey whose
+seed is more than 30 px from its carrot and moving slower than 40 px/s for
+three frames — finds five runs at `--dt 30`, all in the cold settle, none in
+any transition. The seeds arrive on time.
+
+**The ground gridlock does, and it is a queue.** `blocked.js` — a body on a
+journey whose new slot is more than half under somebody else's wall or hole —
+finds 45 runs in the transitions, 623 body-frames. In Hero seven bodies wait
+34–51 frames (1–1.5 s) with their slots 69–100% covered. Every blocker is
+itself on a journey (60 of 60), never seated: the slot was always going to be
+free, the body sitting on it is just late, and nine of the runs are chains
+(7←9←10, 3←2←0). 97% of the blocking is by **holes**, which no auction
+instrument can see: `wall.js` measures pairs of bidders, and a hole is not a
+bidder.
+
+**But the block is not where the strobe is.** A blocked body's own churn is
+2.2% of itself per frame against 1.8% free — barely different. Big slides on
+its walls are enriched 1.3× while blocked and 1.8× in the five frames after
+release, and the two together hold about 12% of the top decile. The queue is
+real and it is the chewing gum (a blocked cell is a wedge of leftover ground);
+it is not the frame-by-frame jumping.
+
+**Where the strobe is: at the state changes.** `events.js` lines every pair's
+slide up against the frames where a body changes state — wall→hole (WH),
+hole→free (HF), free→hole (FH), hole→wall (HW), and a bidder entering or
+leaving the auction — and asks what share of the top decile sits within a few
+frames of one:
+
+| `--dt 30`, no hover | frames | mean slide | p90 of the frame's worst slide |
+|---|---|---|---|
+| a state change within ±2 frames | 189 | **6.38 px** | 27.6 px |
+| quiet | 310 | **1.22 px** | 6.4 px |
+
+**Five to one.** 70% of the top-decile slides sit within ±2 frames of an event
+(20% of all slides do); 86% within ±5. By kind, enrichment of the top decile:
+
+| event | ±2 | ±5 | 60 fps ±2 |
+|---|---|---|---|
+| hole → wall (a cell locks) | **7.3×** | 6.7× | 5.9× |
+| free → hole (a cell starts to lock) | **5.6×** | 5.3× | 3.6× |
+| bidder leaves the auction | **4.8×** | 4.2× | 3.2× |
+| hole → free (a cell melts loose) | 2.6× | 2.8× | 1.2× |
+| bidder enters the auction | 2.6× | 2.8× | 1.2× |
+| wall → hole (a cell starts to melt) | 1.3× | 1.4× | 0.4× |
+
+The arrival side is the strobe. A cell that locks leaves the bidding (the
+denominator steps), its shape is cut from the ground as a hole (the ground
+steps), and when its hole becomes a wall the morphed shape is replaced by the
+exact rectangle (the ground steps again). Every free wall in the pocket answers
+each step. The melting side, where a cell's claim and hole are handed *to* the
+auction, is two to five times gentler — which is the paintArea handover doing
+its job on the way in and nothing doing it on the way out.
+
+So the owner's sentence, corrected by the instruments: **the least jarring way
+to lock a cell.** Four discontinuities, each at a named site, each measurable
+by its own row in the table above.
+
+**The bleed, built as real liquidity, is refuted — and for a reason.** The old
+build pinned every cell's on-page area to what it would have been without the
+bleed ("growing the domain moves no cell's page area by one px²"): inert by
+construction, and never a test. This one lets cells hold part of themselves off
+the page: the ground reaches 15% of the short side past the edge at full melt,
+claims are shares of that ground, seeds may enter 40% of it. `--dt 30`,
+no hover: **283 jumps against 16**, shock +1,592%, `vanish` 7, `gapMax` 1,144,
+teleports 99 → 244, blocked runs 45 → 68, every scene worse at every clock.
+The mechanism: in a power diagram every px² is owned and every area is exact,
+so extra ground is either shared — every target inflates by the bleed ratio as
+the page melts and deflates as it locks, and the whole page breathes — or owned
+by a slack agent, which is the inert version. **There is no such thing as
+slack.** The room the idea wants has to come from a cell yielding its claim
+while it waits, not from ground.
+
+`score.js` now clips every loop to the page before measuring it (inert on the
+shipped file: 16 / 164,060 before and after), so a cell that spills is not
+scored as having grown.
+
 ## 4. Hypotheses, ranked, with what would confirm each
 
 H1 **The seed fights itself.** Repulsion (`separate`) shoves a traveller off
