@@ -2,3 +2,21 @@
 .claude/gauntlet/*.png
 .claude/gauntlet/*-loops.json
 .claude/gauntlet/*-loops.svg
+
+# Harness output dropped in the repo root by a gauntlet agent mid-run. The
+# instruments write measurements, not source; the numbers that matter are
+# quoted in .claude/gauntlet/VIBE.md and in the commit that used them.
+/twins-*.txt
+/twins-*.json
+/score-*.txt
+/score-*.json
+/strobe-*.txt
+/strobe-*.json
+/wall-*.txt
+/wall-*.json
+/nesterr-*.txt
+/nesterr-*.json
+/flicker-*.txt
+/flicker-*.json
+/hoverprobe-*.txt
+/hoverprobe-*.json

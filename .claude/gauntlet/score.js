@@ -14,6 +14,12 @@ const SRC = path.resolve(argv[0] || '/home/user/Voronoi/hive.html');
 const OUT = argv[1] && !argv[1].startsWith('--') ? argv[1] : null;
 const opt = (n, d) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : d; };
 const FRAMES = +opt('--frames', 330), DUMP = opt('--dump', null);
+// where the pointer sits for the whole run. It matters more than it looks:
+// parked inside a cell that expands, the hover boost crushes that cell's
+// neighbours, and their recovery when the boost is handed back at a scene
+// change is counted here as their own jump. Move it to ask what the page
+// does with nobody leaning on it.
+const PX = +opt('--parkx', 700), PY = +opt('--parky', 400);
 // the clock, as in flicker.js: --dt <ms> fixed step (default 1000/60),
 // --jitter <ms> a deterministic +-jitter on every step. The owner watches at
 // real, uneven frame times; a number quoted at 60 fps is a number at 60 fps.
@@ -41,9 +47,9 @@ const CLOCK = `(() => {
   window.__advance = (n) => { for (let i = 0; i < n; i++) { t += DT + (JIT ? (2 * rnd() - 1) * JIT : 0); const cbs = q.splice(0); for (const cb of cbs) cb(t); } };
 })();`;
 
-const RUN = (FRAMES) => {
+const RUN = ({ FRAMES, PX, PY }) => {
   const X = window.__X, r = X.fn('root'), ra = X.fn('ringArea'), rc = X.fn('rasterCheck');
-  X.setMouse(700, 400);
+  X.setMouse(PX, PY);
   const frames = [], marks = [];
   let n = 0;
   const step = () => {
@@ -128,7 +134,7 @@ function metrics({ frames, marks }) {
   const errs = []; p.on('pageerror', e => errs.push(String(e.message || e)));
   await p.goto('file://' + dst);
   await p.waitForTimeout(300);
-  const data = await p.evaluate(RUN, FRAMES);
+  const data = await p.evaluate(RUN, { FRAMES, PX, PY });
   await b.close();
   if (DUMP) fs.writeFileSync(DUMP, JSON.stringify(data));
   const m = metrics(data); m.clock = { dtMs: DT, jitterMs: JIT }; m.pageErrors = errs.length; if (errs.length) m.pageErrorSample = errs.slice(0, 3);
