@@ -1256,6 +1256,7 @@ const SWERVE_LEAD = 0.15;  // s the repulsion looks ahead. It is the seed spring
 const CLAIM_MIN = 0.02;
 const SEED_MARGIN = 10;
 const SEED_MIN_SEP = 5;
+const SHARD_SPARE = 0.35;   // the share of a neighbour's own thickness a hover ring may take of it
 const ACTIVE_MIN = 0.01;   // a seed joins the auction once it is worth this much of a slot: too small to see appear
 const MAX_DEPTH = 2;       // page > field > field-in-a-field; enough to prove the recursion
 const MAX_MEMBERS = 9;     // the largest roster a field shows
@@ -3033,6 +3034,32 @@ class Hive {
     this.computeWallShards(subs, w, pot, page);
   }
 
+  // The least a neighbour can spare, in px of depth. A body's thickness is
+  // the short side of what it holds: a card 480 by 116 can give from its 116,
+  // and SHARD_SPARE of that is the most any ring may take of it. Only the
+  // neighbours the ring would actually reach are asked; a ring reaching
+  // nobody is bounded by nothing, which is right, because it costs nobody.
+  shardSpare(b, rect, depth) {
+    const grown = [rect[0] - depth, rect[1] - depth, rect[2] + depth, rect[3] + depth];
+    let least = Infinity;
+    const ask = (x0, y0, x1, y1) => {
+      if (x1 <= grown[0] || x0 >= grown[2] || y1 <= grown[1] || y0 >= grown[3]) return;   // out of reach
+      const t = Math.min(x1 - x0, y1 - y0);
+      if (t > 1 && t < least) least = t;
+    };
+    for (const q of this.bodies) {
+      if (q === b || q.isSelf || q.isVoid) continue;
+      if (q.wall) { ask(q.wall[0], q.wall[1], q.wall[2], q.wall[3]); continue; }
+      // a body mid-flight holds its drawn shape, not its slot
+      const parts = q.hole ? q.hole.pieces : null;
+      if (!parts || !parts.length) continue;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const pc of parts) for (const p of pc) { if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; }
+      ask(x0, y0, x1, y1);
+    }
+    return least === Infinity ? depth : SHARD_SPARE * least;
+  }
+
   // A hovered WALL asks the same way. It has no claim to raise — it is not
   // bidding — so its rectangle is pushed out by the depth a cell of its
   // size would take, the front is the neighbours' bisectors at the weight
@@ -3053,7 +3080,16 @@ class Hive {
       // the hover slider's boost, and a third more, because the front sits
       // between half the depth and the depth
       const dU = (Math.sqrt((rw + rh) * (rw + rh) + 4 * (config.hoverBoost - 1) * rw * rh) - (rw + rh)) / 4;
-      const depth = b.hoverMix * b.crystal * dU / 0.75;
+      let depth = b.hoverMix * b.crystal * dU / 0.75;
+      // AND NO DEEPER THAN THE THINNEST THING IT IS LEANING ON. The ring is
+      // cut out of whoever is next to it, and a neighbour 116 px thick has no
+      // 113 px to give: it is left a sliver a pixel wide, unreadable, and
+      // when the pointer goes the sliver comes back all at once. What a cell
+      // may take on hover is bounded by what its neighbours can spare, not
+      // only by what it wants — so the ring stops at a share of the thinnest
+      // neighbour it reaches, and a big cell beside small ones grows a little
+      // instead of eating them.
+      depth = Math.min(depth, this.shardSpare(b, rect, depth));
       if (!(depth > 0.05)) continue;
       // what it holds already: its rectangle as a wall, its cell otherwise.
       // Exactly what its leaf paints, or the ring cut from its neighbours

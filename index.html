@@ -182,8 +182,20 @@
     <p class="subtitle">Exploring organic cell-based navigation</p>
 
     <div class="previews">
-        <a href="https://deploy-preview-232--voronoi-bento.netlify.app/hive.html" class="version-card latest">
-            <h2>Hive &middot; Masked</h2><span class="latest-flag">Latest</span>
+        <a href="https://deploy-preview-233--voronoi-bento.netlify.app/hive.html" class="version-card latest">
+            <h2>Hive &middot; Spare</h2><span class="latest-flag">Latest</span>
+            <span class="mk">mk14</span>
+            <span class="tag preview">Live preview</span>
+            <p>Everything below, plus a hovered cell stops annihilating its neighbours. The ring a cell pushes out on hover was sized from its own rectangle alone: on the hero layout that is a quarter of the whole page, and the cards along the top &mdash; 116&nbsp;px tall &mdash; were left as eleven-pixel bars holding two per cent of themselves. Then the page changes, the ring lets go, and all of it slides back in ten frames. Now the ring stops at a third of the thinnest neighbour it reaches. A cell with room around it grows exactly as before, to the pixel.</p>
+            <ul>
+                <li>The top row stays readable while the hero is held</li>
+                <li>Jumps outside the cold settle: 21 to 8 at 30&nbsp;ms, 11 to 7 at 60&nbsp;fps</li>
+                <li>Bit-identical wherever nothing was being crushed</li>
+            </ul>
+        </a>
+
+        <a href="https://deploy-preview-232--voronoi-bento.netlify.app/hive.html" class="version-card">
+            <h2>Hive &middot; Masked</h2>
             <span class="mk">mk13</span>
             <span class="tag preview">Live preview</span>
             <p>Everything below, plus a cell holds its own contents. The number and the name follow their cell on a slower clock than the cell moves, and that lag is deliberate — it reads as weight. But they were drawn straight onto the canvas, so a label trailed outside the cell it belongs to and across whatever was behind it. Now the same path that paints the cell clips what it holds, so the lag shows as the content sliding under its own border.</p>

@@ -212,6 +212,420 @@ was standing in. **A yielder must renegotiate its claim in step with its
 yield, or it starves.** This is the single most important constraint on the
 owner's own idea.
 
+## 3.6 THE STROBE — what the owner is looking at now (read this first)
+
+The owner came back with two complaints and one of them cannot be
+screenshotted:
+
+> "a corner of a cell is stuck behind other cells and stretched like chewing
+> gum across the screen ... but that's not the only issue. The other issue is
+> one that I can't screenshot because each individual frame looks fine. but
+> when you move frame by frame the cells jump all over the place. Each frame
+> they got a new position without even bothering to travel there."
+
+Six probes ran on the current file. Here is what they found, including two
+things that are **not** the cause, which are as useful as the one that is.
+
+**The auction is not broken.** It converges to a relative residual of 1e-8 to
+1e-12 in two to four iterations, every frame, in every scene. Per body the
+gap between the cell it painted and the area it was asked for is 0.0% almost
+everywhere. Nothing here is a solver bug and nothing here is fixed by more
+iterations or a tighter tolerance.
+
+**The pocket partition is not the cause.** Suspecting that a body carried a
+warm weight across a change of auction — weights are only defined up to a
+constant *per auction*, so a repartition would arrive in a new gauge — the
+partition was recorded frame by frame. It changes in 1% of frames, 62 body
+frames in the whole run. Meanwhile 4,733 body frames whose auction did not
+change at all carry weight changes with a mean of 1,900 and a maximum of
+219,051. Refuted: the strobe happens inside a stable auction.
+
+**What it is: nothing bounds how far a wall may move.** The wall between two
+cells is where |x−sᵢ|² − wᵢ = |x−sⱼ|² − wⱼ. It is perpendicular to the line
+joining the seeds and it sits offset from their midpoint by
+
+        (wᵢ − wⱼ) / (2 d),     d = the seed separation
+
+so a wall moves for exactly two reasons: the seeds travelled and it came
+with them, or the seeds stood still and the auction handed back a different
+weight difference than last frame. `wall.js` measures both, in pixels:
+
+| clock | walls decided (mean px/frame) | walls travelled (mean px/frame) | ratio |
+|---|---|---|---|
+| 60 fps | 3.26 | 2.80 | **1.16** |
+| `--dt 30` | 4.22 | 3.82 | **1.10** |
+
+**The walls of this page move further from being re-decided than from
+anything moving.** Per scene at `--dt 30` the ratio is 3.45 in the opening
+Flock, 1.09 in Frame, 1.21 in Flock, 0.72 in Sidebar, 0.54 in Hero. In the
+Flock the decision is three and a half times the travel. That is the thing
+that has no screenshot: every frame is a correct picture of a slightly
+different page.
+
+The tail is worse than the mean. 127 walls at `--dt 30` slid more than 40 px
+in a single frame; the worst slid **1,720 px** between two seeds **13 px
+apart**. Which is the second complaint:
+
+**The chewing gum is the same equation with a small d.** The offset divides
+by the separation, so as two seeds drift together the wall between them runs
+away — a weight difference of 20,000 across a pair 8 px apart puts their
+shared wall 1,250 px from the midpoint, and the cell that owns that side
+becomes a wedge stretched across the page. `strobe.js` counts 1,073 of these
+at `--dt 30` (a painted piece further than 3.5 equivalent radii from its own
+seed). The worst is a free cell of 2,065 px² — a disc 26 px across — with a
+vertex **405 px** away. `SEED_MIN_SEP` is 5 px and only separates pairs
+closer than 1 px, so nothing in the file stops d from going where the
+division cannot follow.
+
+Both complaints are one sentence: **a weight is a place, and unlike every
+other place in this file it is teleported to rather than travelled to.**
+
+The two instruments for it:
+
+    node .claude/gauntlet/wall.js   <hive.html> [out.json] [--dt 30] [--jitter 12]
+    node .claude/gauntlet/strobe.js <hive.html> [out.json] [--dt 30] [--jitter 12]
+
+`wall.js` fields: `strobeRatio` (decided ÷ travelled, the headline),
+`decidedPx`/`travelPx` (mean/med/p90/p99/max px per pair-frame),
+`reachPx` (|wᵢ−wⱼ|/2d, how far outside its own pair a wall sits),
+`slidOver40`, `reachOffPage`, per-scene breakdown, `worstSlides`.
+`strobe.js` fields: `teleports` (a painted mask that changed more than its
+own seed's travel can explain), `reaches` (a piece more than 3.5 equivalent
+radii from its own seed), `reachNested`, `churnShareMean`.
+
+**Baseline on the current file** (`claude/masked`, after the clock, the
+anticipation, the guest pointer and the mask), so nobody quotes a stale row
+again:
+
+| clock | jumps | reversals | shock px² | gapMax | teleports | reaches | strobeRatio |
+|---|---|---|---|---|---|---|---|
+| 60 fps | 11 | 1 | 65,777 | 8 | 85 | 1,976 | 1.16 |
+| `--dt 30` | 27 | 2 | 202,939 | 8 | 119 | 1,073 | 1.10 |
+| `--dt 25 --jitter 12` | 18 | 1 | 132,275 | 4 | — | — | — |
+
+`vanish` 0, `overMax` 0, `settledScenes` 5/5, `pageErrors` 0 at all three.
+Section 5's invariants are superseded by this row: do not give any of it back.
+
+**The design question this opens.** Every weight vector gives a watertight
+power diagram — a valid, gap-free, overlap-free partition of the ground.
+The weights do not have to be the exact answer for the picture to be
+correct; they only have to be the exact answer for the *areas* to be what
+the claims asked for. So the file is free to let a weight travel to its
+answer instead of arriving at it, exactly as a seed travels to its carrot,
+and pay for it in area lag rather than in position. That is one direction of
+many and the panel should not treat it as the brief; a rate limit that
+merely holds shapes still against a moving target is the duck this brief has
+rejected twice, and the difference between the two is whether the areas
+converge when the page stops. They must: `settledScenes` 5/5 and exact
+rectangles at rest are still hard invariants.
+
+## 3.7 THE FIRST STROBE ROUND — nothing shipped, and what it established
+
+Five designs, two judges, three builds in worktrees, six refuters. **No build
+shipped.** The round is worth more than a build would have been, because it
+killed the obvious cure and named the real one.
+
+**Operator error first, so it is not repeated.** All three worktrees were cut
+at `852d235` — four commits stale, before the clock fix, the swerve, the guest
+pointer and the mask — while the brief handed the builders a baseline row
+belonging to `02b52b7`. The table's baseline column and its build columns
+described different programs, and the stale base is itself a two-to-threefold
+regression on the shipped file. **A builder must copy `${REPO}/hive.html` into
+its worktree before touching anything, and re-measure its own baseline there.**
+Never trust the worktree's checkout.
+
+**A correction to 3.6, caught by two agents independently.** The `reaches`
+figure for 60 fps in the table above was 777; it is **1,976**. The 777 came
+from a run of `strobe.js` taken before its reach measure was fixed, and it was
+printed next to a `--dt 30` figure taken after. Both numbers in that row are
+now post-fix. **1,162 of the 1,976 are inside nested fields.**
+
+### What was refuted
+
+**"The weight travels", the whole family, is refuted on the mathematics.**
+It was the obvious cure — every other place in this file is travelled to on a
+spring, so give the weight the same treatment — and it is wrong, for a reason
+worth keeping:
+
+> The areas a diagram hands back are not bounded by the areas at either end of
+> the line between two weight vectors, so a step taken half way is not a
+> picture taken half way. A cell asked to grow a little can be handed several
+> times its claim in the middle of the move and give all of it back at the
+> end — and that giving-back is the jump you were trying to prevent.
+
+The build that tried it (a scalar λ on the whole step, bounding the worst
+wall's slide to 500 px/s) took 60 fps jumps from 14 to **210**, reversals from
+1 to **62**, shock to **4.3 million**, and lost a cell (`vanish` 1). Both
+refuters returned DUCK: a control that simply forbids any single weight from
+moving more than K·dt — knowing nothing about walls, seeds or pixels —
+reproduces its headline to 1.5% at all three clocks with 41% fewer jumps and
+no vanish. And the decomposition is the damning part: the cap empties the
+middle of the slide distribution and refills the far end (pair-frames over
+160 px: 2 → 18), so a design whose whole sentence is "a wall should travel,
+not teleport" deleted the travelling slides and multiplied the teleports.
+
+The other two builds were refuted on attribution rather than on physics. One's
+named invariant (a reach rail on the weight difference) was **bit-identical to
+base** in two independent ablations — it had been tuned until it did nothing,
+and the file still paid an O(n²) clamp on every line-search trial for it; its
+ranked win came from six lines of approach-velocity damping that had nothing
+to do with its sentence, and a flat 100 px pair floor with its yardstick
+deleted beat it on 8 of 9 cells. The other's three rules were two-thirds
+inert, and its live rule's win was located, on four instruments at three
+clocks, in the **120-frame cold settle before any scene button is pressed** —
+`--dt 30` jumps went flock0 20 → 3 while hero 12 → 16, sidebar 21 → 20,
+frame 5 → 6, flock 3 → 6. The owner's complaint is about transitions.
+
+### What was established: the walls are not arguing, they are catching up
+
+`wall.js` now answers this directly. Over an eight-frame window — a fifth of a
+second at the owner's clock — a wall that is going somewhere sums its steps,
+and a wall being re-decided in place goes back and forth and cancels. `carry`
+is the share of a wall's motion that got it anywhere:
+
+| scene | carry | strobeRatio | decided px/frame | travelled px/frame |
+|---|---|---|---|---|
+| flock0 | 0.89 | 3.45 | 12.89 | 3.74 |
+| hero | 0.83 | 0.54 | 4.63 | 8.57 |
+| sidebar | 0.86 | 0.71 | 8.52 | 11.93 |
+| frame | 0.84 | 1.10 | 9.42 | 8.54 |
+| flock | 0.97 | 0.98 | 1.36 | 1.39 |
+| **whole run** | **0.92** | 1.10 | 4.22 | 3.82 |
+
+**92% of every pixel a wall moves gets it somewhere.** The walls of this page
+are not oscillating and they are not changing their minds. They are travelling
+in a consistent direction, in strides three to four times longer than the
+seeds' — which is what "each frame they got a new position without even
+bothering to travel there" actually looks like from the inside. So:
+
+> The strobe is not the auction changing its mind too fast; it is the auction
+> catching up, and a wall that arrives late arrives further. Slow the world
+> that invalidates the warm start, not the answer that repairs it.
+
+That is the brief for the next round, and one more measurement says where to
+aim it. The seeds travel smoothly because springs see to it; the target does
+not. `tgt_i = claim_i × groundArea / Σclaims`, so rank the wall's slide against
+each term over the 9,857 transition pair-frames (Spearman, `flock0` and
+`bento` excluded because the cold settle is not the complaint):
+
+| the wall's slide against | ρ |
+|---|---|
+| the change in Σclaims — **the denominator** | **0.697** |
+| the seeds' own travel | 0.664 |
+| the change in this pair's own target | 0.627 |
+| the change in the ground's area | **−0.013** |
+
+**The ground's area is innocent, and an earlier reading of this brief that
+blamed it was wrong.** It swings by 16%, 29%, 45% in single frames and it
+moves no wall at all, because the normalisation divides it straight back out
+— exactly as the algebra says it should. What is left is the denominator and
+the claims: a body crossing `ACTIVE_MIN` in or out of the auction is a step in
+Σclaims by construction, and one such step moves **every** target on the page
+at once, including the targets of bodies that are standing still.
+
+The deciles say the same thing and say where it hurts:
+
+| decile of |dTarget| | mean |dTarget| | mean wall slide | mean seed travel |
+|---|---|---|---|
+| 1–5 | 0.04–0.12% | 0.44–0.75 px | 0.86–1.71 px |
+| 6–9 | 0.15–3.44% | 1.34–7.58 px | 2.63–8.87 px |
+| **10** | **12.91%** | **10.71 px** | **7.38 px** |
+
+In nine deciles out of ten the seeds outrun the wall: the page is travelling
+and its walls are coming along. **In the top decile alone the wall outruns the
+seeds**, and that decile is where the strobe lives. It is a tenth of the
+pair-frames, and it is bought entirely by the target stepping.
+
+**This page has a continuous position field and a discontinuous area field.**
+A bidder should fade in and out, not appear.
+
+The chewing gum is a separate tail and still stands: the offset divides by the
+separation, `SEED_MIN_SEP` is 5 px and only separates pairs already closer than
+1 px, and nobody has yet tried making the auction itself aware that a pair is
+degenerate — a claim that shrinks as its own pair closes, rather than a floor
+that shoves the seeds apart after the fact.
+
+## 3.8 THE HARNESS, AND WHAT IT IS NOT ALLOWED TO DECIDE
+
+Three defects were found in the harness itself. All are fixed; the rules
+below are binding on every future round.
+
+**1. Rank per scene, never on the aggregate.** The run is 120 frames of cold
+settle followed by five scenes. `flock0` — the cold settle — dominates every
+whole-run mean in the file: it holds the worst `strobeRatio` (3.45 against
+0.54 in Hero) and a third of the teleports. A build can halve an aggregate by
+improving only the part of the run the owner never sees. One did. **Report
+every headline per scene and rank on the transition scenes.**
+
+**2. Measure the chaos band before claiming a difference.**
+
+    node .claude/gauntlet/twins.js <hive.html> [--dt 30] [--jitter 12]
+
+runs the same file three times at `dt` and `dt·(1 ± 1e-12)`. Nothing about the
+file changes, so the spread is the page's own chaos and any difference smaller
+than it is a coin toss. Measured on the current file, at three clocks:
+
+| metric | 60 fps and jitter | `--dt 30` |
+|---|---|---|
+| `vanish`, `overMax`, `settledScenes` | stable | stable |
+| `jumps` | stable (11, 18) | **25–27** |
+| `reversals` | stable (1) | **1–2** |
+| `shockPx2` | within 0.8% | **2.71%** |
+| `gapMax` | **8 → 24.** Not an acceptance test. | unstable |
+
+An earlier reading of this section said `jumps` and `reversals` were stable at
+every clock. They are not stable at `--dt 30`, which is the ranked clock; two
+builders and a refuter caught it. And there is a floor below the clock band
+that is worse: two **mathematically null** rewrites of the file's own target
+arithmetic — changes that provably compute the same numbers — land at 25/1/193,273
+and 24/1/167,378 against base's 27/2/202,939, purely from floating-point
+re-association over 1,770 frames. **Any build that touches the target arithmetic
+is comparable only to about ±3 jumps and ±17% of shock at `--dt 30`.** Run an
+identity-rewrite control of your own change alongside `twins.js`, or your win is
+arithmetic.
+
+Note this band belongs to `02b52b7`. On the stale `852d235` the same
+perturbations moved `gapMax` 20 → 164 and `shockPx2` ±30%; the clock fix
+removed most of that, and a chaos band quoted from an old base does not
+transfer. **Take the band on the file you are actually comparing.**
+
+**3. A number can fall because its sample vanished.** `wall.js` reads only
+pairs among the root main auction's live bidders. A change that pushes cells
+into the hole or shadow path lowers `decidedPx` by deleting pair-frames rather
+than motion — one build's Hero sample collapsed 741 → 42 pair-frames while
+each surviving pair got 54% worse. `wall.js` now prints `pairFrames` and
+`distinctPairs` per scene. **A mean is comparable only against a run with a
+comparable sample; quote both.**
+
+And the blind spot that made all of this possible:
+
+    node .claude/gauntlet/nesterr.js <hive.html> [out.json] [--dt 30]
+
+`score.js` reads the root diagram, `wall.js` the root main auction. A cell of
+this page can hold a hive of its own, and until now nothing measured whether
+those auctions were being answered — one build took the worst nested residual
+from 0.4% to 6,180% and scored clean everywhere. On the current file the
+nested auctions are healthy: median relative error 1e-11, p99 9.3e-7, 5
+unconverged hive-frames in 5,649. **Every build reports this.**
+
+## 3.9 THE SCOREBOARD WAS PARTLY MEASURING THE MOUSE
+
+Round two shipped nothing — three builds, six refuters, six refutations — and
+its most useful residual was a jump cluster nobody had diagnosed: **17 of the
+27 jumps at the ranked clock are Sidebar**, and eight of them are `W>W`, a
+settled wall changing area with its crystal pinned at 1 at both ends and every
+claim on the page standing still. Three builders reproduced it to the pixel and
+every build reproduced it bit-identically, so it is upstream of everything the
+two rounds were building.
+
+It is upstream of the auction entirely. Watched frame by frame, bodies 3, 4 and
+6 enter Sidebar as settled walls painting **5% of their own rectangles** and
+climb back: body 6 goes 2,579 → 7,184 → 13,631 → 21,229 → 29,283 → 36,999 →
+43,499 → 47,116 px² against a rectangle of 55,474 that never moves. They are not
+growing. **They are being uncrushed.** The pointer is parked at (700, 400) for
+the whole run, in Hero that lands inside the hero card, the card expands on
+hover and flattens its neighbours to slivers, and when the scene changes and the
+boost is handed back the slivers spring out to their rectangles in eight frames.
+
+`score.js` now takes `--parkx` / `--parky` and prints the pointer in its output.
+Move it, at `--dt 30`:
+
+| pointer | jumps | shock px² | byScene |
+|---|---|---|---|
+| **700, 400** (inside the hero card) | **27** | 202,939 | flock0 6, hero 1, **sidebar 17**, flock 3 |
+| **40, 860** (bottom-left corner) | **16** | 164,060 | flock0 6, hero 3, **sidebar 2**, frame 2, flock 3 |
+| **1400, 40** (top-right corner) | **40** | 907,782 | flock0 6, **hero 30**, sidebar 1, flock 3 |
+
+The whole Sidebar cluster — all eight `W>W` jumps with it — evaporates when the
+pointer is not leaning on a cell that expands, and a different park invents
+thirty jumps in Hero instead. The score moves by 2.5× on the pointer alone.
+Three rounds of ranking have therefore been ranking, in part, on where the mouse
+happened to sit.
+
+**Binding from here: every claim at three parks.** (700, 400), (40, 860) and
+(1400, 40), at each clock you quote. A win at one park is not a win. Report the
+pointer beside every number; the field is in `score.js`'s output so that a row
+can never again be read without it.
+
+Two things follow that are worth more than the correction.
+
+**The Sidebar cluster is a real thing the owner can see, and it is not the
+strobe.** A cell crushed to a sliver by its neighbour's hover, springing back
+eighteenfold in a quarter of a second when the page changes, is a visible snap
+with a named cause. The guest-pointer rule already says the held hover is handed
+back across the change; the hand-back is linear in the boost and the area
+response to it is not. That is its own problem, at its own site, and it has been
+sitting in the middle of the scoreboard being counted as an auction defect.
+
+**And the hard floors move with the pointer too.** At (1400, 40) at 60 fps the
+untouched file reports `overMax` 4 — cells overlapping — where the standard park
+reports 0. It is four square pixels and invisible, but it means the coverage
+invariants were being certified at one pointer position and asserted generally.
+
+## 3.10 ROUND TWO, AND THE ONE LIVE LEAD
+
+Three builds, all refuted by both their refuters, on the round's own rules:
+
+- **A held exchange rate between the claim and the ground** (low-pass the
+  denominator, route the mismatch). Refuted by its own algebra: it deletes a
+  per-frame step worth a fraction of a percent of the ground and then spends the
+  *accumulated* lag, which in a transition is many times larger than the step.
+  Transition jumps 21 → 22, whole-run shock 202,939 → 576,545, `overMax` 0 → 4,
+  nested `bodyMiss` median 3.05e-12 → 1.88e-4, `carry` down in three scenes.
+- **One clock for the area handover** (round one's survivor, rebuilt). Refuted
+  again and now with a mechanism that generalises: gating a claim to the last
+  melt-end forces every body but the last to **lock with a part-moved claim**,
+  and a crystallising body's shadow cell is sized by that claim — the same
+  disagreement it set out to remove, moved from the melt to the landing.
+  Transition jumps 21 → 44, hero 1 → 19, `overMax` 0 → 2,380. Its whole-run
+  improvements were 82–88% the cold settle.
+- **The orphan pocket divided rather than awarded** (ground nobody bid for, cut
+  up among every hole that borders it). The only build with a transition gain
+  anywhere, and inert: deleting the division while keeping the rest reproduces
+  its headline with an identical `kinds` and `byScene` histogram. **86% of its
+  win was in which hole the argmax picks, not in dividing anything.** It also
+  regressed the nested hives, and it found the coupling any successor must avoid:
+  `holeExtra` reaches `b.loops`, `b.loops` gates `cellIsRect`, `cellIsRect` is
+  the early-wall shortcut, and `b.hole.pieces.concat(b.holeExtra)` is a nested
+  field's whole domain. **A hole holding a share of somebody else's pocket is no
+  longer a rectangle.**
+
+### The seed yardstick
+
+What the third refutation leaves is six lines at the same site. `adoptGround`
+picks the hole that receives an orphan pocket by comparing the pocket's centroid
+to the centroids of the hole's **drawn pieces** — a shape re-derived every frame,
+whose middle hops as the shape morphs, so the winner can change with nothing
+having moved and a whole pocket changes colour. Pick by the hole's own **seed**
+instead: the one thing about a hole that travels.
+
+Measured on the shipped file, three parks, three clocks, by the operator:
+
+| clock | park | base jumps / shock | seed yardstick |
+|---|---|---|---|
+| 60 fps | 700,400 | 11 / 65,777 | **9 / 52,635 (−20.0%)** |
+| 60 fps | 40,860 | 9 / 74,270 | **7 / 64,745 (−12.8%)** |
+| 60 fps | 1400,40 | 28 / 701,688 | 27 / 724,039 (+3.2%) |
+| `--dt 30` | 700,400 | 27 / 202,939 | 26 / 208,871 (+2.9%) |
+| `--dt 30` | 40,860 | 16 / 164,060 | 16 / 174,647 (+6.5%) |
+| `--dt 30` | 1400,40 | 40 / 907,782 | 40 / 937,500 (+3.3%) |
+| jitter | 700,400 | 18 / 132,275 | 18 / 134,771 (+1.9%) |
+
+Floors clean: `nesterr` identical to base (median 1.31e-11, p99 9.31e-7, 5
+unconverged of 5,649, over-5% 1); `carry` 0.917 against 0.919 with flock0, hero,
+sidebar and frame **bit-identical** on carry, strobeRatio and pairFrames;
+`vanish` 0, `overMax` unchanged at every park, settled 5/5.
+
+Read it honestly. **Transition jumps fall at all six park-and-clock
+combinations** (21→18, 10→8, 34→32 at `--dt 30`; 11→9, 9→7, 28→27 at 60 fps),
+the Hero adoption jump is removed outright rather than demoted, and the 60 fps
+shock win is far outside the 0.67% band at two parks of three. Against that:
+**flock0 gains two jumps at every park**, and the `--dt 30` shock rise of
+2.9–6.5% straddles a band of 2.71%.
+
+It has never faced a refuter. It goes into the next round as the starting
+position at that site, not as a ship.
+
 ## 4. Hypotheses, ranked, with what would confirm each
 
 H1 **The seed fights itself.** Repulsion (`separate`) shoves a traveller off
