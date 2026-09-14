@@ -1,0 +1,74 @@
+name: Astra II departure and motion validation
+on:
+  pull_request:
+    paths:
+      - '**.html'
+      - 'tests/astra2/**'
+      - '.github/workflows/astra-ii.yml'
+permissions:
+  contents: read
+concurrency:
+  group: astra-ii-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  browser:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'astra-ii'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install independent Chromium and polygon validation
+        run: |
+          npm install --prefix /tmp/astra-runtime playwright@1.55.0
+          /tmp/astra-runtime/node_modules/.bin/playwright install --with-deps chromium
+          python3 -m venv /tmp/astra2-python
+          /tmp/astra2-python/bin/pip install --quiet shapely==2.1.1
+      - name: Build the independently named mark from pinned Astra I
+        run: |
+          python3 tests/astra2/build.py
+          python3 tests/astra2/compare.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          expected = 'ec30d312ef52cf397f3ca1fafabc3130cfaac56f0b741eab9f6be68375536e81'
+          actual = hashlib.sha256(Path('astra-ii.html').read_bytes()).hexdigest()
+          assert actual == expected, (actual, expected)
+          PY
+          node --check tests/astra2/engine.js
+          node --check tests/astra2/audit.js
+          node --check tests/astra2/stress.js
+      - name: Measure departures, 240 Hz geometry, display clocks and stress
+        env:
+          PLAYWRIGHT_MODULE: /tmp/astra-runtime/node_modules/playwright
+        run: /tmp/astra2-python/bin/python tests/astra2/validate.py
+      - name: Publish tested artifacts only to Astra II branch
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          cp astra2-results/summary.json astra-ii-results.json
+          git diff --exit-code HEAD -- hive.html astra-i.html mk-hive-gpt-2.html tests/astra
+          git fetch origin astra-ii
+          test "$(git rev-parse FETCH_HEAD)" = "$EXPECTED_HEAD"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add astra-ii.html astra-ii-compare.html astra-ii-results.json index.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat: publish validated Astra II footprint and spillover mark'
+            git push origin HEAD:astra-ii
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: astra-ii-validation
+          path: |
+            astra2-results/
+            astra-ii.html
+            astra-ii-compare.html
+          retention-days: 30
