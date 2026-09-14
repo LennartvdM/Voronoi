@@ -22,7 +22,7 @@
         "settledScenes": "5/5",
         "errMax": 9.98e-07,
         "msP50": 1.4,
-        "msP95": 9.7,
+        "msP95": 10,
         "transitionJumps": 0,
         "teleportsByScene": {
           "sidebar": 7
@@ -39,7 +39,7 @@
         "settledScenes": "5/5",
         "errMax": 9.98e-07,
         "msP50": 3,
-        "msP95": 25.2,
+        "msP95": 25.7,
         "transitionJumps": 0,
         "teleportsByScene": {
           "sidebar": 1
@@ -58,7 +58,7 @@
         "settledScenes": "5/5",
         "errMax": 9.92e-07,
         "msP50": 1.4,
-        "msP95": 9.8,
+        "msP95": 9.9,
         "transitionJumps": 0
       },
       "astra-ii": {
@@ -69,8 +69,8 @@
         "overMax": 0,
         "settledScenes": "5/5",
         "errMax": 9.99e-07,
-        "msP50": 3.1,
-        "msP95": 26.2,
+        "msP50": 3.2,
+        "msP95": 26.5,
         "transitionJumps": 0
       }
     },
@@ -84,7 +84,7 @@
         "settledScenes": "5/5",
         "errMax": 9.96e-07,
         "msP50": 1.6,
-        "msP95": 10.7,
+        "msP95": 10.8,
         "transitionJumps": 0,
         "teleportsByScene": {
           "sidebar": 7,
@@ -176,7 +176,7 @@
         "settledScenes": "5/5",
         "errMax": 9.99e-07,
         "msP50": 3.1,
-        "msP95": 27.4,
+        "msP95": 27.6,
         "transitionJumps": 0,
         "teleportsByScene": {
           "sidebar": 9
@@ -268,8 +268,8 @@
         "overMax": 0,
         "settledScenes": "5/5",
         "errMax": 9.78e-07,
-        "msP50": 1.9,
-        "msP95": 11.9,
+        "msP50": 1.8,
+        "msP95": 11.6,
         "transitionJumps": 0,
         "teleportsByScene": {
           "flock0": 12,
@@ -363,7 +363,7 @@
         "settledScenes": "5/5",
         "errMax": 9.68e-07,
         "msP50": 3.3,
-        "msP95": 28.7,
+        "msP95": 28.6,
         "transitionJumps": 0,
         "teleportsByScene": {
           "flock0": 10,
@@ -460,7 +460,7 @@
         "overMax": 0,
         "settledScenes": "5/5",
         "errMax": 9.91e-07,
-        "msP50": 1.9,
+        "msP50": 1.8,
         "msP95": 11.3,
         "transitionJumps": 3,
         "teleportsByScene": {
@@ -557,7 +557,7 @@
         "settledScenes": "5/5",
         "errMax": 9.86e-07,
         "msP50": 3.2,
-        "msP95": 28.6,
+        "msP95": 28.5,
         "transitionJumps": 0,
         "teleportsByScene": {
           "flock0": 6,
