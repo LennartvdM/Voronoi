@@ -1,0 +1,2847 @@
+{
+  "referenceSHA256": "680ccf8755e5dda33755e6da8a336ba4f034f27828ed1619dfac8466de1be2a1",
+  "candidateSHA256": "ec30d312ef52cf397f3ca1fafabc3130cfaac56f0b741eab9f6be68375536e81",
+  "warmupMs": 3600,
+  "sceneHoldMs": 5500,
+  "pointer": [
+    -1000,
+    -1000
+  ],
+  "viewport": [
+    1440,
+    900
+  ],
+  "clocks": {
+    "240hz": {
+      "astra-i": {
+        "jumps": 0,
+        "byScene": {},
+        "vanish": 0,
+        "gapMax": 0,
+        "overMax": 0,
+        "settledScenes": "5/5",
+        "errMax": 9.98e-07,
+        "msP50": 1.4,
+        "msP95": 9.7,
+        "transitionJumps": 0,
+        "teleportsByScene": {
+          "sidebar": 7
+        },
+        "transitionTeleports": 7,
+        "churnShareMean": 0.0031
+      },
+      "astra-ii": {
+        "jumps": 0,
+        "byScene": {},
+        "vanish": 0,
+        "gapMax": 0,
+        "overMax": 0,
+        "settledScenes": "5/5",
+        "errMax": 9.98e-07,
+        "msP50": 3,
+        "msP95": 25.2,
+        "transitionJumps": 0,
+        "teleportsByScene": {
+          "sidebar": 1
+        },
+        "transitionTeleports": 1,
+        "churnShareMean": 0.003
+      }
+    },
+    "120hz": {
+      "astra-i": {
+        "jumps": 0,
+        "byScene": {},
+        "vanish": 0,
+        "gapMax": 0,
+        "overMax": 0,
+        "settledScenes": "5/5",
+        "errMax": 9.92e-07,
+        "msP50": 1.4,
+        "msP95": 9.8,
+        "transitionJumps": 0
+      },
+      "astra-ii": {
+        "jumps": 0,
+        "byScene": {},
+        "vanish": 0,
+        "gapMax": 0,
+        "overMax": 0,
+        "settledScenes": "5/5",
+        "errMax": 9.99e-07,
+        "msP50": 3.1,
+        "msP95": 26.2,
+        "transitionJumps": 0
+      }
+    },
+    "60hz": {
+      "astra-i": {
+        "jumps": 0,
+        "byScene": {},
+        "vanish": 0,
+        "gapMax": 0,
+        "overMax": 0,
+        "settledScenes": "5/5",
+        "errMax": 9.96e-07,
+        "msP50": 1.6,
+        "msP95": 10.7,
+        "transitionJumps": 0,
+        "teleportsByScene": {
+          "sidebar": 7,
+          "frame": 3
+        },
+        "transitionTeleports": 10,
+        "churnShareMean": 0.0121,
+        "shapeBackShare": 0.006,
+        "flickerByScene": {
+          "flock0": {
+            "shapeBackShare": 0.004,
+            "shapeBackPx2": 26992,
+            "flipFrames": 0,
+            "wasteC": 0.015,
+            "wasteA": 0.009,
+            "revA": 0,
+            "revC": 0,
+            "fight": 0.484,
+            "settle": null
+          },
+          "bento": {
+            "shapeBackShare": 0,
+            "shapeBackPx2": 0,
+            "flipFrames": 0,
+            "wasteC": 0,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 1
+          },
+          "hero": {
+            "shapeBackShare": 0.004,
+            "shapeBackPx2": 14176,
+            "flipFrames": 2,
+            "wasteC": 0.022,
+            "wasteA": 0.001,
+            "revA": 0,
+            "revC": 0.002,
+            "fight": 0.135,
+            "lastSwitch": 176,
+            "settle": 1
+          },
+          "sidebar": {
+            "shapeBackShare": 0.011,
+            "shapeBackPx2": 48768,
+            "flipFrames": 0,
+            "wasteC": 0.032,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0.003,
+            "fight": 0.094,
+            "lastSwitch": 190,
+            "settle": 1
+          },
+          "frame": {
+            "shapeBackShare": 0.007,
+            "shapeBackPx2": 19904,
+            "flipFrames": 0,
+            "wasteC": 0.034,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0.003,
+            "fight": 0.117,
+            "lastSwitch": 180,
+            "settle": 1
+          },
+          "flock": {
+            "shapeBackShare": 0.006,
+            "shapeBackPx2": 19840,
+            "flipFrames": 0,
+            "wasteC": 0.013,
+            "wasteA": 0.003,
+            "revA": 0,
+            "revC": 0.001,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 298
+          }
+        }
+      },
+      "astra-ii": {
+        "jumps": 0,
+        "byScene": {},
+        "vanish": 0,
+        "gapMax": 0,
+        "overMax": 0,
+        "settledScenes": "5/5",
+        "errMax": 9.99e-07,
+        "msP50": 3.1,
+        "msP95": 27.4,
+        "transitionJumps": 0,
+        "teleportsByScene": {
+          "sidebar": 9
+        },
+        "transitionTeleports": 9,
+        "churnShareMean": 0.012,
+        "shapeBackShare": 0.01,
+        "flickerByScene": {
+          "flock0": {
+            "shapeBackShare": 0.005,
+            "shapeBackPx2": 32896,
+            "flipFrames": 0,
+            "wasteC": 0.017,
+            "wasteA": 0.01,
+            "revA": 0,
+            "revC": 0,
+            "fight": 0.495,
+            "settle": null
+          },
+          "bento": {
+            "shapeBackShare": 0,
+            "shapeBackPx2": 0,
+            "flipFrames": 0,
+            "wasteC": 0,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 1
+          },
+          "hero": {
+            "shapeBackShare": 0.011,
+            "shapeBackPx2": 39488,
+            "flipFrames": 2,
+            "wasteC": 0.024,
+            "wasteA": 0.001,
+            "revA": 0,
+            "revC": 0.003,
+            "fight": 0.037,
+            "lastSwitch": 199,
+            "settle": 1
+          },
+          "sidebar": {
+            "shapeBackShare": 0.011,
+            "shapeBackPx2": 56688,
+            "flipFrames": 1,
+            "wasteC": 0.024,
+            "wasteA": 0.001,
+            "revA": 0,
+            "revC": 0.004,
+            "fight": 0.023,
+            "lastSwitch": 220,
+            "settle": 1
+          },
+          "frame": {
+            "shapeBackShare": 0.021,
+            "shapeBackPx2": 53280,
+            "flipFrames": 1,
+            "wasteC": 0.043,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0.006,
+            "fight": 0.023,
+            "lastSwitch": 210,
+            "settle": 1
+          },
+          "flock": {
+            "shapeBackShare": 0.005,
+            "shapeBackPx2": 12672,
+            "flipFrames": 1,
+            "wasteC": 0.005,
+            "wasteA": 0.003,
+            "revA": 0,
+            "revC": 0,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 330
+          }
+        }
+      }
+    },
+    "30ms": {
+      "astra-i": {
+        "jumps": 0,
+        "byScene": {},
+        "vanish": 0,
+        "gapMax": 0,
+        "overMax": 0,
+        "settledScenes": "5/5",
+        "errMax": 9.78e-07,
+        "msP50": 1.9,
+        "msP95": 11.9,
+        "transitionJumps": 0,
+        "teleportsByScene": {
+          "flock0": 12,
+          "sidebar": 8,
+          "frame": 2,
+          "flock": 10
+        },
+        "transitionTeleports": 20,
+        "churnShareMean": 0.0218,
+        "shapeBackShare": 0.014,
+        "flickerByScene": {
+          "flock0": {
+            "shapeBackShare": 0.009,
+            "shapeBackPx2": 55664,
+            "flipFrames": 2,
+            "wasteC": 0.04,
+            "wasteA": 0.028,
+            "revA": 0.003,
+            "revC": 0.002,
+            "fight": 0.464,
+            "settle": null
+          },
+          "bento": {
+            "shapeBackShare": 0,
+            "shapeBackPx2": 0,
+            "flipFrames": 0,
+            "wasteC": 0,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 1
+          },
+          "hero": {
+            "shapeBackShare": 0.009,
+            "shapeBackPx2": 33632,
+            "flipFrames": 5,
+            "wasteC": 0.058,
+            "wasteA": 0.012,
+            "revA": 0,
+            "revC": 0.007,
+            "fight": 0.133,
+            "lastSwitch": 97,
+            "settle": 1
+          },
+          "sidebar": {
+            "shapeBackShare": 0.022,
+            "shapeBackPx2": 102032,
+            "flipFrames": 0,
+            "wasteC": 0.07,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0.012,
+            "fight": 0.091,
+            "lastSwitch": 105,
+            "settle": 1
+          },
+          "frame": {
+            "shapeBackShare": 0.017,
+            "shapeBackPx2": 45424,
+            "flipFrames": 1,
+            "wasteC": 0.077,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0.018,
+            "fight": 0.121,
+            "lastSwitch": 100,
+            "settle": 1
+          },
+          "flock": {
+            "shapeBackShare": 0.012,
+            "shapeBackPx2": 38736,
+            "flipFrames": 1,
+            "wasteC": 0.025,
+            "wasteA": 0.016,
+            "revA": 0.001,
+            "revC": 0.005,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 184
+          }
+        }
+      },
+      "astra-ii": {
+        "jumps": 0,
+        "byScene": {},
+        "vanish": 0,
+        "gapMax": 0,
+        "overMax": 0,
+        "settledScenes": "5/5",
+        "errMax": 9.68e-07,
+        "msP50": 3.3,
+        "msP95": 28.7,
+        "transitionJumps": 0,
+        "teleportsByScene": {
+          "flock0": 10,
+          "sidebar": 11,
+          "frame": 2
+        },
+        "transitionTeleports": 13,
+        "churnShareMean": 0.0214,
+        "shapeBackShare": 0.018,
+        "flickerByScene": {
+          "flock0": {
+            "shapeBackShare": 0.011,
+            "shapeBackPx2": 67504,
+            "flipFrames": 0,
+            "wasteC": 0.036,
+            "wasteA": 0.029,
+            "revA": 0.003,
+            "revC": 0.003,
+            "fight": 0.476,
+            "settle": null
+          },
+          "bento": {
+            "shapeBackShare": 0,
+            "shapeBackPx2": 0,
+            "flipFrames": 0,
+            "wasteC": 0,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 1
+          },
+          "hero": {
+            "shapeBackShare": 0.02,
+            "shapeBackPx2": 74896,
+            "flipFrames": 3,
+            "wasteC": 0.042,
+            "wasteA": 0.02,
+            "revA": 0,
+            "revC": 0.012,
+            "fight": 0.035,
+            "lastSwitch": 110,
+            "settle": 1
+          },
+          "sidebar": {
+            "shapeBackShare": 0.021,
+            "shapeBackPx2": 105744,
+            "flipFrames": 0,
+            "wasteC": 0.045,
+            "wasteA": 0.004,
+            "revA": 0,
+            "revC": 0.009,
+            "fight": 0.023,
+            "lastSwitch": 122,
+            "settle": 1
+          },
+          "frame": {
+            "shapeBackShare": 0.038,
+            "shapeBackPx2": 96544,
+            "flipFrames": 5,
+            "wasteC": 0.089,
+            "wasteA": 0.003,
+            "revA": 0,
+            "revC": 0.022,
+            "fight": 0.021,
+            "lastSwitch": 116,
+            "settle": 1
+          },
+          "flock": {
+            "shapeBackShare": 0.009,
+            "shapeBackPx2": 25488,
+            "flipFrames": 0,
+            "wasteC": 0.012,
+            "wasteA": 0.016,
+            "revA": 0.001,
+            "revC": 0.001,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 184
+          }
+        }
+      }
+    },
+    "jitter": {
+      "astra-i": {
+        "jumps": 6,
+        "byScene": {
+          "flock0": 3,
+          "flock": 3
+        },
+        "vanish": 0,
+        "gapMax": 0,
+        "overMax": 0,
+        "settledScenes": "5/5",
+        "errMax": 9.91e-07,
+        "msP50": 1.9,
+        "msP95": 11.3,
+        "transitionJumps": 3,
+        "teleportsByScene": {
+          "flock0": 7,
+          "sidebar": 6,
+          "frame": 3,
+          "flock": 5
+        },
+        "transitionTeleports": 14,
+        "churnShareMean": 0.0183,
+        "shapeBackShare": 0.011,
+        "flickerByScene": {
+          "flock0": {
+            "shapeBackShare": 0.007,
+            "shapeBackPx2": 44000,
+            "flipFrames": 0,
+            "wasteC": 0.029,
+            "wasteA": 0.025,
+            "revA": 0.002,
+            "revC": 0.001,
+            "fight": 0.433,
+            "settle": null
+          },
+          "bento": {
+            "shapeBackShare": 0,
+            "shapeBackPx2": 0,
+            "flipFrames": 0,
+            "wasteC": 0,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 1
+          },
+          "hero": {
+            "shapeBackShare": 0.007,
+            "shapeBackPx2": 27728,
+            "flipFrames": 2,
+            "wasteC": 0.045,
+            "wasteA": 0.008,
+            "revA": 0,
+            "revC": 0.005,
+            "fight": 0.143,
+            "lastSwitch": 119,
+            "settle": 1
+          },
+          "sidebar": {
+            "shapeBackShare": 0.018,
+            "shapeBackPx2": 84224,
+            "flipFrames": 0,
+            "wasteC": 0.06,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0.008,
+            "fight": 0.089,
+            "lastSwitch": 119,
+            "settle": 1
+          },
+          "frame": {
+            "shapeBackShare": 0.013,
+            "shapeBackPx2": 35136,
+            "flipFrames": 0,
+            "wasteC": 0.061,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0.007,
+            "fight": 0.122,
+            "lastSwitch": 120,
+            "settle": 1
+          },
+          "flock": {
+            "shapeBackShare": 0.009,
+            "shapeBackPx2": 30384,
+            "flipFrames": 1,
+            "wasteC": 0.016,
+            "wasteA": 0.011,
+            "revA": 0,
+            "revC": 0.003,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 220
+          }
+        }
+      },
+      "astra-ii": {
+        "jumps": 3,
+        "byScene": {
+          "flock0": 3
+        },
+        "vanish": 0,
+        "gapMax": 0,
+        "overMax": 0,
+        "settledScenes": "5/5",
+        "errMax": 9.86e-07,
+        "msP50": 3.2,
+        "msP95": 28.6,
+        "transitionJumps": 0,
+        "teleportsByScene": {
+          "flock0": 6,
+          "sidebar": 12
+        },
+        "transitionTeleports": 12,
+        "churnShareMean": 0.0179,
+        "shapeBackShare": 0.015,
+        "flickerByScene": {
+          "flock0": {
+            "shapeBackShare": 0.009,
+            "shapeBackPx2": 55520,
+            "flipFrames": 0,
+            "wasteC": 0.027,
+            "wasteA": 0.025,
+            "revA": 0.002,
+            "revC": 0.001,
+            "fight": 0.438,
+            "settle": null
+          },
+          "bento": {
+            "shapeBackShare": 0,
+            "shapeBackPx2": 0,
+            "flipFrames": 0,
+            "wasteC": 0,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 1
+          },
+          "hero": {
+            "shapeBackShare": 0.017,
+            "shapeBackPx2": 64576,
+            "flipFrames": 2,
+            "wasteC": 0.036,
+            "wasteA": 0.013,
+            "revA": 0,
+            "revC": 0.008,
+            "fight": 0.034,
+            "lastSwitch": 138,
+            "settle": 1
+          },
+          "sidebar": {
+            "shapeBackShare": 0.018,
+            "shapeBackPx2": 89552,
+            "flipFrames": 1,
+            "wasteC": 0.039,
+            "wasteA": 0.003,
+            "revA": 0,
+            "revC": 0.005,
+            "fight": 0.021,
+            "lastSwitch": 141,
+            "settle": 1
+          },
+          "frame": {
+            "shapeBackShare": 0.03,
+            "shapeBackPx2": 76880,
+            "flipFrames": 2,
+            "wasteC": 0.076,
+            "wasteA": 0.002,
+            "revA": 0,
+            "revC": 0.012,
+            "fight": 0.021,
+            "lastSwitch": 139,
+            "settle": 1
+          },
+          "flock": {
+            "shapeBackShare": 0.007,
+            "shapeBackPx2": 18912,
+            "flipFrames": 0,
+            "wasteC": 0.008,
+            "wasteA": 0.012,
+            "revA": 0.001,
+            "revC": 0.001,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 220
+          }
+        }
+      }
+    }
+  },
+  "regressions": [
+    {
+      "clock": "60hz",
+      "measure": "shapeBackShare",
+      "reference": 0.006,
+      "candidate": 0.01
+    },
+    {
+      "clock": "30ms",
+      "measure": "shapeBackShare",
+      "reference": 0.014,
+      "candidate": 0.018
+    },
+    {
+      "clock": "jitter",
+      "measure": "shapeBackShare",
+      "reference": 0.011,
+      "candidate": 0.015
+    }
+  ],
+  "geometryAndDepartureChecksPassed": true,
+  "departure": {
+    "astra-i": {
+      "dt": 8.333333333333334,
+      "errors": [],
+      "results": [
+        {
+          "scene": "hero",
+          "axisSamples": [
+            {
+              "ms": 8.333333333333334,
+              "axisPercent": 89.46607165306594
+            },
+            {
+              "ms": 16.666666666666668,
+              "axisPercent": 89.27328518046747
+            },
+            {
+              "ms": 25,
+              "axisPercent": 89.24898482167796
+            },
+            {
+              "ms": 33.333333333333336,
+              "axisPercent": 87.67261695674881
+            },
+            {
+              "ms": 41.66666666666667,
+              "axisPercent": 87.6574297043489
+            },
+            {
+              "ms": 50,
+              "axisPercent": 87.62028884541867
+            },
+            {
+              "ms": 58.333333333333336,
+              "axisPercent": 87.59565152249952
+            },
+            {
+              "ms": 66.66666666666667,
+              "axisPercent": 87.56775606862514
+            },
+            {
+              "ms": 75,
+              "axisPercent": 87.5345353988505
+            },
+            {
+              "ms": 83.33333333333334,
+              "axisPercent": 87.50018055671875
+            },
+            {
+              "ms": 91.66666666666667,
+              "axisPercent": 87.46329003675129
+            },
+            {
+              "ms": 100,
+              "axisPercent": 87.42413313717071
+            },
+            {
+              "ms": 108.33333333333334,
+              "axisPercent": 87.38292715332545
+            },
+            {
+              "ms": 116.66666666666667,
+              "axisPercent": 84.33730698448865
+            },
+            {
+              "ms": 125.00000000000001,
+              "axisPercent": 84.28674983627948
+            },
+            {
+              "ms": 133.33333333333334,
+              "axisPercent": 84.23224109633973
+            },
+            {
+              "ms": 141.66666666666669,
+              "axisPercent": 84.17357107162785
+            },
+            {
+              "ms": 150,
+              "axisPercent": 83.3354381346165
+            },
+            {
+              "ms": 158.33333333333334,
+              "axisPercent": 71.29497900764423
+            }
+          ],
+          "supportLossBefore3px": [
+            {
+              "id": 0,
+              "loss": 1,
+              "travelPx": 170.63694065502673
+            },
+            {
+              "id": 1,
+              "loss": 1,
+              "travelPx": 275.4180430148334
+            },
+            {
+              "id": 2,
+              "loss": 1,
+              "travelPx": 502.20244565958893
+            },
+            {
+              "id": 3,
+              "loss": 1,
+              "travelPx": 391.7264043396426
+            },
+            {
+              "id": 4,
+              "loss": 1,
+              "travelPx": 394.94237846740737
+            },
+            {
+              "id": 5,
+              "loss": 0.9012774348422641,
+              "travelPx": 578.227186116078
+            },
+            {
+              "id": 6,
+              "loss": 0.9794273779680095,
+              "travelPx": 440.5730028155953
+            },
+            {
+              "id": 7,
+              "loss": 1,
+              "travelPx": 590.6121244554688
+            },
+            {
+              "id": 8,
+              "loss": 1,
+              "travelPx": 428.8046932274835
+            },
+            {
+              "id": 9,
+              "loss": 1,
+              "travelPx": 305.7739941176475
+            },
+            {
+              "id": 10,
+              "loss": 1,
+              "travelPx": 192.28324794144163
+            },
+            {
+              "id": 11,
+              "loss": 1,
+              "travelPx": 131.8220129546694
+            }
+          ],
+          "travelPx": 4403.022473764882,
+          "maxOutsidePx": 0,
+          "outsideBodyFrames": 0,
+          "minVisibleAreaPx2": 27491.785089966725,
+          "maxQuotaImbalance": 0,
+          "loanFrameSamples": 0,
+          "loanHistory": [],
+          "swaps": [],
+          "identityErrors": 0,
+          "duplicateRoles": 0,
+          "unfinished": 0,
+          "nonrectAreaErrorMax": 5.820766091346741e-11,
+          "prematureContractionCells": 12,
+          "meanPrematureContraction": 0.990058734400856
+        },
+        {
+          "scene": "sidebar",
+          "axisSamples": [
+            {
+              "ms": 8.333333333333334,
+              "axisPercent": 67.1518875878517
+            },
+            {
+              "ms": 16.666666666666668,
+              "axisPercent": 67.04506931021622
+            },
+            {
+              "ms": 25,
+              "axisPercent": 65.42059636792501
+            },
+            {
+              "ms": 33.333333333333336,
+              "axisPercent": 65.31064149950404
+            },
+            {
+              "ms": 41.66666666666667,
+              "axisPercent": 65.19225735129882
+            },
+            {
+              "ms": 50,
+              "axisPercent": 65.0731564303694
+            },
+            {
+              "ms": 58.333333333333336,
+              "axisPercent": 64.96011648160676
+            },
+            {
+              "ms": 66.66666666666667,
+              "axisPercent": 64.86127033513796
+            },
+            {
+              "ms": 75,
+              "axisPercent": 64.77900816356616
+            },
+            {
+              "ms": 83.33333333333334,
+              "axisPercent": 64.7138037351518
+            },
+            {
+              "ms": 91.66666666666667,
+              "axisPercent": 64.66382555211392
+            },
+            {
+              "ms": 100,
+              "axisPercent": 64.62559080273924
+            },
+            {
+              "ms": 108.33333333333334,
+              "axisPercent": 64.59533815493398
+            },
+            {
+              "ms": 116.66666666666667,
+              "axisPercent": 61.48683434991056
+            },
+            {
+              "ms": 125.00000000000001,
+              "axisPercent": 61.459429280508964
+            },
+            {
+              "ms": 133.33333333333334,
+              "axisPercent": 59.8412679413255
+            },
+            {
+              "ms": 141.66666666666669,
+              "axisPercent": 50.47282862441773
+            },
+            {
+              "ms": 150,
+              "axisPercent": 51.57357004316983
+            },
+            {
+              "ms": 158.33333333333334,
+              "axisPercent": 50.32308534873947
+            }
+          ],
+          "supportLossBefore3px": [
+            {
+              "id": 0,
+              "loss": 1,
+              "travelPx": 932.8896429731029
+            },
+            {
+              "id": 1,
+              "loss": 0.9803343409576756,
+              "travelPx": 752.6301989530531
+            },
+            {
+              "id": 2,
+              "loss": 1,
+              "travelPx": 1005.3747064760339
+            },
+            {
+              "id": 3,
+              "loss": 1,
+              "travelPx": 564.928125997664
+            },
+            {
+              "id": 4,
+              "loss": 1,
+              "travelPx": 441.0802227960978
+            },
+            {
+              "id": 5,
+              "loss": 1,
+              "travelPx": 697.3086392372037
+            },
+            {
+              "id": 6,
+              "loss": 1,
+              "travelPx": 569.0115583403658
+            },
+            {
+              "id": 7,
+              "loss": 1,
+              "travelPx": 800.8028735743334
+            },
+            {
+              "id": 8,
+              "loss": 1,
+              "travelPx": 911.8407472697859
+            },
+            {
+              "id": 9,
+              "loss": 1,
+              "travelPx": 760.8611391063602
+            },
+            {
+              "id": 10,
+              "loss": 1,
+              "travelPx": 860.8912066254976
+            },
+            {
+              "id": 11,
+              "loss": 1,
+              "travelPx": 856.344270971913
+            }
+          ],
+          "travelPx": 9153.963332321411,
+          "maxOutsidePx": 0,
+          "outsideBodyFrames": 0,
+          "minVisibleAreaPx2": 27730.53837529957,
+          "maxQuotaImbalance": 0,
+          "loanFrameSamples": 0,
+          "loanHistory": [],
+          "swaps": [],
+          "identityErrors": 0,
+          "duplicateRoles": 0,
+          "unfinished": 0,
+          "nonrectAreaErrorMax": 1.0913936421275139e-11,
+          "prematureContractionCells": 12,
+          "meanPrematureContraction": 0.9983611950798063
+        },
+        {
+          "scene": "frame",
+          "axisSamples": [
+            {
+              "ms": 8.333333333333334,
+              "axisPercent": 96.3868809422895
+            },
+            {
+              "ms": 16.666666666666668,
+              "axisPercent": 96.38276764516333
+            },
+            {
+              "ms": 25,
+              "axisPercent": 96.37479116117031
+            },
+            {
+              "ms": 33.333333333333336,
+              "axisPercent": 96.36620093710366
+            },
+            {
+              "ms": 41.66666666666667,
+              "axisPercent": 94.63136437924682
+            },
+            {
+              "ms": 50,
+              "axisPercent": 94.6159620101757
+            },
+            {
+              "ms": 58.333333333333336,
+              "axisPercent": 94.59799699912251
+            },
+            {
+              "ms": 66.66666666666667,
+              "axisPercent": 94.57612713465414
+            },
+            {
+              "ms": 75,
+              "axisPercent": 94.55374220953365
+            },
+            {
+              "ms": 83.33333333333334,
+              "axisPercent": 94.52901731780966
+            },
+            {
+              "ms": 91.66666666666667,
+              "axisPercent": 94.50093199315229
+            },
+            {
+              "ms": 100,
+              "axisPercent": 94.47174498598565
+            },
+            {
+              "ms": 108.33333333333334,
+              "axisPercent": 94.44097866107381
+            },
+            {
+              "ms": 116.66666666666667,
+              "axisPercent": 83.92458556136098
+            },
+            {
+              "ms": 125.00000000000001,
+              "axisPercent": 83.90894502742758
+            },
+            {
+              "ms": 133.33333333333334,
+              "axisPercent": 83.90235563639261
+            },
+            {
+              "ms": 141.66666666666669,
+              "axisPercent": 83.90645851347739
+            },
+            {
+              "ms": 150,
+              "axisPercent": 83.90897296903786
+            },
+            {
+              "ms": 158.33333333333334,
+              "axisPercent": 83.91443289988418
+            }
+          ],
+          "supportLossBefore3px": [
+            {
+              "id": 0,
+              "loss": 1,
+              "travelPx": 867.7859504712369
+            },
+            {
+              "id": 1,
+              "loss": 1,
+              "travelPx": 627.0842863423853
+            },
+            {
+              "id": 2,
+              "loss": 1,
+              "travelPx": 171.00096414371944
+            },
+            {
+              "id": 3,
+              "loss": 1,
+              "travelPx": 253.9249966104952
+            },
+            {
+              "id": 4,
+              "loss": 1,
+              "travelPx": 91.78215299945875
+            },
+            {
+              "id": 5,
+              "loss": 1,
+              "travelPx": 91.1158467551665
+            },
+            {
+              "id": 6,
+              "loss": 1,
+              "travelPx": 89.48830513404747
+            },
+            {
+              "id": 7,
+              "loss": 1,
+              "travelPx": 126.01845637792522
+            },
+            {
+              "id": 8,
+              "loss": 1,
+              "travelPx": 305.5790844347856
+            },
+            {
+              "id": 9,
+              "loss": 1,
+              "travelPx": 888.0603423096493
+            },
+            {
+              "id": 10,
+              "loss": 1,
+              "travelPx": 865.0811627957312
+            },
+            {
+              "id": 11,
+              "loss": 1,
+              "travelPx": 609.7405610037928
+            }
+          ],
+          "travelPx": 4986.662109378394,
+          "maxOutsidePx": 0,
+          "outsideBodyFrames": 0,
+          "minVisibleAreaPx2": 27022.46773617374,
+          "maxQuotaImbalance": 0,
+          "loanFrameSamples": 0,
+          "loanHistory": [],
+          "swaps": [],
+          "identityErrors": 0,
+          "duplicateRoles": 0,
+          "unfinished": 0,
+          "nonrectAreaErrorMax": 7.275957614183426e-12,
+          "prematureContractionCells": 12,
+          "meanPrematureContraction": 1
+        },
+        {
+          "scene": "bento",
+          "axisSamples": [
+            {
+              "ms": 8.333333333333334,
+              "axisPercent": 93.77114055520589
+            },
+            {
+              "ms": 16.666666666666668,
+              "axisPercent": 93.76889254630358
+            },
+            {
+              "ms": 25,
+              "axisPercent": 93.76512668560119
+            },
+            {
+              "ms": 33.333333333333336,
+              "axisPercent": 93.75735641378598
+            },
+            {
+              "ms": 41.66666666666667,
+              "axisPercent": 93.74791233526278
+            },
+            {
+              "ms": 50,
+              "axisPercent": 93.73707743609745
+            },
+            {
+              "ms": 58.333333333333336,
+              "axisPercent": 93.72399144627114
+            },
+            {
+              "ms": 66.66666666666667,
+              "axisPercent": 93.70852779554119
+            },
+            {
+              "ms": 75,
+              "axisPercent": 93.69056735929306
+            },
+            {
+              "ms": 83.33333333333334,
+              "axisPercent": 93.66906931306802
+            },
+            {
+              "ms": 91.66666666666667,
+              "axisPercent": 93.64465814113186
+            },
+            {
+              "ms": 100,
+              "axisPercent": 93.61840381230287
+            },
+            {
+              "ms": 108.33333333333334,
+              "axisPercent": 93.58942422624115
+            },
+            {
+              "ms": 116.66666666666667,
+              "axisPercent": 93.5577617052819
+            },
+            {
+              "ms": 125.00000000000001,
+              "axisPercent": 93.52148193671043
+            },
+            {
+              "ms": 133.33333333333334,
+              "axisPercent": 93.48433096793985
+            },
+            {
+              "ms": 141.66666666666669,
+              "axisPercent": 93.44486243791249
+            },
+            {
+              "ms": 150,
+              "axisPercent": 93.40331559823449
+            },
+            {
+              "ms": 158.33333333333334,
+              "axisPercent": 93.35997870969344
+            }
+          ],
+          "supportLossBefore3px": [
+            {
+              "id": 0,
+              "loss": 1,
+              "travelPx": 88.4337428211597
+            },
+            {
+              "id": 1,
+              "loss": 1,
+              "travelPx": 176.53796289357612
+            },
+            {
+              "id": 2,
+              "loss": 1,
+              "travelPx": 90.13924263827806
+            },
+            {
+              "id": 3,
+              "loss": 1,
+              "travelPx": 225.95315253679834
+            },
+            {
+              "id": 4,
+              "loss": 1,
+              "travelPx": 328.33111828583293
+            },
+            {
+              "id": 5,
+              "loss": 1,
+              "travelPx": 85.20514273262852
+            },
+            {
+              "id": 6,
+              "loss": 1,
+              "travelPx": 370.37531231288006
+            },
+            {
+              "id": 7,
+              "loss": 1,
+              "travelPx": 94.40989198536802
+            },
+            {
+              "id": 8,
+              "loss": 1,
+              "travelPx": 307.0326360944343
+            },
+            {
+              "id": 9,
+              "loss": 1,
+              "travelPx": 92.39551188394636
+            },
+            {
+              "id": 10,
+              "loss": 1,
+              "travelPx": 61.98004163879293
+            },
+            {
+              "id": 11,
+              "loss": 1,
+              "travelPx": 213.9176489953574
+            }
+          ],
+          "travelPx": 2134.711404819053,
+          "maxOutsidePx": 0,
+          "outsideBodyFrames": 0,
+          "minVisibleAreaPx2": 25905.655202714544,
+          "maxQuotaImbalance": 0,
+          "loanFrameSamples": 0,
+          "loanHistory": [],
+          "swaps": [],
+          "identityErrors": 0,
+          "duplicateRoles": 0,
+          "unfinished": 0,
+          "nonrectAreaErrorMax": 1.4551915228366852e-11,
+          "prematureContractionCells": 12,
+          "meanPrematureContraction": 1
+        },
+        {
+          "scene": "flock",
+          "axisSamples": [
+            {
+              "ms": 8.333333333333334,
+              "axisPercent": 93.70932970511492
+            },
+            {
+              "ms": 16.666666666666668,
+              "axisPercent": 88.97997658522601
+            },
+            {
+              "ms": 25,
+              "axisPercent": 76.8483252113019
+            },
+            {
+              "ms": 33.333333333333336,
+              "axisPercent": 63.0610035812722
+            },
+            {
+              "ms": 41.66666666666667,
+              "axisPercent": 43.1728127233763
+            },
+            {
+              "ms": 50,
+              "axisPercent": 32.41583517293619
+            },
+            {
+              "ms": 58.333333333333336,
+              "axisPercent": 32.406507726367934
+            },
+            {
+              "ms": 66.66666666666667,
+              "axisPercent": 29.378321892085246
+            },
+            {
+              "ms": 75,
+              "axisPercent": 29.367342106679143
+            },
+            {
+              "ms": 83.33333333333334,
+              "axisPercent": 29.354841039265228
+            },
+            {
+              "ms": 91.66666666666667,
+              "axisPercent": 29.34079159955019
+            },
+            {
+              "ms": 100,
+              "axisPercent": 29.325186999467675
+            },
+            {
+              "ms": 108.33333333333334,
+              "axisPercent": 29.308041600742342
+            },
+            {
+              "ms": 116.66666666666667,
+              "axisPercent": 29.289389798675625
+            },
+            {
+              "ms": 125.00000000000001,
+              "axisPercent": 29.269283223928188
+            },
+            {
+              "ms": 133.33333333333334,
+              "axisPercent": 29.247786843639428
+            },
+            {
+              "ms": 141.66666666666669,
+              "axisPercent": 29.225064076668676
+            },
+            {
+              "ms": 150,
+              "axisPercent": 29.201202216917917
+            },
+            {
+              "ms": 158.33333333333334,
+              "axisPercent": 29.178362810433605
+            }
+          ],
+          "supportLossBefore3px": [
+            {
+              "id": 0,
+              "loss": 0,
+              "travelPx": 433.7183629190151
+            },
+            {
+              "id": 1,
+              "loss": 0,
+              "travelPx": 336.9646779445455
+            },
+            {
+              "id": 2,
+              "loss": 1.1102230246251565e-16,
+              "travelPx": 282.7017131812191
+            },
+            {
+              "id": 3,
+              "loss": 0,
+              "travelPx": 345.8058260255273
+            },
+            {
+              "id": 4,
+              "loss": 4.440892098500626e-16,
+              "travelPx": 410.64179882154326
+            },
+            {
+              "id": 5,
+              "loss": 1.1102230246251565e-16,
+              "travelPx": 300.3152104193009
+            },
+            {
+              "id": 6,
+              "loss": 4.440892098500626e-16,
+              "travelPx": 335.27736859700906
+            },
+            {
+              "id": 7,
+              "loss": 2.220446049250313e-16,
+              "travelPx": 332.29368470067755
+            },
+            {
+              "id": 8,
+              "loss": 1.1102230246251565e-16,
+              "travelPx": 249.17551012784807
+            },
+            {
+              "id": 9,
+              "loss": 0.9474879972564205,
+              "travelPx": 168.80351646237014
+            },
+            {
+              "id": 10,
+              "loss": 0.3405206923265496,
+              "travelPx": 172.2949243472445
+            },
+            {
+              "id": 11,
+              "loss": 1.1102230246251565e-16,
+              "travelPx": 327.7522314554532
+            }
+          ],
+          "travelPx": 3695.7448250017537,
+          "maxOutsidePx": 0,
+          "outsideBodyFrames": 0,
+          "minVisibleAreaPx2": 41605.71426359081,
+          "maxQuotaImbalance": 0,
+          "loanFrameSamples": 0,
+          "loanHistory": [],
+          "swaps": [],
+          "identityErrors": 0,
+          "duplicateRoles": 0,
+          "unfinished": 0,
+          "nonrectAreaErrorMax": 0,
+          "prematureContractionCells": 2,
+          "meanPrematureContraction": 0.10733405746524764
+        }
+      ]
+    },
+    "astra-ii": {
+      "dt": 8.333333333333334,
+      "errors": [],
+      "results": [
+        {
+          "scene": "hero",
+          "axisSamples": [
+            {
+              "ms": 8.333333333333334,
+              "axisPercent": 99.77526528322815
+            },
+            {
+              "ms": 16.666666666666668,
+              "axisPercent": 99.3537299411383
+            },
+            {
+              "ms": 25,
+              "axisPercent": 99.24220184533526
+            },
+            {
+              "ms": 33.333333333333336,
+              "axisPercent": 99.2066784994205
+            },
+            {
+              "ms": 41.66666666666667,
+              "axisPercent": 98.28428012738603
+            },
+            {
+              "ms": 50,
+              "axisPercent": 98.30971038008767
+            },
+            {
+              "ms": 58.333333333333336,
+              "axisPercent": 98.32854940916428
+            },
+            {
+              "ms": 66.66666666666667,
+              "axisPercent": 98.35606221215531
+            },
+            {
+              "ms": 75,
+              "axisPercent": 98.15038480613528
+            },
+            {
+              "ms": 83.33333333333334,
+              "axisPercent": 98.12315307899168
+            },
+            {
+              "ms": 91.66666666666667,
+              "axisPercent": 98.14108516986084
+            },
+            {
+              "ms": 100,
+              "axisPercent": 97.7994738388433
+            },
+            {
+              "ms": 108.33333333333334,
+              "axisPercent": 96.25830576707993
+            },
+            {
+              "ms": 116.66666666666667,
+              "axisPercent": 93.22913697971632
+            },
+            {
+              "ms": 125.00000000000001,
+              "axisPercent": 93.23447876520552
+            },
+            {
+              "ms": 133.33333333333334,
+              "axisPercent": 93.23166127886307
+            },
+            {
+              "ms": 141.66666666666669,
+              "axisPercent": 90.1829419233969
+            },
+            {
+              "ms": 150,
+              "axisPercent": 88.05647077641586
+            },
+            {
+              "ms": 158.33333333333334,
+              "axisPercent": 88.03095411020662
+            }
+          ],
+          "supportLossBefore3px": [
+            {
+              "id": 0,
+              "loss": 0.08178263943104869,
+              "travelPx": 169.44099678793842
+            },
+            {
+              "id": 1,
+              "loss": 0.0519054945026467,
+              "travelPx": 273.0209365703369
+            },
+            {
+              "id": 2,
+              "loss": 0.014044611490750425,
+              "travelPx": 502.4826755003386
+            },
+            {
+              "id": 3,
+              "loss": 0.038371902654707246,
+              "travelPx": 389.7573031520609
+            },
+            {
+              "id": 4,
+              "loss": 0.16201427888031195,
+              "travelPx": 390.15584633869867
+            },
+            {
+              "id": 5,
+              "loss": 0.33533076010654206,
+              "travelPx": 566.2943096695295
+            },
+            {
+              "id": 6,
+              "loss": 0.2943020636738639,
+              "travelPx": 434.4321474928946
+            },
+            {
+              "id": 7,
+              "loss": 0.021811667370408405,
+              "travelPx": 582.4343903149507
+            },
+            {
+              "id": 8,
+              "loss": 0.032790228089370044,
+              "travelPx": 427.69101984069783
+            },
+            {
+              "id": 9,
+              "loss": 0.025291830859386355,
+              "travelPx": 311.4228515580446
+            },
+            {
+              "id": 10,
+              "loss": 0.10585687463470961,
+              "travelPx": 192.31118250162808
+            },
+            {
+              "id": 11,
+              "loss": 0.011941398291258731,
+              "travelPx": 298.1051322677353
+            }
+          ],
+          "travelPx": 4537.548791994853,
+          "maxOutsidePx": 27.131187515845617,
+          "outsideBodyFrames": 35,
+          "minVisibleAreaPx2": 26726.752715775074,
+          "maxQuotaImbalance": 2.842170943040401e-14,
+          "loanFrameSamples": 107,
+          "loanHistory": [
+            {
+              "scene": "hero",
+              "giver": 11,
+              "taker": 9,
+              "normal": [
+                0,
+                -1
+              ],
+              "start": 4.517297446562974,
+              "duration": 0.9
+            }
+          ],
+          "swaps": [
+            {
+              "t": 4.991666666666665,
+              "ids": [
+                9,
+                10
+              ],
+              "from": [
+                [
+                  10,
+                  1,
+                  12,
+                  3
+                ],
+                [
+                  9,
+                  3,
+                  11,
+                  4
+                ]
+              ],
+              "gain": 18738.503505541346,
+              "positionJump": 0,
+              "velocityJump": 0
+            }
+          ],
+          "identityErrors": 0,
+          "duplicateRoles": 0,
+          "unfinished": 0,
+          "nonrectAreaErrorMax": 5.820766091346741e-11,
+          "prematureContractionCells": 4,
+          "meanPrematureContraction": 0.0979536458320837
+        },
+        {
+          "scene": "sidebar",
+          "axisSamples": [
+            {
+              "ms": 8.333333333333334,
+              "axisPercent": 99.53751451173036
+            },
+            {
+              "ms": 16.666666666666668,
+              "axisPercent": 99.5520078378102
+            },
+            {
+              "ms": 25,
+              "axisPercent": 99.55099118805367
+            },
+            {
+              "ms": 33.333333333333336,
+              "axisPercent": 99.54785920054447
+            },
+            {
+              "ms": 41.66666666666667,
+              "axisPercent": 98.90394855287435
+            },
+            {
+              "ms": 50,
+              "axisPercent": 98.8897610562032
+            },
+            {
+              "ms": 58.333333333333336,
+              "axisPercent": 98.8722463686354
+            },
+            {
+              "ms": 66.66666666666667,
+              "axisPercent": 98.84989793975657
+            },
+            {
+              "ms": 75,
+              "axisPercent": 98.8221973050503
+            },
+            {
+              "ms": 83.33333333333334,
+              "axisPercent": 92.39557463365841
+            },
+            {
+              "ms": 91.66666666666667,
+              "axisPercent": 92.36808212457962
+            },
+            {
+              "ms": 100,
+              "axisPercent": 86.05485313532498
+            },
+            {
+              "ms": 108.33333333333334,
+              "axisPercent": 79.71284848545021
+            },
+            {
+              "ms": 116.66666666666667,
+              "axisPercent": 79.47869344303945
+            },
+            {
+              "ms": 125.00000000000001,
+              "axisPercent": 76.1526737042096
+            },
+            {
+              "ms": 133.33333333333334,
+              "axisPercent": 74.52394391410813
+            },
+            {
+              "ms": 141.66666666666669,
+              "axisPercent": 72.8943448494069
+            },
+            {
+              "ms": 150,
+              "axisPercent": 69.73617163202447
+            },
+            {
+              "ms": 158.33333333333334,
+              "axisPercent": 69.64594565152385
+            }
+          ],
+          "supportLossBefore3px": [
+            {
+              "id": 0,
+              "loss": 0.014331176184812167,
+              "travelPx": 919.2047373016637
+            },
+            {
+              "id": 1,
+              "loss": 0.011550351504168832,
+              "travelPx": 743.3265115419005
+            },
+            {
+              "id": 2,
+              "loss": 0.12477906527487459,
+              "travelPx": 1002.7267244660493
+            },
+            {
+              "id": 3,
+              "loss": 0.02434111826092744,
+              "travelPx": 561.2151887370286
+            },
+            {
+              "id": 4,
+              "loss": 0.0040726025983407466,
+              "travelPx": 545.7186030775791
+            },
+            {
+              "id": 5,
+              "loss": 0.18864390258988317,
+              "travelPx": 691.8470062639882
+            },
+            {
+              "id": 6,
+              "loss": 0.02103967434294418,
+              "travelPx": 566.4320113662978
+            },
+            {
+              "id": 7,
+              "loss": 0.007890369847712964,
+              "travelPx": 801.64406039279
+            },
+            {
+              "id": 8,
+              "loss": 0.7469931509588826,
+              "travelPx": 916.0445522674838
+            },
+            {
+              "id": 9,
+              "loss": 0.7472858153061148,
+              "travelPx": 752.4106931240037
+            },
+            {
+              "id": 10,
+              "loss": 0.6590365528700204,
+              "travelPx": 868.2574513449508
+            },
+            {
+              "id": 11,
+              "loss": 0,
+              "travelPx": 856.668744771294
+            }
+          ],
+          "travelPx": 9225.49628465503,
+          "maxOutsidePx": 64.58655432148475,
+          "outsideBodyFrames": 74,
+          "minVisibleAreaPx2": 27730.54066293263,
+          "maxQuotaImbalance": 1.4210854715202004e-14,
+          "loanFrameSamples": 143,
+          "loanHistory": [
+            {
+              "scene": "sidebar",
+              "giver": 4,
+              "taker": 1,
+              "normal": [
+                0,
+                1
+              ],
+              "start": 9.338751385117845,
+              "duration": 1.1999938502128384
+            }
+          ],
+          "swaps": [],
+          "identityErrors": 0,
+          "duplicateRoles": 0,
+          "unfinished": 0,
+          "nonrectAreaErrorMax": 1.0913936421275139e-11,
+          "prematureContractionCells": 5,
+          "meanPrematureContraction": 0.21249698164489017
+        },
+        {
+          "scene": "frame",
+          "axisSamples": [
+            {
+              "ms": 8.333333333333334,
+              "axisPercent": 99.96010291610062
+            },
+            {
+              "ms": 16.666666666666668,
+              "axisPercent": 99.96026803878225
+            },
+            {
+              "ms": 25,
+              "axisPercent": 99.96131007998007
+            },
+            {
+              "ms": 33.333333333333336,
+              "axisPercent": 99.10305053498544
+            },
+            {
+              "ms": 41.66666666666667,
+              "axisPercent": 98.24395048210708
+            },
+            {
+              "ms": 50,
+              "axisPercent": 98.24787237759577
+            },
+            {
+              "ms": 58.333333333333336,
+              "axisPercent": 98.23867376247945
+            },
+            {
+              "ms": 66.66666666666667,
+              "axisPercent": 98.31199297834809
+            },
+            {
+              "ms": 75,
+              "axisPercent": 98.2466932385917
+            },
+            {
+              "ms": 83.33333333333334,
+              "axisPercent": 98.23438496468859
+            },
+            {
+              "ms": 91.66666666666667,
+              "axisPercent": 93.01518501637622
+            },
+            {
+              "ms": 100,
+              "axisPercent": 93.04981768718653
+            },
+            {
+              "ms": 108.33333333333334,
+              "axisPercent": 93.0188848053449
+            },
+            {
+              "ms": 116.66666666666667,
+              "axisPercent": 93.02115017840279
+            },
+            {
+              "ms": 125.00000000000001,
+              "axisPercent": 93.02256830588775
+            },
+            {
+              "ms": 133.33333333333334,
+              "axisPercent": 93.13100594425661
+            },
+            {
+              "ms": 141.66666666666669,
+              "axisPercent": 93.2476429195738
+            },
+            {
+              "ms": 150,
+              "axisPercent": 93.3482506452734
+            },
+            {
+              "ms": 158.33333333333334,
+              "axisPercent": 91.63732868080554
+            }
+          ],
+          "supportLossBefore3px": [
+            {
+              "id": 0,
+              "loss": 0.6590365528700223,
+              "travelPx": 860.3663753159339
+            },
+            {
+              "id": 1,
+              "loss": 0.02063480709275034,
+              "travelPx": 620.3450719479025
+            },
+            {
+              "id": 2,
+              "loss": 4.440892098500626e-16,
+              "travelPx": 171.86724404403137
+            },
+            {
+              "id": 3,
+              "loss": 0.05717988382202632,
+              "travelPx": 253.77849946559007
+            },
+            {
+              "id": 4,
+              "loss": 0.1575538532000501,
+              "travelPx": 85.29201076389297
+            },
+            {
+              "id": 5,
+              "loss": 0.14245245746115132,
+              "travelPx": 85.88710752843292
+            },
+            {
+              "id": 6,
+              "loss": 0.09523539692411709,
+              "travelPx": 132.89321683814438
+            },
+            {
+              "id": 7,
+              "loss": 0,
+              "travelPx": 245.50289452262916
+            },
+            {
+              "id": 8,
+              "loss": 2.220446049250313e-16,
+              "travelPx": 121.59030005391907
+            },
+            {
+              "id": 9,
+              "loss": 0.631685230173494,
+              "travelPx": 879.1269020628712
+            },
+            {
+              "id": 10,
+              "loss": 0.015569812833288288,
+              "travelPx": 870.2816456767974
+            },
+            {
+              "id": 11,
+              "loss": 0,
+              "travelPx": 645.409387333283
+            }
+          ],
+          "travelPx": 4972.340655553428,
+          "maxOutsidePx": 7.4241858371780705,
+          "outsideBodyFrames": 29,
+          "minVisibleAreaPx2": 26370.007664374487,
+          "maxQuotaImbalance": 1.4210854715202004e-14,
+          "loanFrameSamples": 159,
+          "loanHistory": [
+            {
+              "scene": "frame",
+              "giver": 11,
+              "taker": 7,
+              "normal": [
+                0,
+                -1
+              ],
+              "start": 14.608333333333682,
+              "duration": 1.3334403054689419
+            }
+          ],
+          "swaps": [],
+          "identityErrors": 0,
+          "duplicateRoles": 0,
+          "unfinished": 0,
+          "nonrectAreaErrorMax": 7.275957614183426e-12,
+          "prematureContractionCells": 4,
+          "meanPrematureContraction": 0.14827899953140836
+        },
+        {
+          "scene": "bento",
+          "axisSamples": [
+            {
+              "ms": 8.333333333333334,
+              "axisPercent": 100
+            },
+            {
+              "ms": 16.666666666666668,
+              "axisPercent": 100
+            },
+            {
+              "ms": 25,
+              "axisPercent": 100
+            },
+            {
+              "ms": 33.333333333333336,
+              "axisPercent": 100
+            },
+            {
+              "ms": 41.66666666666667,
+              "axisPercent": 99.99746001616246
+            },
+            {
+              "ms": 50,
+              "axisPercent": 99.99561049455792
+            },
+            {
+              "ms": 58.333333333333336,
+              "axisPercent": 95.48920174302361
+            },
+            {
+              "ms": 66.66666666666667,
+              "axisPercent": 95.48427980522402
+            },
+            {
+              "ms": 75,
+              "axisPercent": 92.3622739463617
+            },
+            {
+              "ms": 83.33333333333334,
+              "axisPercent": 92.35271691736125
+            },
+            {
+              "ms": 91.66666666666667,
+              "axisPercent": 92.34089735040901
+            },
+            {
+              "ms": 100,
+              "axisPercent": 92.32769125062545
+            },
+            {
+              "ms": 108.33333333333334,
+              "axisPercent": 92.31101270655891
+            },
+            {
+              "ms": 116.66666666666667,
+              "axisPercent": 92.29254037613754
+            },
+            {
+              "ms": 125.00000000000001,
+              "axisPercent": 92.27025732889494
+            },
+            {
+              "ms": 133.33333333333334,
+              "axisPercent": 92.24569138796578
+            },
+            {
+              "ms": 141.66666666666669,
+              "axisPercent": 92.21784914814165
+            },
+            {
+              "ms": 150,
+              "axisPercent": 92.18652541265399
+            },
+            {
+              "ms": 158.33333333333334,
+              "axisPercent": 92.15151508120907
+            }
+          ],
+          "supportLossBefore3px": [
+            {
+              "id": 0,
+              "loss": 0,
+              "travelPx": 84.58676011923478
+            },
+            {
+              "id": 1,
+              "loss": 0.008412736496351658,
+              "travelPx": 328.6396508264322
+            },
+            {
+              "id": 2,
+              "loss": 0,
+              "travelPx": 85.66913255502085
+            },
+            {
+              "id": 3,
+              "loss": 0.03348364689940764,
+              "travelPx": 219.72353334609699
+            },
+            {
+              "id": 4,
+              "loss": 0.0223328304492576,
+              "travelPx": 331.36079827544165
+            },
+            {
+              "id": 5,
+              "loss": 0,
+              "travelPx": 85.88692293278714
+            },
+            {
+              "id": 6,
+              "loss": 0,
+              "travelPx": 84.92368335515884
+            },
+            {
+              "id": 7,
+              "loss": 0.029134420404338557,
+              "travelPx": 303.12692509990814
+            },
+            {
+              "id": 8,
+              "loss": 1.1102230246251565e-16,
+              "travelPx": 365.8465462610624
+            },
+            {
+              "id": 9,
+              "loss": 0.1460097223312291,
+              "travelPx": 85.89994328694121
+            },
+            {
+              "id": 10,
+              "loss": 0,
+              "travelPx": 61.338692850364744
+            },
+            {
+              "id": 11,
+              "loss": 0.05746488289943952,
+              "travelPx": 214.14945996957937
+            }
+          ],
+          "travelPx": 2251.1520488780284,
+          "maxOutsidePx": 32.57124057858198,
+          "outsideBodyFrames": 40,
+          "minVisibleAreaPx2": 25905.536760493553,
+          "maxQuotaImbalance": 0,
+          "loanFrameSamples": 109,
+          "loanHistory": [
+            {
+              "scene": "bento",
+              "giver": 1,
+              "taker": 0,
+              "normal": [
+                0,
+                1
+              ],
+              "start": 20.890535655282644,
+              "duration": 0.9188385816242863
+            }
+          ],
+          "swaps": [],
+          "identityErrors": 0,
+          "duplicateRoles": 0,
+          "unfinished": 0,
+          "nonrectAreaErrorMax": 1.4551915228366852e-11,
+          "prematureContractionCells": 1,
+          "meanPrematureContraction": 0.024736519956668684
+        },
+        {
+          "scene": "flock",
+          "axisSamples": [
+            {
+              "ms": 8.333333333333334,
+              "axisPercent": 100
+            },
+            {
+              "ms": 16.666666666666668,
+              "axisPercent": 85.87056461481107
+            },
+            {
+              "ms": 25,
+              "axisPercent": 70.63539963206776
+            },
+            {
+              "ms": 33.333333333333336,
+              "axisPercent": 55.28191315773561
+            },
+            {
+              "ms": 41.66666666666667,
+              "axisPercent": 41.501085350456016
+            },
+            {
+              "ms": 50,
+              "axisPercent": 35.454107475890936
+            },
+            {
+              "ms": 58.333333333333336,
+              "axisPercent": 35.44943912810469
+            },
+            {
+              "ms": 66.66666666666667,
+              "axisPercent": 32.42567035125915
+            },
+            {
+              "ms": 75,
+              "axisPercent": 32.420539514160126
+            },
+            {
+              "ms": 83.33333333333334,
+              "axisPercent": 32.41585579037275
+            },
+            {
+              "ms": 91.66666666666667,
+              "axisPercent": 32.410679713058485
+            },
+            {
+              "ms": 100,
+              "axisPercent": 33.977438521483926
+            },
+            {
+              "ms": 108.33333333333334,
+              "axisPercent": 32.39882387697658
+            },
+            {
+              "ms": 116.66666666666667,
+              "axisPercent": 32.392128210342385
+            },
+            {
+              "ms": 125.00000000000001,
+              "axisPercent": 32.38491012349577
+            },
+            {
+              "ms": 133.33333333333334,
+              "axisPercent": 32.37716093058703
+            },
+            {
+              "ms": 141.66666666666669,
+              "axisPercent": 32.369033537030056
+            },
+            {
+              "ms": 150,
+              "axisPercent": 32.36061660657188
+            },
+            {
+              "ms": 158.33333333333334,
+              "axisPercent": 32.35175210266315
+            }
+          ],
+          "supportLossBefore3px": [
+            {
+              "id": 0,
+              "loss": 0,
+              "travelPx": 327.454785403324
+            },
+            {
+              "id": 1,
+              "loss": 0,
+              "travelPx": 274.283821818509
+            },
+            {
+              "id": 2,
+              "loss": 1.1102230246251565e-16,
+              "travelPx": 264.6116951709407
+            },
+            {
+              "id": 3,
+              "loss": 0,
+              "travelPx": 293.1760517749416
+            },
+            {
+              "id": 4,
+              "loss": 4.440892098500626e-16,
+              "travelPx": 367.91572924551895
+            },
+            {
+              "id": 5,
+              "loss": 1.1102230246251565e-16,
+              "travelPx": 178.52812663118993
+            },
+            {
+              "id": 6,
+              "loss": 2.220446049250313e-16,
+              "travelPx": 265.4763222901258
+            },
+            {
+              "id": 7,
+              "loss": 1.1102230246251565e-16,
+              "travelPx": 472.67805890104887
+            },
+            {
+              "id": 8,
+              "loss": 4.440892098500626e-16,
+              "travelPx": 257.2207931328097
+            },
+            {
+              "id": 9,
+              "loss": 0.7967789462986863,
+              "travelPx": 153.809124675667
+            },
+            {
+              "id": 10,
+              "loss": 9.570196554975485e-05,
+              "travelPx": 279.08722560031896
+            },
+            {
+              "id": 11,
+              "loss": 1.1102230246251565e-16,
+              "travelPx": 280.5183769656704
+            }
+          ],
+          "travelPx": 3414.7601116100655,
+          "maxOutsidePx": 0,
+          "outsideBodyFrames": 0,
+          "minVisibleAreaPx2": 41605.91749247469,
+          "maxQuotaImbalance": 0,
+          "loanFrameSamples": 0,
+          "loanHistory": [],
+          "swaps": [],
+          "identityErrors": 0,
+          "duplicateRoles": 0,
+          "unfinished": 0,
+          "nonrectAreaErrorMax": 0,
+          "prematureContractionCells": 1,
+          "meanPrematureContraction": 0.06640622068868647
+        }
+      ]
+    }
+  },
+  "stress": [
+    {
+      "width": 1440,
+      "errors": [],
+      "result": [
+        {
+          "label": "startup",
+          "frames": 160,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.678971566054527e-07,
+          "areaError": 4.656612873077393e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 0
+        },
+        {
+          "label": "30-hero",
+          "frames": 220,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 7.611831128670887e-07,
+          "areaError": 9.313225746154785e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0.21999998167407686,
+          "unseated": 0
+        },
+        {
+          "label": "30-sidebar",
+          "frames": 220,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.2494560234687e-07,
+          "areaError": 6.984919309616089e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0.21966244594537807,
+          "unseated": 0
+        },
+        {
+          "label": "interrupt-frame",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 7.665602039273301e-07,
+          "areaError": 4.656612873077393e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 30
+        },
+        {
+          "label": "interrupt-bento",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 5.664551844198638e-07,
+          "areaError": 6.984919309616089e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 30
+        },
+        {
+          "label": "interrupt-hero",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 6.993363409466645e-07,
+          "areaError": 6.984919309616089e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 30
+        },
+        {
+          "label": "interrupt-flock",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 2.351924591388117e-07,
+          "areaError": 2.3283064365386963e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 0
+        },
+        {
+          "label": "interrupt-sidebar",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 3.414537572392681e-07,
+          "areaError": 4.656612873077393e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 30
+        },
+        {
+          "label": "interrupt-frame",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 2.5294524111626887e-07,
+          "areaError": 4.656612873077393e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 30
+        },
+        {
+          "label": "interrupted-settle",
+          "frames": 220,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.540417863792241e-07,
+          "areaError": 6.984919309616089e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0.21976996528434065,
+          "unseated": 0
+        },
+        {
+          "label": "4-bento",
+          "frames": 220,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.426726840380524e-07,
+          "areaError": 9.313225746154785e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 2.208997519490733,
+          "unseated": 0
+        },
+        {
+          "label": "12-frame",
+          "frames": 220,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 8.640390237037136e-07,
+          "areaError": 6.984919309616089e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 1.3194508817910378,
+          "unseated": 0
+        },
+        {
+          "label": "hover-sweep",
+          "frames": 180,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 0,
+          "areaError": 0,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 0
+        },
+        {
+          "label": "release",
+          "frames": 200,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 8.257298348103652e-07,
+          "areaError": 6.984919309616089e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 0
+        },
+        {
+          "label": "interrupt-resize",
+          "frames": 15,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.451684850851159e-07,
+          "areaError": 2.3283064365386963e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0.34965540307257487,
+          "unseated": 12
+        },
+        {
+          "label": "resized-settle",
+          "frames": 260,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.436362433082583e-07,
+          "areaError": 2.9103830456733704e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0.8786401928674892,
+          "unseated": 0
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "errors": [],
+      "result": [
+        {
+          "label": "startup",
+          "frames": 160,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.85290368386317e-07,
+          "areaError": 1.1641532182693481e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 0
+        },
+        {
+          "label": "30-hero",
+          "frames": 220,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 8.74699511157389e-07,
+          "areaError": 1.7462298274040222e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0.2194805466368481,
+          "unseated": 0
+        },
+        {
+          "label": "30-sidebar",
+          "frames": 220,
+          "gap": 356,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.501544161786612e-07,
+          "areaError": 1.7462298274040222e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0.43952057353731205,
+          "unseated": 0
+        },
+        {
+          "label": "interrupt-frame",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 7.384147885776694e-07,
+          "areaError": 8.731149137020111e-11,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 30
+        },
+        {
+          "label": "interrupt-bento",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 7.282531547060465e-07,
+          "areaError": 1.1641532182693481e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 30
+        },
+        {
+          "label": "interrupt-hero",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 3.2136283976324735e-07,
+          "areaError": 2.6193447411060333e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 30
+        },
+        {
+          "label": "interrupt-flock",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.750266639951267e-07,
+          "areaError": 1.4551915228366852e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 0
+        },
+        {
+          "label": "interrupt-sidebar",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 8.586898771039448e-07,
+          "areaError": 2.0372681319713593e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 30
+        },
+        {
+          "label": "interrupt-frame",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 8.434071632632904e-07,
+          "areaError": 2.3283064365386963e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 30
+        },
+        {
+          "label": "interrupted-settle",
+          "frames": 220,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 8.53792695280617e-07,
+          "areaError": 1.7462298274040222e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0.4392010093309582,
+          "unseated": 0
+        },
+        {
+          "label": "4-bento",
+          "frames": 220,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.945987510464591e-07,
+          "areaError": 2.3283064365386963e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 0
+        },
+        {
+          "label": "12-frame",
+          "frames": 220,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.017343518979254e-07,
+          "areaError": 2.3283064365386963e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0.6599960507035632,
+          "unseated": 0
+        },
+        {
+          "label": "hover-sweep",
+          "frames": 180,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 0,
+          "areaError": 0,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 0
+        },
+        {
+          "label": "release",
+          "frames": 200,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 8.867104591426512e-07,
+          "areaError": 1.1641532182693481e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 0
+        },
+        {
+          "label": "interrupt-resize",
+          "frames": 15,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 2.907235943565525e-07,
+          "areaError": 8.731149137020111e-11,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0.00020753699243066987,
+          "unseated": 12
+        },
+        {
+          "label": "resized-settle",
+          "frames": 260,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.398167515992992e-07,
+          "areaError": 2.3283064365386963e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0.43904146382924214,
+          "unseated": 0
+        }
+      ]
+    }
+  ],
+  "coverageSeams": [
+    {
+      "source": "stress-390-coverage.json",
+      "phase": "30-sidebar",
+      "frame": 108,
+      "rasterGapPx2": 356,
+      "rasterOverlapPx2": 0,
+      "polygonGapPx2": 4.732841986498292e-05,
+      "polygonOverlapPx2": 8.355797035619617e-06
+    },
+    {
+      "source": "stress-390-coverage.json",
+      "phase": "30-sidebar",
+      "frame": 114,
+      "rasterGapPx2": 356,
+      "rasterOverlapPx2": 0,
+      "polygonGapPx2": 4.732841986498292e-05,
+      "polygonOverlapPx2": 8.355797035619617e-06
+    },
+    {
+      "source": "stress-390-coverage.json",
+      "phase": "30-sidebar",
+      "frame": 120,
+      "rasterGapPx2": 356,
+      "rasterOverlapPx2": 0,
+      "polygonGapPx2": 4.732841986498292e-05,
+      "polygonOverlapPx2": 8.355797035619617e-06
+    }
+  ],
+  "allRecordedMotionMeasuresImproved": false
+}
