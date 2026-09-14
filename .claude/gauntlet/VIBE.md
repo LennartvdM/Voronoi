@@ -626,6 +626,78 @@ shock win is far outside the 0.67% band at two parks of three. Against that:
 It has never faced a refuter. It goes into the next round as the starting
 position at that site, not as a ship.
 
+## 3.11 THE GRIDLOCK ROUND — holes make the whole pocket pay
+
+The hover correction changed the experiment, not the transition problem.
+The harness had held the pointer on the Hero card for all 1,770 frames and
+therefore manufactured the large Sidebar uncrush described above. From this
+round onward, the **primary diagnostic park is off canvas**, with an explicit
+assertion that no body is hovered. The three on-canvas parks remain the hover
+acceptance matrix; they are not evidence for or against the no-hover strobe.
+
+With nothing hovered, the transition still strobes: at the 30 ms clock the
+no-hover run records 10 jumps per cycle, walls displaced by the field move
+3–4 times as far as the seeds that drive them, and the over-reaching wedges
+remain. Thus mk14's hover rule is a valid side fix, not an explanation of the
+transition.
+
+### What “gridlock” means here
+
+The seeds are not stuck. They arrive on their journey clocks (`carry` remains
+about 0.92), while their destination ground is still occupied by the wall or
+hole of another late body. In Hero, seven bodies wait 34–51 frames in chains
+including 7←9←10 and 3←2←0; every blocker is late and none is seated. Ordinary
+auction instrumentation missed this because **97% of blocked destination
+area is occupied by holes, and a hole is not a bidder**.
+
+The queue is real, but block/release events explain only about 12% of the large
+slides. Do not equate detecting the queue with finding the strobe's direct
+cause: blocked bodies churn only slightly more than free bodies.
+
+### The bleed control was finally a real bleed
+
+The earlier bleed variant was inert by construction: it pinned each cell's
+on-page area to its no-bleed area. The corrected control allowed cells to own
+part of themselves off canvas, with scoring clipped to the page. It produced
+283 jumps against 16 and made seven cells vanish. A power diagram has no
+unowned slack: enlarging the ground makes every exact area share expand while
+melting and contract while locking. A future “temporary bleed” proposal must
+therefore name **which blocked claim yields**, locally, and where that yielded
+area is accounted for. Merely enlarging the common domain is refuted.
+
+### The transition mechanism
+
+Top-decile wall slides cluster at state changes: 70% occur within two frames
+of one, with 5 times the mean displacement. The strongest asymmetry is on
+arrival, but neither the newborn hole's 80 ms shadow chase nor a fixed birth
+core causes it; disabling or freezing that chase leaves enrichment essentially
+unchanged and breaks cold settle.
+
+The decisive split is whether a pocket contains a morphing hole:
+
+| frame class | free-wall slide |
+|---|---:|
+| no hole in the pocket | 1.44 px |
+| hole in the pocket | 9.27 px |
+| seed travel 0–2 px, no hole | 0.85 px |
+| seed travel 0–2 px, with hole | 4.76 px |
+
+An almost stationary cell is therefore re-positioned because a neighbour is
+crystallising elsewhere in its pocket. During the staggered 0.5 s arrival
+window, each changing hole removes a changing piece of the common auction
+ground. Exact-area compensation re-partitions the remainder, so every free
+wall in that connected pocket answers every local lock. What looks like a
+teleport is continuous, non-local repartitioning sampled frame by frame.
+
+Controls reject treating this as a rate problem: slowing the lock reduced
+slide only 9% while increasing shock 121% and opening a gap; widening the
+stagger increased jumps from 16 to 54. The hole's presence, not merely its
+speed, drives the effect. The next design must attack **locality**: either
+give a blocked transition body a locally accounted right-of-way/yield rule,
+or isolate a changing hole's area exchange so the whole connected pocket does
+not pay on every frame. Both must retain exact rectangles at rest, bound total
+transition time, and pass the off-canvas no-hover run before the hover matrix.
+
 ## 4. Hypotheses, ranked, with what would confirm each
 
 H1 **The seed fights itself.** Repulsion (`separate`) shoves a traveller off
