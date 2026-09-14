@@ -2678,17 +2678,19 @@ class Hive {
   }
 
   // Ground with no bidder in its pocket is drawn by the nearest hole, so
-  // the picture stays whole while the holes' shapes travel.
+  // the picture stays whole while the holes' shapes travel. Measure from the
+  // pocket to each body's seed, not to its clipped silhouette: the seed has
+  // a continuous trajectory, whereas a silhouette centroid can jump when a
+  // wall or a stronger hole cuts off one of its arms. Using that re-derived
+  // centroid could hand a whole orphan pocket back and forth even though no
+  // agent changed direction.
   adoptGround(pieces) {
     for (const p of pieces) {
       let cx = 0, cy = 0; for (const q of p) { cx += q[0]; cy += q[1]; } cx /= p.length; cy /= p.length;
       let best = null, bd = Infinity;
       for (const b of this.holes) {
-        for (const hp of b.hole.pieces) {
-          let hx = 0, hy = 0; for (const q of hp) { hx += q[0]; hy += q[1]; } hx /= hp.length; hy /= hp.length;
-          const d = (hx - cx) * (hx - cx) + (hy - cy) * (hy - cy);
-          if (d < bd) { bd = d; best = b; }
-        }
+        const d = (b.x - cx) * (b.x - cx) + (b.y - cy) * (b.y - cy);
+        if (d < bd) { bd = d; best = b; }
       }
       if (best) best.holeExtra.push(p);
     }
