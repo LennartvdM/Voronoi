@@ -1,0 +1,64 @@
+name: Astra I frame validation
+
+on:
+  pull_request:
+    paths:
+      - '**.html'
+      - '.claude/gauntlet/**'
+      - 'tests/astra/**'
+      - '.github/workflows/astra-i.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preserve exact test input
+        run: |
+          mkdir -p /tmp/astra-input
+          cp -r .claude /tmp/astra-input/
+          cp *.html netlify.toml /tmp/astra-input/
+          git rev-parse HEAD > /tmp/astra-input/REVISION
+      - uses: actions/upload-artifact@v4
+        with:
+          name: astra-test-input
+          path: /tmp/astra-input/
+          include-hidden-files: true
+          retention-days: 7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser test runtime
+        run: |
+          npm install --prefix /tmp/astra-runtime playwright@1.55.0
+          /tmp/astra-runtime/node_modules/.bin/playwright install --with-deps chromium
+      - name: Adapt probe runtime paths without changing tested HTML
+        run: |
+          mkdir -p /tmp/astra-probes astra-results
+          python3 - <<'PY'
+          from pathlib import Path
+          for p in Path('.claude/gauntlet').glob('*.js'):
+              text = p.read_text()
+              text = text.replace('/opt/node22/lib/node_modules/playwright', '/tmp/astra-runtime/node_modules/playwright')
+              text = text.replace("executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',", '')
+              Path('/tmp/astra-probes', p.name).write_text(text)
+          PY
+      - name: No-hover baselines at high and coarse frequency
+        run: |
+          for build in hive mk-hive-gpt-2; do
+            node /tmp/astra-probes/score.js "$build.html" "astra-results/$build-120hz.json" --dt 8.333333333333334 --frames 660 --parkx -1000 --parky -1000
+            node /tmp/astra-probes/score.js "$build.html" "astra-results/$build-60hz.json" --dt 16.666666666666668 --frames 330 --parkx -1000 --parky -1000
+            node /tmp/astra-probes/score.js "$build.html" "astra-results/$build-30ms.json" --dt 30 --frames 184 --parkx -1000 --parky -1000
+            node /tmp/astra-probes/score.js "$build.html" "astra-results/$build-jitter.json" --dt 25 --jitter 12 --frames 220 --parkx -1000 --parky -1000
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: astra-frame-results
+          path: astra-results/
+          retention-days: 30
