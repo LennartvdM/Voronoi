@@ -46,12 +46,14 @@ jobs:
                   assert not phase['vanish'] and not phase['invalid'], phase
                   if not phase['label'].startswith('interrupt-') and phase['label'] != 'release':
                       assert phase['unseated'] == 0, phase
-                  # The 2px coverage raster overestimates near-grid-aligned numerical
-                  # seams; at 390 px the pitch is 32 px and a tile's lattice carries its
-                  # neighbours' rows, so a few raster cells along a seam read as a gap
-                  # or an overlap. Desktop stays exact; mobile gets 400 / 100 px².
-                  mobile = case['width'] == 390
-                  assert phase['gap'] <= (400 if mobile else 0) and phase['over'] <= (100 if mobile else 0), phase
+                  # exact at both widths: the raster samples 0.01 px off the grid
+                  # (stress.js), so a numerical seam on a grid line is not a gap
+                  assert phase['gap'] == 0 and phase['over'] == 0, phase
+                  # every frame's auction converged: to 1e-5 on the desktop, and on
+                  # the 390 px page, where a body born at the minimum claim is a
+                  # 40 px² cell six px from the next, to 1e-2 (the three frames
+                  # above 1e-5 there are a leaving body's last hundredths)
+                  assert phase['err'] <= (1e-2 if mobile else 1e-5), phase
           PY
       - name: Publish generated files only to the experimental branch
         env:

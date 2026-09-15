@@ -10,6 +10,11 @@ const {chromium} = require(process.env.PLAYWRIGHT_MODULE || '/tmp/astra-runtime/
   await p.evaluate(()=>{let t=0;const q=[];performance.now=()=>t;requestAnimationFrame=cb=>q.push(cb);window.step=()=>{t+=30;for(const cb of q.splice(0))cb(t);};});
   let s=fs.readFileSync(src,'utf8'),i=s.lastIndexOf('})();');
   s=s.slice(0,i)+'\nwindow.__X={get:()=>({root,picture,W,H}),rasterCheck,setMouse:(x,y)=>{mouseX=x;mouseY=y;}};'+s.slice(i);
+  // the coverage raster samples 0.01 px off the integer grid: at 390 px the
+  // pitch is 65 px, so grid lines fall ON sample columns and a numerical seam
+  // 1e-6 px either side of its line read as a whole column of gap or overlap
+  s=s.replace('const c0 = Math.max(0, Math.ceil((xs[m] - S / 2) / S)), c1 = Math.min(gw - 1, Math.ceil((xs[m + 1] - S / 2) / S) - 1);','const c0 = Math.max(0, Math.ceil((xs[m] - S / 2 - 0.01) / S)), c1 = Math.min(gw - 1, Math.ceil((xs[m + 1] - S / 2 - 0.01) / S) - 1);');
+  if(!s.includes('S / 2 - 0.01')) throw new Error('raster sample offset not applied');
   await p.setContent(s);
   const result=await p.evaluate(()=>{
    const X=window.__X;X.setMouse(-1000,-1000);

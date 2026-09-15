@@ -642,8 +642,30 @@ the right of way; a body still waiting for its turn yields, and once it has
 been shoved a third of a pitch off its slot it departs now: the push is the
 change arriving. A tile is not liquid, so it takes no part in the seeds'
 repulsion — repelled as well, it was held back from its carrot until the pin
-took it, and then yanked home. The grouped solve is damped Newton with a
-warm factor and a budget in evaluations.
+took it, and then yanked home. The grouped solve is Astra I's Newton with
+its line search (the direction kept, the length halved until the residual
+falls), a revival for any group a warm start left without a cell (its own
+weight bracketed and bisected to about its target before Newton, which has
+no derivative for a cell that is not there), and a budget in evaluations. A
+damped step was tried in that seat first — the diagonal raised, the
+direction bent toward each body's own residual — and on every hard frame
+the stress scenario has (twenty-six bodies born in one frame at the minimum
+claim; whitespace coming back on its page lattice at the weight it had when
+it was most of the page, eighty times its target, crushing the tiles beside
+it) it refused its way to a wall while halving found a step every time.
+
+Two of the harness's numbers were the instrument's, not the picture's, and
+both are worth keeping. A tile's cell was read by the field inside it with
+its corners rounded off at 0.05 px, so that a tile would read as a
+rectangle to the hive it holds; the field's leaves then covered the rounded
+polygon while the neighbours covered the exact one, and the sliver between
+— 0.7 px² in one 240 Hz frame, at a seam that sat on a raster sample column
+— read as a 72 px² gap. The reference's own `domainFor` warns exactly this;
+the field reads the exact cell now. And at 390 px the pitch is 65 px, so
+grid lines fall ON the raster's sample columns, and a numerical seam a
+millionth of a px either side of its line read as a whole column of gap or
+overlap; the harness samples 0.01 px off the grid now, and both widths are
+exact.
 
 Measured at the owner's clock, 30 ms, pointer off the canvas, against Astra
 I on the same scenario: area jumps 0 (Astra I 0), every frame converged to

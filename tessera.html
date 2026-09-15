@@ -3960,31 +3960,7 @@ const TES_DEPART_PUSH = 40;    // px: a waiter shoved this far off its slot depa
 
 // Astra I's grouped solve, with a fixed offset per site: a body's sites bid
 // at its one weight minus their own penalty.
-// A full Gaussian solve with partial pivoting, for the damped system: it
-// has no null space, so nothing is pinned.
-function tesSolveFull(A, g) {
-  const n = g.length, M = A.map((row, i) => { const out = new Float64Array(n + 1); out.set(row); out[n] = g[i]; return out; });
-  for (let c = 0; c < n; c++) {
-    let piv = c;
-    for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv = r;
-    if (piv !== c) { const t = M[c]; M[c] = M[piv]; M[piv] = t; }
-    const pv = M[c][c] || 1e-30;
-    for (let r = c + 1; r < n; r++) {
-      const f = M[r][c] / pv;
-      if (f === 0) continue;
-      for (let j = c; j <= n; j++) M[r][j] -= f * M[c][j];
-    }
-  }
-  const x = new Float64Array(n);
-  for (let c = n - 1; c >= 0; c--) {
-    let s = M[c][n];
-    for (let j = c + 1; j < n; j++) s -= M[c][j] * x[j];
-    x[c] = s / (M[c][c] || 1e-30);
-  }
-  return x;
-}
-
-function tesseraSolve(seeds, owner, offset, targets, w0, bounds, maxIter = 16, lambda0 = 0, maxEvals = 32) {
+function tesseraSolve(seeds, owner, offset, targets, w0, bounds, maxIter = 16, maxEvals = 32) {
   const n = targets.length, area = Math.abs(ringArea(bounds));
   const sum = targets.reduce((a, b) => a + b, 0);
   const target = targets.map(a => a * area / sum);
@@ -3998,32 +3974,62 @@ function tesseraSolve(seeds, owner, offset, targets, w0, bounds, maxIter = 16, l
     return { diagram, areas };
   };
   let current = evaluate(w);
-  for (let pass = 0; pass < 3 && minOf(current.areas) <= 0; pass++) {
-    for (let i = 0; i < n; i++) {
-      if (current.areas[i] > 0) continue;
-      let lo = -8 * area - Math.max(...Array.from(w, Math.abs)) - Math.max(...offset);
-      let hi = -lo;
-      for (let k = 0; k < 36; k++) {
-        const mid = (lo + hi) / 2; w[i] = mid;
-        if (evaluate(w).areas[i] < target[i]) lo = mid; else hi = mid;
-      }
-      w[i] = (lo + hi) / 2;
-      current = evaluate(w);
+  // REVIVAL. A group's weight comes from the last frame it was solved in,
+  // and a frame can leave a group with no cell at all (whitespace coming
+  // back on its page lattice at the weight it had when it was most of the
+  // page crushes the tiles beside it; a body born at the minimum claim next
+  // to another). Newton has no derivative for a cell that is not there, so
+  // a dead group first has its own weight alone raised by bracketing and
+  // bisection until it holds about its target (Astra I's own revival pass,
+  // at a fifth of the evaluations). Groups merely far from their targets are
+  // left to Newton: a pass that pushed each of those to its target in turn
+  // crushed its neighbours in turn and cost more than it saved.
+  const repair = (i) => {
+    const want = target[i];
+    let a = current.areas[i];
+    const up = a < want;
+    let step = area / n / 4, prev = w[i];
+    for (let k = 0; k < 12; k++) {
+      prev = w[i]; w[i] += up ? step : -step; current = evaluate(w); a = current.areas[i];
+      if (up ? a >= want : a <= want) break;
+      step *= 2;
     }
+    if (!(up ? a >= want : a <= want)) return;
+    let lo = up ? prev : w[i], hi = up ? w[i] : prev;
+    for (let k = 0; k < 8; k++) {
+      w[i] = (lo + hi) / 2; current = evaluate(w);
+      if (current.areas[i] < want) lo = w[i]; else hi = w[i];
+      if (Math.abs(current.areas[i] - want) < 0.1 * want) break;
+    }
+  };
+  // (twice over if need be: two newborn bodies a few px apart can each
+  // bury the other, and one pass leaves the second one dead)
+  for (let pass = 0; pass < 3; pass++) {
+    let any = false;
+    for (let i = 0; i < n; i++) if (current.areas[i] <= 1e-3 * target[i]) { repair(i); any = true; }
+    if (!any) break;
   }
-  const floor = .5 * Math.min(minOf(target), minOf(current.areas));
-  // DAMPED NEWTON. The Newton step, with every body's own diagonal scaled by
-  // (1 + lambda): at lambda 0 it is Newton, and as lambda grows each body
-  // moves its own weight alone by its own residual, the step that cannot
-  // overshoot. A step that does not lower the residual, or takes a body
-  // below the floor, is refused and lambda grows fourfold; an accepted step
-  // shrinks it by three. lambda is warm across frames, so a page that is
-  // behaving is solved at Newton's pace and a page mid-contact at a safe one.
-  // The budget is in evaluations, whatever it took: a frame is never held
-  // for a solve that is not converging.
-  let lam = lambda0, iterations = 0, maxRel = Infinity;
+  // the floor a step may not take any body below: a tenth of the smallest
+  // target (or of the smallest area the frame began with, when that is
+  // less). Half was too high: twenty-six bodies born in one frame at the
+  // minimum claim sit near half of it while the others sort themselves out,
+  // and every step that reduced the residual was refused for it.
+  const floor = .1 * Math.min(minOf(target), minOf(current.areas));
+  // NEWTON WITH A LINE SEARCH, as Astra I: the Newton direction, taken
+  // whole when that lowers the residual by at least half the step's share,
+  // else halved, up to twelve times. The direction is kept and the length
+  // is not: a damped step (the diagonal raised, the direction bent toward
+  // each body's own residual) was tried in this seat and refused its way
+  // to a wall on every hard frame this scenario has — twenty-six births in
+  // one frame, a page of arrivals crushing the tiles beside them — where
+  // halving found a step every time. The budget is in evaluations,
+  // whatever it took: a frame is never held for a solve that is not
+  // converging.
+  let iterations = 0, maxRel = Infinity;
   const budget = maxEvals + evaluations;
   for (; iterations < maxIter && evaluations < budget; iterations++) {
+    // a step that buried a group: revive it before the next
+    for (let i = 0; i < n; i++) if (current.areas[i] <= 1e-3 * target[i] && evaluations < budget) repair(i);
     const residual = target.map((a, i) => a - current.areas[i]);
     maxRel = Math.max(...residual.map((a, i) => Math.abs(a) / target[i]));
     if (maxRel <= 1e-6) break;
@@ -4040,18 +4046,20 @@ function tesseraSolve(seeds, owner, offset, targets, w0, bounds, maxIter = 16, l
     });
     for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) J[i][j] = J[j][i] = .5 * (J[i][j] + J[j][i]);
     for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) if (i !== j) J[i][i] -= J[i][j];
-    const norm = norm2(residual);
+    // a group the last step left without a cell has an empty row: give it
+    // the lower-quartile diagonal of the page, so its step is its residual
+    // over a typical front, a revival rather than a singular system
+    const diag = Array.from({ length: n }, (_, i) => J[i][i]).sort((a, b) => a - b), mu = diag[n >> 2];
+    for (let i = 0; i < n; i++) if (J[i][i] < 1e-3 * mu) J[i][i] = mu;
+    const norm = norm2(residual), dw = solvePinned(J, residual);
     let accepted = false;
-    for (let k = 0; k < 8 && evaluations < budget; k++) {
-      const Jd = J.map((row, i) => { const r = Float64Array.from(row); r[i] *= 1 + lam; return r; });
-      const dw = lam > 1e-9 ? tesSolveFull(Jd, residual) : solvePinned(J, residual);
-      const nextW = Float64Array.from(w, (x, i) => x + dw[i]);
-      if (!nextW.every(Number.isFinite)) { lam = Math.min(1e6, Math.max(1e-3, lam) * 4); continue; }
+    for (let t = 1, k = 0; k < 12 && evaluations < budget; k++, t /= 2) {
+      const nextW = Float64Array.from(w, (x, i) => x + t * dw[i]);
+      if (!nextW.every(Number.isFinite)) break;
       const next = evaluate(nextW);
-      if (minOf(next.areas) >= floor && norm2(target.map((x, i) => x - next.areas[i])) < norm) {
-        w = nextW; current = next; accepted = true; lam = lam < 1e-3 ? 0 : lam / 3; break;
+      if (minOf(next.areas) >= floor && norm2(target.map((x, i) => x - next.areas[i])) <= (1 - t / 2) * norm) {
+        w = nextW; current = next; accepted = true; break;
       }
-      lam = Math.min(1e6, Math.max(1e-3, lam) * 4);
     }
     if (!accepted) break;
   }
@@ -4059,7 +4067,7 @@ function tesseraSolve(seeds, owner, offset, targets, w0, bounds, maxIter = 16, l
   const mean = w.reduce((a, b) => a + b, 0) / n;
   w = w.map(x => x - mean);
   return { weights: siteWeights(w), groupWeights: Array.from(w), diagram: current.diagram,
-    maxRelErr: maxRel, converged: maxRel <= 1e-6, iterations, evals: evaluations, lambda: lam };
+    maxRelErr: maxRel, converged: maxRel <= 1e-6, iterations, evals: evaluations };
 }
 
 // The root keeps no walls and no holes between frames: every body is in
@@ -4515,15 +4523,14 @@ Hive.prototype.placeSeeds = function() {
   }
 };
 
-// A cell read by the field inside it: its real corners, not the seam's
-// vertices, so a rectangle is a rectangle to the hive it holds.
-const tesOldCellPoly = Hive.prototype.cellPoly;
-Hive.prototype.cellPoly = function(b) {
-  const poly = tesOldCellPoly.call(this, b);
-  if (this.depth !== 0 || !poly || b.wall) return poly;
-  const clean = simplifyLoop(poly, 0.05, 1e-4);
-  return clean.length >= 3 ? clean : poly;
-};
+// A field reads its cell EXACTLY, seam vertices included. An earlier version
+// rounded the outline off at 0.05 px so a tile would read as a rectangle to
+// the hive it holds; the reference's own domainFor warns why not: the field's
+// leaves then cover the rounded polygon while the neighbours cover the exact
+// one, and the sliver between (0.7 px² in a 240 Hz sidebar frame, at a seam
+// that happened to sit on a raster sample column) reads as a 72 px² gap. At
+// rest the lattice makes every seated cell an exact rectangle anyway, so the
+// field locks without help.
 
 const tesOldSolve = Hive.prototype.solve;
 Hive.prototype.solve = function() {
@@ -4566,8 +4573,7 @@ Hive.prototype.solve = function() {
     const owners = subs.map(s => indices.get(s.body)), seeds = subs.map(s => [s.x, s.y]), offs = subs.map(s => s.off);
     const targets = content.map(b => b.subs[0].claim).concat(voids.length ? [voids.reduce((a, v) => a + v.subs[0].claim, 0)] : []);
     const w0 = content.map(b => b.tesW || 0).concat(voids.length ? [this.tesVoidW || 0] : []);
-    sol = tesseraSolve(seeds, owners, offs, targets, w0, this.domainPts(), 16, this.tesLambda || 0);
-    this.tesLambda = sol.lambda;
+    sol = tesseraSolve(seeds, owners, offs, targets, w0, this.domainPts());
     content.forEach((b, i) => { b.tesW = sol.groupWeights[i]; });
     if (voids.length) { this.tesVoidW = sol.groupWeights[content.length]; for (const v of voids) v.tesW = this.tesVoidW; }
     subs.forEach((s, i) => { s.w = sol.weights[i]; });

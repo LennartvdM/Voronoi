@@ -54,7 +54,9 @@ replace(marker, (ROOT / 'tests/tessera/engine.js').read_text() + '\n' + marker, 
 (ROOT / 'tessera.html').write_text(s)
 index_path = ROOT / 'index.html'
 index = index_path.read_text()
-index = re.sub(r'\s*<!-- TESSERA -->.*?<!-- /TESSERA -->', '', index, flags=re.S)
+# idempotent: the block goes with the newline that follows it and any blank
+# lines a previous build left, so a rebuild reproduces index.html byte for byte
+index = re.sub(r'\s*<!-- TESSERA -->.*?<!-- /TESSERA -->[ \t]*\n(?:[ \t]*\n)*', '\n', index, flags=re.S)
 index = index.replace('class="version-card latest"', 'class="version-card"')
 index = index.replace('<span class="latest-flag">Latest</span>', '')
 card = '''
@@ -63,10 +65,10 @@ card = '''
             <h2>Tessera</h2><span class="latest-flag">Latest</span>
             <span class="mk">Tessera</span>
             <span class="tag preview">Tested experiment</span>
-            <p>Tiles on one lattice. A body's sites are always grid points, weighted by how much of each cell its footprint covers, so no two moving bodies can corrugate against each other. Tiles depart rigid instead of melting, and a packing pass gives travellers right of way.</p>
+            <p>Rigid tiles on conforming lattices. A settled tile departs as it is, no pre-melt; along every seam a tile's edge column carries the rows of the column across it, so the seam is straight; whitespace is one bidder with a ring that conforms to every tile's edge; a packing pass gives travellers right of way.</p>
             <ul>
                 <li>No pre-melt: a settled tile moves as it is</li>
-                <li>Grid-only sites: axis or diagonal fronts, never a zigzag seam</li>
+                <li>Conforming seams: no two lattices corrugate against each other</li>
                 <li>Footprints yield and return; measured against Hive and Astra I</li>
             </ul>
         </a>
