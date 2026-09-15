@@ -43,7 +43,8 @@ const TES_PACK_ITERS = 2;      // packing sweeps per motion step
 const TES_PACK_TAU = 0.06;     // s: an overlap is taken out on this clock, not in one frame
 const TES_PUSH_SPEED = 1e9;    // px/s: the most a footprint yields in a second (unbounded: see the packing note)
 const TES_SNAP = 0.02;         // px: a displacement below this is none
-const TES_TRAVEL_COMP = 0.25;  // a traveller yields this much against a yielder's 1
+const TES_TRAVEL_COMP = 0.1;   // a traveller yields this much against a yielder's 1
+const TES_DEPART_PUSH = 40;    // px: a waiter shoved this far off its slot departs now
 
 // Astra I's grouped solve, with a fixed offset per site: a body's sites bid
 // at its one weight minus their own penalty.
@@ -362,6 +363,13 @@ Hive.prototype.tesPack = function(h) {
     if (m > cap) { it.x = it.x0 + mx * cap / m; it.y = it.y0 + my * cap / m; }
     it.b.tesP.x = (it.x - it.b.x) / it.pk;
     it.b.tesP.y = (it.y - it.b.y) / it.pk;
+    // THE PUSH IS THE CHANGE ARRIVING. A body still waiting for its turn
+    // that has been shoved a third of a pitch off its slot is in the way of
+    // somebody who is going: it goes now, and where it was going anyway.
+    // The percolation clock says when the change reaches a body; a body
+    // being pushed has been reached.
+    const j = it.b.journey;
+    if (j && j.stamp && this.t < j.t0 + j.delay && Math.hypot(it.b.tesP.x, it.b.tesP.y) > TES_DEPART_PUSH) j.delay = Math.max(0, this.t - j.t0);
   }
 };
 
@@ -495,11 +503,14 @@ Hive.prototype.placeSeeds = function() {
   for (const A of content) for (const B of content) {
     if (A === B) continue;
     const LA = A.tesLat, LB = B.tesLat;
-    if (LB.x0 >= LA.x1 - 1 && LA.y0 < LB.y1 && LB.y0 < LA.y1) {
+    // facing, touching, or overlapping by up to a third of a pitch (the
+    // packing takes an overlap out on a clock, so a few px are always there;
+    // a seam that lost its mirrors for those px would corrugate)
+    if (LB.x0 >= LA.x1 - PW / 3 && LA.y0 < LB.y1 && LB.y0 < LA.y1) {
       const xa = LA.xs[LA.xs.length - 1], xb = LB.xs[0];
       if (xb - xa >= 0.5 * PW) seams.push({ A, B, axis: 'x', xa, xb });
     }
-    if (LB.y0 >= LA.y1 - 1 && LA.x0 < LB.x1 && LB.x0 < LA.x1) {
+    if (LB.y0 >= LA.y1 - PH / 3 && LA.x0 < LB.x1 && LB.x0 < LA.x1) {
       const ya = LA.ys[LA.ys.length - 1], yb = LB.ys[0];
       if (yb - ya >= 0.5 * PH) seams.push({ A, B, axis: 'y', ya, yb });
     }

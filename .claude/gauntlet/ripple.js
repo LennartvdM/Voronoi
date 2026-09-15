@@ -13,6 +13,10 @@
  *     summed per scene, transition frames only (the cold settle excluded).
  *   TEETH. The bends whose step aside is 6 px or more — the ones the garment
  *     cannot round away — and DEPTH, the sum of every bend's step in px.
+ *   CORRUGATIONS. Runs of three or more TEETH in a row along one edge: the
+ *     periodic zigzag of two misaligned lattices, which is the complaint. An
+ *     isolated step at a seam's end is a tooth but not a corrugation, and a
+ *     wiggle under 6 px is neither.
  *   AXIS SHARE. The share of the outline's length that runs along an axis:
  *     100% for a page of rectangles, lower for organic cells. Not a score by
  *     itself (a liquid flock is legitimately low), but the number that says
@@ -64,7 +68,7 @@ const RUN = ({ FRAMES, PX, PY }) => {
     if (pic) for (const l of pic.leaves) {
       if (l.path.length !== 1 || l.isVoid) continue;
       const id = l.body.id;
-      let bends = 0, teeth = 0, depthSum = 0, axis = 0, total = 0, verts = 0;
+      let bends = 0, teeth = 0, runs = 0, runLen = 0, depthSum = 0, axis = 0, total = 0, verts = 0;
       for (const lp of l.loops) {
         if (lp.hole) continue;
         const m = lp.length;
@@ -80,6 +84,7 @@ const RUN = ({ FRAMES, PX, PY }) => {
           len[k] = L; total += L;
           if (Math.min(Math.abs(vx), Math.abs(vy)) < 0.05 * Math.max(Math.abs(vx), Math.abs(vy))) axis += L;
         }
+        const isBend = new Array(m).fill(false);
         for (let k = 0; k < m; k++) {
           const p = (k + 1) % m;
           if (turn[k] && turn[p] && turn[k] !== turn[p] && len[k] < 0.6 * Math.min(PW, PH)) {
@@ -90,11 +95,20 @@ const RUN = ({ FRAMES, PX, PY }) => {
             const ux = b[0] - a[0], uy = b[1] - a[1], L = Math.hypot(ux, uy) || 1;
             const depth = Math.abs((ux * (c[1] - b[1]) - uy * (c[0] - b[0])) / L);
             depthSum += depth;
-            if (depth >= 6) teeth++;
+            if (depth >= 6) { teeth++; isBend[k] = true; }
           }
         }
+        // a corrugation: three or more teeth in a row along one edge, the
+        // periodic zigzag of two misaligned lattices; an isolated step is not
+        let run = 0, first = -1;
+        for (let k = 0; k < m; k++) if (!isBend[k]) { first = k; break; }
+        if (first >= 0) for (let q = 1; q <= m; q++) {
+          const k = (first + q) % m;
+          if (isBend[k]) run++;
+          else { if (run >= 3) { runs++; runLen += run; } run = 0; }
+        } else { runs++; runLen += m; }
       }
-      rec.b[id] = { bends, teeth, depth: +depthSum.toFixed(1), axis: +(total > 0 ? axis / total : 1).toFixed(3), verts, len: Math.round(total) };
+      rec.b[id] = { bends, teeth, runs, runLen, depth: +depthSum.toFixed(1), axis: +(total > 0 ? axis / total : 1).toFixed(3), verts, len: Math.round(total) };
     }
     frames.push(rec);
   };
@@ -113,17 +127,17 @@ function metrics({ frames, marks }) {
   const worst = [];
   for (const F of frames) {
     const [sc] = sceneOf(F.f);
-    const o = byScene[sc] = byScene[sc] || { bodyFrames: 0, bends: 0, teeth: 0, depth: 0, bendFrames: 0, axisSum: 0, vertsMax: 0 };
+    const o = byScene[sc] = byScene[sc] || { bodyFrames: 0, bends: 0, teeth: 0, runs: 0, runLen: 0, depth: 0, bendFrames: 0, axisSum: 0, vertsMax: 0 };
     for (const id in F.b) {
       const b = F.b[id];
-      o.bodyFrames++; o.bends += b.bends; o.teeth += b.teeth; o.depth += b.depth; if (b.bends) o.bendFrames++; o.axisSum += b.axis; o.vertsMax = Math.max(o.vertsMax, b.verts);
-      if (b.teeth >= 3) worst.push({ f: F.f, scene: sc, id: +id, bends: b.bends, teeth: b.teeth, depth: b.depth, verts: b.verts, axis: b.axis });
+      o.bodyFrames++; o.bends += b.bends; o.teeth += b.teeth; o.runs += b.runs; o.runLen += b.runLen; o.depth += b.depth; if (b.bends) o.bendFrames++; o.axisSum += b.axis; o.vertsMax = Math.max(o.vertsMax, b.verts);
+      if (b.teeth >= 3 || b.runs) worst.push({ f: F.f, scene: sc, id: +id, bends: b.bends, teeth: b.teeth, runs: b.runs, runLen: b.runLen, depth: b.depth, verts: b.verts, axis: b.axis });
     }
   }
   const out = {};
-  for (const sc in byScene) { const o = byScene[sc]; out[sc] = { bodyFrames: o.bodyFrames, bends: o.bends, teeth: o.teeth, depthPx: Math.round(o.depth), bendsPerBodyFrame: +(o.bends / Math.max(1, o.bodyFrames)).toFixed(3), bendFrames: o.bendFrames, axisShareMean: +(o.axisSum / Math.max(1, o.bodyFrames)).toFixed(3), vertsMax: o.vertsMax }; }
+  for (const sc in byScene) { const o = byScene[sc]; out[sc] = { bodyFrames: o.bodyFrames, bends: o.bends, teeth: o.teeth, corrugations: o.runs, corrugationTeeth: o.runLen, depthPx: Math.round(o.depth), bendsPerBodyFrame: +(o.bends / Math.max(1, o.bodyFrames)).toFixed(3), bendFrames: o.bendFrames, axisShareMean: +(o.axisSum / Math.max(1, o.bodyFrames)).toFixed(3), vertsMax: o.vertsMax }; }
   const sum = (k) => ['hero', 'sidebar', 'frame'].reduce((a, sc) => a + (byScene[sc] ? byScene[sc][k] : 0), 0);
-  return { frames: frames.length, clock: { dtMs: DT, jitterMs: JIT }, pointer: [PX, PY], transitionBends: sum('bends'), transitionTeeth: sum('teeth'), transitionDepthPx: Math.round(sum('depth')), byScene: out, worst: worst.sort((a, b) => b.teeth - a.teeth).slice(0, 12) };
+  return { frames: frames.length, clock: { dtMs: DT, jitterMs: JIT }, pointer: [PX, PY], transitionBends: sum('bends'), transitionTeeth: sum('teeth'), transitionCorrugations: sum('runs'), transitionCorrugationTeeth: sum('runLen'), transitionDepthPx: Math.round(sum('depth')), byScene: out, worst: worst.sort((a, b) => b.runLen - a.runLen || b.teeth - a.teeth).slice(0, 12) };
 }
 
 (async () => {

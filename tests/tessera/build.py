@@ -44,6 +44,11 @@ replace('triangulate(simplifyLoop(hl))', 'triangulate(simplifyLoop(hl, 1e-6, 1e-
 replace("        if (d / 2 + (wi - weights[j]) / (2 * d) > rFar) continue;   // exact per pair",
         "        if (d < 1e-9) { if (wi > weights[j] || (wi === weights[j] && i < j)) continue; poly = { pts: [], labs: [] }; dead = true; break; }\n"
         "        if (d / 2 + (wi - weights[j]) / (2 * d) > rFar) continue;   // exact per pair", 1)
+# Whitespace paints nothing, so its outline is never dressed: its pieces are
+# its loops as they are, and the union that chains a hundred cells into one
+# outline (and, once in a thousand frames, drops a piece) is never asked for.
+replace("  for (const leaf of leaves) leaf.loops = leafOutlines(leaf.pieces);",
+        "  for (const leaf of leaves) leaf.loops = leaf.isVoid ? leaf.pieces.filter(pc => pc.pts.length >= 3).map(pc => pc.pts) : leafOutlines(leaf.pieces);", 1)
 marker = '/* --------------------------------------------------------------- START */'
 replace(marker, (ROOT / 'tests/tessera/engine.js').read_text() + '\n' + marker, 1)
 (ROOT / 'tessera.html').write_text(s)
