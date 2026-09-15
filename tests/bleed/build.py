@@ -58,5 +58,36 @@ replace("  let lo = -scale, hi = scale;\n  for (let k = 0; k < 54; k++) {", "  l
 marker = '/* --------------------------------------------------------------- START */'
 replace(marker, (ROOT / 'tests/bleed/engine.js').read_text() + '\n' + marker, 1)
 (ROOT / 'bleed.html').write_text(s)
+index_path = ROOT / 'index.html'
+index = index_path.read_text()
+# idempotent: the block goes with the newline that follows it and any blank
+# lines a previous build left, so a rebuild reproduces index.html byte for byte
+index = re.sub(r'\s*<!-- BLEED -->.*?<!-- /BLEED -->[ \t]*\n(?:[ \t]*\n)*', '\n', index, flags=re.S)
+index = index.replace('class="version-card latest"', 'class="version-card"')
+index = index.replace('<span class="latest-flag">Latest</span>', '')
+card = '''
+        <!-- BLEED -->
+        <a href="bleed.html" class="version-card latest">
+            <h2>Bleed</h2><span class="latest-flag">Latest</span>
+            <span class="mk">Bleed</span>
+            <span class="tag preview">Tested experiment</span>
+            <p>Every cell a rectangle or a Voronoi cell. A settled tile asked to move travels as a rigid rectangle, a hole in the auction's ground; everything else is a convex power cell, cut straight where it meets a tile. The page is wider than the window: one lattice cell of margin on every side, whitespace the reserve bids for, into which tiles are pushed and cells spill, visibly.</p>
+            <ul>
+                <li>No lattices of sites: nothing corrugates, nothing steps</li>
+                <li>A bleed margin the layout uses; a margin view shows the whole page</li>
+                <li>Measured against Tessera and Astra I: shape, spill, motion, coverage</li>
+            </ul>
+        </a>
+        <a href="bleed-compare.html" class="version-card">
+            <h2>Compare Tessera / Bleed</h2>
+            <span class="tag preview">Frame stepping</span>
+            <p>Two identical-size canvases, a shared deterministic clock and no hover. Step through the same scene changes at 4.17–30 ms, or play them in slow motion.</p>
+        </a>
+        <!-- /BLEED -->
+'''
+anchor = '<div class="previews">'
+if index.count(anchor) != 1:
+    raise ValueError('Gallery anchor missing or ambiguous')
+index_path.write_text(index.replace(anchor, anchor + card, 1))
 print('Built bleed.html from reference blob', EXPECTED)
 print('Bleed SHA256', hashlib.sha256(s.encode()).hexdigest())

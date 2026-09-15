@@ -638,3 +638,11 @@ Hive.prototype.hitPath = function(x, y) {
     sync();
   }
 }
+
+// A field inside a rigid tile reads the tile's rectangle, notched or not:
+// the notch is the picture's last resort, not the field's world.
+const blOldCellPoly = Hive.prototype.cellPoly;
+Hive.prototype.cellPoly = function(b) {
+  if (this.depth === 0 && b.hole && b.blRigid) { const r = b.hole.rect; return [[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]]]; }
+  return blOldCellPoly.call(this, b);
+};
