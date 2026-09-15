@@ -1,0 +1,73 @@
+name: Astra III visible motion validation
+on:
+  pull_request:
+    paths:
+      - '**.html'
+      - 'tests/astra3/**'
+      - '.github/workflows/astra-iii.yml'
+permissions:
+  contents: read
+jobs:
+  browser:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'astra-iii'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      PLAYWRIGHT_MODULE: /tmp/astra-runtime/node_modules/playwright
+      CHROMIUM_PATH: ''
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install independent browser and polygon checks
+        run: |
+          npm install --prefix /tmp/astra-runtime playwright@1.55.0
+          /tmp/astra-runtime/node_modules/.bin/playwright install --with-deps chromium
+          pip install shapely==2.1.2
+      - name: Build exact isolated release
+        run: |
+          python3 tests/astra3/build.py
+          mkdir -p astra3-results
+      - name: Verify envelope integration and derivatives
+        run: node tests/astra3/unit.js astra-iii.html astra3-results/unit.json
+      - name: Five-clock no-hover comparison
+        run: python3 tests/astra3/validate.py
+      - name: Departure contours and painted crop crossings
+        run: |
+          node tests/astra3/audit.js astra-i.html astra3-results/astra-i-audit.json
+          node tests/astra3/audit.js astra-iii.html astra3-results/astra-iii-audit.json
+      - name: Counts, interrupted transitions, hover release and resizing
+        run: node tests/astra3/stress.js astra-iii.html astra3-results/stress.json
+      - name: Same-release attribution controls
+        run: python3 tests/astra3/controls.py
+      - name: Comparison UI with exact source bytes
+        run: node tests/astra3/ui.js astra3-results/ui.json
+      - name: Independent polygons and acceptance gates
+        run: python3 tests/astra3/finalize.py
+      - name: Publish only to the experimental branch
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          cp astra3-results/summary.json astra-iii-results.json
+          git fetch origin astra-iii
+          test "$(git rev-parse FETCH_HEAD)" = "$EXPECTED_HEAD"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add astra-iii.html astra-iii-results.json index.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat: publish validated Astra III continuous-shape mark'
+            git push origin HEAD:astra-iii
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: astra-iii-validation
+          path: |
+            astra3-results/
+            astra-iii.html
+          retention-days: 30
