@@ -1,0 +1,621 @@
+{
+  "referenceBlob": "2c02b2dc66d05fb152feffcd952f18b4d39f3634",
+  "candidateSHA256": "3eec76ff972b4a766528d57b1fc7577a0975494b521c162e7388d5be211c23cf",
+  "warmupMs": 3600,
+  "sceneHoldMs": 5500,
+  "viewport": [
+    1440,
+    900
+  ],
+  "pointer": [
+    -1000,
+    -1000
+  ],
+  "clocks": {
+    "240hz": {
+      "hive": {
+        "jumpsIncludingStartup": 5,
+        "transitionJumps": 4,
+        "byScene": {
+          "flock0": 1,
+          "hero": 1,
+          "sidebar": 1,
+          "flock": 2
+        },
+        "gapMax": 928,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 3.73,
+        "msP95": 7.9
+      },
+      "astra-i": {
+        "jumpsIncludingStartup": 0,
+        "transitionJumps": 0,
+        "byScene": {},
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.98e-07,
+        "msP95": 9.7
+      },
+      "tessera": {
+        "jumpsIncludingStartup": 0,
+        "transitionJumps": 0,
+        "byScene": {},
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.98e-07,
+        "msP95": 27.4
+      }
+    },
+    "120hz": {
+      "hive": {
+        "jumpsIncludingStartup": 6,
+        "transitionJumps": 4,
+        "byScene": {
+          "flock0": 2,
+          "hero": 1,
+          "sidebar": 1,
+          "flock": 2
+        },
+        "gapMax": 164,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 4.01,
+        "msP95": 8.1
+      },
+      "astra-i": {
+        "jumpsIncludingStartup": 0,
+        "transitionJumps": 0,
+        "byScene": {},
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.92e-07,
+        "msP95": 9.9
+      },
+      "tessera": {
+        "jumpsIncludingStartup": 0,
+        "transitionJumps": 0,
+        "byScene": {},
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.94e-07,
+        "msP95": 27.6
+      }
+    },
+    "60hz": {
+      "hive": {
+        "jumpsIncludingStartup": 7,
+        "transitionJumps": 7,
+        "byScene": {
+          "sidebar": 3,
+          "flock": 4
+        },
+        "gapMax": 8,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 3.02,
+        "msP95": 9.4,
+        "transitionTeleports": 15,
+        "teleportsByScene": {
+          "flock0": 55,
+          "hero": 1,
+          "sidebar": 9,
+          "frame": 5,
+          "flock": 2
+        },
+        "shapeBackShare": 0.024,
+        "transitionBends": 4292,
+        "transitionTeeth": 2041,
+        "transitionCorrugations": 39,
+        "transitionDepthPx": 50820,
+        "bendsByScene": {
+          "flock0": 477,
+          "bento": 0,
+          "hero": 1569,
+          "sidebar": 1777,
+          "frame": 946,
+          "flock": 286
+        },
+        "teethByScene": {
+          "flock0": 275,
+          "bento": 0,
+          "hero": 731,
+          "sidebar": 853,
+          "frame": 457,
+          "flock": 146
+        },
+        "corrugationsByScene": {
+          "flock0": 4,
+          "bento": 0,
+          "hero": 24,
+          "sidebar": 10,
+          "frame": 5,
+          "flock": 0
+        },
+        "axisShareByScene": {
+          "flock0": 0.577,
+          "bento": 1,
+          "hero": 0.868,
+          "sidebar": 0.765,
+          "frame": 0.869,
+          "flock": 0.425
+        }
+      },
+      "astra-i": {
+        "jumpsIncludingStartup": 0,
+        "transitionJumps": 0,
+        "byScene": {},
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.96e-07,
+        "msP95": 10.6,
+        "transitionTeleports": 10,
+        "teleportsByScene": {
+          "sidebar": 7,
+          "frame": 3
+        },
+        "shapeBackShare": 0.006,
+        "transitionBends": 4202,
+        "transitionTeeth": 1617,
+        "transitionCorrugations": 34,
+        "transitionDepthPx": 35804,
+        "bendsByScene": {
+          "flock0": 1030,
+          "bento": 0,
+          "hero": 1600,
+          "sidebar": 1520,
+          "frame": 1082,
+          "flock": 705
+        },
+        "teethByScene": {
+          "flock0": 474,
+          "bento": 0,
+          "hero": 722,
+          "sidebar": 528,
+          "frame": 367,
+          "flock": 285
+        },
+        "corrugationsByScene": {
+          "flock0": 0,
+          "bento": 0,
+          "hero": 20,
+          "sidebar": 8,
+          "frame": 6,
+          "flock": 4
+        },
+        "axisShareByScene": {
+          "flock0": 0.482,
+          "bento": 1,
+          "hero": 0.803,
+          "sidebar": 0.692,
+          "frame": 0.807,
+          "flock": 0.411
+        }
+      },
+      "tessera": {
+        "jumpsIncludingStartup": 0,
+        "transitionJumps": 0,
+        "byScene": {},
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.95e-07,
+        "msP95": 27.6,
+        "transitionTeleports": 19,
+        "teleportsByScene": {
+          "hero": 9,
+          "sidebar": 9,
+          "frame": 1
+        },
+        "shapeBackShare": 0.027,
+        "transitionBends": 16265,
+        "transitionTeeth": 6839,
+        "transitionCorrugations": 154,
+        "transitionDepthPx": 187329,
+        "bendsByScene": {
+          "flock0": 977,
+          "bento": 0,
+          "hero": 5441,
+          "sidebar": 7055,
+          "frame": 3769,
+          "flock": 1017
+        },
+        "teethByScene": {
+          "flock0": 460,
+          "bento": 0,
+          "hero": 2206,
+          "sidebar": 3161,
+          "frame": 1472,
+          "flock": 341
+        },
+        "corrugationsByScene": {
+          "flock0": 0,
+          "bento": 0,
+          "hero": 76,
+          "sidebar": 45,
+          "frame": 33,
+          "flock": 5
+        },
+        "axisShareByScene": {
+          "flock0": 0.482,
+          "bento": 1,
+          "hero": 0.908,
+          "sidebar": 0.861,
+          "frame": 0.93,
+          "flock": 0.394
+        }
+      }
+    },
+    "30ms": {
+      "hive": {
+        "jumpsIncludingStartup": 16,
+        "transitionJumps": 8,
+        "byScene": {
+          "flock0": 8,
+          "hero": 2,
+          "sidebar": 2,
+          "frame": 2,
+          "flock": 2
+        },
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 0.00772,
+        "msP95": 11,
+        "transitionTeleports": 19,
+        "teleportsByScene": {
+          "flock0": 71,
+          "hero": 2,
+          "sidebar": 11,
+          "frame": 6,
+          "flock": 11
+        },
+        "shapeBackShare": 0.037,
+        "transitionBends": 2461,
+        "transitionTeeth": 1161,
+        "transitionCorrugations": 28,
+        "transitionDepthPx": 28817,
+        "bendsByScene": {
+          "flock0": 262,
+          "bento": 0,
+          "hero": 883,
+          "sidebar": 996,
+          "frame": 582,
+          "flock": 169
+        },
+        "teethByScene": {
+          "flock0": 149,
+          "bento": 0,
+          "hero": 404,
+          "sidebar": 473,
+          "frame": 284,
+          "flock": 94
+        },
+        "corrugationsByScene": {
+          "flock0": 0,
+          "bento": 0,
+          "hero": 13,
+          "sidebar": 10,
+          "frame": 5,
+          "flock": 0
+        },
+        "axisShareByScene": {
+          "flock0": 0.575,
+          "bento": 1,
+          "hero": 0.872,
+          "sidebar": 0.767,
+          "frame": 0.864,
+          "flock": 0.416
+        }
+      },
+      "astra-i": {
+        "jumpsIncludingStartup": 0,
+        "transitionJumps": 0,
+        "byScene": {},
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.78e-07,
+        "msP95": 11.5,
+        "transitionTeleports": 10,
+        "teleportsByScene": {
+          "flock0": 12,
+          "sidebar": 8,
+          "frame": 2,
+          "flock": 10
+        },
+        "shapeBackShare": 0.014,
+        "transitionBends": 2314,
+        "transitionTeeth": 902,
+        "transitionCorrugations": 21,
+        "transitionDepthPx": 19991,
+        "bendsByScene": {
+          "flock0": 576,
+          "bento": 0,
+          "hero": 873,
+          "sidebar": 840,
+          "frame": 601,
+          "flock": 385
+        },
+        "teethByScene": {
+          "flock0": 264,
+          "bento": 0,
+          "hero": 400,
+          "sidebar": 294,
+          "frame": 208,
+          "flock": 138
+        },
+        "corrugationsByScene": {
+          "flock0": 0,
+          "bento": 0,
+          "hero": 13,
+          "sidebar": 3,
+          "frame": 5,
+          "flock": 4
+        },
+        "axisShareByScene": {
+          "flock0": 0.48,
+          "bento": 1,
+          "hero": 0.805,
+          "sidebar": 0.694,
+          "frame": 0.809,
+          "flock": 0.363
+        }
+      },
+      "tessera": {
+        "jumpsIncludingStartup": 0,
+        "transitionJumps": 0,
+        "byScene": {},
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.83e-07,
+        "msP95": 28.4,
+        "transitionTeleports": 22,
+        "teleportsByScene": {
+          "flock0": 12,
+          "hero": 15,
+          "sidebar": 4,
+          "frame": 3,
+          "flock": 1
+        },
+        "shapeBackShare": 0.036,
+        "transitionBends": 8413,
+        "transitionTeeth": 3768,
+        "transitionCorrugations": 87,
+        "transitionDepthPx": 103766,
+        "bendsByScene": {
+          "flock0": 539,
+          "bento": 0,
+          "hero": 2502,
+          "sidebar": 3837,
+          "frame": 2074,
+          "flock": 541
+        },
+        "teethByScene": {
+          "flock0": 255,
+          "bento": 0,
+          "hero": 1194,
+          "sidebar": 1774,
+          "frame": 800,
+          "flock": 206
+        },
+        "corrugationsByScene": {
+          "flock0": 0,
+          "bento": 0,
+          "hero": 41,
+          "sidebar": 33,
+          "frame": 13,
+          "flock": 2
+        },
+        "axisShareByScene": {
+          "flock0": 0.48,
+          "bento": 1,
+          "hero": 0.913,
+          "sidebar": 0.863,
+          "frame": 0.928,
+          "flock": 0.362
+        }
+      }
+    },
+    "jitter": {
+      "hive": {
+        "jumpsIncludingStartup": 17,
+        "transitionJumps": 13,
+        "byScene": {
+          "flock0": 4,
+          "hero": 2,
+          "sidebar": 2,
+          "frame": 3,
+          "flock": 6
+        },
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 0.0668,
+        "msP95": 11.3,
+        "transitionTeleports": 16,
+        "teleportsByScene": {
+          "flock0": 71,
+          "hero": 2,
+          "sidebar": 9,
+          "frame": 5,
+          "flock": 6
+        },
+        "shapeBackShare": 0.035,
+        "transitionBends": 2915,
+        "transitionTeeth": 1357,
+        "transitionCorrugations": 25,
+        "transitionDepthPx": 34562,
+        "bendsByScene": {
+          "flock0": 345,
+          "bento": 0,
+          "hero": 1078,
+          "sidebar": 1145,
+          "frame": 692,
+          "flock": 214
+        },
+        "teethByScene": {
+          "flock0": 204,
+          "bento": 0,
+          "hero": 486,
+          "sidebar": 540,
+          "frame": 331,
+          "flock": 109
+        },
+        "corrugationsByScene": {
+          "flock0": 2,
+          "bento": 0,
+          "hero": 12,
+          "sidebar": 9,
+          "frame": 4,
+          "flock": 0
+        },
+        "axisShareByScene": {
+          "flock0": 0.584,
+          "bento": 1,
+          "hero": 0.87,
+          "sidebar": 0.773,
+          "frame": 0.863,
+          "flock": 0.409
+        }
+      },
+      "astra-i": {
+        "jumpsIncludingStartup": 6,
+        "transitionJumps": 3,
+        "byScene": {
+          "flock0": 3,
+          "flock": 3
+        },
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.91e-07,
+        "msP95": 11.3,
+        "transitionTeleports": 9,
+        "teleportsByScene": {
+          "flock0": 7,
+          "sidebar": 6,
+          "frame": 3,
+          "flock": 5
+        },
+        "shapeBackShare": 0.011,
+        "transitionBends": 2697,
+        "transitionTeeth": 1041,
+        "transitionCorrugations": 24,
+        "transitionDepthPx": 23155,
+        "bendsByScene": {
+          "flock0": 698,
+          "bento": 0,
+          "hero": 1062,
+          "sidebar": 916,
+          "frame": 719,
+          "flock": 468
+        },
+        "teethByScene": {
+          "flock0": 317,
+          "bento": 0,
+          "hero": 483,
+          "sidebar": 318,
+          "frame": 240,
+          "flock": 204
+        },
+        "corrugationsByScene": {
+          "flock0": 1,
+          "bento": 0,
+          "hero": 14,
+          "sidebar": 7,
+          "frame": 3,
+          "flock": 6
+        },
+        "axisShareByScene": {
+          "flock0": 0.49,
+          "bento": 1,
+          "hero": 0.803,
+          "sidebar": 0.709,
+          "frame": 0.803,
+          "flock": 0.385
+        }
+      },
+      "tessera": {
+        "jumpsIncludingStartup": 5,
+        "transitionJumps": 2,
+        "byScene": {
+          "flock0": 3,
+          "flock": 2
+        },
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.79e-07,
+        "msP95": 29.1,
+        "transitionTeleports": 34,
+        "teleportsByScene": {
+          "flock0": 7,
+          "hero": 15,
+          "sidebar": 10,
+          "frame": 9,
+          "flock": 3
+        },
+        "shapeBackShare": 0.033,
+        "transitionBends": 9941,
+        "transitionTeeth": 4420,
+        "transitionCorrugations": 92,
+        "transitionDepthPx": 121673,
+        "bendsByScene": {
+          "flock0": 658,
+          "bento": 0,
+          "hero": 3060,
+          "sidebar": 4317,
+          "frame": 2564,
+          "flock": 693
+        },
+        "teethByScene": {
+          "flock0": 303,
+          "bento": 0,
+          "hero": 1449,
+          "sidebar": 1999,
+          "frame": 972,
+          "flock": 293
+        },
+        "corrugationsByScene": {
+          "flock0": 1,
+          "bento": 0,
+          "hero": 39,
+          "sidebar": 33,
+          "frame": 20,
+          "flock": 8
+        },
+        "axisShareByScene": {
+          "flock0": 0.49,
+          "bento": 1,
+          "hero": 0.91,
+          "sidebar": 0.87,
+          "frame": 0.929,
+          "flock": 0.383
+        }
+      }
+    }
+  },
+  "passed": true
+}
