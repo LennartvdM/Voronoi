@@ -1,0 +1,68 @@
+name: True Buffer world and transition validation
+on:
+  pull_request:
+    paths:
+      - '**.html'
+      - '.claude/gauntlet/**'
+      - 'tests/buffer/**'
+      - '.github/workflows/astra-buffer.yml'
+permissions:
+  contents: read
+jobs:
+  browser:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'astra-ii-buffer'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install independent browser and polygon validator
+        run: |
+          npm install --prefix /tmp/astra-runtime playwright@1.55.0
+          /tmp/astra-runtime/node_modules/.bin/playwright install --with-deps chromium
+          python3 -m pip install shapely==2.1.1
+      - name: Build isolated mark from pinned reference
+        run: python3 tests/buffer/build.py
+      - name: Measure world accounting, transitions, controls and stress
+        env:
+          PLAYWRIGHT_MODULE: /tmp/astra-runtime/node_modules/playwright
+        run: python3 tests/buffer/validate.py
+      - name: Verify actual outside polygons independently
+        env:
+          PLAYWRIGHT_MODULE: /tmp/astra-runtime/node_modules/playwright
+        run: |
+          node tests/buffer/witness.js astra-buffer.html buffer-results/witness.json
+          python3 tests/buffer/polygons.py
+      - name: Publish tested files only on the experimental branch
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 - <<'PY'
+          import json
+          data=json.load(open('buffer-results/summary.json'))
+          data['polygonWitness']=json.load(open('buffer-results/polygon-witness.json'))
+          json.dump(data,open('astra-buffer-results.json','w'),indent=2)
+          PY
+          git fetch origin astra-ii-buffer
+          test "$(git rev-parse FETCH_HEAD)" = "$EXPECTED_HEAD"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add astra-buffer.html astra-buffer-results.json index.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat: publish tested true-buffer experiment and accounting evidence'
+            git push origin HEAD:astra-ii-buffer
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: true-buffer-validation
+          path: |
+            buffer-results/
+            astra-buffer.html
+          retention-days: 30
