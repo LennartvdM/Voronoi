@@ -4330,7 +4330,8 @@ Hive.prototype.placeSeeds = function() {
     if (b.formRect !== b.rect && b.crystal === 0 && !b.isVoid) b.formRect = b.rect;
     const fp = this.tesFootprint(b), mix = fp ? fp.mix : 0;
     const p = b.tesP || { x: 0, y: 0 }, pk = tesPinKeep(b);
-    const fx = b.x + p.x * pk, fy = b.y + p.y * pk;
+    // whitespace stands on its rectangle, whatever its seed does
+    const [fx, fy] = b.isVoid && fp ? this.rectCenter(fp.rect) : [b.x + p.x * pk, b.y + p.y * pk];
     const box = fp && mix > 0.02 ? { x0: fx - fp.hw * mix, x1: fx + fp.hw * mix, y0: fy - fp.hh * mix, y1: fy + fp.hh * mix } : null;
     info.set(b, { fp, mix, fx, fy, box });
   }
@@ -4362,7 +4363,10 @@ Hive.prototype.placeSeeds = function() {
   whitespace = Math.max(0, whitespace);
   // 3. the sites
   const tiles = [];
-  const host = this.bodies.find(b => b.isVoid && info.get(b).box) || null;
+  // the void that hosts the whitespace: one that is staying or opening, so a
+  // closing void (which has no rectangle to be seated in) never keeps the
+  // settled page from being read as settled
+  const host = this.bodies.find(b => b.isVoid && !b.leaving && info.get(b).box) || this.bodies.find(b => b.isVoid && info.get(b).box) || null;
   for (const b of this.bodies) {
     const { fp, mix, fx, fy } = info.get(b);
     const claim = b.isVoid ? (b === host ? whitespace : 0) : b.claim * (1 + (config.hoverBoost - 1) * b.hoverMix * (1 - mix));

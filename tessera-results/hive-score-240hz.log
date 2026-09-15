@@ -1,0 +1,6 @@
+{"frames":7464,"jumps":5,"reversals":0,"shockPx2":36837,"relP50":0.15,"relP90":0.16,"relMax":0.16,"kinds":{"adoption":2,"switch":3},"phase":{"start":1,"mid":1,"end":3},"byScene":{"flock0":1,"hero":1,"sidebar":1,"flock":2},"voidJumps":0,"vanish":0,"gapMax":928,"overMax":0,"errMax":3.73,"settledScenes":"5/5","msP50":1.4,"msP95":8.9,"msMax":60.3,"clock":{"dtMs":4.166666666666667,"jitterMs":0},"pageErrors":0}
+  {"f":6301,"scene":"flock","sf":157,"id":10,"rel":0.16,"dir":"+","from":27737,"to":32975,"k":"W>H","cr":[1,0.9997],"core":[0,28673],"ex":[0,5238]}
+  {"f":6311,"scene":"flock","sf":167,"id":10,"rel":0.16,"dir":"-","from":34703,"to":29315,"k":"H>H","cr":[0.9502,0.94],"core":[32303,32374],"ex":[6612,1118]}
+  {"f":3618,"scene":"sidebar","sf":114,"id":6,"rel":0.15,"dir":"+","from":46686,"to":55136,"k":"H>F","cr":[0,0],"core":[54314,0],"ex":[0,0]}
+  {"f":409,"scene":"flock0","sf":0,"id":10,"rel":0.14,"dir":"+","from":50702,"to":59289,"k":"H>H","cr":[0.8778,0.8862],"core":[83465,83827],"ex":[0,9245]}
+  {"f":2503,"scene":"hero","sf":319,"id":1,"rel":0.13,"dir":"+","from":61941,"to":71115,"k":"H>F","cr":[0,0],"core":[72691,0],"ex":[0,0]}

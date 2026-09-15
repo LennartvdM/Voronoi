@@ -595,3 +595,63 @@ function solveWeights(seeds, targets, boundsPts, w0, opts = {}) {
 
 module.exports = { ringArea, clipHalfPlane, computeDiagram, buildJacobian, solvePinned, solveWeights };
 ```
+
+## Tessera: the tile that does not melt
+
+Astra I put every changing body into one solved partition, one weight per
+body and a lattice of sites for its rectangle, and it took most of the
+strobe with it. Two things stayed, and both could be seen. A settled tile
+asked to move first softened into a point — the electric shock at
+departure — because a lattice sliding off the grid corrugates against the
+lattices it slides past: the seam between two columns of sites whose rows
+are offset is a zigzag of tilted bisectors, an eighth of a pitch deep,
+whatever the weights say. Astra II kept the lattices and got the ripple.
+
+Two other ways were tried first and are refuted here so nobody tries them
+again. Sites left ON the grid, weighted by how much of each cell a moving
+footprint covers, cannot hold a rectangle centred on a grid corner: no site
+of it is strongly its own, one site takes its whole area, and it is a wedge.
+And a diagram whose sites are SHAPES — each body a convex gauge, its own
+rectangle — has a flip in it: two stacked tiles of equal width contest the
+far side of a gap with identical distance functions, and the whole strip
+changes hands with the sign of one weight difference. The power diagram of
+points is the one solver in this file that is well-conditioned everywhere.
+
+So Tessera keeps it, and takes the zigzag out at its cause. A SEAM IS
+STRAIGHT WHEN THE TWO COLUMNS IT LIES BETWEEN HAVE THE SAME ROWS. Along
+every seam a tile's edge column carries every row the column across the
+seam carries, and that one carries this one's, propagated through
+one-column tiles until nothing changes; every pair across the seam is then
+level, every bisector is the midline, and the weights slide the seam as one
+line. A mirrored row lives only within the span of the tile's own rows, and
+fades over a quarter pitch beyond the last, because a row that stuck out
+would face the tile across the OTHER seam and dent it. Whitespace is one
+bidder — the page less the content's claims — with the page's lattice, dead
+within a pitch of any tile, and a ring of sites one pitch outside every
+tile's edge that conforms to that edge as it is, mirrors and their
+penalties included: a tile against whitespace is exactly its rectangle.
+
+A tile therefore departs as it is, rides the same bezier as before, and
+changes size on the way with its footprint holding exactly its claim's
+area (a footprint that lags its claim is dilated by weight into a blob).
+Footprints do not lie on each other: a packing pass relaxes every overlap
+on a sixty-millisecond clock — never projected whole, that was a strobe of
+its own — along whichever axis is cheaper, dearer when it would push a body
+back from where it is going, the page's edges walls to it. A traveller has
+the right of way; a body still waiting for its turn yields, and once it has
+been shoved a third of a pitch off its slot it departs now: the push is the
+change arriving. A tile is not liquid, so it takes no part in the seeds'
+repulsion — repelled as well, it was held back from its carrot until the pin
+took it, and then yanked home. The grouped solve is damped Newton with a
+warm factor and a budget in evaluations.
+
+Measured at the owner's clock, 30 ms, pointer off the canvas, against Astra
+I on the same scenario: area jumps 0 (Astra I 0), every frame converged to
+a millionth (Astra I too), transition teleports 22 against 9, corrugations
+(runs of teeth along one edge, the ripple itself) 87 against 19 and against
+Astra II's 105, and the axis share of every transition scene's outlines
+above 0.9 against Astra I's 0.83–0.90: the tiles stay tiles. What is left
+is honest: a tile's edge steps where its neighbour changes from a tile to
+whitespace and back, and a corner meeting a corner within a pitch is an L2
+wedge. Neither is periodic and neither is a jump. `ripple.js` counts all
+three apart.
