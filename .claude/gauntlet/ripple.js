@@ -11,6 +11,8 @@
  *     lattice pitch, turns back the other way: a zigzag tooth. A rectangle
  *     has none; a corrugated seam has one per tooth. Counted per body-frame,
  *     summed per scene, transition frames only (the cold settle excluded).
+ *   TEETH. The bends whose step aside is 6 px or more — the ones the garment
+ *     cannot round away — and DEPTH, the sum of every bend's step in px.
  *   AXIS SHARE. The share of the outline's length that runs along an axis:
  *     100% for a page of rectangles, lower for organic cells. Not a score by
  *     itself (a liquid flock is legitimately low), but the number that says
@@ -62,7 +64,7 @@ const RUN = ({ FRAMES, PX, PY }) => {
     if (pic) for (const l of pic.leaves) {
       if (l.path.length !== 1 || l.isVoid) continue;
       const id = l.body.id;
-      let bends = 0, axis = 0, total = 0, verts = 0;
+      let bends = 0, teeth = 0, depthSum = 0, axis = 0, total = 0, verts = 0;
       for (const lp of l.loops) {
         if (lp.hole) continue;
         const m = lp.length;
@@ -80,10 +82,19 @@ const RUN = ({ FRAMES, PX, PY }) => {
         }
         for (let k = 0; k < m; k++) {
           const p = (k + 1) % m;
-          if (turn[k] && turn[p] && turn[k] !== turn[p] && len[k] < 0.6 * Math.min(PW, PH)) bends++;
+          if (turn[k] && turn[p] && turn[k] !== turn[p] && len[k] < 0.6 * Math.min(PW, PH)) {
+            bends++;
+            // the tooth's depth: how far the short edge steps aside from
+            // the direction the outline had before it
+            const a = lp[(k + m - 1) % m], b = lp[k], c = lp[p];
+            const ux = b[0] - a[0], uy = b[1] - a[1], L = Math.hypot(ux, uy) || 1;
+            const depth = Math.abs((ux * (c[1] - b[1]) - uy * (c[0] - b[0])) / L);
+            depthSum += depth;
+            if (depth >= 6) teeth++;
+          }
         }
       }
-      rec.b[id] = { bends, axis: +(total > 0 ? axis / total : 1).toFixed(3), verts, len: Math.round(total) };
+      rec.b[id] = { bends, teeth, depth: +depthSum.toFixed(1), axis: +(total > 0 ? axis / total : 1).toFixed(3), verts, len: Math.round(total) };
     }
     frames.push(rec);
   };
@@ -102,17 +113,17 @@ function metrics({ frames, marks }) {
   const worst = [];
   for (const F of frames) {
     const [sc] = sceneOf(F.f);
-    const o = byScene[sc] = byScene[sc] || { bodyFrames: 0, bends: 0, bendFrames: 0, axisSum: 0, vertsMax: 0 };
+    const o = byScene[sc] = byScene[sc] || { bodyFrames: 0, bends: 0, teeth: 0, depth: 0, bendFrames: 0, axisSum: 0, vertsMax: 0 };
     for (const id in F.b) {
       const b = F.b[id];
-      o.bodyFrames++; o.bends += b.bends; if (b.bends) o.bendFrames++; o.axisSum += b.axis; o.vertsMax = Math.max(o.vertsMax, b.verts);
-      if (b.bends >= 3) worst.push({ f: F.f, scene: sc, id: +id, bends: b.bends, verts: b.verts, axis: b.axis });
+      o.bodyFrames++; o.bends += b.bends; o.teeth += b.teeth; o.depth += b.depth; if (b.bends) o.bendFrames++; o.axisSum += b.axis; o.vertsMax = Math.max(o.vertsMax, b.verts);
+      if (b.teeth >= 3) worst.push({ f: F.f, scene: sc, id: +id, bends: b.bends, teeth: b.teeth, depth: b.depth, verts: b.verts, axis: b.axis });
     }
   }
   const out = {};
-  for (const sc in byScene) { const o = byScene[sc]; out[sc] = { bodyFrames: o.bodyFrames, bends: o.bends, bendsPerBodyFrame: +(o.bends / Math.max(1, o.bodyFrames)).toFixed(3), bendFrames: o.bendFrames, axisShareMean: +(o.axisSum / Math.max(1, o.bodyFrames)).toFixed(3), vertsMax: o.vertsMax }; }
-  const transition = ['hero', 'sidebar', 'frame'].reduce((a, sc) => a + (byScene[sc] ? byScene[sc].bends : 0), 0);
-  return { frames: frames.length, clock: { dtMs: DT, jitterMs: JIT }, pointer: [PX, PY], transitionBends: transition, byScene: out, worst: worst.sort((a, b) => b.bends - a.bends).slice(0, 12) };
+  for (const sc in byScene) { const o = byScene[sc]; out[sc] = { bodyFrames: o.bodyFrames, bends: o.bends, teeth: o.teeth, depthPx: Math.round(o.depth), bendsPerBodyFrame: +(o.bends / Math.max(1, o.bodyFrames)).toFixed(3), bendFrames: o.bendFrames, axisShareMean: +(o.axisSum / Math.max(1, o.bodyFrames)).toFixed(3), vertsMax: o.vertsMax }; }
+  const sum = (k) => ['hero', 'sidebar', 'frame'].reduce((a, sc) => a + (byScene[sc] ? byScene[sc][k] : 0), 0);
+  return { frames: frames.length, clock: { dtMs: DT, jitterMs: JIT }, pointer: [PX, PY], transitionBends: sum('bends'), transitionTeeth: sum('teeth'), transitionDepthPx: Math.round(sum('depth')), byScene: out, worst: worst.sort((a, b) => b.teeth - a.teeth).slice(0, 12) };
 }
 
 (async () => {

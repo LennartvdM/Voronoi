@@ -3943,21 +3943,47 @@ document.getElementById('remove').addEventListener('click', () => {
  * through: a traveller has the right of way; a body waiting for its turn,
  * or sitting settled, moves aside along whichever axis costs less (dearer
  * when it would push a body back from where it is going) and returns on
- * its own clock. A footprint pushed off the page keeps its area inside by
- * weight. Whitespace is whatever the tiles are not: a void is its
+ * its own clock. The page's edges are walls to the packing, so a footprint
+ * is always its cell. Whitespace is whatever the tiles are not: a void is its
  * rectangle's lattice, never packed, its sites suppressed under any tile
  * that stands on them. The auction still hands every body its claim,
  * every frame, from these positions alone: nothing is stored, nothing is
  * tweened, no rate is limited.
  */
 const TES_RETURN_TAU = 0.22;   // s: a displaced footprint's return clock
-const TES_PACK_ITERS = 6;      // packing sweeps per motion step
+const TES_PACK_ITERS = 2;      // packing sweeps per motion step
+const TES_PACK_TAU = 0.06;     // s: an overlap is taken out on this clock, not in one frame
+const TES_PUSH_SPEED = 1e9;    // px/s: the most a footprint yields in a second (unbounded: see the packing note)
 const TES_SNAP = 0.02;         // px: a displacement below this is none
 const TES_TRAVEL_COMP = 0.25;  // a traveller yields this much against a yielder's 1
 
 // Astra I's grouped solve, with a fixed offset per site: a body's sites bid
 // at its one weight minus their own penalty.
-function tesseraSolve(seeds, owner, offset, targets, w0, bounds, maxIter = 16) {
+// A full Gaussian solve with partial pivoting, for the damped system: it
+// has no null space, so nothing is pinned.
+function tesSolveFull(A, g) {
+  const n = g.length, M = A.map((row, i) => { const out = new Float64Array(n + 1); out.set(row); out[n] = g[i]; return out; });
+  for (let c = 0; c < n; c++) {
+    let piv = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv = r;
+    if (piv !== c) { const t = M[c]; M[c] = M[piv]; M[piv] = t; }
+    const pv = M[c][c] || 1e-30;
+    for (let r = c + 1; r < n; r++) {
+      const f = M[r][c] / pv;
+      if (f === 0) continue;
+      for (let j = c; j <= n; j++) M[r][j] -= f * M[c][j];
+    }
+  }
+  const x = new Float64Array(n);
+  for (let c = n - 1; c >= 0; c--) {
+    let s = M[c][n];
+    for (let j = c + 1; j < n; j++) s -= M[c][j] * x[j];
+    x[c] = s / (M[c][c] || 1e-30);
+  }
+  return x;
+}
+
+function tesseraSolve(seeds, owner, offset, targets, w0, bounds, maxIter = 16, lambda0 = 0, maxEvals = 32) {
   const n = targets.length, area = Math.abs(ringArea(bounds));
   const sum = targets.reduce((a, b) => a + b, 0);
   const target = targets.map(a => a * area / sum);
@@ -3985,8 +4011,18 @@ function tesseraSolve(seeds, owner, offset, targets, w0, bounds, maxIter = 16) {
     }
   }
   const floor = .5 * Math.min(minOf(target), minOf(current.areas));
-  let iterations = 0, maxRel = Infinity;
-  for (; iterations < maxIter; iterations++) {
+  // DAMPED NEWTON. The Newton step, with every body's own diagonal scaled by
+  // (1 + lambda): at lambda 0 it is Newton, and as lambda grows each body
+  // moves its own weight alone by its own residual, the step that cannot
+  // overshoot. A step that does not lower the residual, or takes a body
+  // below the floor, is refused and lambda grows fourfold; an accepted step
+  // shrinks it by three. lambda is warm across frames, so a page that is
+  // behaving is solved at Newton's pace and a page mid-contact at a safe one.
+  // The budget is in evaluations, whatever it took: a frame is never held
+  // for a solve that is not converging.
+  let lam = lambda0, iterations = 0, maxRel = Infinity;
+  const budget = maxEvals + evaluations;
+  for (; iterations < maxIter && evaluations < budget; iterations++) {
     const residual = target.map((a, i) => a - current.areas[i]);
     maxRel = Math.max(...residual.map((a, i) => Math.abs(a) / target[i]));
     if (maxRel <= 1e-6) break;
@@ -4003,15 +4039,18 @@ function tesseraSolve(seeds, owner, offset, targets, w0, bounds, maxIter = 16) {
     });
     for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) J[i][j] = J[j][i] = .5 * (J[i][j] + J[j][i]);
     for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) if (i !== j) J[i][i] -= J[i][j];
-    const dw = solvePinned(J, residual), norm = norm2(residual);
+    const norm = norm2(residual);
     let accepted = false;
-    for (let t = 1, k = 0; k < 35; k++, t /= 2) {
-      const nextW = Float64Array.from(w, (x, i) => x + t * dw[i]);
-      if (!nextW.every(Number.isFinite)) break;
+    for (let k = 0; k < 8 && evaluations < budget; k++) {
+      const Jd = J.map((row, i) => { const r = Float64Array.from(row); r[i] *= 1 + lam; return r; });
+      const dw = lam > 1e-9 ? tesSolveFull(Jd, residual) : solvePinned(J, residual);
+      const nextW = Float64Array.from(w, (x, i) => x + dw[i]);
+      if (!nextW.every(Number.isFinite)) { lam = Math.min(1e6, Math.max(1e-3, lam) * 4); continue; }
       const next = evaluate(nextW);
-      if (minOf(next.areas) >= floor && norm2(target.map((x, i) => x - next.areas[i])) <= (1 - t / 2) * norm) {
-        w = nextW; current = next; accepted = true; break;
+      if (minOf(next.areas) >= floor && norm2(target.map((x, i) => x - next.areas[i])) < norm) {
+        w = nextW; current = next; accepted = true; lam = lam < 1e-3 ? 0 : lam / 3; break;
       }
+      lam = Math.min(1e6, Math.max(1e-3, lam) * 4);
     }
     if (!accepted) break;
   }
@@ -4019,7 +4058,7 @@ function tesseraSolve(seeds, owner, offset, targets, w0, bounds, maxIter = 16) {
   const mean = w.reduce((a, b) => a + b, 0) / n;
   w = w.map(x => x - mean);
   return { weights: siteWeights(w), groupWeights: Array.from(w), diagram: current.diagram,
-    maxRelErr: maxRel, converged: maxRel <= 1e-6, iterations, evals: evaluations };
+    maxRelErr: maxRel, converged: maxRel <= 1e-6, iterations, evals: evaluations, lambda: lam };
 }
 
 // The root keeps no walls and no holes between frames: every body is in
@@ -4047,10 +4086,14 @@ Hive.prototype.tesFootprint = function(b) {
     const r = b.rect;
     let hw = (r[2] - r[0]) * PW / 2, hh = (r[3] - r[1]) * PH / 2;
     if (j && j.stamp && b.sizeFrom) {
-      // a tile changes size on the way, on the same curve it travels
+      // a tile changes size on the way, on the same curve it travels: its
+      // proportions blend, and its footprint holds exactly its claim's area
+      // at every instant, so the weight never has to dilate it into a blob
       const e = b.progress;
       hw = b.sizeFrom[0] * PW * (1 - e) + hw * e;
       hh = b.sizeFrom[1] * PH * (1 - e) + hh * e;
+      const k = Math.sqrt(Math.max(1e-9, b.claim * PW * PH) / (4 * hw * hh));
+      hw *= k; hh *= k;
     }
     return { hw, hh, mix: b.crystal, rect: r };
   }
@@ -4168,9 +4211,19 @@ Hive.prototype.tesPack = function(h) {
     if (Math.abs(p.x) < TES_SNAP) p.x = 0;
     if (Math.abs(p.y) < TES_SNAP) p.y = 0;
     const comp = this.tesCompliance(b), pk = tesPinKeep(b);
-    items.push({ b, hw: fp.hw * fp.mix, hh: fp.hh * fp.mix, x: b.x + p.x * pk, y: b.y + p.y * pk, comp, pk, wx: b.x, wy: b.y });
+    // THE PAIR IS TESTED WHERE IT IS GOING, as the seeds' swerve is: the
+    // overlap is read on the footprints one short horizon ahead at today's
+    // velocities, so a body yields while the other is still coming, gently,
+    // and the push is spent before the contact is deep
+    const lead = 0;   // read at today's positions: the horizon made crowded corners push harder, not calmer (measured: hero teleports 13 to 19)
+    items.push({ b, hw: fp.hw * fp.mix, hh: fp.hh * fp.mix, x: b.x + p.x * pk, y: b.y + p.y * pk, comp, pk, wx: b.x, wy: b.y, lx: b.vx * lead, ly: b.vy * lead, x0: b.x + p.x * pk, y0: b.y + p.y * pk });
   }
   const live = new Set();
+  // THE PACKING RELAXES, IT DOES NOT PROJECT. Each sweep takes out a share
+  // of every overlap, so a crowded corner settles over a few frames instead
+  // of being re-decided whole every frame in whatever order the pairs came:
+  // the overlap left over is a few px, which the diagram splits continuously.
+  const relax = 1 - Math.exp(-h / TES_PACK_TAU);
   for (let it = 0; it < TES_PACK_ITERS; it++) {
     let moved = false;
     for (let i = 0; i < items.length; i++) {
@@ -4178,7 +4231,7 @@ Hive.prototype.tesPack = function(h) {
       for (let j = i + 1; j < items.length; j++) {
         const B = items[j];
         if (A.comp + B.comp <= 0) continue;
-        const dx = B.x - A.x, dy = B.y - A.y;
+        const dx = (B.x + B.lx) - (A.x + A.lx), dy = (B.y + B.ly) - (A.y + A.ly);
         const ox = A.hw + B.hw - Math.abs(dx), oy = A.hh + B.hh - Math.abs(dy);
         if (ox <= 0 || oy <= 0) continue;
         const key = A.b.id + ':' + B.b.id;
@@ -4194,16 +4247,31 @@ Hive.prototype.tesPack = function(h) {
         const prev = contacts.get(key);
         if (prev && ((prev.axis === 'x' && cx <= 2 * cy) || (prev.axis === 'y' && cy <= 2 * cx))) axis = prev.axis;
         contacts.set(key, { axis });
-        if (axis === 'x') { A.x -= sx * ox * share; B.x += sx * ox * (1 - share); }
-        else { A.y -= sy * oy * share; B.y += sy * oy * (1 - share); }
+        if (axis === 'x') { A.x -= sx * ox * share * relax; B.x += sx * ox * (1 - share) * relax; }
+        else { A.y -= sy * oy * share * relax; B.y += sy * oy * (1 - share) * relax; }
         moved = true;
       }
+    }
+    // the page's edge is a wall: a footprint pushed through it is pushed
+    // back, and the chain that pushed it resolves the other way. Off the
+    // page a tile keeps its area only by weight, which dilates it unevenly
+    // against its neighbours; on the page its footprint is its cell.
+    for (const it of items) {
+      if (it.comp <= 0) continue;
+      const x0 = it.x - it.hw, x1 = it.x + it.hw, y0 = it.y - it.hh, y1 = it.y + it.hh;
+      if (x0 < 0 && x1 <= this.W) { it.x -= x0; moved = true; } else if (x1 > this.W && x0 >= 0) { it.x -= x1 - this.W; moved = true; }
+      if (y0 < 0 && y1 <= this.H) { it.y -= y0; moved = true; } else if (y1 > this.H && y0 >= 0) { it.y -= y1 - this.H; moved = true; }
     }
     if (!moved) break;
   }
   for (const key of Array.from(contacts.keys())) if (!live.has(key)) contacts.delete(key);
+  // AND A PUSH IS A MOTION, NOT A TELEPORT: a footprint moves no faster
+  // under the packing than a body travels
+  const cap = TES_PUSH_SPEED * h;
   for (const it of items) {
     if (it.pk < 1e-3) continue;
+    const mx = it.x - it.x0, my = it.y - it.y0, m = Math.hypot(mx, my);
+    if (m > cap) { it.x = it.x0 + mx * cap / m; it.y = it.y0 + my * cap / m; }
     it.b.tesP.x = (it.x - it.b.x) / it.pk;
     it.b.tesP.y = (it.y - it.b.y) / it.pk;
   }
@@ -4228,7 +4296,10 @@ Hive.prototype.setSize = function(W, H) {
 // A tile's lattice: as many columns as its width holds, the outer ones on
 // the edges, the rest evenly between; the same for rows.
 function tesAxis(c, half, pitch) {
-  const K = Math.max(1, Math.round(2 * half / pitch));
+  // ceil, not round: the edge sites stay on the edges until the tile is a
+  // single slot wide, where the two meet; rounding would pull them to the
+  // centre at a slot and a half and step the outline
+  const K = Math.max(1, Math.ceil(2 * half / pitch - 1e-6));
   if (K === 1) return [c];
   const out = [], span = 2 * half - pitch;
   for (let k = 0; k < K; k++) out.push(c - span / 2 + k * span / (K - 1));
@@ -4269,23 +4340,47 @@ Hive.prototype.placeSeeds = function() {
     let free = (q.box.x1 - q.box.x0) * (q.box.y1 - q.box.y0);
     for (const c of contentBoxes) free -= overlap(q.box, c);
     if (b.leaving) for (const o of openVoids) free -= overlap(q.box, o);
-    b.claim = Math.max(CLAIM_MIN, free / (PW * PH));
+    b.claim = Math.max(0, free / (PW * PH));
   }
+  // and the whitespace as one thing: the page, less the content's claims.
+  // That is the one claim the voids' sites bid for together, and since a
+  // tile's footprint holds exactly its claim, it is the page less the tiles:
+  // the weights come out alike and every front is where the footprints put
+  // it. (Not the ground the tiles leave uncovered: a body melting into the
+  // flock covers little and claims much, and whitespace must not take the
+  // difference.)
+  let whitespace = this.COLS * this.ROWS;
+  for (const b of this.bodies) if (!b.isVoid && !b.isSelf) whitespace -= b.claim;
+  whitespace = Math.max(0, whitespace);
   // 3. the sites
   const tiles = [];
+  const host = this.bodies.find(b => b.isVoid && info.get(b).box) || null;
   for (const b of this.bodies) {
     const { fp, mix, fx, fy } = info.get(b);
-    const claim = b.claim * (1 + (config.hoverBoost - 1) * b.hoverMix * (1 - mix));
+    const claim = b.isVoid ? (b === host ? whitespace : 0) : b.claim * (1 + (config.hoverBoost - 1) * b.hoverMix * (1 - mix));
     const weight = b.tesW || 0;
     const site = (x, y, off) => ({ body: b, x, y, w: weight, off, claim, live: true });
     const sites = [];
     b.tesLat = null;
-    if (fp && mix >= 1 - 1e-9) {
+    if (b.isVoid) {
+      // whitespace: the page's own lattice, on the one void that hosts it
+      if (b === host) for (let r = 0; r < this.ROWS; r++) for (let c = 0; c < this.COLS; c++) sites.push(site((c + .5) * PW, (r + .5) * PH, 0));
+      else sites.push({ body: b, x: fx, y: fy, w: weight, off: 0, claim: 0, live: false });
+      if (b === host) { b.tesLat = { x0: 0, x1: this.W, y0: 0, y1: this.H }; tiles.push(b); }
+    } else if (fp && mix >= 1 - 1e-9) {
       const xs = tesAxis(fx, fp.hw, PW), ys = tesAxis(fy, fp.hh, PH);
       for (const y of ys) for (const x of xs) sites.push(site(x, y, 0));
+      // the two edge columns (rows) each carry a set of the rows (columns)
+      // they hold; closer than half a pitch they are one edge and share it
+      const xl = xs[0], xr = xs[xs.length - 1], yt = ys[0], yb = ys[ys.length - 1];
+      const colSet = xr - xl < PW / 2 ? [new Set(ys)] : [new Set(ys), new Set(ys)];
+      const rowSet = yb - yt < PH / 2 ? [new Set(xs)] : [new Set(xs), new Set(xs)];
       b.tesLat = { x0: fx - fp.hw, x1: fx + fp.hw, y0: fy - fp.hh, y1: fy + fp.hh, xs, ys,
-        colRows: new Map([[xs[0], new Set(ys)], [xs[xs.length - 1], new Set(ys)]]),
-        rowCols: new Map([[ys[0], new Set(xs)], [ys[ys.length - 1], new Set(xs)]]) };
+        colRows: new Map([[xl, colSet[0]], [xr, colSet[colSet.length - 1]]]),
+        rowCols: new Map([[yt, rowSet[0]], [yb, rowSet[rowSet.length - 1]]]),
+        colsOf: new Map([[colSet[0], xr - xl < PW / 2 ? [xl, xr] : [xl]], [colSet[colSet.length - 1], xr - xl < PW / 2 ? [xl, xr] : [xr]]]),
+        rowsOf: new Map([[rowSet[0], yb - yt < PH / 2 ? [yt, yb] : [yt]], [rowSet[rowSet.length - 1], yb - yt < PH / 2 ? [yt, yb] : [yb]]]),
+        mirrorOff: new Map() };
       tiles.push(b);
     } else if (fp && mix > 0.02) {
       const r = fp.rect, [cx, cy] = this.rectCenter(r);
@@ -4322,14 +4417,23 @@ Hive.prototype.placeSeeds = function() {
     }
   }
   const carry = (T, LT, axis, at, v, A, B, lo, hi) => {
-    // T's edge column at x=at (axis x) gets a site at row v, if it has none
+    // T's edge column at x=at (axis x) gets a site at row v, if it has none.
+    // Only within the span of T's own rows, fading out over a quarter pitch
+    // beyond the last: a mirror that stuck out past the last row would face
+    // the tile across T's other seam and dent it by up to half a pitch.
     const sets = axis === 'x' ? LT.colRows.get(at) : LT.rowCols.get(at);
-    for (const have of sets) if (Math.abs(have - v) < 1e-6) return false;
+    // a row within a twelfth of a pitch of one already there is the same
+    // row: the seam steps by half that at most, and the diagram stays small
+    for (const have of sets) if (Math.abs(have - v) < (axis === 'x' ? PH : PW) / 12) return false;
     if (occluded(A, B, lo, hi, axis, v)) return false;
-    const e = axis === 'x' ? Math.max(0, LT.y0 - v, v - LT.y1) : Math.max(0, LT.x0 - v, v - LT.x1);
-    if (e >= (axis === 'x' ? PH : PW) / 2) return false;
+    const own = axis === 'x' ? LT.ys : LT.xs, pitch = axis === 'x' ? PH : PW, cross = axis === 'x' ? PW : PH;
+    const e = Math.max(0, own[0] - v, v - own[own.length - 1]);
+    if (e >= pitch / 4) return false;
+    const off = Math.pow(4 * e * cross / pitch, 2);
     sets.add(v);
-    T.subs.push({ body: T, x: axis === 'x' ? at : v, y: axis === 'x' ? v : at, w: T.subs[0].w, off: 4 * e * e, claim: T.subs[0].claim, live: true, mirror: true });
+    LT.mirrorOff.set(sets, (LT.mirrorOff.get(sets) || new Map()).set(v, off));
+    const lines = axis === 'x' ? LT.colsOf.get(sets) : LT.rowsOf.get(sets);
+    for (const line of lines) T.subs.push({ body: T, x: axis === 'x' ? line : v, y: axis === 'x' ? v : line, w: T.subs[0].w, off, claim: T.subs[0].claim, live: true, mirror: true });
     return true;
   };
   for (let pass = 0; pass < 6; pass++) {
@@ -4355,20 +4459,24 @@ Hive.prototype.placeSeeds = function() {
   // its rectangle, dilated by its weight, never a zigzag. The ring fades
   // out across the void's own edge, and dies under any other tile. A
   // closing void's sites are dead where a void is opening over it.
-  for (const v of tiles) {
-    if (!v.isVoid) continue;
-    const LV = v.tesLat, w = v.subs[0].w, claim = v.subs[0].claim;
+  if (host) {
+    const v = host, w = v.subs[0].w, claim = v.subs[0].claim;
     for (const T of content) {
-      const L = T.tesLat;
-      if (L.x1 < LV.x0 - PW || L.x0 > LV.x1 + PW || L.y1 < LV.y0 - PH || L.y0 > LV.y1 + PH) continue;
-      const ring = [];
-      for (const r of L.ys) ring.push([L.x1 + PW / 2, r], [L.x0 - PW / 2, r]);
-      for (const c of L.xs) ring.push([c, L.y1 + PH / 2], [c, L.y0 - PH / 2]);
-      ring.push([L.x1 + PW / 2, L.y1 + PH / 2], [L.x0 - PW / 2, L.y1 + PH / 2], [L.x1 + PW / 2, L.y0 - PH / 2], [L.x0 - PW / 2, L.y0 - PH / 2]);
-      for (const [x, y] of ring) {
-        const e = Math.max(0, LV.x0 - x, x - LV.x1, LV.y0 - y, y - LV.y1);
-        if (e >= PW / 2) continue;
-        v.subs.push({ body: v, x, y, w, off: 4 * e * e, claim, live: true, ringOf: T });
+      // the ring conforms to each edge as it is, mirrors included, carrying
+      // the same penalty a fading mirror carries: a seam sits on the weight
+      // difference, and a pair that fades together stays on the midline
+      const L = T.tesLat, ring = [];
+      const offOf = (set, key) => { const m = L.mirrorOff.get(set); return m && m.has(key) ? m.get(key) : 0; };
+      const right = L.colRows.get(L.xs[L.xs.length - 1]), left = L.colRows.get(L.xs[0]);
+      for (const r of right) ring.push([L.x1 + PW / 2, r, offOf(right, r)]);
+      for (const r of left) ring.push([L.x0 - PW / 2, r, offOf(left, r)]);
+      const bottom = L.rowCols.get(L.ys[L.ys.length - 1]), top = L.rowCols.get(L.ys[0]);
+      for (const c of bottom) ring.push([c, L.y1 + PH / 2, offOf(bottom, c)]);
+      for (const c of top) ring.push([c, L.y0 - PH / 2, offOf(top, c)]);
+      ring.push([L.x1 + PW / 2, L.y1 + PH / 2, 0], [L.x0 - PW / 2, L.y1 + PH / 2, 0], [L.x1 + PW / 2, L.y0 - PH / 2, 0], [L.x0 - PW / 2, L.y0 - PH / 2, 0]);
+      for (const [x, y, off] of ring) {
+        if (x < -PW || x > this.W + PW || y < -PH || y > this.H + PH) continue;
+        v.subs.push({ body: v, x, y, w, off, claim, live: true, ringOf: T });
       }
     }
     for (const s of v.subs) {
@@ -4382,15 +4490,24 @@ Hive.prototype.placeSeeds = function() {
         const lo = s.ringOf ? 0 : PW, hi = s.ringOf ? PW / 4 : 1.5 * PW;
         if (out < hi) { const u = out <= lo ? 1 : 1 - (out - lo) / (hi - lo); pen = Math.max(pen, 8 * PW * PW * u * u); }
       }
-      if (v.leaving) for (const o of tiles) {
-        if (!o.isVoid || o.leaving || o === v) continue;
-        const L = o.tesLat;
-        const out = Math.max(L.x0 - s.x, s.x - L.x1, L.y0 - s.y, s.y - L.y1);
-        if (out < PW / 2) { const u = out <= 0 ? 1 : 1 - out / (PW / 2); pen = Math.max(pen, 8 * PW * PW * u * u); }
-      }
       s.off += pen;
     }
+    // a site four pitches dead is dead against anything within two pitches
+    // of it: it costs the diagram and buys nothing
+    v.subs = v.subs.filter(s => s.off < 4 * PW * PW);
+    // whitespace with nowhere to be stays out of the auction this frame
+    if (!v.subs.length) v.subs.push({ body: v, x: this.W / 2, y: this.H / 2, w, off: 0, claim: 0, live: false });
   }
+};
+
+// A cell read by the field inside it: its real corners, not the seam's
+// vertices, so a rectangle is a rectangle to the hive it holds.
+const tesOldCellPoly = Hive.prototype.cellPoly;
+Hive.prototype.cellPoly = function(b) {
+  const poly = tesOldCellPoly.call(this, b);
+  if (this.depth !== 0 || !poly || b.wall) return poly;
+  const clean = simplifyLoop(poly, 0.05, 1e-4);
+  return clean.length >= 3 ? clean : poly;
 };
 
 const tesOldSolve = Hive.prototype.solve;
@@ -4422,10 +4539,22 @@ Hive.prototype.solve = function() {
   } else {
     this.tesRestKey = null;
     subs = groups.flatMap(b => b.subs);
-    const indices = new Map(groups.map((b, i) => [b, i]));
+    // WHITESPACE IS ONE BIDDER. Every void's sites bid at one shared weight
+    // for the sum of their claims: a tile's front against whitespace is then
+    // the same front whichever void's site is across it, and a void closing
+    // under a void opening hands its ground over without a seam moving.
+    const content = groups.filter(b => !b.isVoid), voids = groups.filter(b => b.isVoid);
+    const units = voids.length ? content.concat([voids]) : content;
+    const indices = new Map();
+    content.forEach((b, i) => indices.set(b, i));
+    for (const v of voids) indices.set(v, content.length);
     const owners = subs.map(s => indices.get(s.body)), seeds = subs.map(s => [s.x, s.y]), offs = subs.map(s => s.off);
-    sol = tesseraSolve(seeds, owners, offs, groups.map(b => b.subs[0].claim), groups.map(b => b.tesW || 0), this.domainPts());
-    groups.forEach((b, i) => { b.tesW = sol.groupWeights[i]; });
+    const targets = content.map(b => b.subs[0].claim).concat(voids.length ? [voids.reduce((a, v) => a + v.subs[0].claim, 0)] : []);
+    const w0 = content.map(b => b.tesW || 0).concat(voids.length ? [this.tesVoidW || 0] : []);
+    sol = tesseraSolve(seeds, owners, offs, targets, w0, this.domainPts(), 16, this.tesLambda || 0);
+    this.tesLambda = sol.lambda;
+    content.forEach((b, i) => { b.tesW = sol.groupWeights[i]; });
+    if (voids.length) { this.tesVoidW = sol.groupWeights[content.length]; for (const v of voids) v.tesW = this.tesVoidW; }
     subs.forEach((s, i) => { s.w = sol.weights[i]; });
   }
   this.solveMs = performance.now() - t0; this.lastIters = sol.iterations;
