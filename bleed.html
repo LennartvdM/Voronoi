@@ -3941,6 +3941,8 @@ const BL_SNAP = 0.02;         // px: a displacement below this is none
 const BL_TRAVEL_COMP = 0.1;   // a traveller yields this much against a yielder's 1
 const BL_DEPART_PUSH = 40;    // px: a waiter shoved this far off its slot departs now
 const BL_MARGIN = 1;          // lattice cells of page past the viewport on every side: the bleed
+const BL_RESERVE_MIN = 0.25;  // slots: a margin cell freer than this bids for its free area; below it, its neighbours take it
+const BL_ITERS = 10;          // Newton iterations the root may take in a frame
 const BL_LEAD = 0;            // s: the packing reads a traveller's footprint this far ahead, so what is in its way yields before contact
 
 // The rigid footprint this body shows this frame, in px: null unless the
@@ -4350,6 +4352,9 @@ Hive.prototype.placeSeeds = function() {
   const inPoly = (x, y, poly) => { let inside = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], b = poly[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside; } return inside; };
   for (const s of r.subs) {
     const c = s.cell;
+    // (the reference's placeSeeds moves every body's first site to the body:
+    // the reserve's sites stand on their lattice cells, always)
+    s.x = c[0] + PW / 2; s.y = c[1] + PH / 2;
     let taken = 0, covered = false;
     for (const q of rects) {
       const ox = Math.min(c[2], q[2]) - Math.max(c[0], q[0]), oy = Math.min(c[3], q[3]) - Math.max(c[1], q[1]);
@@ -4357,9 +4362,13 @@ Hive.prototype.placeSeeds = function() {
       if (s.x > q[0] && s.x < q[2] && s.y > q[1] && s.y < q[3]) covered = true;
     }
     for (const p of polys) if (inPoly(s.x, s.y, p)) { covered = true; break; }
-    // a site standing under a tile owns nothing whatever it claims: out of
-    // the auction until the tile has passed
-    s.claim = covered ? 0 : Math.max(0, 1 - taken / (PW * PH));
+    // a site standing under a tile owns nothing whatever it claims, and a
+    // site whose cell a tile has all but covered would be asked for a sliver
+    // it cannot find in five iterations (a tiny target beside its own dead
+    // neighbours is an ill-conditioned row): both stand out of the auction
+    // until the tile has passed, and the sliver is whitespace either way
+    const free = Math.max(0, 1 - taken / (PW * PH));
+    s.claim = covered || free < BL_RESERVE_MIN ? 0 : free;
   }
   // A MARGIN SITE ENTERS AT ITS NEIGHBOURS' WEIGHT. The reference brings a
   // newcomer in by bisection, fifty-odd auctions of one cell, and revives a
@@ -4375,13 +4384,18 @@ Hive.prototype.placeSeeds = function() {
   for (const q of r.subs) {
     if (q.claim < ACTIVE_MIN) continue;
     if (held(q)) continue;
+    // at the neighbour's weight, corrected for the claims: a lattice cell's
+    // area moves about twice as fast as its weight (four sides a pitch long,
+    // each bisector shifting by the weight difference over twice the pitch),
+    // so a site claiming less than its neighbour enters that much lower
     let wSum = 0, wN = 0;
+    const est = nb => nb.w + (q.claim - nb.claim) * PW * PH / 2;
     for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
       if (!dr && !dc) continue;
       const nb = byCell.get((q.cell[0] + dc * PW) + ',' + (q.cell[1] + dr * PH));
-      if (nb && held(nb)) { wSum += nb.w; wN++; }
+      if (nb && held(nb)) { wSum += est(nb); wN++; }
     }
-    if (!wN) for (const nb of r.subs) if (held(nb)) { wSum += nb.w; wN++; }
+    if (!wN) for (const nb of r.subs) if (held(nb)) { wSum += est(nb); wN++; }
     if (wN) { q.w = wSum / wN; q.live = true; }
   }
   r.x = this.W / 2; r.y = this.H / 2; r.vx = 0; r.vy = 0;
@@ -4438,6 +4452,28 @@ Hive.prototype.solveShadow = function() {
   // the next shadow by bisection, every frame a blended hole is on the page)
   for (const b of this.bodies) if (!b.hole) for (const s of b.subs) { s.wShadow = s.w; s.shadowLive = s.live; }
   this.shadowOn = false; this.shadowAt = null;
+};
+
+// The reserve is nobody's neighbour, occupant or source: a hit on its cell
+// is a hit on whitespace (the reference's bodyGraph asks hitTestAny for what
+// a body hangs off, and must never be handed the reserve)
+const blOldHitAny = Hive.prototype.hitTestAny;
+Hive.prototype.hitTestAny = function(x, y) {
+  const b = blOldHitAny.call(this, x, y);
+  return b && b.blIsReserve ? null : b;
+};
+
+// Newton's budget at the root: the reference allows three to eight
+// iterations by the frame's length; a frame in which margin sites enter or
+// leave (a tile crossing the margin's lattice) starts further from its
+// answer than any frame the reference budgeted for, and five iterations
+// left a whitespace cell at twice its target. Ten is enough; the cost is a
+// few diagram evaluations on those frames only, since a converged auction
+// stops early.
+const blOldBudget = Hive.prototype.iterBudget;
+Hive.prototype.iterBudget = function() {
+  const n = blOldBudget.call(this);
+  return this.depth === 0 ? Math.max(n, BL_ITERS) : n;
 };
 
 /* --------------------------------------------------------------- START */

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bleed / Tessera — frame comparison</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0a0a0f;color:#ddd;font:14px system-ui,sans-serif}header{padding:16px;border-bottom:1px solid #333}a{color:#b9bcff}h1{font-size:20px;margin:0 0 10px}.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px}button,select{font:inherit;padding:7px;background:#1e2030;border:1px solid #555;color:inherit;border-radius:5px}button{cursor:pointer}button:disabled{opacity:.4}p{margin:10px 0 0;line-height:1.5;color:#aaa}main{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px}.panel{min-width:0}h2{font-size:15px;margin:0 0 8px}.viewport{position:relative;width:100%;overflow:hidden;background:#141421}iframe{position:absolute;left:0;top:0;border:0;width:1440px;height:900px;transform-origin:top left;pointer-events:none}#status{font:13px ui-monospace,monospace;white-space:pre-wrap} @media(max-width:850px){main{grid-template-columns:1fr}}
+</style>
+<header>
+<h1><a href="index.html">Experiments</a> / Tessera → Bleed</h1>
+<div class="controls">
+<button id="reset">Reset</button><button id="play" disabled>Play steps</button>
+<button id="step" disabled>Step 1 frame</button><button id="ten" disabled>Step 10</button>
+<label>Step <select id="dt"><option value="4.166666666666667">4.17 ms / 240 Hz</option><option value="8.333333333333334">8.33 ms / 120 Hz</option><option value="16.666666666666668" selected>16.67 ms / 60 Hz</option><option value="30">30 ms</option></select></label>
+<label>Scene <select id="scene"><option>bento</option><option>hero</option><option>sidebar</option><option>frame</option><option>flock</option></select></label>
+<button id="change" disabled>Change both scenes</button>
+<span id="status">Loading…</span>
+</div>
+<p>Both canvases have the same 1440 × 900 viewport. Each click calculates a new frame; none are skipped or blended. Hover is disabled. Play advances one simulation step per display frame, so smaller steps play in slow motion on a 60 Hz display. Changing the timestep resets both builds. Reset warms up for 3.6 seconds and settles Bento for 5.5 seconds before pausing.</p>
+<p><a href="tessera.html">Open Tessera</a> · <a href="bleed.html">Open Bleed</a> · <a href="bleed-results.json">Cloud test results</a></p>
+</header>
+<main><section class="panel"><h2>Tessera</h2><div class="viewport"><iframe title="Tessera"></iframe></div></section><section class="panel"><h2>Bleed</h2><div class="viewport"><iframe title="Bleed"></iframe></div></section></main>
+<script>
+'use strict';
+const frames=[...document.querySelectorAll('iframe')], status=document.getElementById('status');
+const controls=['play','step','ten','change'].map(id=>document.getElementById(id));
+let sources=null,playing=false,ready=false,ticks=0,sceneTicks=0;
+const clock=`<script>(()=>{let t=0;const q=[];requestAnimationFrame=cb=>{q.push(cb);return q.length;};cancelAnimationFrame=()=>{};performance.now=()=>t;window.__astraAdvance=(dt,n)=>{for(let i=0;i<n;i++){t+=dt;for(const cb of q.splice(0))cb(t);}};})();<\/script>`;
+const hook='\nwindow.__astraMouseOff=()=>{mouseX=-1000;mouseY=-1000;};\n';
+const stepSize=()=>Number(document.getElementById('dt').value);
+function resize(){for(const f of frames){const scale=f.parentElement.clientWidth/1440;f.style.transform=`scale(${scale})`;f.parentElement.style.height=900*scale+'px';}}
+function show(){status.textContent=`Frame ${ticks} · scene ${(sceneTicks*stepSize()).toFixed(2)} ms`;}
+function stop(){playing=false;document.getElementById('play').textContent='Play steps';}
+function advance(n){if(!ready)return;try{for(const f of frames)f.contentWindow.__astraAdvance(stepSize(),n);ticks+=n;sceneTicks+=n;show();}catch(e){stop();status.textContent='Frame failed: '+e.message;}}
+function animate(){if(!playing)return;advance(1);requestAnimationFrame(animate);}
+async function reset(){
+ stop();ready=false;controls.forEach(e=>e.disabled=true);status.textContent='Preparing identical clocks…';
+ try{
+  if(!sources)sources=await Promise.all(['tessera.html','bleed.html'].map(async url=>{const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error(url+' HTTP '+r.status);return r.text();}));
+  await Promise.all(frames.map((f,i)=>new Promise((resolve,reject)=>{
+   const timer=setTimeout(()=>reject(new Error('Frame load timed out')),15000);
+   f.onload=()=>{clearTimeout(timer);resolve();};
+   let s=sources[i],end=s.lastIndexOf('})();');if(end<0){reject(new Error('Missing application closure'));return;}
+   s=s.slice(0,end)+hook+s.slice(end);
+   f.srcdoc=s.replace('<head>','<head>'+clock);
+  })));
+  for(const f of frames){const w=f.contentWindow;w.__astraMouseOff();w.__astraAdvance(stepSize(),Math.ceil(3600/stepSize()));w.document.querySelector('[data-scene="bento"]').click();w.__astraAdvance(stepSize(),Math.ceil(5500/stepSize()));}
+  ticks=0;sceneTicks=0;document.getElementById('scene').value='bento';ready=true;controls.forEach(e=>e.disabled=false);resize();show();
+ }catch(e){status.textContent='Comparison unavailable: '+e.message;}
+}
+document.getElementById('reset').onclick=reset;
+document.getElementById('dt').onchange=reset;
+document.getElementById('step').onclick=()=>{stop();advance(1);};
+document.getElementById('ten').onclick=()=>{stop();advance(10);};
+document.getElementById('play').onclick=()=>{if(playing){stop();return;}playing=true;document.getElementById('play').textContent='Pause';requestAnimationFrame(animate);};
+document.getElementById('change').onclick=()=>{const scene=document.getElementById('scene').value;for(const f of frames)f.contentWindow.document.querySelector('[data-scene="'+scene+'"]').click();sceneTicks=0;show();};
+window.addEventListener('resize',resize);resize();reset();
+</script>
+</html>
