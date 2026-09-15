@@ -1,0 +1,80 @@
+name: Tessera frame validation
+on:
+  pull_request:
+    paths:
+      - '**.html'
+      - '.claude/gauntlet/**'
+      - 'tests/tessera/**'
+      - '.github/workflows/tessera.yml'
+permissions:
+  contents: read
+jobs:
+  browser:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'claude/magical-tesla-edtq0p'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser runtime
+        run: |
+          npm install --prefix /tmp/astra-runtime playwright@1.55.0
+          /tmp/astra-runtime/node_modules/.bin/playwright install --with-deps chromium
+      - name: Build independent mark from pinned reference
+        run: python3 tests/tessera/build.py
+      - name: Validate picture motion, membrane and geometry
+        env:
+          PLAYWRIGHT_MODULE: /tmp/astra-runtime/node_modules/playwright
+        run: python3 tests/tessera/validate.py
+      - name: Stress counts, interruptions and hover
+        env:
+          PLAYWRIGHT_MODULE: /tmp/astra-runtime/node_modules/playwright
+        run: |
+          node tests/tessera/stress.js tessera.html tessera-results/stress.json
+          python3 - <<'PY'
+          import json
+          data = json.load(open('tessera-results/stress.json'))
+          for case in data:
+              assert not case['errors'], case
+              for phase in case['result']:
+                  assert not phase['vanish'] and not phase['invalid'], phase
+                  if not phase['label'].startswith('interrupt-') and phase['label'] != 'release':
+                      assert phase['unseated'] == 0, phase
+                  mobile = case['width'] == 390
+                  # exact at both widths: the raster samples 0.01 px off the grid
+                  # (stress.js), so a numerical seam on a grid line is not a gap
+                  assert phase['gap'] == 0 and phase['over'] == 0, phase
+                  # every frame's auction converged: to 1e-5 on the desktop, and on
+                  # the 390 px page, where a body born at the minimum claim is a
+                  # 40 px² cell six px from the next, to 1e-2 (the three frames
+                  # above 1e-5 there are a leaving body's last hundredths)
+                  assert phase['err'] <= (1e-2 if mobile else 1e-5), phase
+          PY
+      - name: Publish generated files only to the experimental branch
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          cp tessera-results/summary.json tessera-results.json
+          git fetch origin claude/magical-tesla-edtq0p
+          test "$(git rev-parse FETCH_HEAD)" = "$EXPECTED_HEAD"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tessera.html tessera-results.json index.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat: publish tested Tessera conforming-tile mark'
+            git push origin HEAD:claude/magical-tesla-edtq0p
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tessera-validation
+          path: |
+            tessera-results/
+            tessera.html
+          retention-days: 30
