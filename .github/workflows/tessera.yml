@@ -46,6 +46,7 @@ jobs:
                   assert not phase['vanish'] and not phase['invalid'], phase
                   if not phase['label'].startswith('interrupt-') and phase['label'] != 'release':
                       assert phase['unseated'] == 0, phase
+                  mobile = case['width'] == 390
                   # exact at both widths: the raster samples 0.01 px off the grid
                   # (stress.js), so a numerical seam on a grid line is not a gap
                   assert phase['gap'] == 0 and phase['over'] == 0, phase
