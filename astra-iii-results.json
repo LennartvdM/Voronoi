@@ -1,0 +1,1764 @@
+{
+  "referenceSHA256": "680ccf8755e5dda33755e6da8a336ba4f034f27828ed1619dfac8466de1be2a1",
+  "candidateSHA256": "7f92b5052d6845bb8ef76fec48db510ca710487c7c84dd0789992f81527757a1",
+  "viewport": [
+    1440,
+    900
+  ],
+  "pointer": [
+    -1000,
+    -1000
+  ],
+  "warmupMs": 3600,
+  "sceneHoldMs": 5500,
+  "clocks": {
+    "240hz": {
+      "astra-i": {
+        "transitionAreaJumps": 0,
+        "byScene": {},
+        "vanish": 0,
+        "gapMax": 0,
+        "overMax": 0,
+        "settledScenes": "5/5",
+        "relativeQuotaResidualMax": 9.98e-07,
+        "msP50": 1.4,
+        "msP95": 9.8,
+        "shapeEventsByScene": {
+          "sidebar": 7
+        },
+        "transitionShapeEvents": 7
+      },
+      "astra-iii": {
+        "transitionAreaJumps": 0,
+        "byScene": {},
+        "vanish": 0,
+        "gapMax": 0,
+        "overMax": 0,
+        "settledScenes": "5/5",
+        "relativeQuotaResidualMax": 9.9e-07,
+        "msP50": 1.7,
+        "msP95": 27.7,
+        "shapeEventsByScene": {},
+        "transitionShapeEvents": 0
+      }
+    },
+    "120hz": {
+      "astra-i": {
+        "transitionAreaJumps": 0,
+        "byScene": {},
+        "vanish": 0,
+        "gapMax": 0,
+        "overMax": 0,
+        "settledScenes": "5/5",
+        "relativeQuotaResidualMax": 9.92e-07,
+        "msP50": 1.4,
+        "msP95": 10.3
+      },
+      "astra-iii": {
+        "transitionAreaJumps": 0,
+        "byScene": {},
+        "vanish": 0,
+        "gapMax": 0,
+        "overMax": 0,
+        "settledScenes": "5/5",
+        "relativeQuotaResidualMax": 1e-06,
+        "msP50": 1.8,
+        "msP95": 29.8
+      }
+    },
+    "60hz": {
+      "astra-i": {
+        "transitionAreaJumps": 0,
+        "byScene": {},
+        "vanish": 0,
+        "gapMax": 0,
+        "overMax": 0,
+        "settledScenes": "5/5",
+        "relativeQuotaResidualMax": 9.96e-07,
+        "msP50": 1.6,
+        "msP95": 10.9,
+        "shapeEventsByScene": {
+          "sidebar": 7,
+          "frame": 3
+        },
+        "transitionShapeEvents": 10,
+        "shapeBackShare": 0.006,
+        "flickerByScene": {
+          "flock0": {
+            "shapeBackShare": 0.004,
+            "shapeBackPx2": 26992,
+            "flipFrames": 0,
+            "wasteC": 0.015,
+            "wasteA": 0.009,
+            "revA": 0,
+            "revC": 0,
+            "fight": 0.484,
+            "settle": null
+          },
+          "bento": {
+            "shapeBackShare": 0,
+            "shapeBackPx2": 0,
+            "flipFrames": 0,
+            "wasteC": 0,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 1
+          },
+          "hero": {
+            "shapeBackShare": 0.004,
+            "shapeBackPx2": 14176,
+            "flipFrames": 2,
+            "wasteC": 0.022,
+            "wasteA": 0.001,
+            "revA": 0,
+            "revC": 0.002,
+            "fight": 0.135,
+            "lastSwitch": 176,
+            "settle": 1
+          },
+          "sidebar": {
+            "shapeBackShare": 0.011,
+            "shapeBackPx2": 48768,
+            "flipFrames": 0,
+            "wasteC": 0.032,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0.003,
+            "fight": 0.094,
+            "lastSwitch": 190,
+            "settle": 1
+          },
+          "frame": {
+            "shapeBackShare": 0.007,
+            "shapeBackPx2": 19904,
+            "flipFrames": 0,
+            "wasteC": 0.034,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0.003,
+            "fight": 0.117,
+            "lastSwitch": 180,
+            "settle": 1
+          },
+          "flock": {
+            "shapeBackShare": 0.006,
+            "shapeBackPx2": 19840,
+            "flipFrames": 0,
+            "wasteC": 0.013,
+            "wasteA": 0.003,
+            "revA": 0,
+            "revC": 0.001,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 298
+          }
+        }
+      },
+      "astra-iii": {
+        "transitionAreaJumps": 0,
+        "byScene": {},
+        "vanish": 0,
+        "gapMax": 0,
+        "overMax": 0,
+        "settledScenes": "5/5",
+        "relativeQuotaResidualMax": 9.88e-07,
+        "msP50": 2,
+        "msP95": 30.7,
+        "shapeEventsByScene": {
+          "hero": 1,
+          "sidebar": 2,
+          "frame": 5
+        },
+        "transitionShapeEvents": 8,
+        "shapeBackShare": 0.007,
+        "flickerByScene": {
+          "flock0": {
+            "shapeBackShare": 0.004,
+            "shapeBackPx2": 16656,
+            "flipFrames": 1,
+            "wasteC": 0.018,
+            "wasteA": 0.013,
+            "revA": 0,
+            "revC": 0.002,
+            "fight": 0.404,
+            "settle": null
+          },
+          "bento": {
+            "shapeBackShare": 0,
+            "shapeBackPx2": 0,
+            "flipFrames": 0,
+            "wasteC": 0,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 1
+          },
+          "hero": {
+            "shapeBackShare": 0.004,
+            "shapeBackPx2": 13600,
+            "flipFrames": 0,
+            "wasteC": 0.007,
+            "wasteA": 0.002,
+            "revA": 0,
+            "revC": 0.001,
+            "fight": 0.149,
+            "lastSwitch": 137,
+            "settle": 1
+          },
+          "sidebar": {
+            "shapeBackShare": 0.01,
+            "shapeBackPx2": 48912,
+            "flipFrames": 2,
+            "wasteC": 0.03,
+            "wasteA": 0.011,
+            "revA": 0.001,
+            "revC": 0.007,
+            "fight": 0.061,
+            "lastSwitch": 160,
+            "settle": 1
+          },
+          "frame": {
+            "shapeBackShare": 0.009,
+            "shapeBackPx2": 21712,
+            "flipFrames": 1,
+            "wasteC": 0.038,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0.004,
+            "fight": 0,
+            "lastSwitch": 153,
+            "settle": 1
+          },
+          "flock": {
+            "shapeBackShare": 0.004,
+            "shapeBackPx2": 10416,
+            "flipFrames": 1,
+            "wasteC": 0.009,
+            "wasteA": 0.002,
+            "revA": 0,
+            "revC": 0.001,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 330
+          }
+        }
+      }
+    },
+    "30ms": {
+      "astra-i": {
+        "transitionAreaJumps": 0,
+        "byScene": {},
+        "vanish": 0,
+        "gapMax": 0,
+        "overMax": 0,
+        "settledScenes": "5/5",
+        "relativeQuotaResidualMax": 9.78e-07,
+        "msP50": 1.9,
+        "msP95": 12.9,
+        "shapeEventsByScene": {
+          "flock0": 12,
+          "sidebar": 8,
+          "frame": 2,
+          "flock": 10
+        },
+        "transitionShapeEvents": 20,
+        "shapeBackShare": 0.014,
+        "flickerByScene": {
+          "flock0": {
+            "shapeBackShare": 0.009,
+            "shapeBackPx2": 55664,
+            "flipFrames": 2,
+            "wasteC": 0.04,
+            "wasteA": 0.028,
+            "revA": 0.003,
+            "revC": 0.002,
+            "fight": 0.464,
+            "settle": null
+          },
+          "bento": {
+            "shapeBackShare": 0,
+            "shapeBackPx2": 0,
+            "flipFrames": 0,
+            "wasteC": 0,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 1
+          },
+          "hero": {
+            "shapeBackShare": 0.009,
+            "shapeBackPx2": 33632,
+            "flipFrames": 5,
+            "wasteC": 0.058,
+            "wasteA": 0.012,
+            "revA": 0,
+            "revC": 0.007,
+            "fight": 0.133,
+            "lastSwitch": 97,
+            "settle": 1
+          },
+          "sidebar": {
+            "shapeBackShare": 0.022,
+            "shapeBackPx2": 102032,
+            "flipFrames": 0,
+            "wasteC": 0.07,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0.012,
+            "fight": 0.091,
+            "lastSwitch": 105,
+            "settle": 1
+          },
+          "frame": {
+            "shapeBackShare": 0.017,
+            "shapeBackPx2": 45424,
+            "flipFrames": 1,
+            "wasteC": 0.077,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0.018,
+            "fight": 0.121,
+            "lastSwitch": 100,
+            "settle": 1
+          },
+          "flock": {
+            "shapeBackShare": 0.012,
+            "shapeBackPx2": 38736,
+            "flipFrames": 1,
+            "wasteC": 0.025,
+            "wasteA": 0.016,
+            "revA": 0.001,
+            "revC": 0.005,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 184
+          }
+        }
+      },
+      "astra-iii": {
+        "transitionAreaJumps": 0,
+        "byScene": {},
+        "vanish": 0,
+        "gapMax": 0,
+        "overMax": 0,
+        "settledScenes": "5/5",
+        "relativeQuotaResidualMax": 9.94e-07,
+        "msP50": 2.2,
+        "msP95": 32.9,
+        "shapeEventsByScene": {
+          "hero": 1,
+          "sidebar": 4,
+          "frame": 4
+        },
+        "transitionShapeEvents": 9,
+        "shapeBackShare": 0.013,
+        "flickerByScene": {
+          "flock0": {
+            "shapeBackShare": 0.009,
+            "shapeBackPx2": 35280,
+            "flipFrames": 1,
+            "wasteC": 0.036,
+            "wasteA": 0.033,
+            "revA": 0.005,
+            "revC": 0.005,
+            "fight": 0.407,
+            "settle": null
+          },
+          "bento": {
+            "shapeBackShare": 0,
+            "shapeBackPx2": 0,
+            "flipFrames": 0,
+            "wasteC": 0,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 1
+          },
+          "hero": {
+            "shapeBackShare": 0.009,
+            "shapeBackPx2": 28496,
+            "flipFrames": 0,
+            "wasteC": 0.014,
+            "wasteA": 0.026,
+            "revA": 0.003,
+            "revC": 0.003,
+            "fight": 0.147,
+            "lastSwitch": 76,
+            "settle": 1
+          },
+          "sidebar": {
+            "shapeBackShare": 0.019,
+            "shapeBackPx2": 92816,
+            "flipFrames": 3,
+            "wasteC": 0.061,
+            "wasteA": 0.031,
+            "revA": 0.003,
+            "revC": 0.015,
+            "fight": 0.061,
+            "lastSwitch": 89,
+            "settle": 1
+          },
+          "frame": {
+            "shapeBackShare": 0.018,
+            "shapeBackPx2": 42800,
+            "flipFrames": 1,
+            "wasteC": 0.062,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0.021,
+            "fight": 0,
+            "lastSwitch": 85,
+            "settle": 1
+          },
+          "flock": {
+            "shapeBackShare": 0.008,
+            "shapeBackPx2": 20768,
+            "flipFrames": 4,
+            "wasteC": 0.025,
+            "wasteA": 0.009,
+            "revA": 0.001,
+            "revC": 0.003,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 184
+          }
+        }
+      }
+    },
+    "jitter": {
+      "astra-i": {
+        "transitionAreaJumps": 3,
+        "byScene": {
+          "flock0": 3,
+          "flock": 3
+        },
+        "vanish": 0,
+        "gapMax": 0,
+        "overMax": 0,
+        "settledScenes": "5/5",
+        "relativeQuotaResidualMax": 9.91e-07,
+        "msP50": 1.7,
+        "msP95": 11.7,
+        "shapeEventsByScene": {
+          "flock0": 7,
+          "sidebar": 6,
+          "frame": 3,
+          "flock": 5
+        },
+        "transitionShapeEvents": 14,
+        "shapeBackShare": 0.011,
+        "flickerByScene": {
+          "flock0": {
+            "shapeBackShare": 0.007,
+            "shapeBackPx2": 44000,
+            "flipFrames": 0,
+            "wasteC": 0.029,
+            "wasteA": 0.025,
+            "revA": 0.002,
+            "revC": 0.001,
+            "fight": 0.433,
+            "settle": null
+          },
+          "bento": {
+            "shapeBackShare": 0,
+            "shapeBackPx2": 0,
+            "flipFrames": 0,
+            "wasteC": 0,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 1
+          },
+          "hero": {
+            "shapeBackShare": 0.007,
+            "shapeBackPx2": 27728,
+            "flipFrames": 2,
+            "wasteC": 0.045,
+            "wasteA": 0.008,
+            "revA": 0,
+            "revC": 0.005,
+            "fight": 0.143,
+            "lastSwitch": 119,
+            "settle": 1
+          },
+          "sidebar": {
+            "shapeBackShare": 0.018,
+            "shapeBackPx2": 84224,
+            "flipFrames": 0,
+            "wasteC": 0.06,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0.008,
+            "fight": 0.089,
+            "lastSwitch": 119,
+            "settle": 1
+          },
+          "frame": {
+            "shapeBackShare": 0.013,
+            "shapeBackPx2": 35136,
+            "flipFrames": 0,
+            "wasteC": 0.061,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0.007,
+            "fight": 0.122,
+            "lastSwitch": 120,
+            "settle": 1
+          },
+          "flock": {
+            "shapeBackShare": 0.009,
+            "shapeBackPx2": 30384,
+            "flipFrames": 1,
+            "wasteC": 0.016,
+            "wasteA": 0.011,
+            "revA": 0,
+            "revC": 0.003,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 220
+          }
+        }
+      },
+      "astra-iii": {
+        "transitionAreaJumps": 0,
+        "byScene": {},
+        "vanish": 0,
+        "gapMax": 0,
+        "overMax": 0,
+        "settledScenes": "5/5",
+        "relativeQuotaResidualMax": 1e-06,
+        "msP50": 2.1,
+        "msP95": 32.3,
+        "shapeEventsByScene": {
+          "hero": 1,
+          "sidebar": 5,
+          "frame": 5
+        },
+        "transitionShapeEvents": 11,
+        "shapeBackShare": 0.011,
+        "flickerByScene": {
+          "flock0": {
+            "shapeBackShare": 0.007,
+            "shapeBackPx2": 25792,
+            "flipFrames": 0,
+            "wasteC": 0.031,
+            "wasteA": 0.022,
+            "revA": 0,
+            "revC": 0.004,
+            "fight": 0.391,
+            "settle": null
+          },
+          "bento": {
+            "shapeBackShare": 0,
+            "shapeBackPx2": 0,
+            "flipFrames": 0,
+            "wasteC": 0,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 1
+          },
+          "hero": {
+            "shapeBackShare": 0.007,
+            "shapeBackPx2": 22784,
+            "flipFrames": 1,
+            "wasteC": 0.011,
+            "wasteA": 0.015,
+            "revA": 0.001,
+            "revC": 0.002,
+            "fight": 0.158,
+            "lastSwitch": 94,
+            "settle": 1
+          },
+          "sidebar": {
+            "shapeBackShare": 0.016,
+            "shapeBackPx2": 80672,
+            "flipFrames": 3,
+            "wasteC": 0.057,
+            "wasteA": 0.019,
+            "revA": 0.003,
+            "revC": 0.015,
+            "fight": 0.057,
+            "lastSwitch": 101,
+            "settle": 1
+          },
+          "frame": {
+            "shapeBackShare": 0.014,
+            "shapeBackPx2": 33744,
+            "flipFrames": 0,
+            "wasteC": 0.054,
+            "wasteA": 0,
+            "revA": 0,
+            "revC": 0.012,
+            "fight": 0,
+            "lastSwitch": 102,
+            "settle": 1
+          },
+          "flock": {
+            "shapeBackShare": 0.007,
+            "shapeBackPx2": 16624,
+            "flipFrames": 0,
+            "wasteC": 0.02,
+            "wasteA": 0.005,
+            "revA": 0.001,
+            "revC": 0.002,
+            "fight": 0,
+            "lastSwitch": 0,
+            "settle": 220
+          }
+        }
+      }
+    }
+  },
+  "passedGeometry": true,
+  "regressions": [
+    {
+      "clock": "240hz",
+      "metric": "msP95",
+      "before": 9.8,
+      "after": 27.7
+    },
+    {
+      "clock": "120hz",
+      "metric": "msP95",
+      "before": 10.3,
+      "after": 29.8
+    },
+    {
+      "clock": "60hz",
+      "metric": "shapeBackShare",
+      "before": 0.006,
+      "after": 0.007
+    },
+    {
+      "clock": "60hz",
+      "metric": "msP95",
+      "before": 10.9,
+      "after": 30.7
+    },
+    {
+      "clock": "30ms",
+      "metric": "msP95",
+      "before": 12.9,
+      "after": 32.9
+    },
+    {
+      "clock": "jitter",
+      "metric": "msP95",
+      "before": 11.7,
+      "after": 32.3
+    },
+    {
+      "clock": "60hz",
+      "metric": "transitionShapeEvents",
+      "scene": "frame",
+      "before": 3,
+      "after": 5
+    },
+    {
+      "clock": "60hz",
+      "metric": "transitionShapeEvents",
+      "scene": "hero",
+      "before": 0,
+      "after": 1
+    },
+    {
+      "clock": "30ms",
+      "metric": "transitionShapeEvents",
+      "scene": "frame",
+      "before": 2,
+      "after": 4
+    },
+    {
+      "clock": "30ms",
+      "metric": "transitionShapeEvents",
+      "scene": "hero",
+      "before": 0,
+      "after": 1
+    },
+    {
+      "clock": "jitter",
+      "metric": "transitionShapeEvents",
+      "scene": "frame",
+      "before": 3,
+      "after": 5
+    },
+    {
+      "clock": "jitter",
+      "metric": "transitionShapeEvents",
+      "scene": "hero",
+      "before": 0,
+      "after": 1
+    }
+  ],
+  "controls": {
+    "no-buffer": {
+      "options": {
+        "buffer": false
+      },
+      "transitionShapeEvents": 9,
+      "byScene": {
+        "hero": 1,
+        "sidebar": 4,
+        "frame": 4
+      }
+    },
+    "no-arcs": {
+      "options": {
+        "arcs": false
+      },
+      "transitionShapeEvents": 8,
+      "byScene": {
+        "hero": 1,
+        "sidebar": 3,
+        "frame": 4
+      }
+    }
+  },
+  "unit": {
+    "cases": 24,
+    "solves": 8,
+    "integrationMax": 0,
+    "derivativeMax": 6.442489208779989e-09,
+    "quotaMax": 8.656937809349803e-07,
+    "outlineMax": 9.087036960409023e-05,
+    "endpointMax": 0,
+    "solveRows": [
+      {
+        "case": 0,
+        "B": 0,
+        "err": 2.365934847149737e-07,
+        "reserveTarget": 11133.893198587026,
+        "ring": 0
+      },
+      {
+        "case": 1,
+        "B": 30,
+        "err": 1.865914546738774e-07,
+        "reserveTarget": 27828.63507766325,
+        "ring": 28800
+      },
+      {
+        "case": 2,
+        "B": 0,
+        "err": 1.7021122632835904e-08,
+        "reserveTarget": 10369.257687243246,
+        "ring": 0
+      },
+      {
+        "case": 3,
+        "B": 30,
+        "err": 0.01629327235810163,
+        "reserveTarget": 29072.075237933557,
+        "ring": 28800
+      },
+      {
+        "case": 4,
+        "B": 0,
+        "err": 3.759277909017016e-10,
+        "reserveTarget": 10823.338451877427,
+        "ring": 0
+      },
+      {
+        "case": 5,
+        "B": 30,
+        "err": 8.656937809349803e-07,
+        "reserveTarget": 26121.220588243967,
+        "ring": 28800
+      },
+      {
+        "case": 6,
+        "B": 0,
+        "err": 3.162326114100503e-07,
+        "reserveTarget": 9192.531526348348,
+        "ring": 0
+      },
+      {
+        "case": 7,
+        "B": 30,
+        "err": 1.4843937190731777e-09,
+        "reserveTarget": 26565.93245634205,
+        "ring": 28800
+      }
+    ]
+  },
+  "ui": {
+    "first": "Frame 1 \u00b7 scene 4.17 ms",
+    "afterTen": "Frame 11 \u00b7 scene 45.83 ms",
+    "dimensions": [
+      {
+        "width": 1440,
+        "height": 900,
+        "canvasWidth": 1440,
+        "canvasHeight": 809
+      },
+      {
+        "width": 1440,
+        "height": 900,
+        "canvasWidth": 1440,
+        "canvasHeight": 809
+      }
+    ],
+    "mobile": [
+      1440,
+      1440
+    ],
+    "errors": [],
+    "transport": "exact in-memory HTML with fetch shim; no live deployment requests"
+  },
+  "stress": [
+    {
+      "width": 1440,
+      "errors": [],
+      "result": [
+        {
+          "label": "startup",
+          "frames": 160,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.450826692755873e-07,
+          "areaError": 0.20101740858967787,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 1586.4804684490218,
+          "unseated": 0
+        },
+        {
+          "label": "30-hero",
+          "frames": 220,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 8.666377970027203e-07,
+          "areaError": 0.00011215358972549438,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 52398.80489127375,
+          "unseated": 0
+        },
+        {
+          "label": "30-sidebar",
+          "frames": 220,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.67744944085325e-07,
+          "areaError": 0.13298736330180372,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 14952.723672602697,
+          "unseated": 0
+        },
+        {
+          "label": "interrupt-frame",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 5.530860481473629e-07,
+          "areaError": 5.122274160385132e-09,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 30
+        },
+        {
+          "label": "interrupt-bento",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 7.66910736697403e-07,
+          "areaError": 4.190951585769653e-09,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 30
+        },
+        {
+          "label": "interrupt-hero",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 2.397559331486174e-07,
+          "areaError": 0.0013903718697632628,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 5.947289966718076,
+          "unseated": 30
+        },
+        {
+          "label": "interrupt-flock",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 1.621881248802108e-07,
+          "areaError": 6.447695710676271e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 689.1257930395132,
+          "unseated": 0
+        },
+        {
+          "label": "interrupt-sidebar",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 2.134868727301423e-07,
+          "areaError": 4.4224179873708636e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 1344.310557122086,
+          "unseated": 30
+        },
+        {
+          "label": "interrupt-frame",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 1.0058844199845863e-07,
+          "areaError": 6.68251232127659e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 1339.6272078973404,
+          "unseated": 30
+        },
+        {
+          "label": "interrupted-settle",
+          "frames": 220,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.664520826256992e-07,
+          "areaError": 0.0007651167470612563,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 28723.618403112738,
+          "unseated": 0
+        },
+        {
+          "label": "4-bento",
+          "frames": 220,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 6.557706653560744e-07,
+          "areaError": 0.12957014121346955,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 322.84467628380753,
+          "unseated": 0
+        },
+        {
+          "label": "12-frame",
+          "frames": 220,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.795948732078928e-07,
+          "areaError": 2.162987584597431e-06,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 14205.017238365112,
+          "unseated": 0
+        },
+        {
+          "label": "hover-sweep",
+          "frames": 180,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 0,
+          "areaError": 0,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 0
+        },
+        {
+          "label": "release",
+          "frames": 200,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.049298161940905e-07,
+          "areaError": 5.820766091346741e-09,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 0
+        },
+        {
+          "label": "interrupt-resize",
+          "frames": 15,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 2.7262407668573207e-07,
+          "areaError": 1.6298145055770874e-09,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 12
+        },
+        {
+          "label": "resized-settle",
+          "frames": 260,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.944372299464581e-07,
+          "areaError": 0.029693137893289645,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 454.34084991504,
+          "unseated": 0
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "errors": [],
+      "result": [
+        {
+          "label": "startup",
+          "frames": 160,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 8.022289384710522e-07,
+          "areaError": 0.013928486708579157,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 3233.98712384911,
+          "unseated": 0
+        },
+        {
+          "label": "30-hero",
+          "frames": 220,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.887849899591717e-07,
+          "areaError": 0.0004126587617068189,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 8629.425924432071,
+          "unseated": 0
+        },
+        {
+          "label": "30-sidebar",
+          "frames": 220,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.218978075400516e-07,
+          "areaError": 0.00973680356564327,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 835.1007987551598,
+          "unseated": 0
+        },
+        {
+          "label": "interrupt-frame",
+          "frames": 10,
+          "gap": 0,
+          "over": 20,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 7.22419814704023e-08,
+          "areaError": 5.820766091346741e-11,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 30
+        },
+        {
+          "label": "interrupt-bento",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 6.777123735187364e-07,
+          "areaError": 8.731149137020111e-11,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 30
+        },
+        {
+          "label": "interrupt-hero",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 5.998031766439832e-07,
+          "areaError": 0.0018658908959645615,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 392.94140609795176,
+          "unseated": 30
+        },
+        {
+          "label": "interrupt-flock",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 2.034862767801755e-07,
+          "areaError": 1.0139505093320622e-06,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 391.63043938183915,
+          "unseated": 0
+        },
+        {
+          "label": "interrupt-sidebar",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.962832260692545e-07,
+          "areaError": 1.2876819255325245e-07,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 216.28998583631898,
+          "unseated": 30
+        },
+        {
+          "label": "interrupt-frame",
+          "frames": 10,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 1.3268769520033654e-07,
+          "areaError": 2.3145463501350605e-07,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 258.4822413263572,
+          "unseated": 30
+        },
+        {
+          "label": "interrupted-settle",
+          "frames": 220,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.872122428337712e-07,
+          "areaError": 0.0003341857390921632,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 2599.134910064615,
+          "unseated": 0
+        },
+        {
+          "label": "4-bento",
+          "frames": 220,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.322891299328992e-07,
+          "areaError": 0.021118973427292076,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 8857.000964807261,
+          "unseated": 0
+        },
+        {
+          "label": "12-frame",
+          "frames": 220,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 8.769023230512575e-07,
+          "areaError": 0.000390520937597838,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 4901.487153095016,
+          "unseated": 0
+        },
+        {
+          "label": "hover-sweep",
+          "frames": 180,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 0,
+          "areaError": 0,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 0
+        },
+        {
+          "label": "release",
+          "frames": 200,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 9.854008481583952e-07,
+          "areaError": 1.1641532182693481e-10,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 0,
+          "unseated": 0
+        },
+        {
+          "label": "interrupt-resize",
+          "frames": 15,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 7.47858254043638e-07,
+          "areaError": 0.005669681022027362,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 1605.423626262941,
+          "unseated": 12
+        },
+        {
+          "label": "resized-settle",
+          "frames": 260,
+          "gap": 0,
+          "over": 0,
+          "vanish": 0,
+          "invalid": 0,
+          "err": 8.223909835595459e-07,
+          "areaError": 0.046663114733746625,
+          "roles": 0,
+          "maxPositionJump": 0,
+          "maxVelocityJump": 0,
+          "maxLoanCredit": 3714.6028503187226,
+          "unseated": 0
+        }
+      ]
+    }
+  ],
+  "stressPolygonChecks": [
+    {
+      "file": "stress-390-coverage.json",
+      "phase": "interrupt-frame",
+      "frame": 0,
+      "rasterGap": 0,
+      "rasterOverlap": 20,
+      "polygonGap": 0.019508172175846994,
+      "polygonOverlap": 0.00370583773474209
+    }
+  ],
+  "visualAudit": {
+    "astra-i": {
+      "sha256": "680ccf8755e5dda33755e6da8a336ba4f034f27828ed1619dfac8466de1be2a1",
+      "scenes": [
+        {
+          "scene": "hero",
+          "observedBodies": 12,
+          "deformOver10PctBefore3px": 1,
+          "maxDeformation": 0.11941163856853229,
+          "perBodyDeformation": {
+            "0": 0.0006903008711113959,
+            "1": 0.00314151895302031,
+            "2": 0.00787446524638834,
+            "3": 0.020782552475072495,
+            "4": 0.03856708759814253,
+            "5": 0.11941163856853229,
+            "6": 0.06742494672673412,
+            "7": 0.0331626069379266,
+            "8": 0.0034283021484039166,
+            "9": 0.000988874916486024,
+            "10": 0.0011200752815286343,
+            "11": 0.00024419347490551885
+          },
+          "contentOutsideMax": 0,
+          "dressedCrossingLeavesMax": 0,
+          "outsideAtEnd": 0,
+          "curvedPlans": 0,
+          "polygonWitness": []
+        },
+        {
+          "scene": "sidebar",
+          "observedBodies": 12,
+          "deformOver10PctBefore3px": 6,
+          "maxDeformation": 0.2539892350101706,
+          "perBodyDeformation": {
+            "0": 0.018566787490271408,
+            "1": 0.10818466273801797,
+            "2": 0.06546455488055145,
+            "3": 0.2539892350101706,
+            "4": 0.23824662487212872,
+            "5": 0.08521325253795752,
+            "6": 0.23292048581129018,
+            "7": 0.19599009137418863,
+            "8": 0.1204942853272967,
+            "9": 0.031259926358518535,
+            "10": 0.021632141610382002,
+            "11": 0.04209381653103969
+          },
+          "contentOutsideMax": 0,
+          "dressedCrossingLeavesMax": 0,
+          "outsideAtEnd": 0,
+          "curvedPlans": 0,
+          "polygonWitness": []
+        },
+        {
+          "scene": "frame",
+          "observedBodies": 12,
+          "deformOver10PctBefore3px": 1,
+          "maxDeformation": 0.10974649710661341,
+          "perBodyDeformation": {
+            "0": 0.008738720204851533,
+            "1": 0.0016543574544977257,
+            "2": 0.004089927944485533,
+            "3": 0.001342646748926901,
+            "4": 0.0007183858172113758,
+            "5": 0.0040056637453664235,
+            "6": 0.007025628999438402,
+            "7": 0.039737946423921325,
+            "8": 0.018664847579242305,
+            "9": 0.022854437285720414,
+            "10": 0.054752576689093536,
+            "11": 0.10974649710661341
+          },
+          "contentOutsideMax": 0,
+          "dressedCrossingLeavesMax": 0,
+          "outsideAtEnd": 0,
+          "curvedPlans": 0,
+          "polygonWitness": []
+        },
+        {
+          "scene": "bento",
+          "observedBodies": 12,
+          "deformOver10PctBefore3px": 1,
+          "maxDeformation": 0.1690251821853333,
+          "perBodyDeformation": {
+            "0": 0.006608437122804139,
+            "1": 0.0019035513700753194,
+            "2": 7.564145234469458e-05,
+            "3": 0.0005916742462283699,
+            "4": 9.228622793211749e-05,
+            "5": 0.0002415622842965471,
+            "6": 0.0003608879555956131,
+            "7": 0.0007212353223387645,
+            "8": 0.003151126900839675,
+            "9": 0.04123008176129432,
+            "10": 0.1690251821853333,
+            "11": 0.028632430793032477
+          },
+          "contentOutsideMax": 0,
+          "dressedCrossingLeavesMax": 0,
+          "outsideAtEnd": 0,
+          "curvedPlans": 0,
+          "polygonWitness": []
+        },
+        {
+          "scene": "flock",
+          "observedBodies": 12,
+          "deformOver10PctBefore3px": 1,
+          "maxDeformation": 0.29486228996215186,
+          "perBodyDeformation": {
+            "0": 0.029205215231993032,
+            "1": 0.019910477908603903,
+            "2": 0.005593362367863232,
+            "3": 0.005370989518783912,
+            "4": 0.027306634666931826,
+            "5": 0.0037018800899189797,
+            "6": 0.02527470546082525,
+            "7": 0.00518266046007004,
+            "8": 0.008995080353210477,
+            "9": 0.29486228996215186,
+            "10": 0.055375398653288964,
+            "11": 0.029933424709015985
+          },
+          "contentOutsideMax": 0,
+          "dressedCrossingLeavesMax": 0,
+          "outsideAtEnd": 0,
+          "curvedPlans": 0,
+          "polygonWitness": []
+        }
+      ]
+    },
+    "astra-iii": {
+      "sha256": "7f92b5052d6845bb8ef76fec48db510ca710487c7c84dd0789992f81527757a1",
+      "scenes": [
+        {
+          "scene": "hero",
+          "observedBodies": 12,
+          "deformOver10PctBefore3px": 0,
+          "maxDeformation": 0.018350422939461996,
+          "perBodyDeformation": {
+            "0": 0.0011383473079436138,
+            "1": 0.004421022821111082,
+            "2": 0.006524327794501465,
+            "3": 0.008152751638947877,
+            "4": 0.006063675043520223,
+            "5": 0.018350422939461996,
+            "6": 0.006022740956328658,
+            "7": 0.011257279385019952,
+            "8": 0.007528353010655852,
+            "9": 0.004778392039935545,
+            "10": 0.0014238806227271487,
+            "11": 0.0011383473079383053
+          },
+          "contentOutsideMax": 44264.49666982386,
+          "dressedCrossingLeavesMax": 14,
+          "outsideAtEnd": 0,
+          "curvedPlans": 4,
+          "polygonWitness": [
+            {
+              "id": 0,
+              "total": 81093.2210636429,
+              "visible": 81093.2210636429,
+              "outside": 0.0,
+              "outsideDiscrepancy": 2.473825588822365e-10
+            },
+            {
+              "id": 1,
+              "total": 64832.43118910328,
+              "visible": 52145.31421168269,
+              "outside": 12687.11697742056,
+              "outsideDiscrepancy": 3.637978807091713e-12
+            },
+            {
+              "id": 2,
+              "total": 62284.00031361226,
+              "visible": 62284.00031361227,
+              "outside": 0.0,
+              "outsideDiscrepancy": 3.4072145354002714e-06
+            },
+            {
+              "id": 3,
+              "total": 36728.13737399668,
+              "visible": 34098.24789871103,
+              "outside": 2629.889475285656,
+              "outsideDiscrepancy": 1.0368239600211382e-10
+            },
+            {
+              "id": 4,
+              "total": 43537.64598802475,
+              "visible": 40962.11573025673,
+              "outside": 2575.5302577680172,
+              "outsideDiscrepancy": 0.44252487252606443
+            },
+            {
+              "id": 5,
+              "total": 342758.57486081513,
+              "visible": 342758.5748608152,
+              "outside": 0.0,
+              "outsideDiscrepancy": 1.1641532182693481e-10
+            },
+            {
+              "id": 6,
+              "total": 58794.85100843989,
+              "visible": 52710.6440014207,
+              "outside": 6084.207007019172,
+              "outsideDiscrepancy": 1.2641976354643703e-10
+            },
+            {
+              "id": 7,
+              "total": 62236.644653375755,
+              "visible": 43697.70130737987,
+              "outside": 18538.943345995893,
+              "outsideDiscrepancy": 1.8553691916167736e-10
+            },
+            {
+              "id": 8,
+              "total": 58577.20784764968,
+              "visible": 56828.840770346724,
+              "outside": 1748.3670773029742,
+              "outsideDiscrepancy": 7.517949143220903e-07
+            },
+            {
+              "id": 9,
+              "total": 68492.76855554736,
+              "visible": 68492.76855554737,
+              "outside": 0.0,
+              "outsideDiscrepancy": 4.159155650995672e-06
+            },
+            {
+              "id": 10,
+              "total": 43186.499424702684,
+              "visible": 43186.499424702684,
+              "outside": 0.0,
+              "outsideDiscrepancy": 1.4551915228366852e-11
+            },
+            {
+              "id": 11,
+              "total": 75708.07915068581,
+              "visible": 75708.07915068581,
+              "outside": 0.0,
+              "outsideDiscrepancy": 2.9103830456733704e-11
+            }
+          ]
+        },
+        {
+          "scene": "sidebar",
+          "observedBodies": 12,
+          "deformOver10PctBefore3px": 0,
+          "maxDeformation": 0.010214045492283384,
+          "perBodyDeformation": {
+            "0": 0.000225630827242257,
+            "1": 0.00017252229291949314,
+            "2": 0.0004902702271102189,
+            "3": 0.000269680060189069,
+            "4": 0.00024740769024556855,
+            "5": 0.010214045492283384,
+            "6": 0.0002066141369252581,
+            "7": 0.0003603563677848677,
+            "8": 0.0012119145400918704,
+            "9": 0.0005905651261097031,
+            "10": 0.0003069243257470506,
+            "11": 0.00016783001552103674
+          },
+          "contentOutsideMax": 38239.71836767331,
+          "dressedCrossingLeavesMax": 9,
+          "outsideAtEnd": 0,
+          "curvedPlans": 4,
+          "polygonWitness": [
+            {
+              "id": 0,
+              "total": 36819.31647741877,
+              "visible": 36819.31647741876,
+              "outside": 0.0,
+              "outsideDiscrepancy": 0.0025685584550956264
+            },
+            {
+              "id": 1,
+              "total": 57601.180690611494,
+              "visible": 51517.34611812876,
+              "outside": 6083.834572482747,
+              "outsideDiscrepancy": 0.0025685585733299376
+            },
+            {
+              "id": 2,
+              "total": 57601.1781220527,
+              "visible": 56820.04857727133,
+              "outside": 781.1295447813523,
+              "outsideDiscrepancy": 6.411937647499144e-11
+            },
+            {
+              "id": 3,
+              "total": 28800.58906102633,
+              "visible": 16914.774838789755,
+              "outside": 11885.814222236573,
+              "outsideDiscrepancy": 1.2732925824820995e-11
+            },
+            {
+              "id": 4,
+              "total": 70470.16882620471,
+              "visible": 70268.1919495473,
+              "outside": 201.97687665740762,
+              "outsideDiscrepancy": 0.03988771248748435
+            },
+            {
+              "id": 5,
+              "total": 199487.7781991822,
+              "visible": 199487.77819918218,
+              "outside": 0.0,
+              "outsideDiscrepancy": 0.06513913194066845
+            },
+            {
+              "id": 6,
+              "total": 49447.906422618,
+              "visible": 41005.171212285,
+              "outside": 8442.735210332978,
+              "outsideDiscrepancy": 4.547473508864641e-11
+            },
+            {
+              "id": 7,
+              "total": 36226.77741285421,
+              "visible": 34078.975889403155,
+              "outside": 2147.8015234510613,
+              "outsideDiscrepancy": 4.274625098332763e-11
+            },
+            {
+              "id": 8,
+              "total": 66237.78448127856,
+              "visible": 66237.78448127855,
+              "outside": 0.0,
+              "outsideDiscrepancy": 5.820766091346741e-11
+            },
+            {
+              "id": 9,
+              "total": 28800.589061026345,
+              "visible": 28800.58906102634,
+              "outside": 0.0,
+              "outsideDiscrepancy": 5.093170329928398e-11
+            },
+            {
+              "id": 10,
+              "total": 57601.17812209555,
+              "visible": 57601.17812209556,
+              "outside": 0.0,
+              "outsideDiscrepancy": 2.1827872842550278e-11
+            },
+            {
+              "id": 11,
+              "total": 28800.58869165733,
+              "visible": 20104.267670139616,
+              "outside": 8696.321021517713,
+              "outsideDiscrepancy": 0.00036936924880137667
+            }
+          ]
+        },
+        {
+          "scene": "frame",
+          "observedBodies": 12,
+          "deformOver10PctBefore3px": 0,
+          "maxDeformation": 0.02321085028338732,
+          "perBodyDeformation": {
+            "0": 0.0023189108353861617,
+            "1": 0.0013933075314073418,
+            "2": 0.0011881515985943517,
+            "3": 0.001675840721752409,
+            "4": 0.00034431939869798543,
+            "5": 0.000804368295351675,
+            "6": 0.0005240727390257267,
+            "7": 0.0019841938323071177,
+            "8": 0.0010010371357707262,
+            "9": 0.0029890501130243087,
+            "10": 0.00378981509021218,
+            "11": 0.02321085028338732
+          },
+          "contentOutsideMax": 0,
+          "dressedCrossingLeavesMax": 1,
+          "outsideAtEnd": 0,
+          "curvedPlans": 0,
+          "polygonWitness": []
+        },
+        {
+          "scene": "bento",
+          "observedBodies": 12,
+          "deformOver10PctBefore3px": 0,
+          "maxDeformation": 0.02922578424392609,
+          "perBodyDeformation": {
+            "0": 0.0034470804659722733,
+            "1": 0.000852746556772411,
+            "2": 0.0007128248516056045,
+            "3": 0.0011507227254915927,
+            "4": 0.0007678151580755331,
+            "5": 0.0007935723900009415,
+            "6": 0.000712951033078833,
+            "7": 0.0007140589351649545,
+            "8": 0.0014260075277244503,
+            "9": 0.009427078536179655,
+            "10": 0.02922578424392609,
+            "11": 0.006586078644830052
+          },
+          "contentOutsideMax": 0,
+          "dressedCrossingLeavesMax": 1,
+          "outsideAtEnd": 0,
+          "curvedPlans": 0,
+          "polygonWitness": []
+        },
+        {
+          "scene": "flock",
+          "observedBodies": 12,
+          "deformOver10PctBefore3px": 0,
+          "maxDeformation": 0.013160860518883774,
+          "perBodyDeformation": {
+            "0": 0.003083036851613941,
+            "1": 0.0037589564989561554,
+            "2": 0.00048744651625256944,
+            "3": 0.002883666897266909,
+            "4": 0.0019241406981844872,
+            "5": 0.0005130553552773612,
+            "6": 0.0019802371880009236,
+            "7": 0.0004969319342118193,
+            "8": 0.003028720416189518,
+            "9": 0.013160860518883774,
+            "10": 0.002942466252328305,
+            "11": 0.0042428657870404035
+          },
+          "contentOutsideMax": 0,
+          "dressedCrossingLeavesMax": 2,
+          "outsideAtEnd": 0,
+          "curvedPlans": 2,
+          "polygonWitness": []
+        }
+      ]
+    }
+  },
+  "departureMetricScope": "During the first 150 ms after each scene change; compare actual outer contours to rigid translation of the previous contour, before centre travel exceeds 3 px. This is not an audit of every later individual departure.",
+  "numericalScope": "Quota residuals refer to the shared piecewise-affine mesh field, not the analytic continuous field or the gapped ink. Coverage raster sampled every sixth frame; flagged stress samples independently integrated.",
+  "legacyProbeCaution": "Old spring-carrot fight/lag fields are not applicable to the analytic arc planner. Shape masks, area and coverage remain applicable.",
+  "allRecordedMeasuresImproved": false,
+  "validationPassed": true
+}
