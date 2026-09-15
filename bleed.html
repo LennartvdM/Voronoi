@@ -4476,6 +4476,81 @@ Hive.prototype.iterBudget = function() {
   return this.depth === 0 ? Math.max(n, BL_ITERS) : n;
 };
 
+/* ------------------------------------------------------ PRESENTATION
+ * The canvas is the window: a cell that crosses its edge is cut by the
+ * edge, its ink continuing past it, no border drawn along the crop (the
+ * True Buffer's mistake). Two things are added for the window's sake: a
+ * label sits in the part of its cell that is on screen, and a MARGIN VIEW
+ * (the button, or ?view=bleed) draws the same picture zoomed out to the
+ * whole page, the window as the owner's green dashed content zone, the
+ * bleed's edge orange, the reserve's cells faint — the very polygons the
+ * auction produced, not a second animation.
+ */
+const blClipWindow = (pts) => {
+  let q = pts;
+  for (const [ax, ay, b] of [[-1, 0, 0], [1, 0, W], [0, -1, 0], [0, 1, H]]) { q = clipPts(q, ax, ay, b); if (!q || q.length < 3) return null; }
+  return q;
+};
+const blOldContentStep = contentStep;
+contentStep = function(c, pts, big, area, t, dt, bx, by) {
+  const cb = blClipWindow(big), cp = cb && blClipWindow(pts);
+  if (cb && cp) return blOldContentStep(c, cp, cb, Math.abs(ringArea(cb)), t, dt, bx, by);
+  return blOldContentStep(c, pts, big, area, t, dt, bx, by);
+};
+
+let blView = new URLSearchParams(location.search).get('view') === 'bleed';
+// the window-to-page map of the margin view: page px = (canvas px - o) / s
+function blViewMap() {
+  const [x0, y0, x1, y1] = root.blBox();
+  const bw = x1 - x0, bh = y1 - y0, s = Math.min(W / bw, H / bh);
+  return { s, ox: (W - bw * s) / 2 - x0 * s, oy: (H - bh * s) / 2 - y0 * s, x0, y0, bw, bh };
+}
+const blOldPaintPicture = paintPicture;
+paintPicture = function(ctx, picture, hoveredPath, dt, t) {
+  if (!blView) return blOldPaintPicture(ctx, picture, hoveredPath, dt, t);
+  const m = blViewMap();
+  ctx.save();
+  ctx.setTransform(dpr * m.s, 0, 0, dpr * m.s, dpr * m.ox, dpr * m.oy);
+  ctx.fillStyle = '#13141d'; ctx.fillRect(m.x0, m.y0, m.bw, m.bh);
+  ctx.fillStyle = '#0a0a0f'; ctx.fillRect(0, 0, W, H);
+  // the reserve's cells: whitespace the margin's sites hold, unpainted in the window
+  ctx.fillStyle = '#1b1d2a'; ctx.strokeStyle = '#262838'; ctx.lineWidth = 1 / m.s;
+  for (const leaf of picture.leaves) {
+    if (!leaf.isVoid || !leaf.body || !leaf.body.blIsReserve) continue;
+    for (const lp of leaf.loops) { if (lp.length < 3) continue; ctx.beginPath(); ctx.moveTo(lp[0][0], lp[0][1]); for (let k = 1; k < lp.length; k++) ctx.lineTo(lp[k][0], lp[k][1]); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  }
+  blOldPaintPicture(ctx, picture, hoveredPath, dt, t);
+  ctx.setLineDash([8 / m.s, 5 / m.s]); ctx.strokeStyle = 'rgba(120, 220, 140, 0.9)'; ctx.lineWidth = 2 / m.s; ctx.strokeRect(0, 0, W, H);
+  ctx.setLineDash([]); ctx.strokeStyle = 'rgba(255, 150, 50, 0.9)'; ctx.lineWidth = 3 / m.s; ctx.strokeRect(m.x0, m.y0, m.bw, m.bh);
+  ctx.restore();
+};
+// hover in the margin view: the pointer's canvas px mapped back to the page
+const blOldHitLeaves = hitLeaves;
+hitLeaves = function(picture, x, y) {
+  if (!blView) return blOldHitLeaves(picture, x, y);
+  const m = blViewMap();
+  return blOldHitLeaves(picture, (x - m.ox) / m.s, (y - m.oy) / m.s);
+};
+const blOldHitPath = Hive.prototype.hitPath;
+Hive.prototype.hitPath = function(x, y) {
+  if (this.depth !== 0 || !blView) return blOldHitPath.call(this, x, y);
+  const m = blViewMap();
+  return blOldHitPath.call(this, (x - m.ox) / m.s, (y - m.oy) / m.s);
+};
+{
+  const bar = document.querySelector('.bar');
+  if (bar) {
+    const g = document.createElement('div');
+    g.className = 'group';
+    g.innerHTML = '<span class="lbl">Margin</span><button class="btn" id="bl-toggle">Show margin</button>';
+    bar.appendChild(g);
+    const btn = g.querySelector('#bl-toggle');
+    const sync = () => { btn.textContent = blView ? 'Hide margin' : 'Show margin'; };
+    btn.addEventListener('click', () => { blView = !blView; sync(); });
+    sync();
+  }
+}
+
 /* --------------------------------------------------------------- START */
 
 function init() {
