@@ -109,7 +109,8 @@ const RUN = ({ FRAMES, PX, PY }) => {
   // page AS IT RESTED into the first frame of the change. Resetting it to
   // null per scene, as this probe first did, silently discarded exactly the
   // frame in which anything that switches on at the start of a change would
-  // show — and in Murmur that frame moves 33 px against neighbours of 1.4.
+  // show — and in Murmur that frame moves 30 to 177 px, depending on which
+  // transition it is, against neighbours of about 1.
   let prev = snap();
   for (const sc of ['bento', 'hero', 'sidebar', 'frame', 'flock']) {
     document.querySelector('.scene-btn[data-scene="' + sc + '"]').click();

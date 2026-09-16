@@ -7,9 +7,9 @@ Murmur's gate plus two changes that carry the whole experiment:
     spikeMax      the worst frame's displacement over the median of the four
                   frames on either side of it. Murmur's margin switches on at
                   the first frame of a change and off at the last, and those
-                  two frames move 33 px and 130-184 px against neighbours
-                  moving 1 to 5 px — 61x at worst. With nothing to switch this
-                  must be small, and it is measured at 2.6.
+                  two frames move 30-177 px against neighbours moving 1 to 5
+                  px — 61x at worst. With nothing to switch this must be
+                  small, and it is measured at 2.6.
     spikeFrames   and there must be NO frame over the ratio at all.
 
   THE MARGIN, which must not exist.

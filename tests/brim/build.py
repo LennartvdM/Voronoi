@@ -5,10 +5,11 @@ THE CONTROL, AND A CANDIDATE IN ITS OWN RIGHT.
 Murmur moves well and then skips, twice per change. Measured at 30 ms with
 .claude/gauntlet/jolt.js, the page rests moving 0.2 px per frame, and then:
 
-    scene     frame 0     ...      the closing frame     its neighbours
-    hero      33.3 px              172.6 px              1.1 - 5 px
-    sidebar   32.5 px              127.2 px              0.9 - 5 px
-    frame     33.0 px              183.9 px              1.0 - 4 px
+    scene     opening frame   closing frame    neighbours   worst spike
+    bento         33.0 px         31.4 px          1 - 5 px        10x
+    hero          30.0 px        184.8 px          1 - 5 px        50x
+    sidebar      176.7 px        131.3 px          1 - 5 px        59x
+    frame         86.1 px        182.0 px          1 - 4 px        61x
 
 muOpen() is true on the first of those frames and false on the last. jolt.js
 finds exactly two spike frames per transition scene and they sit at normalised
@@ -108,7 +109,7 @@ card = '''
             <h2>Brim</h2><span class="latest-flag">Latest</span>
             <span class="mk">Brim</span>
             <span class="tag preview">Tested experiment</span>
-            <p>Murmur with the overflow buffer deleted. Murmur skips twice per change — 33 px in the frame the margin opens, 130 to 184 px in the frame it shuts, against neighbours moving 1 to 5 px — and the switch is the skip. Brim removes the switch by removing the thing that switches: the page is the window, always, and a travelling cell's room can only come from its neighbours. It is the control that says whether the buffer was ever needed.</p>
+            <p>Murmur with the overflow buffer deleted. Murmur skips twice per change — 30 to 177 px in the frame the margin opens, 31 to 185 px in the frame it shuts, against neighbours moving 1 to 5 px — and the switch is the skip. Brim removes the switch by removing the thing that switches: the page is the window, always, and a travelling cell's room can only come from its neighbours. It is the control that says whether the buffer was ever needed.</p>
             <ul>
                 <li>No margin, no reserve, no loan: one domain, never resized</li>
                 <li>Every cell still a bidder — no walls, no blend, no flubber</li>
@@ -121,7 +122,7 @@ card = '''
 anchor = '<div class="previews">'
 if index.count(anchor) != 1:
     raise ValueError('Gallery anchor missing or ambiguous')
-IS_LATEST = True   # only the newest mark wears the flag
+IS_LATEST = False   # only the newest mark wears the flag
 if not IS_LATEST:
     card = card.replace(' latest"', '"').replace('<span class="latest-flag">Latest</span>', '')
 own = re.compile(r'\n?[ \t]*<!-- BRIM -->.*?<!-- /BRIM -->[ \t]*\n?', re.S)
