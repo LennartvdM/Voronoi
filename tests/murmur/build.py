@@ -378,6 +378,59 @@ Hive.prototype.placeSeeds = function() {
   if (share < 1) for (const sub of r.subs) sub.claim *= share;
 };
 
+// THE RESERVE IS SOLVER-ONLY. It is a row of the auction and nothing else:
+// it has no ink, no label, no hover and no business in the page's physics.
+// The engine's loops skip `isSelf` and nothing else, so appending the reserve
+// to `this.bodies` silently enrolled it in all three — and it does not sit
+// quietly. `easeClaims` floors every body at CLAIM_MIN, so the reserve was
+// carrying a claim of 0.02 (harmless in the auction, where its sites' claims
+// are recomputed from the ledger every frame, but not in `separate`, which
+// sizes a body's radius from exactly that number). `steer` then gave it the
+// free-drift springs, so it wandered: measured over one run, 366 px across
+// the page at up to 158 px/s in the sidebar, closing to 59 px of a content
+// body — well inside the ~195 px at which the separation law starts pushing.
+// An invisible body was shouldering the page around.
+//
+// Four guards, one statement: the reserve does not move, is not pushed, and
+// is not pushed against. The fourth is the one that mattered most, and it
+// displaces CONTENT rather than the reserve: `enforcePreconditions` ends with
+// a minimum-seed-separation pass that shoves any two bodies closer than
+// SEED_MIN_SEP apart, skipping only `isSelf`. With an invisible body parked
+// at the page centre, every content seed whose route passed near the middle
+// was pushed off it by an obstacle that is not there — measured as content
+// being held at exactly 5 px from the reserve in three scenes out of five.
+const muOldSteer = Hive.prototype.steer;
+Hive.prototype.steer = function(dt, t) {
+  const r = this.depth === 0 ? this.bodies.find(b => b.muIsReserve) : null;
+  if (r) this.bodies = this.bodies.filter(b => b !== r);
+  try { return muOldSteer.call(this, dt, t); }
+  finally { if (r) this.bodies.push(r); }
+};
+
+const muOldSeparate = Hive.prototype.separate;
+Hive.prototype.separate = function(dt) {
+  const r = this.depth === 0 ? this.bodies.find(b => b.muIsReserve) : null;
+  if (r) this.bodies = this.bodies.filter(b => b !== r);
+  try { return muOldSeparate.call(this, dt); }
+  finally { if (r) this.bodies.push(r); }
+};
+
+const muOldPre = Hive.prototype.enforcePreconditions;
+Hive.prototype.enforcePreconditions = function(...a) {
+  const r = this.depth === 0 ? this.bodies.find(b => b.muIsReserve) : null;
+  if (r) this.bodies = this.bodies.filter(b => b !== r);
+  try { return muOldPre.apply(this, a); }
+  finally { if (r) this.bodies.push(r); }
+};
+
+const muOldEase = Hive.prototype.easeClaims;
+Hive.prototype.easeClaims = function(dt, t) {
+  const r = this.depth === 0 ? this.bodies.find(b => b.muIsReserve) : null;
+  if (r) this.bodies = this.bodies.filter(b => b !== r);
+  try { return muOldEase.call(this, dt, t); }
+  finally { if (r) { r.claim = 0; r.claimTarget = 0; this.bodies.push(r); } }
+};
+
 // the reserve is not a void a scene can dissolve
 const muOldRetire = Hive.prototype.retireBody;
 Hive.prototype.retireBody = function(b, dur, T) {

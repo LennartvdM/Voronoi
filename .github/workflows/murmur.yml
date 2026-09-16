@@ -48,7 +48,12 @@ jobs:
             echo "The branch no longer contains $EXPECTED_HEAD; not publishing."
             exit 0
           fi
-          if ! git diff --quiet "$EXPECTED_HEAD" FETCH_HEAD -- tests/murmur hive.html; then
+          # .claude/gauntlet IS A SOURCE OF THIS RESULT. The summary about to be
+          # published was produced by the probes as they stood at $EXPECTED_HEAD,
+          # and this workflow is triggered BY probe changes — so a probe edited
+          # while this job was measuring would otherwise be checked out below and
+          # have last run's numbers published against it.
+          if ! git diff --quiet "$EXPECTED_HEAD" FETCH_HEAD -- tests/murmur .claude/gauntlet hive.html; then
             echo "The mark's sources changed after $EXPECTED_HEAD; not publishing."
             exit 0
           fi
