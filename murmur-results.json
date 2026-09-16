@@ -2,11 +2,11 @@
  "clocks": {
   "240hz": {
    "corners": {
-    "organicShare": 0.7367,
-    "rigidShare": 0.2375,
-    "overBudget": 0.0013,
+    "organicShare": 0.7317,
+    "rigidShare": 0.2399,
+    "overBudget": 0.0039,
     "iqMean": 0.697,
-    "sliverShare": 0.0864,
+    "sliverShare": 0.0881,
     "vertsMax": 10,
     "worstRestingInset": 0,
     "pageErrors": 0
@@ -14,11 +14,11 @@
   },
   "120hz": {
    "corners": {
-    "organicShare": 0.7376,
-    "rigidShare": 0.2366,
-    "overBudget": 0.0013,
+    "organicShare": 0.732,
+    "rigidShare": 0.2392,
+    "overBudget": 0.0041,
     "iqMean": 0.697,
-    "sliverShare": 0.0864,
+    "sliverShare": 0.0884,
     "vertsMax": 10,
     "worstRestingInset": 0,
     "pageErrors": 0
@@ -26,23 +26,23 @@
   },
   "60hz": {
    "corners": {
-    "organicShare": 0.7399,
-    "rigidShare": 0.234,
-    "overBudget": 0.0014,
-    "iqMean": 0.697,
-    "sliverShare": 0.0863,
+    "organicShare": 0.7332,
+    "rigidShare": 0.2373,
+    "overBudget": 0.0049,
+    "iqMean": 0.696,
+    "sliverShare": 0.0882,
     "vertsMax": 10,
     "worstRestingInset": 0,
     "pageErrors": 0
    },
    "motion": {
     "settleShare": 0.394,
-    "pathLen": 468.064,
-    "netDisp": 360.997,
-    "wander": 1.772,
-    "moveFrames": 82.088,
-    "burst": 0.63,
-    "peakRatio": 5.775
+    "pathLen": 466.314,
+    "netDisp": 359.985,
+    "wander": 1.813,
+    "moveFrames": 81.788,
+    "burst": 0.629,
+    "peakRatio": 5.917
    },
    "motionReference": {
     "peakRatio": 6.982,
@@ -53,14 +53,14 @@
    "reservoir": {
     "scenesUsed": 3,
     "scenes": 3,
-    "usersMean": 5.626,
+    "usersMean": 5.598,
     "usersMax": 8,
-    "concentration": 0.383,
-    "worstShare": 0.613,
-    "edgesMean": 3.047,
+    "concentration": 0.38,
+    "worstShare": 0.61,
+    "edgesMean": 3.049,
     "edgesMax": 4,
     "spillShare": 0.391,
-    "outsideMaxPx2": 127956,
+    "outsideMaxPx2": 124612,
     "restingPx2": 0
    },
    "reservoirByScene": {
@@ -73,23 +73,23 @@
     },
     "hero": {
      "spillShare": 0.376,
-     "usersMean": 5.436,
-     "concentration": 0.307,
-     "worstShare": 0.398,
+     "usersMean": 5.443,
+     "concentration": 0.305,
+     "worstShare": 0.397,
      "restingPx2": 0
     },
     "sidebar": {
      "spillShare": 0.412,
-     "usersMean": 5.791,
+     "usersMean": 5.785,
      "concentration": 0.388,
-     "worstShare": 0.613,
+     "worstShare": 0.61,
      "restingPx2": 0
     },
     "frame": {
      "spillShare": 0.386,
-     "usersMean": 5.634,
-     "concentration": 0.452,
-     "worstShare": 0.607,
+     "usersMean": 5.549,
+     "concentration": 0.443,
+     "worstShare": 0.594,
      "restingPx2": 0
     },
     "flock": {
@@ -103,23 +103,23 @@
   },
   "30ms": {
    "corners": {
-    "organicShare": 0.7349,
-    "rigidShare": 0.2385,
-    "overBudget": 0.0014,
+    "organicShare": 0.7293,
+    "rigidShare": 0.2419,
+    "overBudget": 0.0041,
     "iqMean": 0.696,
-    "sliverShare": 0.0863,
+    "sliverShare": 0.0882,
     "vertsMax": 10,
     "worstRestingInset": 0,
     "pageErrors": 0
    },
    "motion": {
     "settleShare": 0.4,
-    "pathLen": 454.012,
-    "netDisp": 349.345,
-    "wander": 1.644,
-    "moveFrames": 49.333,
-    "burst": 0.677,
-    "peakRatio": 4.821
+    "pathLen": 456.061,
+    "netDisp": 351.654,
+    "wander": 1.627,
+    "moveFrames": 49.636,
+    "burst": 0.675,
+    "peakRatio": 5.027
    },
    "motionReference": {
     "peakRatio": 5.884,
@@ -130,14 +130,14 @@
    "reservoir": {
     "scenesUsed": 3,
     "scenes": 3,
-    "usersMean": 5.612,
+    "usersMean": 5.636,
     "usersMax": 8,
-    "concentration": 0.387,
-    "worstShare": 0.621,
-    "edgesMean": 3.039,
+    "concentration": 0.383,
+    "worstShare": 0.604,
+    "edgesMean": 3.046,
     "edgesMax": 4,
     "spillShare": 0.391,
-    "outsideMaxPx2": 122633,
+    "outsideMaxPx2": 123935,
     "restingPx2": 0
    },
    "reservoirByScene": {
@@ -150,23 +150,23 @@
     },
     "hero": {
      "spillShare": 0.377,
-     "usersMean": 5.446,
-     "concentration": 0.308,
+     "usersMean": 5.47,
+     "concentration": 0.306,
      "worstShare": 0.369,
      "restingPx2": 0
     },
     "sidebar": {
      "spillShare": 0.409,
-     "usersMean": 5.789,
+     "usersMean": 5.811,
      "concentration": 0.391,
-     "worstShare": 0.604,
+     "worstShare": 0.601,
      "restingPx2": 0
     },
     "frame": {
      "spillShare": 0.386,
-     "usersMean": 5.588,
-     "concentration": 0.46,
-     "worstShare": 0.621,
+     "usersMean": 5.612,
+     "concentration": 0.449,
+     "worstShare": 0.604,
      "restingPx2": 0
     },
     "flock": {
@@ -180,23 +180,23 @@
   },
   "jitter": {
    "corners": {
-    "organicShare": 0.7355,
-    "rigidShare": 0.2375,
-    "overBudget": 0.0013,
-    "iqMean": 0.696,
-    "sliverShare": 0.0872,
+    "organicShare": 0.7315,
+    "rigidShare": 0.2391,
+    "overBudget": 0.0038,
+    "iqMean": 0.695,
+    "sliverShare": 0.0893,
     "vertsMax": 10,
     "worstRestingInset": 0,
     "pageErrors": 0
    },
    "motion": {
     "settleShare": 0.397,
-    "pathLen": 458.832,
-    "netDisp": 353.056,
-    "wander": 1.63,
-    "moveFrames": 57.485,
-    "burst": 0.675,
-    "peakRatio": 5.208
+    "pathLen": 461.446,
+    "netDisp": 356.339,
+    "wander": 1.622,
+    "moveFrames": 57.758,
+    "burst": 0.674,
+    "peakRatio": 5.348
    },
    "motionReference": {
     "peakRatio": 6.185,
@@ -207,43 +207,43 @@
    "reservoir": {
     "scenesUsed": 3,
     "scenes": 3,
-    "usersMean": 5.63,
+    "usersMean": 5.675,
     "usersMax": 8,
-    "concentration": 0.387,
-    "worstShare": 0.62,
-    "edgesMean": 3.058,
+    "concentration": 0.382,
+    "worstShare": 0.602,
+    "edgesMean": 3.071,
     "edgesMax": 4,
     "spillShare": 0.389,
-    "outsideMaxPx2": 129657,
+    "outsideMaxPx2": 130875,
     "restingPx2": 0
    },
    "reservoirByScene": {
     "bento": {
      "spillShare": 0.265,
      "usersMean": 5.871,
-     "concentration": 0.31,
-     "worstShare": 0.368,
+     "concentration": 0.304,
+     "worstShare": 0.369,
      "restingPx2": 0
     },
     "hero": {
      "spillShare": 0.375,
-     "usersMean": 5.525,
-     "concentration": 0.305,
+     "usersMean": 5.545,
+     "concentration": 0.303,
      "worstShare": 0.365,
      "restingPx2": 0
     },
     "sidebar": {
      "spillShare": 0.417,
-     "usersMean": 5.755,
-     "concentration": 0.394,
-     "worstShare": 0.592,
+     "usersMean": 5.855,
+     "concentration": 0.39,
+     "worstShare": 0.595,
      "restingPx2": 0
     },
     "frame": {
      "spillShare": 0.375,
-     "usersMean": 5.596,
-     "concentration": 0.462,
-     "worstShare": 0.62,
+     "usersMean": 5.606,
+     "concentration": 0.452,
+     "worstShare": 0.602,
      "restingPx2": 0
     },
     "flock": {
