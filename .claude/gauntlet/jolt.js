@@ -1,5 +1,6 @@
 /* THE SKIP: does the page ever move in one frame in a way it cannot explain?
  *   node jolt.js <hive.html> [out.json] [--dt 30] [--jitter 12] [--frames N]
+ *                            [--interrupt K]
  *
  * motion.js asks how a change is spread over time and answers with averages:
  * a page can score well on every one of them and still contain two frames that
@@ -41,6 +42,14 @@
  * The position in the scene is the point. A jolt at 0.00 and another at ~1.0
  * is a thing that switches on when the change starts and off when it ends; a
  * jolt in the middle is a collision. Nested members are not read.
+ *
+ * --interrupt K MEASURES THE CASE A SETTLED RUN CANNOT SEE. Every scene is
+ * chosen K frames into the previous change instead of after it, which is what
+ * a person does when they click again before the page has finished. That
+ * resets each retargeted body's progress to 0, so anything derived from
+ * progress steps — and a probe that waits for one change to settle before
+ * starting the next will never report it. Nothing else about the measurement
+ * changes; the same spike figures are computed over the interrupted change.
  */
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const fs = require('fs'), path = require('path'), os = require('os');
@@ -50,6 +59,7 @@ const OUT = argv[1] && !argv[1].startsWith('--') ? argv[1] : null;
 const opt = (n, d) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : d; };
 const DT = +opt('--dt', 30), JIT = +opt('--jitter', 0);
 const FRAMES = +opt('--frames', 220);
+const INTERRUPT = +opt('--interrupt', 0);
 const PX = +opt('--parkx', -1000), PY = +opt('--parky', -1000);
 const MOVE_EPS = 0.5;     // px in one frame: below this a body is standing still
 const SPIKE_RATIO = 4;    // x the median of a frame's NEIGHBOURS before it is a spike
@@ -76,7 +86,7 @@ const CLOCK = `(() => {
   window.__advance = (n) => { for (let i = 0; i < n; i++) { t += DT + (JIT ? (2 * rnd() - 1) * JIT : 0); const cbs = q.splice(0); for (const cb of cbs) cb(t); } };
 })();`;
 
-const RUN = ({ FRAMES, PX, PY }) => {
+const RUN = ({ FRAMES, PX, PY, INTERRUPT }) => {
   const X = window.__X;
   X.setMouse(PX, PY);
   const measure = (loops) => {
@@ -109,12 +119,18 @@ const RUN = ({ FRAMES, PX, PY }) => {
   // page AS IT RESTED into the first frame of the change. Resetting it to
   // null per scene, as this probe first did, silently discarded exactly the
   // frame in which anything that switches on at the start of a change would
-  // show — and in Murmur that frame moves 33 px against neighbours of 1.4.
+  // show — and in Murmur that frame moves 30 to 177 px, depending on which
+  // transition it is, against neighbours of about 1.
   let prev = snap();
-  for (const sc of ['bento', 'hero', 'sidebar', 'frame', 'flock']) {
+  const ORDER = ['bento', 'hero', 'sidebar', 'frame', 'flock'];
+  for (let si = 0; si < ORDER.length; si++) {
+    const sc = ORDER[si];
     document.querySelector('.scene-btn[data-scene="' + sc + '"]').click();
     const frames = [];
+    // the next scene is chosen K frames in, before this one has settled
+    const cut = INTERRUPT > 0 && si + 1 < ORDER.length ? INTERRUPT : -1;
     for (let i = 0; i < FRAMES; i++) {
+      if (i === cut) document.querySelector('.scene-btn[data-scene="' + ORDER[si + 1] + '"]').click();
       const now = snap();
       const row = { move: 0, areaStep: 0, areaStepId: null, moveMax: 0 };
       if (prev) for (const [id, v] of now) {
@@ -185,7 +201,7 @@ function metrics(scenes) {
   const avg = (k) => T.length ? +(T.reduce((a, s) => a + by[s][k], 0) / T.length).toFixed(4) : 0;
   const worst = (k) => T.length ? Math.max(...T.map(s => by[s][k])) : 0;
   return {
-    clock: { dtMs: DT, jitterMs: JIT }, frames: FRAMES,
+    clock: { dtMs: DT, jitterMs: JIT }, frames: FRAMES, interrupt: INTERRUPT,
     transition: {
       areaStepMax: worst('areaStepMax'), areaStepP99: avg('areaStepP99'),
       spikeMax: worst('spikeMax'), spikeFrames: worst('spikeFrames'),
@@ -203,7 +219,7 @@ function metrics(scenes) {
   const errs = []; p.on('pageerror', e => errs.push(String(e.message || e)));
   await p.goto('file://' + dst);
   await p.waitForTimeout(300);
-  const data = await p.evaluate(RUN, { FRAMES, PX, PY });
+  const data = await p.evaluate(RUN, { FRAMES, PX, PY, INTERRUPT });
   await b.close();
   const m = metrics(data); m.pageErrors = errs.length;
   if (OUT) fs.writeFileSync(OUT, JSON.stringify(m, null, 2));
