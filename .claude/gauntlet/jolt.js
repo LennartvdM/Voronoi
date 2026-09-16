@@ -15,6 +15,15 @@
  *   one frame was not eased into it by anything; something about the GROUND
  *   changed under it.
  *
+ *   The area that counts is the VISIBLE one, clipped to the canvas. The canvas
+ *   is exactly W x H, so a mark with a margin puts real cell area off the
+ *   bitmap, and integrating the whole outline hides the very step this metric
+ *   exists to catch: on Murmur's eight flip frames the full-outline area moves
+ *   by 0.0001 while the visible area of a cell steps by up to 0.30, against
+ *   0.000-0.003 on the frames either side. areaStepFull keeps the unclipped
+ *   figure so the difference between the two is on the record rather than
+ *   silently chosen.
+ *
  *   its CENTROID, which is carried by a spring with a 0.148 s response. A
  *   spring cannot move a body a long way in one frame.
  *
@@ -89,17 +98,41 @@ const CLOCK = `(() => {
 const RUN = ({ FRAMES, PX, PY, INTERRUPT }) => {
   const X = window.__X;
   X.setMouse(PX, PY);
+  const W = X.fn('W'), H = X.fn('H');
+  const shoelace = (p) => { let a = 0; for (let i = 0, m = p.length; i < m; i++) { const q = p[(i + 1) % m]; a += p[i][0] * q[1] - q[0] * p[i][1]; } return a / 2; };
+  // Sutherland-Hodgman against one half-plane
+  const half = (poly, keep, cut) => {
+    const out = [];
+    for (let i = 0, m = poly.length; i < m; i++) {
+      const a = poly[i], b = poly[(i + 1) % m], ka = keep(a), kb = keep(b);
+      if (ka) out.push(a);
+      if (ka !== kb) out.push(cut(a, b));
+    }
+    return out;
+  };
+  const clipCanvas = (poly) => {
+    const lerp = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+    let p = poly;
+    p = half(p, q => q[0] >= 0, (a, b) => lerp(a, b, (0 - a[0]) / (b[0] - a[0]))); if (!p.length) return p;
+    p = half(p, q => q[0] <= W, (a, b) => lerp(a, b, (W - a[0]) / (b[0] - a[0]))); if (!p.length) return p;
+    p = half(p, q => q[1] >= 0, (a, b) => lerp(a, b, (0 - a[1]) / (b[1] - a[1]))); if (!p.length) return p;
+    p = half(p, q => q[1] <= H, (a, b) => lerp(a, b, (H - a[1]) / (b[1] - a[1])));
+    return p;
+  };
   const measure = (loops) => {
-    let A2 = 0, cx = 0, cy = 0;
+    let A2 = 0, cx = 0, cy = 0, av = 0;
     for (const lp of loops) {
       for (let i = 0, m = lp.length; i < m; i++) {
         const p = lp[i], q = lp[(i + 1) % m];
         const f = p[0] * q[1] - q[0] * p[1];
         A2 += f; cx += (p[0] + q[0]) * f; cy += (p[1] + q[1]) * f;
       }
+      const c = clipCanvas(lp);
+      if (c.length > 2) av += shoelace(c);
     }
     if (Math.abs(A2) < 1e-9) return null;
-    return { a: Math.abs(A2 / 2), c: [cx / (3 * A2), cy / (3 * A2)] };
+    // a is what the VIEWER sees; aFull is the whole cell, ring tongue included
+    return { a: Math.abs(av), aFull: Math.abs(A2 / 2), c: [cx / (3 * A2), cy / (3 * A2)] };
   };
   const snap = () => {
     window.__advance(1);
@@ -132,7 +165,7 @@ const RUN = ({ FRAMES, PX, PY, INTERRUPT }) => {
     for (let i = 0; i < FRAMES; i++) {
       if (i === cut) document.querySelector('.scene-btn[data-scene="' + ORDER[si + 1] + '"]').click();
       const now = snap();
-      const row = { move: 0, areaStep: 0, areaStepId: null, moveMax: 0 };
+      const row = { move: 0, areaStep: 0, areaStepFull: 0, areaStepId: null, moveMax: 0 };
       if (prev) for (const [id, v] of now) {
         const p = prev.get(id);
         if (!p) continue;
@@ -143,6 +176,11 @@ const RUN = ({ FRAMES, PX, PY, INTERRUPT }) => {
         if (base > 400) {
           const s = Math.abs(v.a - p.a) / base;
           if (s > row.areaStep) { row.areaStep = s; row.areaStepId = id; }
+        }
+        const baseF = Math.max(p.aFull, v.aFull);
+        if (baseF > 400) {
+          const sf = Math.abs(v.aFull - p.aFull) / baseF;
+          if (sf > row.areaStepFull) row.areaStepFull = sf;
         }
       }
       frames.push(row);
@@ -164,6 +202,7 @@ function metrics(scenes) {
     const sorted = moving.slice().sort((a, b) => a - b);
     const median = sorted.length ? sorted[sorted.length >> 1] : 0;
     const areas = F.slice(0, Math.max(1, settle)).map(f => f.areaStep).sort((a, b) => a - b);
+    const areasF = F.slice(0, Math.max(1, settle)).map(f => f.areaStepFull).sort((a, b) => a - b);
     const p = (q) => areas.length ? areas[Math.min(areas.length - 1, Math.floor(q * areas.length))] : 0;
     // THE LOCAL COMPARISON. A frame's neighbours are the SPIKE_WIN frames on
     // either side of it, itself excluded; a frame is a spike when it moves
@@ -191,7 +230,16 @@ function metrics(scenes) {
     const worstArea = rows.slice().sort((a, b) => b.areaStep - a.areaStep).slice(0, 3);
     by[s.scene] = {
       settleFrames: settle, medianMove: +median.toFixed(1),
-      areaStepMax: +p(0.999).toFixed(4), areaStepP99: +p(0.99).toFixed(4), areaStepP50: +p(0.5).toFixed(4),
+      // BOTH ARE EXACT MAXIMA, so the visible figure and the unclipped one are
+      // always the same frame. areaStepMax was a 99.9th percentile, which is
+      // the true max for a 220-frame scene but drops the top sample once a
+      // scene runs past a thousand frames — 1584 of them at 240 Hz — so the
+      // two fields could differ by an aggregation choice rather than by the
+      // clipping they exist to compare. areaStepP99 keeps the robust view,
+      // which is what a percentile is for.
+      areaStepMax: areas.length ? +areas[areas.length - 1].toFixed(4) : 0,
+      areaStepP99: +p(0.99).toFixed(4), areaStepP50: +p(0.5).toFixed(4),
+      areaStepFullMax: areasF.length ? +areasF[areasF.length - 1].toFixed(4) : 0,
       spikeFrames, spikeMax: worstMove.length ? worstMove[0].spike : 0,
       joltFrames: rows.filter(r => r.ratio >= SPIKE_RATIO).length,
       worstByMove: worstMove, worstByArea: worstArea,
@@ -204,6 +252,7 @@ function metrics(scenes) {
     clock: { dtMs: DT, jitterMs: JIT }, frames: FRAMES, interrupt: INTERRUPT,
     transition: {
       areaStepMax: worst('areaStepMax'), areaStepP99: avg('areaStepP99'),
+      areaStepFullMax: worst('areaStepFullMax'),
       spikeMax: worst('spikeMax'), spikeFrames: worst('spikeFrames'),
       joltFrames: worst('joltFrames'),
     },

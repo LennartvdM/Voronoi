@@ -15,6 +15,7 @@
    "jolt": {
     "areaStepMax": 0.011,
     "areaStepP99": 0.008,
+    "areaStepFullMax": 0.011,
     "spikeMax": 1.52,
     "spikeFrames": 0,
     "joltFrames": 116,
@@ -83,6 +84,7 @@
    "jolt": {
     "areaStepMax": 0.0219,
     "areaStepP99": 0.016,
+    "areaStepFullMax": 0.0219,
     "spikeMax": 2.29,
     "spikeFrames": 0,
     "joltFrames": 80,
@@ -151,6 +153,7 @@
    "jolt": {
     "areaStepMax": 0.0433,
     "areaStepP99": 0.0373,
+    "areaStepFullMax": 0.0433,
     "spikeMax": 2.71,
     "spikeFrames": 0,
     "joltFrames": 44,
@@ -234,6 +237,7 @@
    "jolt": {
     "areaStepMax": 0.0762,
     "areaStepP99": 0.0652,
+    "areaStepFullMax": 0.0762,
     "spikeMax": 2.65,
     "spikeFrames": 0,
     "joltFrames": 24,
@@ -317,6 +321,7 @@
    "jolt": {
     "areaStepMax": 0.0837,
     "areaStepP99": 0.0689,
+    "areaStepFullMax": 0.0837,
     "spikeMax": 2.58,
     "spikeFrames": 0,
     "joltFrames": 30,
