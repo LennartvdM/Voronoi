@@ -1,0 +1,311 @@
+"""Build the independent Tide mark from the pinned reference Hive.
+
+The owner's verdict on Bleed was that "Voronoi / rectangle" had become a
+dichotomy in the code, leaving two extremes with nothing between them: either
+floating rectangles or rippling flubber. What was wanted is the middle — cells
+with between three and nine corners, allowed an occasional fracture to break an
+impasse but never breaking themselves into blobs — and rectangles understood as
+a DESTINATION for the templates that ask for one, not as a category of shape.
+
+The dichotomy turned out to be structural, and in the reference rather than
+only in Bleed. `enterScene` is all-or-nothing:
+
+    if (!spec || spec.content.length < content.length) {   // releases EVERY body
+
+A scene either gives every body a rectangle or none, so a page is either a grid
+of walls or a flock — while the same branch's own comment reads "a page half
+released and half seated keeps every proportion on the way". The claim
+normalisation already contemplates the mixed page the dispatch cannot produce.
+
+Tide changes four things, each measured:
+
+  1. TEMPLATES OF ANCHORS AND A FIELD. A scene names the few slots that
+     genuinely want to be cards — those land exact rectangles — and leaves one
+     FAT CONTIGUOUS REGION for everybody else, who travels and rests as a
+     convex power cell (crystal 0: a bidder, never locked, never a wall). The
+     field is deliberately a block. An earlier cut made room by subtracting
+     rectangles from the existing templates, so the free bodies inherited long
+     thin leftover strips and became shards: 34.3% of cells thinner than a 1:4
+     box, against the reference's 13.7%. The mechanism was sound; the room it
+     was given was not.
+  2. A SHORT SPEC NO LONGER DUMPS THE PAGE TO THE FLOCK, and the assignment
+     tolerates fewer rectangles than bodies. assignStations cannot be used for
+     that case — it leaves gotS[i] = -1 and then indexes on it.
+  3. A SHORTER BLEND. The reference melts over 0.30 s and locks over 0.50 s, so
+     a body is a HOLE — a half-plane blend between its cell and its rectangle —
+     for most of a 0.9 s journey, and that blend is where the flubber lives
+     (cells of up to 38 corners). Melting fast and locking late and briefly
+     takes the over-budget share from 7.5% to under 1%.
+  4. A TRUE CENTROIDAL PULL for free bodies. The reference already pulls a free
+     seed toward b.anchorX/Y, but that target is set in the GARMENT from the
+     ink's inscribed pole, for the label — not the cell's area centroid. A pull
+     toward the real centroid is Lloyd's algorithm, whose fixed point is a
+     centroidal Voronoi tessellation: compact cells by construction.
+
+Measured against the reference, transition frames, 30 ms, 1440x900:
+
+                  organic(5-9)  rigid(4)  over(>=10)  iqMean  sliver(1:4)
+    Hive              17.7%       72.8%      7.5%      0.647     13.7%
+    Bleed              6.7%       92.2%      1.1%      0.709      3.5%
+    Tide              62.2%       36.2%      0.6%      0.712      6.8%
+
+Every scene improves on both axes at once, and bento is untouched — rigid
+1.000, sliver 0.000, iqMean 0.718, identical to the reference. A bento is a
+bento.
+
+The reference is never modified; the mark is regenerated from it.
+"""
+from pathlib import Path
+import hashlib
+import os
+import re
+
+ROOT = Path(__file__).resolve().parents[2]
+raw = (ROOT / 'hive.html').read_bytes()
+blob = hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest()
+EXPECTED = '2c02b2dc66d05fb152feffcd952f18b4d39f3634'
+if blob != EXPECTED:
+    raise SystemExit(f'Reference changed: expected {EXPECTED}, found {blob}; rebaseline before rebuilding.')
+s = raw.decode()
+
+
+def replace(old, new, count=None):
+    global s
+    found = s.count(old)
+    if not found or (count is not None and found != count):
+        raise ValueError(f'Expected {count or "at least one"} matches for {old!r}; found {found}')
+    s = s.replace(old, new)
+
+
+replace('<title>Hive</title>', '<title>Tide — Hive</title>', 1)
+replace('&larr; Back</a>', '&larr; Back · Tide</a>', 1)
+
+# --- the constants, and the centroid the free drift needs -------------------
+replace('const scenes = {', '''// ============================================================== TIDE
+// The corner budget is not enforced by clamping a cell; it is a consequence of
+// how many bodies are BIDDING. A power cell's corner count is its neighbour
+// count, so a page where most bodies are bidders draws cells of three to nine
+// corners on its own, and a page where most bodies are walls draws rectangles.
+const TD_ANCHOR_HERO = 0.60;   // share of the page's width the hero anchor takes
+const TD_ANCHOR_SIDE = 0.40;   // ditto for the sidebar's column of anchors
+const TD_SIDE_MAX = 4;         // most anchors the sidebar seats; the rest is field
+const TD_RING_MAX = 6;         // most anchors the frame's ring seats
+const TD_MELT = 0.10;          // s: a settled cell softens for this long before it travels (reference 0.30)
+const TD_LOCK_LEAD = 0.18;     // s before arrival at which the lock begins (reference 0.35)
+const TD_LOCK_SPAN = 0.22;     // s the lock takes (reference 0.50)
+const TD_LLOYD = 0.8;          // gain of a free body's pull toward its cell's area centroid (0: off)
+
+// the area centroid of a body's current outline, or null if it has none
+function tdCentroid(b) {
+  if (!b.loops || !b.loops.length) return null;
+  let A2 = 0, cx = 0, cy = 0;
+  for (const lp of b.loops) {
+    for (let i = 0, m = lp.length; i < m; i++) {
+      const p = lp[i], q = lp[(i + 1) % m];
+      const f = p[0] * q[1] - q[0] * p[1];
+      A2 += f; cx += (p[0] + q[0]) * f; cy += (p[1] + q[1]) * f;
+    }
+  }
+  if (Math.abs(A2) < 1e-9) return null;
+  return [cx / (3 * A2), cy / (3 * A2)];
+}
+
+const scenes = {''', 1)
+
+# --- templates: anchors and a field -----------------------------------------
+replace('''  hero(C, R, n) {
+    const col = Math.max(1, Math.round(C * 0.22));          // reading column (void)
+    const hero = [col, 1, Math.round(C * 0.72), R - 1];
+    const strips = [
+      [col, 0, C, 1],                                       // top run
+      [hero[2], 1, C, R - 1],                               // right column
+      [col, R - 1, C, R],                                   // bottom run
+    ];
+    const content = [hero, ...distribute(strips, n - 1, 2)];
+    return { content, voids: [[0, 0, col, R]] };
+  },
+
+  sidebar(C, R, n) {
+    const c = Math.max(2, Math.round(C * 0.45));
+    return { content: guillotine([0, 0, c, R], n, 3), voids: [[c, 0, C, R]] };
+  },
+
+  frame(C, R, n) {
+    const ring = [
+      [0, 0, C, 1], [0, R - 1, C, R],                       // top, bottom
+      [0, 1, 2, R - 1], [C - 2, 1, C, R - 1],               // left, right
+    ];
+    return { content: distribute(ring, n, 4), voids: [[2, 1, C - 2, R - 1]] };
+  },''',
+'''  // ANCHORS AND A FIELD. A template names the few slots that genuinely want to
+  // be cards — those land exact rectangles — and leaves one fat region for
+  // everybody else, who travels and rests as a convex power cell. The field is
+  // deliberately a BLOCK, never the strips left over after subtracting
+  // rectangles: nine cells crammed into a strip can only be wedges.
+  hero(C, R, n) {
+    const col = Math.max(1, Math.round(C * 0.18));          // reading column (void)
+    const hero = [col, 0, Math.max(col + 2, Math.round(C * TD_ANCHOR_HERO)), R];
+    return { content: [hero], voids: [[0, 0, col, R]] };    // field: the right block
+  },
+
+  sidebar(C, R, n) {
+    const c = Math.max(2, Math.round(C * TD_ANCHOR_SIDE));
+    return { content: guillotine([0, 0, c, R], Math.min(n, TD_SIDE_MAX), 3), voids: [] };
+  },
+
+  frame(C, R, n) {
+    const ring = [
+      [0, 0, C, 1], [0, R - 1, C, R],                       // top, bottom
+      [0, 1, 2, R - 1], [C - 2, 1, C, R - 1],               // left, right
+    ];
+    // the middle is the field, not dead whitespace
+    return { content: distribute(ring, Math.min(n, TD_RING_MAX), 4), voids: [] };
+  },''', 1)
+
+# --- a short spec no longer dumps the whole page to the flock ----------------
+replace('    if (!spec || spec.content.length < content.length) {',
+        '    if (!spec) {', 1)
+
+# --- an assignment that tolerates fewer rectangles than bodies --------------
+replace('''    const centers = spec.content.map(r => { const [x, y] = this.rectCenter(r); return { x, y }; });
+    const gotS = assignStations(content, centers);
+    const rectOf = new Map();
+    content.forEach((b, k) => rectOf.set(b, spec.content[gotS[k]]));''',
+'''    const centers = spec.content.map(r => { const [x, y] = this.rectCenter(r); return { x, y }; });
+    const rectOf = new Map(); const free = [];
+    if (centers.length >= content.length) {
+      const gotS = assignStations(content, centers);
+      content.forEach((b, k) => rectOf.set(b, spec.content[gotS[k]]));
+    } else {
+      // fewer rectangles than bodies: every rectangle goes to its nearest free
+      // body, and whoever is left over travels as a bidder. assignStations
+      // cannot be used here — with fewer stations than points it leaves
+      // gotS[i] = -1 and its 2-opt pass then indexes stations on it.
+      const pairs = [];
+      for (let i = 0; i < content.length; i++) for (let j = 0; j < centers.length; j++) {
+        const dx = content[i].x - centers[j].x, dy = content[i].y - centers[j].y;
+        pairs.push({ i, j, d: dx * dx + dy * dy });
+      }
+      pairs.sort((a, b) => a.d - b.d);
+      const tb = new Array(content.length).fill(false), ts = new Array(centers.length).fill(false);
+      for (const p of pairs) if (!tb[p.i] && !ts[p.j]) { tb[p.i] = true; ts[p.j] = true; rectOf.set(content[p.i], spec.content[p.j]); }
+      for (let i = 0; i < content.length; i++) if (!tb[i]) free.push(content[i]);
+    }
+    // a free body's rest size in SLOT units: it shares whatever the anchors and
+    // the whitespace have not claimed, so a page half seated and half released
+    // keeps every proportion — the rule the flock path already states.
+    if (free.length) {
+      let used = 0;
+      for (const r of spec.content) used += rectArea(r);
+      for (const r of spec.voids) used += rectArea(r);
+      const room = Math.max(0.5, this.COLS * this.ROWS - used);
+      let rel = 0; for (const b of free) rel += b.baseRel;
+      const K = rel > 0 ? room / rel : 1;
+      for (const b of free) b.baseClaim = b.baseRel * K;
+    }''', 1)
+
+# --- every reader of rectOf must tolerate a body that has no rectangle -------
+replace('''    for (const b of content) {
+      const r = rectOf.get(b), [ex, ey] = this.rectCenter(r);
+      const s = Math.abs(rectArea(r) - b.claim) + Math.hypot(ex - b.x, ey - b.y) / (0.5 * diag);
+      if (s > bs) { bs = s; best = b; }
+    }''',
+'''    for (const b of content) {
+      const r = rectOf.get(b); if (!r) continue;
+      const [ex, ey] = this.rectCenter(r);
+      const s = Math.abs(rectArea(r) - b.claim) + Math.hypot(ex - b.x, ey - b.y) / (0.5 * diag);
+      if (s > bs) { bs = s; best = b; }
+    }''', 1)
+
+replace('''    for (const b of content) {
+      const [ex, ey] = this.rectCenter(rectOf.get(b));
+      const o = this.hitTestAny(ex, ey);''',
+'''    for (const b of content) {
+      const r0 = rectOf.get(b); if (!r0) continue;
+      const [ex, ey] = this.rectCenter(r0);
+      const o = this.hitTestAny(ex, ey);''', 1)
+
+replace('''      const e = times.get(b), r = rectOf.get(b);
+      b.T = tOf(b); b.entry = e ? e.entry : { x: b.x, y: b.y };
+      this.seatBody(b, r, b.T);
+      b.fieldAt = this.t + b.T; b.fieldRect = r;''',
+'''      const e = times.get(b), r = rectOf.get(b);
+      b.T = tOf(b); b.entry = e ? e.entry : { x: b.x, y: b.y };
+      // no rectangle to land in: it travels and rests as a bidder, so its cell
+      // is a convex power cell — never locked, never a wall
+      if (!r) { b.fieldAt = this.t + b.T; b.fieldRect = null; this.releaseBody(b, b.T); continue; }
+      this.seatBody(b, r, b.T);
+      b.fieldAt = this.t + b.T; b.fieldRect = r;''', 1)
+
+replace('''      for (const b of content) {
+        const r = rectOf.get(b), [ex, ey] = this.rectCenter(r);
+        if (this.inRect(v.rect, ex, ey)) { rows.push({ body: b, journey: b.journey, w: rectArea(r) }); W += rectArea(r); }
+      }''',
+'''      for (const b of content) {
+        const r = rectOf.get(b); if (!r) continue;
+        const [ex, ey] = this.rectCenter(r);
+        if (this.inRect(v.rect, ex, ey)) { rows.push({ body: b, journey: b.journey, w: rectArea(r) }); W += rectArea(r); }
+      }''', 1)
+
+# --- a shorter blend: the flubber lives in the hole state --------------------
+replace('const MELT = 0.30;', 'const MELT = TD_MELT;', 1)
+replace('const L = b.rect && !b.leaving ? S3((s - (j.hold || 0) - j.dur + 0.35) / 0.50) : 0;',
+        'const L = b.rect && !b.leaving ? S3((s - (j.hold || 0) - j.dur + TD_LOCK_LEAD) / TD_LOCK_SPAN) : 0;', 1)
+
+# --- a true centroidal pull for free bodies ---------------------------------
+replace('''        ax += (W / 2 - b.x) * 0.06 + (b.anchorX - b.x) * 0.9;
+        ay += (H / 2 - b.y) * 0.06 + (b.anchorY - b.y) * 0.9;''',
+'''        ax += (W / 2 - b.x) * 0.06 + (b.anchorX - b.x) * 0.9;
+        ay += (H / 2 - b.y) * 0.06 + (b.anchorY - b.y) * 0.9;
+        // and toward the cell's own area centroid: the fixed point of that pull
+        // is a centroidal Voronoi tessellation, which is what "a cell and not a
+        // splinter" means. The reference's anchorX/Y is the ink's inscribed
+        // pole, set by the garment for the label — a different point.
+        if (TD_LLOYD > 0) {
+          const Cc = tdCentroid(b);
+          if (Cc) { ax += (Cc[0] - b.x) * TD_LLOYD; ay += (Cc[1] - b.y) * TD_LLOYD; }
+        }''', 1)
+
+# development only: TIDE_VARS="TD_LLOYD=0,TD_MELT=0.3" builds a variant
+for kv in filter(None, os.environ.get('TIDE_VARS', '').split(',')):
+    k, v = kv.split('=', 1)
+    pat = re.compile(r'^(const %s = )([^;]+);' % re.escape(k), re.M)
+    n = len(pat.findall(s))
+    if n != 1:
+        raise SystemExit(f'TIDE_VARS: {k} found {n} times')
+    s = pat.sub(lambda m: m.group(1) + v + ';', s)
+
+OUT = Path(os.environ.get('TIDE_OUT', str(ROOT / 'tide.html')))
+OUT.write_text(s)
+if os.environ.get('TIDE_OUT'):
+    print('Built variant', OUT)
+    raise SystemExit(0)
+
+# --- the gallery card -------------------------------------------------------
+index_path = ROOT / 'index.html'
+index = index_path.read_text()
+index = re.sub(r'\s*<!-- TIDE -->.*?<!-- /TIDE -->[ \t]*\n(?:[ \t]*\n)*', '\n', index, flags=re.S)
+index = index.replace('class="version-card latest"', 'class="version-card"')
+index = index.replace('<span class="latest-flag">Latest</span>', '')
+card = '''
+        <!-- TIDE -->
+        <a href="tide.html" class="version-card latest">
+            <h2>Tide</h2><span class="latest-flag">Latest</span>
+            <span class="mk">Tide</span>
+            <span class="tag preview">Tested experiment</span>
+            <p>The middle, rather than the two extremes. A rectangle is a DESTINATION, not a category: a template names the few slots that genuinely want to be cards and they land exact rectangles, while everybody else travels and rests as a convex Voronoi cell of three to nine corners. The reference could not express that — a scene gave every body a rectangle or none — so a page was either a grid or a flock.</p>
+            <ul>
+                <li>Organic cells 17.7% → 62.2% of a change; flubber 7.5% → 0.6%</li>
+                <li>Cells fatter than the reference's, not just more numerous</li>
+                <li>Bento untouched: every slot a rectangle, as a bento should be</li>
+                <li>The corner budget is a consequence of who is bidding, not a clamp on a cell</li>
+            </ul>
+        </a>
+        <!-- /TIDE -->
+'''
+anchor = '<div class="previews">'
+if index.count(anchor) != 1:
+    raise ValueError('Gallery anchor missing or ambiguous')
+index_path.write_text(index.replace(anchor, anchor + card, 1))
+print('Built tide.html from reference blob', EXPECTED)
+print('Tide SHA256', hashlib.sha256(s.encode()).hexdigest())
