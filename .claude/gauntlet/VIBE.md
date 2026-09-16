@@ -750,6 +750,21 @@ thing that varies.
     node .claude/gauntlet/shape.js   <hive.html> [out.json] [--dt 30] [--dump frames.json]
     node .claude/gauntlet/spill.js   <hive.html> [out.json] [--dt 30]
     node .claude/gauntlet/strobe.js  <hive.html> [out.json] [--dt 30] [--domain]
+    node .claude/gauntlet/corners.js <hive.html> [out.json] [--dt 30]
+
+`corners.js` answers HOW ALIVE a cell is, which `shape.js` cannot: a page of
+floating rectangles and a page of living cells both score clean on the shape
+taxonomy. It counts CORNERS on the raw outline — `organicShare` (5–9 corners,
+the band the page should live in while anything moves), `rigidShare` (exactly
+4, a rectangle) and `overBudget` (≥10, flubber) — split three ways, over all
+frames, over TRANSITION frames only and over SEATED frames only. The split is
+the point: a rectangle is a legitimate DESTINATION for a template that asks
+for one, so a high seated `rigidShare` is fine, while a high `rigidShare` in
+transit means the cells are not alive, they are sliding rectangles. It also
+reports `restingInset` and `worstRestingInset`, the distance from each window
+edge to the nearest ink once a scene has settled: positive is a gutter, the
+neat 100% page; negative is ink permanently off the crop, which is a bleed
+being spent at rest instead of held in reserve for a gridlock.
 
 `shape.js` answers WHAT SHAPE a cell is, which no other instrument here does.
 Per frame, per root content leaf: `rectangle` (an axis-aligned box), `notched`
