@@ -80,7 +80,11 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git checkout -B publish FETCH_HEAD
+          # -f: the build step above regenerates index.html (its own gallery
+          # card goes first), so the tree is already dirty whenever another
+          # mark published last. Those are build outputs and the build below
+          # remakes them from the tip, so discarding them here is exact.
+          git checkout -f -B publish FETCH_HEAD
           python3 tests/tessera/build.py
           cp tessera-results/summary.json tessera-results.json
           git add tessera.html tessera-results.json index.html
