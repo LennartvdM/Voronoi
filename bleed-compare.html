@@ -17,12 +17,15 @@
 <span id="status">Loading…</span>
 </div>
 <p>Both canvases have the same 1440 × 900 viewport. Each click calculates a new frame; none are skipped or blended. Hover is disabled. Play advances one simulation step per display frame, so smaller steps play in slow motion on a 60 Hz display. Changing the timestep resets both builds. Reset warms up for 3.6 seconds and settles Bento for 5.5 seconds before pausing.</p>
-<p><a href="tessera.html">Open Tessera</a> · <a href="bleed.html">Open Bleed</a> · <a href="bleed-results.json">Cloud test results</a></p>
+<p><a href="tessera.html">Open Tessera</a> · <a href="bleed.html">Open Bleed</a> · <a href="bleed-results.json" id="results" hidden>Cloud test results</a></p>
 </header>
 <main><section class="panel"><h2>Tessera</h2><div class="viewport"><iframe title="Tessera"></iframe></div></section><section class="panel"><h2>Bleed</h2><div class="viewport"><iframe title="Bleed"></iframe></div></section></main>
 <script>
 'use strict';
 const frames=[...document.querySelectorAll('iframe')], status=document.getElementById('status');
+// the cloud run publishes bleed-results.json when it passes; the link appears
+// when the file is there, so the page never offers one that answers 404
+fetch('bleed-results.json',{method:'HEAD',cache:'no-store'}).then(r=>{if(r.ok)document.getElementById('results').hidden=false;}).catch(()=>{});
 const controls=['play','step','ten','change'].map(id=>document.getElementById(id));
 let sources=null,playing=false,ready=false,ticks=0,sceneTicks=0;
 const clock=`<script>(()=>{let t=0;const q=[];requestAnimationFrame=cb=>{q.push(cb);return q.length;};cancelAnimationFrame=()=>{};performance.now=()=>t;window.__astraAdvance=(dt,n)=>{for(let i=0;i<n;i++){t+=dt;for(const cb of q.splice(0))cb(t);}};})();<\/script>`;
