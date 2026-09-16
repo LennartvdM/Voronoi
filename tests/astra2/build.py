@@ -36,7 +36,7 @@ replace(marker, (ROOT / 'tests/astra2/engine.js').read_text() + '\n' + marker)
 index_path = ROOT / 'index.html'
 if index_path.exists():
     index = index_path.read_text()
-            card = '''
+    card = '''
         <!-- ASTRA II -->
         <a href="astra-ii.html" class="version-card latest">
             <h2>Astra II</h2><span class="latest-flag">Latest</span>
@@ -53,10 +53,10 @@ if index_path.exists():
     anchor = '<div class="previews">'
     if index.count(anchor) != 1:
         raise ValueError('Gallery anchor missing or ambiguous')
-        IS_LATEST = False   # only the newest mark wears the flag
+    IS_LATEST = False   # only the newest mark wears the flag
     if not IS_LATEST:
         card = card.replace(' latest"', '"').replace('<span class="latest-flag">Latest</span>', '')
-    own = re.compile(r'\n?[ \t]*<!-- ASTRA\ II -->.*?<!-- /ASTRA\ II -->[ \t]*\n?', re.S)
+    own = re.compile(r'\n?[ \t]*<!-- ASTRA II -->.*?<!-- /ASTRA II -->[ \t]*\n?', re.S)
     index = own.sub(lambda m: card, index, count=1) if own.search(index) else index.replace(anchor, anchor + card, 1)
     index_path.write_text(index)
 print('Astra II SHA256', hashlib.sha256(s.encode()).hexdigest())
