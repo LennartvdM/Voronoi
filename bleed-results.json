@@ -1,0 +1,1374 @@
+{
+  "referenceBlob": "2c02b2dc66d05fb152feffcd952f18b4d39f3634",
+  "candidateSHA256": "486f87b24d4b760486b6e3a6c143fa5253445356cd81a884c1d1358fb1cd060d",
+  "warmupMs": 3600,
+  "sceneHoldMs": 5500,
+  "viewport": [
+    1440,
+    900
+  ],
+  "margin": "one lattice cell on every side",
+  "pointer": [
+    -1000,
+    -1000
+  ],
+  "clocks": {
+    "240hz": {
+      "hive": {
+        "jumpsIncludingStartup": 5,
+        "transitionJumps": 4,
+        "byScene": {
+          "flock0": 1,
+          "hero": 1,
+          "sidebar": 1,
+          "flock": 2
+        },
+        "gapMax": 928,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 3.73,
+        "msP95": 4.7,
+        "shape": {
+          "bodyFrames": 35436,
+          "rectangle": 22955,
+          "notched": 44,
+          "voronoi": 6426,
+          "cut": 3680,
+          "fractured": 3070,
+          "fracturedFrames": 1199,
+          "biteMax": 0.991,
+          "biteMean": 0.361
+        }
+      },
+      "astra-i": {
+        "jumpsIncludingStartup": 0,
+        "transitionJumps": 0,
+        "byScene": {},
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.98e-07,
+        "msP95": 5.9,
+        "shape": {
+          "bodyFrames": 33989,
+          "rectangle": 18382,
+          "notched": 1,
+          "voronoi": 8043,
+          "cut": 0,
+          "fractured": 7563,
+          "fracturedFrames": 1746,
+          "biteMax": 0.003,
+          "biteMean": 0.003
+        }
+      },
+      "tessera": {
+        "jumpsIncludingStartup": 0,
+        "transitionJumps": 0,
+        "byScene": {},
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.98e-07,
+        "msP95": 16.6,
+        "shape": {
+          "bodyFrames": 33926,
+          "rectangle": 22276,
+          "notched": 7,
+          "voronoi": 424,
+          "cut": 0,
+          "fractured": 11219,
+          "fracturedFrames": 1779,
+          "biteMax": 0.005,
+          "biteMean": 0.003
+        }
+      },
+      "bleed": {
+        "jumpsIncludingStartup": 6,
+        "transitionJumps": 6,
+        "byScene": {
+          "hero": 3,
+          "flock": 3
+        },
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.98e-07,
+        "msP95": 5.9,
+        "shape": {
+          "bodyFrames": 29018,
+          "rectangle": 26547,
+          "notched": 2462,
+          "voronoi": 0,
+          "cut": 0,
+          "fractured": 0,
+          "fracturedFrames": 0,
+          "biteMax": 0.484,
+          "biteMean": 0.063
+        }
+      }
+    },
+    "120hz": {
+      "hive": {
+        "jumpsIncludingStartup": 6,
+        "transitionJumps": 4,
+        "byScene": {
+          "flock0": 2,
+          "hero": 1,
+          "sidebar": 1,
+          "flock": 2
+        },
+        "gapMax": 164,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 4.01,
+        "msP95": 5,
+        "shape": {
+          "bodyFrames": 17815,
+          "rectangle": 11454,
+          "notched": 23,
+          "voronoi": 3142,
+          "cut": 1882,
+          "fractured": 1654,
+          "fracturedFrames": 641,
+          "biteMax": 0.989,
+          "biteMean": 0.329
+        }
+      },
+      "astra-i": {
+        "jumpsIncludingStartup": 0,
+        "transitionJumps": 0,
+        "byScene": {},
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.92e-07,
+        "msP95": 6,
+        "shape": {
+          "bodyFrames": 17009,
+          "rectangle": 9192,
+          "notched": 1,
+          "voronoi": 4013,
+          "cut": 0,
+          "fractured": 3803,
+          "fracturedFrames": 876,
+          "biteMax": 0.003,
+          "biteMean": 0.003
+        }
+      },
+      "tessera": {
+        "jumpsIncludingStartup": 0,
+        "transitionJumps": 0,
+        "byScene": {},
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.94e-07,
+        "msP95": 16.9,
+        "shape": {
+          "bodyFrames": 16942,
+          "rectangle": 11144,
+          "notched": 7,
+          "voronoi": 218,
+          "cut": 0,
+          "fractured": 5573,
+          "fracturedFrames": 885,
+          "biteMax": 0.006,
+          "biteMean": 0.003
+        }
+      },
+      "bleed": {
+        "jumpsIncludingStartup": 5,
+        "transitionJumps": 4,
+        "byScene": {
+          "flock0": 1,
+          "hero": 1,
+          "flock": 3
+        },
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.92e-07,
+        "msP95": 6.5,
+        "shape": {
+          "bodyFrames": 14484,
+          "rectangle": 13085,
+          "notched": 1397,
+          "voronoi": 0,
+          "cut": 0,
+          "fractured": 0,
+          "fracturedFrames": 0,
+          "biteMax": 0.479,
+          "biteMean": 0.056
+        }
+      }
+    },
+    "60hz": {
+      "hive": {
+        "jumpsIncludingStartup": 7,
+        "transitionJumps": 7,
+        "byScene": {
+          "sidebar": 3,
+          "flock": 4
+        },
+        "gapMax": 8,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 3.02,
+        "msP95": 5.8,
+        "shape": {
+          "bodyFrames": 8910,
+          "rectangle": 5718,
+          "notched": 13,
+          "voronoi": 1431,
+          "cut": 1009,
+          "fractured": 897,
+          "fracturedFrames": 328,
+          "biteMax": 0.782,
+          "biteMean": 0.467
+        },
+        "transitionTeleports": 15,
+        "teleportsByScene": {
+          "flock0": 55,
+          "hero": 1,
+          "sidebar": 9,
+          "frame": 5,
+          "flock": 2
+        },
+        "transitionTeleportsPageRaster": 15,
+        "teleportsByScenePageRaster": {
+          "flock0": 55,
+          "hero": 1,
+          "sidebar": 9,
+          "frame": 5,
+          "flock": 2
+        },
+        "shapeBackShare": 0.024,
+        "transitionCorrugations": 39,
+        "transitionTeeth": 2041,
+        "axisShareByScene": {
+          "flock0": 0.577,
+          "bento": 1,
+          "hero": 0.868,
+          "sidebar": 0.765,
+          "frame": 0.869,
+          "flock": 0.425
+        },
+        "spill": {
+          "transition": {
+            "framesOutside": 0,
+            "outsideMaxPx2": 0,
+            "straddlerFrames": 0,
+            "cropBorders": 0
+          },
+          "byScene": {
+            "flock0": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 216,
+              "cropBorders": 0
+            },
+            "bento": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 330,
+              "cropBorders": 0
+            },
+            "hero": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 330,
+              "cropBorders": 0
+            },
+            "sidebar": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 330,
+              "cropBorders": 0
+            },
+            "frame": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 330,
+              "cropBorders": 0
+            },
+            "flock": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 330,
+              "cropBorders": 0
+            }
+          }
+        }
+      },
+      "astra-i": {
+        "jumpsIncludingStartup": 0,
+        "transitionJumps": 0,
+        "byScene": {},
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.96e-07,
+        "msP95": 6.8,
+        "shape": {
+          "bodyFrames": 8494,
+          "rectangle": 4603,
+          "notched": 0,
+          "voronoi": 1998,
+          "cut": 0,
+          "fractured": 1893,
+          "fracturedFrames": 438,
+          "biteMax": 0,
+          "biteMean": 0
+        },
+        "transitionTeleports": 10,
+        "teleportsByScene": {
+          "sidebar": 7,
+          "frame": 3
+        },
+        "transitionTeleportsPageRaster": 10,
+        "teleportsByScenePageRaster": {
+          "sidebar": 7,
+          "frame": 3
+        },
+        "shapeBackShare": 0.006,
+        "transitionCorrugations": 34,
+        "transitionTeeth": 1617,
+        "axisShareByScene": {
+          "flock0": 0.482,
+          "bento": 1,
+          "hero": 0.803,
+          "sidebar": 0.692,
+          "frame": 0.807,
+          "flock": 0.411
+        },
+        "spill": {
+          "transition": {
+            "framesOutside": 0,
+            "outsideMaxPx2": 0,
+            "straddlerFrames": 0,
+            "cropBorders": 0
+          },
+          "byScene": {
+            "flock0": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 216,
+              "cropBorders": 0
+            },
+            "bento": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 330,
+              "cropBorders": 0
+            },
+            "hero": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 330,
+              "cropBorders": 0
+            },
+            "sidebar": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 330,
+              "cropBorders": 0
+            },
+            "frame": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 330,
+              "cropBorders": 0
+            },
+            "flock": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 330,
+              "cropBorders": 0
+            }
+          }
+        }
+      },
+      "tessera": {
+        "jumpsIncludingStartup": 0,
+        "transitionJumps": 0,
+        "byScene": {},
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.95e-07,
+        "msP95": 17.1,
+        "shape": {
+          "bodyFrames": 8452,
+          "rectangle": 5575,
+          "notched": 3,
+          "voronoi": 96,
+          "cut": 0,
+          "fractured": 2778,
+          "fracturedFrames": 441,
+          "biteMax": 0.004,
+          "biteMean": 0.002
+        },
+        "transitionTeleports": 19,
+        "teleportsByScene": {
+          "hero": 9,
+          "sidebar": 9,
+          "frame": 1
+        },
+        "transitionTeleportsPageRaster": 19,
+        "teleportsByScenePageRaster": {
+          "hero": 9,
+          "sidebar": 9,
+          "frame": 1
+        },
+        "shapeBackShare": 0.027,
+        "transitionCorrugations": 154,
+        "transitionTeeth": 6839,
+        "axisShareByScene": {
+          "flock0": 0.482,
+          "bento": 1,
+          "hero": 0.908,
+          "sidebar": 0.861,
+          "frame": 0.93,
+          "flock": 0.394
+        },
+        "spill": {
+          "transition": {
+            "framesOutside": 0,
+            "outsideMaxPx2": 0,
+            "straddlerFrames": 0,
+            "cropBorders": 0
+          },
+          "byScene": {
+            "flock0": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 216,
+              "cropBorders": 0
+            },
+            "bento": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 330,
+              "cropBorders": 0
+            },
+            "hero": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 330,
+              "cropBorders": 0
+            },
+            "sidebar": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 330,
+              "cropBorders": 0
+            },
+            "frame": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 330,
+              "cropBorders": 0
+            },
+            "flock": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 330,
+              "cropBorders": 0
+            }
+          }
+        }
+      },
+      "bleed": {
+        "jumpsIncludingStartup": 8,
+        "transitionJumps": 3,
+        "byScene": {
+          "flock0": 5,
+          "hero": 1,
+          "flock": 2
+        },
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.96e-07,
+        "msP95": 7.7,
+        "shape": {
+          "bodyFrames": 7264,
+          "rectangle": 6510,
+          "notched": 753,
+          "voronoi": 0,
+          "cut": 0,
+          "fractured": 0,
+          "fracturedFrames": 0,
+          "biteMax": 0.476,
+          "biteMean": 0.053
+        },
+        "transitionTeleports": 3,
+        "teleportsByScene": {
+          "flock0": 50,
+          "hero": 1,
+          "frame": 2,
+          "flock": 23
+        },
+        "transitionTeleportsPageRaster": 1,
+        "teleportsByScenePageRaster": {
+          "flock0": 55,
+          "hero": 1,
+          "flock": 24
+        },
+        "shapeBackShare": 0.029,
+        "transitionCorrugations": 0,
+        "transitionTeeth": 460,
+        "axisShareByScene": {
+          "flock0": 0.43,
+          "bento": 1,
+          "hero": 1,
+          "sidebar": 1,
+          "frame": 1,
+          "flock": 0.382
+        },
+        "spill": {
+          "transition": {
+            "framesOutside": 990,
+            "outsideMaxPx2": 155159,
+            "straddlerFrames": 990,
+            "cropBorders": 0
+          },
+          "byScene": {
+            "flock0": {
+              "outsideMaxPx2": 84689,
+              "straddlerFrames": 174,
+              "frames": 216,
+              "cropBorders": 0
+            },
+            "bento": {
+              "outsideMaxPx2": 76277,
+              "straddlerFrames": 330,
+              "frames": 330,
+              "cropBorders": 0
+            },
+            "hero": {
+              "outsideMaxPx2": 79593,
+              "straddlerFrames": 330,
+              "frames": 330,
+              "cropBorders": 0
+            },
+            "sidebar": {
+              "outsideMaxPx2": 76277,
+              "straddlerFrames": 330,
+              "frames": 330,
+              "cropBorders": 0
+            },
+            "frame": {
+              "outsideMaxPx2": 155159,
+              "straddlerFrames": 330,
+              "frames": 330,
+              "cropBorders": 0
+            },
+            "flock": {
+              "outsideMaxPx2": 582480,
+              "straddlerFrames": 330,
+              "frames": 330,
+              "cropBorders": 0
+            }
+          }
+        }
+      }
+    },
+    "30ms": {
+      "hive": {
+        "jumpsIncludingStartup": 16,
+        "transitionJumps": 8,
+        "byScene": {
+          "flock0": 8,
+          "hero": 2,
+          "sidebar": 2,
+          "frame": 2,
+          "flock": 2
+        },
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 0.00772,
+        "msP95": 6.8,
+        "shape": {
+          "bodyFrames": 4959,
+          "rectangle": 3187,
+          "notched": 8,
+          "voronoi": 780,
+          "cut": 532,
+          "fractured": 547,
+          "fracturedFrames": 212,
+          "biteMax": 0.966,
+          "biteMean": 0.494
+        },
+        "transitionTeleports": 19,
+        "teleportsByScene": {
+          "flock0": 71,
+          "hero": 2,
+          "sidebar": 11,
+          "frame": 6,
+          "flock": 11
+        },
+        "transitionTeleportsPageRaster": 19,
+        "teleportsByScenePageRaster": {
+          "flock0": 71,
+          "hero": 2,
+          "sidebar": 11,
+          "frame": 6,
+          "flock": 11
+        },
+        "shapeBackShare": 0.037,
+        "transitionCorrugations": 28,
+        "transitionTeeth": 1161,
+        "axisShareByScene": {
+          "flock0": 0.575,
+          "bento": 1,
+          "hero": 0.872,
+          "sidebar": 0.767,
+          "frame": 0.864,
+          "flock": 0.416
+        },
+        "spill": {
+          "transition": {
+            "framesOutside": 0,
+            "outsideMaxPx2": 0,
+            "straddlerFrames": 0,
+            "cropBorders": 0
+          },
+          "byScene": {
+            "flock0": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 120,
+              "cropBorders": 0
+            },
+            "bento": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 184,
+              "cropBorders": 0
+            },
+            "hero": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 184,
+              "cropBorders": 0
+            },
+            "sidebar": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 184,
+              "cropBorders": 0
+            },
+            "frame": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 184,
+              "cropBorders": 0
+            },
+            "flock": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 184,
+              "cropBorders": 0
+            }
+          }
+        }
+      },
+      "astra-i": {
+        "jumpsIncludingStartup": 0,
+        "transitionJumps": 0,
+        "byScene": {},
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.78e-07,
+        "msP95": 7.2,
+        "shape": {
+          "bodyFrames": 4737,
+          "rectangle": 2573,
+          "notched": 1,
+          "voronoi": 1108,
+          "cut": 0,
+          "fractured": 1055,
+          "fracturedFrames": 245,
+          "biteMax": 0.003,
+          "biteMean": 0.003
+        },
+        "transitionTeleports": 10,
+        "teleportsByScene": {
+          "flock0": 12,
+          "sidebar": 8,
+          "frame": 2,
+          "flock": 10
+        },
+        "transitionTeleportsPageRaster": 10,
+        "teleportsByScenePageRaster": {
+          "flock0": 12,
+          "sidebar": 8,
+          "frame": 2,
+          "flock": 10
+        },
+        "shapeBackShare": 0.014,
+        "transitionCorrugations": 21,
+        "transitionTeeth": 902,
+        "axisShareByScene": {
+          "flock0": 0.48,
+          "bento": 1,
+          "hero": 0.805,
+          "sidebar": 0.694,
+          "frame": 0.809,
+          "flock": 0.363
+        },
+        "spill": {
+          "transition": {
+            "framesOutside": 0,
+            "outsideMaxPx2": 0,
+            "straddlerFrames": 0,
+            "cropBorders": 0
+          },
+          "byScene": {
+            "flock0": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 120,
+              "cropBorders": 0
+            },
+            "bento": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 184,
+              "cropBorders": 0
+            },
+            "hero": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 184,
+              "cropBorders": 0
+            },
+            "sidebar": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 184,
+              "cropBorders": 0
+            },
+            "frame": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 184,
+              "cropBorders": 0
+            },
+            "flock": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 184,
+              "cropBorders": 0
+            }
+          }
+        }
+      },
+      "tessera": {
+        "jumpsIncludingStartup": 0,
+        "transitionJumps": 0,
+        "byScene": {},
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.83e-07,
+        "msP95": 17,
+        "shape": {
+          "bodyFrames": 4719,
+          "rectangle": 3125,
+          "notched": 4,
+          "voronoi": 53,
+          "cut": 0,
+          "fractured": 1537,
+          "fracturedFrames": 241,
+          "biteMax": 0.003,
+          "biteMean": 0.002
+        },
+        "transitionTeleports": 22,
+        "teleportsByScene": {
+          "flock0": 12,
+          "hero": 15,
+          "sidebar": 4,
+          "frame": 3,
+          "flock": 1
+        },
+        "transitionTeleportsPageRaster": 22,
+        "teleportsByScenePageRaster": {
+          "flock0": 12,
+          "hero": 15,
+          "sidebar": 4,
+          "frame": 3,
+          "flock": 1
+        },
+        "shapeBackShare": 0.036,
+        "transitionCorrugations": 87,
+        "transitionTeeth": 3768,
+        "axisShareByScene": {
+          "flock0": 0.48,
+          "bento": 1,
+          "hero": 0.913,
+          "sidebar": 0.863,
+          "frame": 0.928,
+          "flock": 0.362
+        },
+        "spill": {
+          "transition": {
+            "framesOutside": 0,
+            "outsideMaxPx2": 0,
+            "straddlerFrames": 0,
+            "cropBorders": 0
+          },
+          "byScene": {
+            "flock0": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 120,
+              "cropBorders": 0
+            },
+            "bento": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 184,
+              "cropBorders": 0
+            },
+            "hero": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 184,
+              "cropBorders": 0
+            },
+            "sidebar": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 184,
+              "cropBorders": 0
+            },
+            "frame": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 184,
+              "cropBorders": 0
+            },
+            "flock": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 184,
+              "cropBorders": 0
+            }
+          }
+        }
+      },
+      "bleed": {
+        "jumpsIncludingStartup": 17,
+        "transitionJumps": 2,
+        "byScene": {
+          "flock0": 15,
+          "hero": 1,
+          "flock": 1
+        },
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.71e-07,
+        "msP95": 8.7,
+        "shape": {
+          "bodyFrames": 4044,
+          "rectangle": 3733,
+          "notched": 311,
+          "voronoi": 0,
+          "cut": 0,
+          "fractured": 0,
+          "fracturedFrames": 0,
+          "biteMax": 0.454,
+          "biteMean": 0.054
+        },
+        "transitionTeleports": 6,
+        "teleportsByScene": {
+          "flock0": 74,
+          "hero": 3,
+          "frame": 3,
+          "flock": 25
+        },
+        "transitionTeleportsPageRaster": 5,
+        "teleportsByScenePageRaster": {
+          "flock0": 78,
+          "hero": 4,
+          "frame": 1,
+          "flock": 30
+        },
+        "shapeBackShare": 0.036,
+        "transitionCorrugations": 0,
+        "transitionTeeth": 215,
+        "axisShareByScene": {
+          "flock0": 0.434,
+          "bento": 1,
+          "hero": 1,
+          "sidebar": 1,
+          "frame": 1,
+          "flock": 0.347
+        },
+        "spill": {
+          "transition": {
+            "framesOutside": 552,
+            "outsideMaxPx2": 154096,
+            "straddlerFrames": 552,
+            "cropBorders": 0
+          },
+          "byScene": {
+            "flock0": {
+              "outsideMaxPx2": 87219,
+              "straddlerFrames": 97,
+              "frames": 120,
+              "cropBorders": 0
+            },
+            "bento": {
+              "outsideMaxPx2": 76277,
+              "straddlerFrames": 184,
+              "frames": 184,
+              "cropBorders": 0
+            },
+            "hero": {
+              "outsideMaxPx2": 78545,
+              "straddlerFrames": 184,
+              "frames": 184,
+              "cropBorders": 0
+            },
+            "sidebar": {
+              "outsideMaxPx2": 76277,
+              "straddlerFrames": 184,
+              "frames": 184,
+              "cropBorders": 0
+            },
+            "frame": {
+              "outsideMaxPx2": 154096,
+              "straddlerFrames": 184,
+              "frames": 184,
+              "cropBorders": 0
+            },
+            "flock": {
+              "outsideMaxPx2": 582480,
+              "straddlerFrames": 184,
+              "frames": 184,
+              "cropBorders": 0
+            }
+          }
+        }
+      }
+    },
+    "jitter": {
+      "hive": {
+        "jumpsIncludingStartup": 17,
+        "transitionJumps": 13,
+        "byScene": {
+          "flock0": 4,
+          "hero": 2,
+          "sidebar": 2,
+          "frame": 3,
+          "flock": 6
+        },
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 0.0668,
+        "msP95": 6.7,
+        "shape": {
+          "bodyFrames": 5916,
+          "rectangle": 3826,
+          "notched": 11,
+          "voronoi": 907,
+          "cut": 628,
+          "fractured": 619,
+          "fracturedFrames": 231,
+          "biteMax": 0.989,
+          "biteMean": 0.529
+        },
+        "transitionTeleports": 16,
+        "teleportsByScene": {
+          "flock0": 71,
+          "hero": 2,
+          "sidebar": 9,
+          "frame": 5,
+          "flock": 6
+        },
+        "transitionTeleportsPageRaster": 16,
+        "teleportsByScenePageRaster": {
+          "flock0": 71,
+          "hero": 2,
+          "sidebar": 9,
+          "frame": 5,
+          "flock": 6
+        },
+        "shapeBackShare": 0.035,
+        "transitionCorrugations": 25,
+        "transitionTeeth": 1357,
+        "axisShareByScene": {
+          "flock0": 0.584,
+          "bento": 1,
+          "hero": 0.87,
+          "sidebar": 0.773,
+          "frame": 0.863,
+          "flock": 0.409
+        },
+        "spill": {
+          "transition": {
+            "framesOutside": 0,
+            "outsideMaxPx2": 0,
+            "straddlerFrames": 0,
+            "cropBorders": 0
+          },
+          "byScene": {
+            "flock0": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 144,
+              "cropBorders": 0
+            },
+            "bento": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 220,
+              "cropBorders": 0
+            },
+            "hero": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 220,
+              "cropBorders": 0
+            },
+            "sidebar": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 220,
+              "cropBorders": 0
+            },
+            "frame": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 220,
+              "cropBorders": 0
+            },
+            "flock": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 220,
+              "cropBorders": 0
+            }
+          }
+        }
+      },
+      "astra-i": {
+        "jumpsIncludingStartup": 6,
+        "transitionJumps": 3,
+        "byScene": {
+          "flock0": 3,
+          "flock": 3
+        },
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.91e-07,
+        "msP95": 6.6,
+        "shape": {
+          "bodyFrames": 5648,
+          "rectangle": 3117,
+          "notched": 0,
+          "voronoi": 1313,
+          "cut": 0,
+          "fractured": 1218,
+          "fracturedFrames": 292,
+          "biteMax": 0,
+          "biteMean": 0
+        },
+        "transitionTeleports": 9,
+        "teleportsByScene": {
+          "flock0": 7,
+          "sidebar": 6,
+          "frame": 3,
+          "flock": 5
+        },
+        "transitionTeleportsPageRaster": 9,
+        "teleportsByScenePageRaster": {
+          "flock0": 7,
+          "sidebar": 6,
+          "frame": 3,
+          "flock": 5
+        },
+        "shapeBackShare": 0.011,
+        "transitionCorrugations": 24,
+        "transitionTeeth": 1041,
+        "axisShareByScene": {
+          "flock0": 0.49,
+          "bento": 1,
+          "hero": 0.803,
+          "sidebar": 0.709,
+          "frame": 0.803,
+          "flock": 0.385
+        },
+        "spill": {
+          "transition": {
+            "framesOutside": 0,
+            "outsideMaxPx2": 0,
+            "straddlerFrames": 0,
+            "cropBorders": 0
+          },
+          "byScene": {
+            "flock0": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 144,
+              "cropBorders": 0
+            },
+            "bento": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 220,
+              "cropBorders": 0
+            },
+            "hero": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 220,
+              "cropBorders": 0
+            },
+            "sidebar": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 220,
+              "cropBorders": 0
+            },
+            "frame": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 220,
+              "cropBorders": 0
+            },
+            "flock": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 220,
+              "cropBorders": 0
+            }
+          }
+        }
+      },
+      "tessera": {
+        "jumpsIncludingStartup": 5,
+        "transitionJumps": 2,
+        "byScene": {
+          "flock0": 3,
+          "flock": 2
+        },
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.79e-07,
+        "msP95": 17,
+        "shape": {
+          "bodyFrames": 5624,
+          "rectangle": 3728,
+          "notched": 2,
+          "voronoi": 66,
+          "cut": 1,
+          "fractured": 1827,
+          "fracturedFrames": 288,
+          "biteMax": 0.001,
+          "biteMean": 0.001
+        },
+        "transitionTeleports": 34,
+        "teleportsByScene": {
+          "flock0": 7,
+          "hero": 15,
+          "sidebar": 10,
+          "frame": 9,
+          "flock": 3
+        },
+        "transitionTeleportsPageRaster": 34,
+        "teleportsByScenePageRaster": {
+          "flock0": 7,
+          "hero": 15,
+          "sidebar": 10,
+          "frame": 9,
+          "flock": 3
+        },
+        "shapeBackShare": 0.033,
+        "transitionCorrugations": 92,
+        "transitionTeeth": 4420,
+        "axisShareByScene": {
+          "flock0": 0.49,
+          "bento": 1,
+          "hero": 0.91,
+          "sidebar": 0.87,
+          "frame": 0.929,
+          "flock": 0.383
+        },
+        "spill": {
+          "transition": {
+            "framesOutside": 0,
+            "outsideMaxPx2": 0,
+            "straddlerFrames": 0,
+            "cropBorders": 0
+          },
+          "byScene": {
+            "flock0": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 144,
+              "cropBorders": 0
+            },
+            "bento": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 220,
+              "cropBorders": 0
+            },
+            "hero": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 220,
+              "cropBorders": 0
+            },
+            "sidebar": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 220,
+              "cropBorders": 0
+            },
+            "frame": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 220,
+              "cropBorders": 0
+            },
+            "flock": {
+              "outsideMaxPx2": 0,
+              "straddlerFrames": 0,
+              "frames": 220,
+              "cropBorders": 0
+            }
+          }
+        }
+      },
+      "bleed": {
+        "jumpsIncludingStartup": 13,
+        "transitionJumps": 3,
+        "byScene": {
+          "flock0": 10,
+          "hero": 1,
+          "flock": 2
+        },
+        "gapMax": 0,
+        "overMax": 0,
+        "vanish": 0,
+        "settledScenes": "5/5",
+        "areaRelativeErrorMax": 9.93e-07,
+        "msP95": 7.6,
+        "shape": {
+          "bodyFrames": 4834,
+          "rectangle": 4446,
+          "notched": 388,
+          "voronoi": 0,
+          "cut": 0,
+          "fractured": 0,
+          "fracturedFrames": 0,
+          "biteMax": 0.46,
+          "biteMean": 0.056
+        },
+        "transitionTeleports": 7,
+        "teleportsByScene": {
+          "flock0": 72,
+          "hero": 2,
+          "sidebar": 1,
+          "frame": 4,
+          "flock": 27
+        },
+        "transitionTeleportsPageRaster": 2,
+        "teleportsByScenePageRaster": {
+          "flock0": 75,
+          "hero": 1,
+          "frame": 1,
+          "flock": 26
+        },
+        "shapeBackShare": 0.031,
+        "transitionCorrugations": 0,
+        "transitionTeeth": 264,
+        "axisShareByScene": {
+          "flock0": 0.45,
+          "bento": 1,
+          "hero": 1,
+          "sidebar": 1,
+          "frame": 1,
+          "flock": 0.38
+        },
+        "spill": {
+          "transition": {
+            "framesOutside": 660,
+            "outsideMaxPx2": 154283,
+            "straddlerFrames": 660,
+            "cropBorders": 0
+          },
+          "byScene": {
+            "flock0": {
+              "outsideMaxPx2": 76277,
+              "straddlerFrames": 118,
+              "frames": 144,
+              "cropBorders": 0
+            },
+            "bento": {
+              "outsideMaxPx2": 76277,
+              "straddlerFrames": 220,
+              "frames": 220,
+              "cropBorders": 0
+            },
+            "hero": {
+              "outsideMaxPx2": 78591,
+              "straddlerFrames": 220,
+              "frames": 220,
+              "cropBorders": 0
+            },
+            "sidebar": {
+              "outsideMaxPx2": 76277,
+              "straddlerFrames": 220,
+              "frames": 220,
+              "cropBorders": 0
+            },
+            "frame": {
+              "outsideMaxPx2": 154283,
+              "straddlerFrames": 220,
+              "frames": 220,
+              "cropBorders": 0
+            },
+            "flock": {
+              "outsideMaxPx2": 582480,
+              "straddlerFrames": 220,
+              "frames": 220,
+              "cropBorders": 0
+            }
+          }
+        }
+      }
+    }
+  },
+  "passed": true
+}

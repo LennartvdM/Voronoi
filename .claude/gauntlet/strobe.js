@@ -31,6 +31,10 @@ const OUT = argv[1] && !argv[1].startsWith('--') ? argv[1] : null;
 const opt = (n, d) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : d; };
 const DT = +opt('--dt', 1000 / 60), JIT = +opt('--jitter', 0);
 const FRAMES = +opt('--frames', 330), DUMP = opt('--dump', null);
+// --domain: raster the whole page (a mark with a bleed exposes root.blBox()),
+// so a cell that crosses the window's edge is measured whole. Off by default:
+// the viewport raster is what every earlier mark was measured on.
+const DOMAIN = argv.includes('--domain');
 const NAMES = ['root', 'ringArea', 'picture', 'W', 'H'];
 
 function instrument(src) {
@@ -53,20 +57,23 @@ const CLOCK = `(() => {
   window.__advance = (n) => { for (let i = 0; i < n; i++) { t += DT + (JIT ? (2 * rnd() - 1) * JIT : 0); const cbs = q.splice(0); for (const cb of cbs) cb(t); } };
 })();`;
 
-const RUN = (FRAMES) => {
+const RUN = ({ FRAMES, DOMAIN }) => {
   const X = window.__X, r = X.fn('root'), ra = X.fn('ringArea');
   X.setMouse(700, 400);
   const W = X.fn('W'), H = X.fn('H');
-  const CELL = 4, GW = Math.ceil(W / CELL), GH = Math.ceil(H / CELL);
+  const CELL = 4;
+  const box = DOMAIN && r.blBox ? r.blBox() : [0, 0, W, H];
+  const OX = box[0], OY = box[1];
+  const GW = Math.ceil((box[2] - box[0]) / CELL), GH = Math.ceil((box[3] - box[1]) / CELL);
   const masks = {};
   const fillLoop = (m, lp, val) => {
     let y0 = Infinity, y1 = -Infinity; for (const q of lp) { y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); }
-    const r0 = Math.max(0, Math.floor(y0 / CELL)), r1 = Math.min(GH - 1, Math.floor(y1 / CELL)), L = lp.length;
+    const r0 = Math.max(0, Math.floor((y0 - OY) / CELL)), r1 = Math.min(GH - 1, Math.floor((y1 - OY) / CELL)), L = lp.length;
     for (let row = r0; row <= r1; row++) {
-      const sy = (row + 0.5) * CELL, xs = [];
+      const sy = OY + (row + 0.5) * CELL, xs = [];
       for (let k = 0; k < L; k++) { const a = lp[k], b = lp[(k + 1) % L]; if ((a[1] <= sy) !== (b[1] <= sy)) xs.push(a[0] + (sy - a[1]) * (b[0] - a[0]) / (b[1] - a[1])); }
       xs.sort((u, v) => u - v);
-      for (let k = 0; k + 1 < xs.length; k += 2) { const c0 = Math.max(0, Math.round(xs[k] / CELL)), c1 = Math.min(GW, Math.round(xs[k + 1] / CELL)); for (let c = c0; c < c1; c++) m[row * GW + c] = val; }
+      for (let k = 0; k + 1 < xs.length; k += 2) { const c0 = Math.max(0, Math.round((xs[k] - OX) / CELL)), c1 = Math.min(GW, Math.round((xs[k + 1] - OX) / CELL)); for (let c = c0; c < c1; c++) m[row * GW + c] = val; }
     }
   };
   const frames = [], marks = [];
@@ -120,10 +127,10 @@ const RUN = (FRAMES) => {
     document.querySelector('.scene-btn[data-scene="' + sc + '"]').click();
     for (let i = 0; i < FRAMES; i++) step();
   }
-  return { frames, marks };
+  return { frames, marks, grid: { cell: CELL, box, gw: GW, gh: GH } };
 };
 
-function metrics({ frames, marks }) {
+function metrics({ frames, marks, grid }) {
   const sceneOf = (f) => { let s = 'flock0', sf = f; for (const m of marks) if (f >= m.f) { s = m.scene; sf = f - m.f; } return [s, sf]; };
   const tele = [], reach = [];
   let bodyFrames = 0, sdSum = 0, aSum = 0;
@@ -155,6 +162,7 @@ function metrics({ frames, marks }) {
   return {
     frames: frames.length, clock: { dtMs: DT, jitterMs: JIT }, bodyFrames,
     churnShareMean: +(sdSum / Math.max(1, aSum)).toFixed(4),
+    grid,
     teleports: tele.length, teleportByScene: byScene,
     reaches: reach.length, reachByScene: reachScene,
     reachNested: reach.filter(r => r.depth > 1).length, reachAdopting: reach.filter(r => r.exA > 0).length,
@@ -170,7 +178,7 @@ function metrics({ frames, marks }) {
   const errs = []; p.on('pageerror', e => errs.push(String(e.message || e)));
   await p.goto('file://' + dst);
   await p.waitForTimeout(300);
-  const data = await p.evaluate(RUN, FRAMES);
+  const data = await p.evaluate(RUN, { FRAMES, DOMAIN });
   await b.close();
   if (DUMP) fs.writeFileSync(DUMP, JSON.stringify(data));
   const m = metrics(data); m.pageErrors = errs.length;

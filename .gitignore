@@ -21,3 +21,5 @@
 /hoverprobe-*.txt
 /hoverprobe-*.json
 tessera-results/
+bleed-results/
+/out/
