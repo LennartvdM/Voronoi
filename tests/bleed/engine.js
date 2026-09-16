@@ -23,6 +23,8 @@
  */
 
 const BL_RETURN_TAU = 0.22;   // s: a displaced footprint's return clock
+const BL_PIN_POW = 4;         // the lock's grip on a displacement: kept as (1 - pin^POW), so a low power pulls a shoved tile home early and a high one holds it to the last frames
+const BL_PUSH_MAX = 0;        // px, 0 = no cap: the furthest the packing may hold a tile from where it is going, as a share of its own half-size
 const BL_PACK_ITERS = 2;      // packing sweeps per motion step
 const BL_PACK_TAU = 0.06;     // s: an overlap is taken out on this clock, not in one frame
 const BL_SNAP = 0.02;         // px: a displacement below this is none
@@ -30,6 +32,7 @@ const BL_TRAVEL_COMP = 0.1;   // a traveller yields this much against a yielder'
 const BL_DEPART_PUSH = 40;    // px: a waiter shoved this far off its slot departs now
 const BL_MARGIN = 1;          // lattice cells of page past the viewport on every side: the bleed
 const BL_RESERVE_MIN = 0.25;  // slots: a margin cell freer than this bids for its free area; below it, its neighbours take it
+const BL_RESERVE_PITCH = 3;   // margin cells per reserve site along an edge: whitespace needs no fine lattice, and every site is a bidder the auction pays for
 const BL_ITERS = 20;          // Newton iterations the root may take in a frame: the reserve's cells change claims as tiles cross the margin, and ten left frames a tenth off
 const BL_ROUTE = 1;           // a traveller's curve bows around the tiles that stay, out to the margin if that is where the room is
 const BL_LEAD = 0;            // s: the packing reads a traveller's footprint this far ahead (0.05 s measured: two more teleports, twenty more notched frames; off)
@@ -99,7 +102,7 @@ Hive.prototype.updateCrystal = function(b, t) {
   b.pin = L;
 };
 
-function blPinKeep(b) { return 1 - Math.pow(b.pin || 0, 4); }
+function blPinKeep(b) { return 1 - Math.pow(b.pin || 0, BL_PIN_POW); }
 
 Hive.prototype.blCompliance = function(b) {
   const pk = blPinKeep(b);
@@ -216,6 +219,13 @@ Hive.prototype.blPack = function(h) {
     if (it.pk < 1e-3) continue;
     it.b.tesP.x = (it.x - it.wx) / it.pk;
     it.b.tesP.y = (it.y - it.wy) / it.pk;
+    // and no further from its slot than a share of its own size: a tile held
+    // a hundred pixels off its slot is a tile that has to travel back
+    if (BL_PUSH_MAX) {
+      const mx = BL_PUSH_MAX * it.hw, my = BL_PUSH_MAX * it.hh;
+      it.b.tesP.x = Math.max(-mx, Math.min(mx, it.b.tesP.x));
+      it.b.tesP.y = Math.max(-my, Math.min(my, it.b.tesP.y));
+    }
     const j = it.b.journey;
     if (j && j.stamp && this.t < j.t0 + j.delay && Math.hypot(it.b.tesP.x, it.b.tesP.y) > BL_DEPART_PUSH) j.delay = Math.max(0, this.t - j.t0);
   }
@@ -548,12 +558,23 @@ Hive.prototype.placeSeeds = function() {
   const PW = this.PW, PH = this.PH, C = this.COLS, R = this.ROWS, k = BL_MARGIN;
   const key = [this.W, this.H, C, R, k].join(',');
   if (r.blKey !== key) {
+    // THE MARGIN'S SITES. One per cell of the ring is one bidder per cell
+    // for ground that is whitespace either way, and every bidder is a row of
+    // the auction: the ring's cells are gathered into runs of BL_RESERVE_PITCH
+    // along each side (a run is a rectangle, so a site still stands in the
+    // middle of what it claims), and the corners keep a site of their own.
     r.blKey = key; r.subs = [];
-    for (let row = -k; row < R + k; row++) for (let col = -k; col < C + k; col++) {
-      if (row >= 0 && row < R && col >= 0 && col < C) continue;
-      const x0 = col * PW, y0 = row * PH;
-      r.subs.push({ body: r, x: x0 + PW / 2, y: y0 + PH / 2, w: 0, claim: 0, live: false, cell: [x0, y0, x0 + PW, y0 + PH] });
-    }
+    const P = Math.max(1, BL_RESERVE_PITCH | 0);
+    const add = (x0, y0, x1, y1) => r.subs.push({ body: r, x: (x0 + x1) / 2, y: (y0 + y1) / 2, w: 0, claim: 0, live: false, cell: [x0, y0, x1, y1] });
+    const runs = (from, to) => { const out = []; for (let a = from; a < to; a += P) out.push([a, Math.min(to, a + P)]); return out; };
+    for (let row = -k; row < 0; row++) for (const [a, b] of runs(0, C)) add(a * PW, row * PH, b * PW, (row + 1) * PH);
+    for (let row = R; row < R + k; row++) for (const [a, b] of runs(0, C)) add(a * PW, row * PH, b * PW, (row + 1) * PH);
+    for (let col = -k; col < 0; col++) for (const [a, b] of runs(0, R)) add(col * PW, a * PH, (col + 1) * PW, b * PH);
+    for (let col = C; col < C + k; col++) for (const [a, b] of runs(0, R)) add(col * PW, a * PH, (col + 1) * PW, b * PH);
+    for (let row = -k; row < 0; row++) for (let col = -k; col < 0; col++) add(col * PW, row * PH, (col + 1) * PW, (row + 1) * PH);
+    for (let row = -k; row < 0; row++) for (let col = C; col < C + k; col++) add(col * PW, row * PH, (col + 1) * PW, (row + 1) * PH);
+    for (let row = R; row < R + k; row++) for (let col = -k; col < 0; col++) add(col * PW, row * PH, (col + 1) * PW, (row + 1) * PH);
+    for (let row = R; row < R + k; row++) for (let col = C; col < C + k; col++) add(col * PW, row * PH, (col + 1) * PW, (row + 1) * PH);
   }
   // each margin site claims the free area of its cell, in slots
   // what stands in the margin: walls and rigid tiles as rectangles, the
@@ -581,7 +602,7 @@ Hive.prototype.placeSeeds = function() {
     const c = s.cell;
     // (the reference's placeSeeds moves every body's first site to the body:
     // the reserve's sites stand on their lattice cells, always)
-    s.x = c[0] + PW / 2; s.y = c[1] + PH / 2;
+    s.x = (c[0] + c[2]) / 2; s.y = (c[1] + c[3]) / 2;
     let under = 0, covered = false;
     for (const q of rects) {
       const ox = Math.min(c[2], q[2]) - Math.max(c[0], q[0]), oy = Math.min(c[3], q[3]) - Math.max(c[1], q[1]);
@@ -594,7 +615,7 @@ Hive.prototype.placeSeeds = function() {
     // it cannot find in five iterations (a tiny target beside its own dead
     // neighbours is an ill-conditioned row): both stand out of the auction
     // until the tile has passed, and the sliver is whitespace either way
-    const free = Math.max(0, 1 - under / (PW * PH));
+    const free = Math.max(0, (c[2] - c[0]) * (c[3] - c[1]) - under) / (PW * PH);
     s.claim = covered || free < BL_RESERVE_MIN ? 0 : free;
     freeSum += s.claim;
   }
@@ -609,10 +630,11 @@ Hive.prototype.placeSeeds = function() {
   // twelve tiles moving spent a hundred such bisections. A margin cell is a
   // lattice cell like the ones beside it: it enters, and comes back, at the
   // mean weight of its lattice neighbours that held a cell last frame.
+  const qSlots = q => (q.cell[2] - q.cell[0]) * (q.cell[3] - q.cell[1]) / (PW * PH);
   const areaOf = new Map();
   if (this.solved && this.solvedSubs) this.solvedSubs.forEach((q, i) => { if (q.body === r) areaOf.set(q, this.solved.diagram.areas[i]); });
   const held = q => q.live && (areaOf.get(q) || 0) > 1;
-  const byCell = new Map(r.subs.map(q => [q.cell[0] + ',' + q.cell[1], q]));
+  const byCell = new Map(r.subs.map(q => [Math.round(q.x) + ',' + Math.round(q.y), q]));
   for (const q of r.subs) {
     if (q.claim < ACTIVE_MIN) continue;
     if (held(q)) continue;
@@ -621,11 +643,14 @@ Hive.prototype.placeSeeds = function() {
     // each bisector shifting by the weight difference over twice the pitch),
     // so a site claiming less than its neighbour enters that much lower
     let wSum = 0, wN = 0;
-    const est = nb => nb.w + (q.claim - nb.claim) * PW * PH / 2;
-    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
-      if (!dr && !dc) continue;
-      const nb = byCell.get((q.cell[0] + dc * PW) + ',' + (q.cell[1] + dr * PH));
-      if (nb && held(nb)) { wSum += est(nb); wN++; }
+    const est = nb => nb.w + (q.claim / Math.max(1e-9, qSlots(q)) - nb.claim / Math.max(1e-9, qSlots(nb))) * PW * PH / 2;
+    for (const nb of r.subs) {
+      if (nb === q || !held(nb)) continue;
+      // a neighbour is a site whose run touches this one: within a run's
+      // span plus a cell, in both axes
+      if (Math.abs(nb.x - q.x) > (q.cell[2] - q.cell[0]) / 2 + (nb.cell[2] - nb.cell[0]) / 2 + PW / 2) continue;
+      if (Math.abs(nb.y - q.y) > (q.cell[3] - q.cell[1]) / 2 + (nb.cell[3] - nb.cell[1]) / 2 + PH / 2) continue;
+      wSum += est(nb); wN++;
     }
     if (!wN) for (const nb of r.subs) if (held(nb)) { wSum += est(nb); wN++; }
     if (wN) { q.w = wSum / wN; q.live = true; }

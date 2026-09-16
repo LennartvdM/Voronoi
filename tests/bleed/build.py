@@ -6,6 +6,7 @@ reference is never modified; the mark is regenerated from it.
 """
 from pathlib import Path
 import os
+import sys
 import re
 import hashlib
 import re
@@ -56,6 +57,27 @@ replace("        const pieces = [];\n        for (const i of subIdx) {",
         "        const pieces = b.blExtra ? b.blExtra.slice() : [];\n        for (const i of subIdx) {", 1)
 # a newcomer's weight to a hundredth of a px² is enough (the reference bisects
 # to a billionth: fifty-four auctions of one cell, a third of a slow frame)
+# A SEED ENTERS AT THE AREA THAT SEED IS PAINTED AT. The reference reads a
+# BODY's painted area, which is the same thing while every body has one site;
+# the reserve has one per run of margin cells, so a margin site returning to
+# the auction asked for the whole ring — half the page — and the bisection
+# handed it a weight the solve then had to undo. Each site carries its own.
+replace("    if (this.solved) { const ar = this.solved.diagram.areas; this.solvedSubs.forEach((s, i) => { s.body.paintArea += ar[i] || 0; }); }",
+        "    for (const b of this.bodies) for (const s of b.subs) s.blPaint = 0;\n"
+        "    if (this.solved) { const ar = this.solved.diagram.areas; this.solvedSubs.forEach((s, i) => { s.body.paintArea += ar[i] || 0; s.blPaint = ar[i] || 0; }); }", 1)
+replace("const target = Math.min(s.body.paintArea > 1 ? s.body.paintArea : fair, 0.98 * domainArea);",
+        "const sPaint = s.blPaint !== undefined ? s.blPaint : s.body.paintArea;\n"
+        "        const target = Math.min(sPaint > 1 ? sPaint : fair, 0.98 * domainArea);", 1)
+replace("const target = Math.min(s.body.paintArea > 1 ? s.body.paintArea : fair, 0.98 * ga);",
+        "const sPaintS = s.blPaint !== undefined ? s.blPaint : s.body.paintArea;\n"
+        "        const target = Math.min(sPaintS > 1 ? sPaintS : fair, 0.98 * ga);", 1)
+replace("paint: idx.map(i => active[i].body.paintArea) });",
+        "paint: idx.map(i => active[i].blPaint !== undefined ? active[i].blPaint : active[i].body.paintArea) });", 1)
+replace("paint: active.map(s => s.body.paintArea) });",
+        "paint: active.map(s => s.blPaint !== undefined ? s.blPaint : s.body.paintArea) });", 1)
+replace("paint: idx.map(s => s.body.paintArea) });",
+        "paint: idx.map(s => s.blPaint !== undefined ? s.blPaint : s.body.paintArea) });", 1)
+
 # the line search: the reference refuses a Newton step that would take any
 # cell below half the smallest target or area, and halves the step forty
 # times before giving up (development: BLEED_EPS0 and BLEED_HALVINGS)
@@ -90,7 +112,8 @@ import os
 OUT = Path(os.environ.get('BLEED_OUT', str(ROOT / 'bleed.html')))   # a variant build for an experiment, off the tree
 OUT.write_text(s)
 if OUT != ROOT / 'bleed.html':
-    raise SystemExit('Built variant ' + str(OUT))
+    print('Built variant ' + str(OUT))
+    sys.exit(0)
 index_path = ROOT / 'index.html'
 index = index_path.read_text()
 # idempotent: the block goes with the newline that follows it and any blank

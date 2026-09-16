@@ -126,14 +126,24 @@ const RUN = ({ FRAMES, PX, PY }) => {
     };
     for (const l of leaves) {
       const id = l.body.id;
-      const b = { rectangle: 0, notched: 0, voronoi: 0, cut: 0, fractured: 0, verts: 0, shortEdges: 0, reflex: 0, unexplained: 0 };
+      const b = { rectangle: 0, notched: 0, voronoi: 0, cut: 0, fractured: 0, verts: 0, shortEdges: 0, reflex: 0, unexplained: 0, bite: 0 };
       for (const lp0 of l.loops) {
         const c = classes.get(lp0);
         if (!c) continue;
         const lp = c.lp;
         b.verts = Math.max(b.verts, lp.length);
         if (c.cls === 'rectangle') { b.rectangle++; continue; }
-        if (c.cls === 'notched') { b.notched++; continue; }
+        // HOW DEEP THE LAST RESORT GOES. A notch is a rectangle less a
+        // rectangle; the bite is what is missing from the rectangle it would
+        // otherwise be, as a share. Counting notched frames alone lets one
+        // deep bite hide among many shallow ones.
+        if (c.cls === 'notched') {
+          let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+          for (const p of lp) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
+          const box = Math.max(1, (x1 - x0) * (y1 - y0));
+          b.notched++; b.bite = Math.max(b.bite, 1 - Math.abs(ringArea(lp)) / box);
+          continue;
+        }
         // turns and edge lengths
         const m = lp.length, sgn = Math.sign(ringArea(lp)) || 1;
         let reflex = 0, unexplained = 0, shortEdges = 0;
@@ -169,22 +179,25 @@ function metrics({ frames, marks }) {
   const keys = ['rectangle', 'notched', 'voronoi', 'cut', 'fractured'];
   for (const F of frames) {
     const sc = sceneOf(F.f);
-    const o = byScene[sc] = byScene[sc] || { bodyFrames: 0, rectangle: 0, notched: 0, voronoi: 0, cut: 0, fractured: 0, fracturedFrames: 0, vertsMax: 0 };
+    const o = byScene[sc] = byScene[sc] || { bodyFrames: 0, rectangle: 0, notched: 0, voronoi: 0, cut: 0, fractured: 0, fracturedFrames: 0, vertsMax: 0, biteMax: 0, biteSum: 0, notchFrames: 0 };
     let fr = 0;
     for (const id in F.b) {
       const b = F.b[id];
       o.bodyFrames++;
       for (const k of keys) o[k] += b[k];
       o.vertsMax = Math.max(o.vertsMax, b.verts);
+      if (b.notched) { o.notchFrames++; o.biteMax = Math.max(o.biteMax, b.bite); o.biteSum += b.bite; }
       if (b.fractured) { fr++; worst.push({ f: F.f, scene: sc, id: +id, verts: b.verts, reflex: b.reflex, unexplained: b.unexplained, shortEdges: b.shortEdges }); }
     }
     if (fr) o.fracturedFrames++;
   }
   const out = {};
-  for (const sc in byScene) { const o = byScene[sc]; out[sc] = { ...o, fracturedShare: +(o.fractured / Math.max(1, o.bodyFrames)).toFixed(4), rectangleShare: +(o.rectangle / Math.max(1, o.bodyFrames)).toFixed(3) }; }
+  for (const sc in byScene) { const o = byScene[sc]; out[sc] = { ...o, fracturedShare: +(o.fractured / Math.max(1, o.bodyFrames)).toFixed(4), rectangleShare: +(o.rectangle / Math.max(1, o.bodyFrames)).toFixed(3), biteMax: +o.biteMax.toFixed(3), biteMean: +(o.biteSum / Math.max(1, o.notchFrames)).toFixed(3) }; }
   const sum = (k) => ['hero', 'sidebar', 'frame'].reduce((a, sc) => a + (byScene[sc] ? byScene[sc][k] : 0), 0);
   return { frames: frames.length, clock: { dtMs: DT, jitterMs: JIT }, pointer: [PX, PY],
-    transition: { bodyFrames: sum('bodyFrames'), rectangle: sum('rectangle'), notched: sum('notched'), voronoi: sum('voronoi'), cut: sum('cut'), fractured: sum('fractured'), fracturedFrames: sum('fracturedFrames') },
+    transition: { bodyFrames: sum('bodyFrames'), rectangle: sum('rectangle'), notched: sum('notched'), voronoi: sum('voronoi'), cut: sum('cut'), fractured: sum('fractured'), fracturedFrames: sum('fracturedFrames'),
+      notchFrames: sum('notchFrames'), biteMax: +['hero', 'sidebar', 'frame'].reduce((a, sc) => Math.max(a, byScene[sc] ? byScene[sc].biteMax : 0), 0).toFixed(3),
+      biteMean: +(sum('biteSum') / Math.max(1, sum('notchFrames'))).toFixed(3) },
     byScene: out, worst: worst.sort((a, b) => b.unexplained - a.unexplained || b.verts - a.verts).slice(0, 12) };
 }
 
