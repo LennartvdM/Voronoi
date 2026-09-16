@@ -39,6 +39,11 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 GAUNTLET = ROOT / '.claude/gauntlet'
 PW = os.environ.get('PLAYWRIGHT_MODULE', '/opt/node22/lib/node_modules/playwright')
+# The probes hardcode this machine's chromium. On a CI runner playwright
+# installs its own, so the option is STRIPPED unless CHROMIUM_PATH names one —
+# the same convention tests/bleed and tests/tessera use.
+CHROME = os.environ.get('CHROMIUM_PATH')
+LAUNCH = "executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',"
 OUT = ROOT / 'tide-results'
 OUT.mkdir(exist_ok=True)
 
@@ -60,6 +65,7 @@ RIGID_BENTO_MIN = 0.99  # a bento is a bento: every slot a rectangle
 
 def run(script, page, extra=()):
     src = (GAUNTLET / script).read_text().replace('/opt/node22/lib/node_modules/playwright', PW)
+    src = src.replace(LAUNCH, ('executablePath: ' + json.dumps(CHROME) + ',') if CHROME else '')
     tmp = OUT / ('_' + script)
     tmp.write_text(src)
     # NO default --dt here: the probes resolve options with argv.indexOf,
