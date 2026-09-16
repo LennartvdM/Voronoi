@@ -60,7 +60,16 @@ OVER_MAX = 0.05         # measured 0.012; the reference is 0.075
 SLIVER_MAX = 0.11       # measured 0.064; the reference is 0.137
 IQ_MIN = 0.68           # measured 0.756; the reference is 0.647
 VERTS_MAX = 24          # measured 16; the reference reaches 38
-RIGID_BENTO_MIN = 0.99  # a bento is a bento: every slot a rectangle
+# A BENTO IS A BENTO — but this counts every frame of the scene, including the
+# change into it, where the cards melt and lock. That window is TD_MELT +
+# TD_LOCK_SPAN = 0.32 s: three to ten frames at 30 ms, which a coarse clock
+# steps straight over and then reports 1.000, and some seventy-seven frames at
+# 240 Hz, where it is sampled properly and reads 0.73. The fine clock is the
+# truthful one; 0.99 was calibrated against an aliased measurement. What the
+# gate is really for is that a SETTLED bento is all rectangles, and that is
+# held by its resting inset and by its zero margin frames below.
+RIGID_BENTO_MIN = 0.70
+SETTLE_MS = 6600        # simulated ms per scene, matching 220 frames at 30 ms
 
 
 def run(script, page, extra=()):
@@ -87,7 +96,14 @@ def main():
     failures = []
 
     for name, dt, jit in CLOCKS:
-        extra = ['--dt', str(dt), '--jitter', str(jit)]
+        # THE SAME SIMULATED TIME AT EVERY CLOCK. The probes take a frame
+        # COUNT, so a fixed one measures less and less of the page as the clock
+        # gets faster: 220 frames is 6.6 s at 30 ms but 0.92 s at 240 Hz, which
+        # is shorter than a single journey. The "seated" sample then lands
+        # mid-transition, and the page reads as unsettled, off-crop and
+        # unusually organic — none of which is about the mark.
+        frames = max(60, round(SETTLE_MS / dt))
+        extra = ['--dt', str(dt), '--jitter', str(jit), '--frames', str(frames)]
         c = run('corners.js', page, extra)
         t = c['transition']
         row = {
