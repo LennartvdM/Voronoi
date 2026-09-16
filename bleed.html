@@ -1799,7 +1799,7 @@ class Hive {
     this.serial++;
     const salt = 40 + this.serial;
     const content = this.bodies.filter(b => !b.isVoid && !b.leaving && !b.isSelf);
-    const spec = scenes[name] ? scenes[name](this.COLS, this.ROWS, content.length) : null;
+    const spec = scenes[name] ? this.blSpec(scenes[name](this.COLS, this.ROWS, content.length)) : null;
     const pending = this.bodies.filter(b => b.pendingRetire);
     for (const b of pending) b.pendingRetire = false;
 
@@ -1811,7 +1811,7 @@ class Hive {
       // and half seated keeps every proportion on the way
       let rel = 0;
       for (const b of content) rel += b.baseRel;
-      const K = rel > 0 ? this.COLS * this.ROWS / rel : 1;
+      const K = rel > 0 ? (BL_FILL ? this.blSlots() : this.COLS * this.ROWS) / rel : 1;
       for (const b of content) b.baseClaim = b.baseRel * K;
       let best = null, bs = -1;
       for (const b of content) { const s = Math.abs(b.baseClaim - b.claim); if (s > bs) { bs = s; best = b; } }
@@ -2085,6 +2085,7 @@ class Hive {
   // field once the crystal fraction has spread them past the minimum.
   enforcePreconditions(h) {
     const bodies = this.bodies, W = this.W, H = this.H;
+    const [CX0, CY0, CX1, CY1] = this.blClampBox ? this.blClampBox() : [SEED_MARGIN, SEED_MARGIN, W - SEED_MARGIN, H - SEED_MARGIN];
     // the damping after an eviction is a RATE, not a per-frame haircut: half
     // the speed per 1/60 s, whatever the step is
     const damp = Math.pow(0.5, (h || 1 / 60) * 60);
@@ -2092,8 +2093,8 @@ class Hive {
     let cx = W / 2, cy = H / 2;
     if (poly) { cx = 0; cy = 0; for (const p of poly) { cx += p[0]; cy += p[1]; } cx /= poly.length; cy /= poly.length; }
     for (const b of bodies) {
-      b.x = Math.min(W - SEED_MARGIN, Math.max(SEED_MARGIN, b.x));
-      b.y = Math.min(H - SEED_MARGIN, Math.max(SEED_MARGIN, b.y));
+      b.x = Math.min(CX1, Math.max(CX0, b.x));
+      b.y = Math.min(CY1, Math.max(CY0, b.y));
       // a wall is not ground: a body that would stand in one steps to its
       // nearest edge, so a traveller goes around a settled cell
       if (!b.wall && !b.isSelf) {
@@ -2120,8 +2121,8 @@ class Hive {
             if (bp) { b.x += bp.ax * (best + 0.5); b.y += bp.ay * (best + 0.5); b.vx *= damp; b.vy *= damp; }
           }
         }
-        b.x = Math.min(W - SEED_MARGIN, Math.max(SEED_MARGIN, b.x));
-        b.y = Math.min(H - SEED_MARGIN, Math.max(SEED_MARGIN, b.y));
+        b.x = Math.min(CX1, Math.max(CX0, b.x));
+        b.y = Math.min(CY1, Math.max(CY0, b.y));
       }
       if (poly && !pointInPolygon(b.x, b.y, poly)) {
         // the box is not the domain: a body in a corner the cell does not
@@ -3537,6 +3538,7 @@ function buildPicture(root) {
   let carved = 0;
   for (const sh of shards) carved += sh.beyond;
   for (const leaf of leaves) leaf.loops = leaf.isVoid ? leaf.pieces.filter(pc => pc.pts.length >= 3).map(pc => pc.pts) : leafOutlines(leaf.pieces);
+  blClipNested(leaves);
   return { leaves, shards, carved };
 }
 
@@ -3942,8 +3944,12 @@ const BL_TRAVEL_COMP = 0.1;   // a traveller yields this much against a yielder'
 const BL_DEPART_PUSH = 40;    // px: a waiter shoved this far off its slot departs now
 const BL_MARGIN = 1;          // lattice cells of page past the viewport on every side: the bleed
 const BL_RESERVE_MIN = 0.25;  // slots: a margin cell freer than this bids for its free area; below it, its neighbours take it
-const BL_ITERS = 10;          // Newton iterations the root may take in a frame
-const BL_LEAD = 0;            // s: the packing reads a traveller's footprint this far ahead, so what is in its way yields before contact
+const BL_ITERS = 20;          // Newton iterations the root may take in a frame: the reserve's cells change claims as tiles cross the margin, and ten left frames a tenth off
+const BL_ROUTE = 1;           // a traveller's curve bows around the tiles that stay, out to the margin if that is where the room is
+const BL_LEAD = 0;            // s: the packing reads a traveller's footprint this far ahead (0.05 s measured: two more teleports, twenty more notched frames; off)
+const BL_YIELD = 1;           // a waiter in a traveller's way yields the whole overlap the frame it appears, not on the packing's clock
+const BL_EXTEND = 0.5;        // lattice cells: a scene rectangle on the lattice's edge runs this far into the bleed, so the page's ink runs off the crop
+const BL_FILL = 1;            // the flock fills the page: its rest sizes are scaled to the whole page, not the window (0: the flock keeps to the window and the reserve holds the ring)
 
 // The rigid footprint this body shows this frame, in px: null unless the
 // body is a tile (crystal 1, seated or travelling rigid). A tile changing
@@ -3980,8 +3986,11 @@ Hive.prototype.blPlace = function(b, fp) {
 const blOldSeat = Hive.prototype.seatBody;
 Hive.prototype.seatBody = function(b, rect, T = 0, timing) {
   if (this.depth !== 0) return blOldSeat.call(this, b, rect, T, timing);
+  // a tile, seated or in flight: a rigid tile re-seated mid-way (a change
+  // interrupted by the next) turns toward its new slot as it is, from where
+  // it is, at the size it has — never through the reference's melt
   const fp = this.blFootprint(b), had = b.journey;
-  const tile = !!fp && !fp.travelling;
+  const tile = !!fp;
   blOldSeat.call(this, b, rect, T, timing);
   if (b.journey === had || !b.journey) return;
   if (!tile) return;
@@ -4069,7 +4078,10 @@ Hive.prototype.blPack = function(h) {
     const at = this.blPlace(b, fp);
     const wx = at.x - p.x * pk, wy = at.y - p.y * pk;
     const lx = fp.travelling ? b.vx * BL_LEAD : 0, ly = fp.travelling ? b.vy * BL_LEAD : 0;
-    items.push({ b, hw: fp.hw, hh: fp.hh, x: at.x, y: at.y, comp, pk, wx, wy, x0: at.x, y0: at.y, lx, ly });
+    // in motion: on its curve, between departure and landing (a waiter with
+    // a journey pending, and a tile that has landed, are not)
+    const jn = b.journey, moving = !!(jn && jn.stamp && b.progress > 0 && b.progress < 1);
+    items.push({ b, hw: fp.hw, hh: fp.hh, x: at.x, y: at.y, comp, pk, wx, wy, x0: at.x, y0: at.y, lx, ly, tr: moving });
   }
   const live = new Set();
   const relax = 1 - Math.exp(-h / BL_PACK_TAU);
@@ -4086,7 +4098,13 @@ Hive.prototype.blPack = function(h) {
         const key = A.b.id + ':' + B.b.id;
         live.add(key);
         const sx = dx >= 0 ? 1 : -1, sy = dy >= 0 ? 1 : -1;
-        const share = A.comp / (A.comp + B.comp);
+        let share = A.comp / (A.comp + B.comp), r = relax;
+        // A WAITER YIELDS RIGIDLY: a tile that can move, in a traveller's
+        // way, takes the whole overlap out the frame it appears, so the
+        // picture never holds a traveller lying across a seated tile for
+        // the packing's clock to clear; two travellers, or a traveller
+        // against what cannot move, part on the clock as before
+        if (BL_YIELD && A.tr !== B.tr && (A.tr ? B : A).comp >= 1) { share = A.tr ? 0 : 1; r = 1; }
         const against = (it, ax, ay, pen) => ((it.wx - it.x) * ax + (it.wy - it.y) * ay) < -(0.5 * pen + 1) ? 1 : 0;
         const cx = ox * (1 + 3 * (share * against(A, -sx, 0, ox) + (1 - share) * against(B, sx, 0, ox)));
         const cy = oy * (1 + 3 * (share * against(A, 0, -sy, oy) + (1 - share) * against(B, 0, sy, oy)));
@@ -4094,8 +4112,8 @@ Hive.prototype.blPack = function(h) {
         const prev = contacts.get(key);
         if (prev && ((prev.axis === 'x' && cx <= 2 * cy) || (prev.axis === 'y' && cy <= 2 * cx))) axis = prev.axis;
         contacts.set(key, { axis });
-        if (axis === 'x') { A.x -= sx * ox * share * relax; B.x += sx * ox * (1 - share) * relax; }
-        else { A.y -= sy * oy * share * relax; B.y += sy * oy * (1 - share) * relax; }
+        if (axis === 'x') { A.x -= sx * ox * share * r; B.x += sx * ox * (1 - share) * r; }
+        else { A.y -= sy * oy * share * r; B.y += sy * oy * (1 - share) * r; }
         moved = true;
       }
     }
@@ -4117,10 +4135,73 @@ Hive.prototype.blPack = function(h) {
   }
 };
 
+// The seeds' clamp: the page less the seed margin. A site may stand in the
+// bleed; the reference's own text is patched to read this box.
+Hive.prototype.blClampBox = function() {
+  if (this.depth !== 0 || this.domainPolyActive()) return [SEED_MARGIN, SEED_MARGIN, this.W - SEED_MARGIN, this.H - SEED_MARGIN];
+  const [x0, y0, x1, y1] = this.blBox();
+  return [x0 + SEED_MARGIN, y0 + SEED_MARGIN, x1 - SEED_MARGIN, y1 - SEED_MARGIN];
+};
+
+// A SITE UNDER A TILE OR IN A HOLE GOES TO THE NEAREST FREE GROUND. The reference steps
+// a seed out of a hole by half a pixel through its nearest side; between
+// two tiles that share that side it is stepped into the other and back,
+// every frame, and owns nothing (a scene of thirty over twelve tiles that
+// cover the window left nineteen newcomers on the seams). Here the step is
+// to the nearest point of the ground the auction will actually sell — the
+// page less the walls and the holes — half a pixel inside it; when the
+// window is full that ground is the bleed, and the newcomer's cell opens
+// there and comes in as the tiles part.
+Hive.prototype.blEvict = function(h) {
+  if (this.depth !== 0) return;
+  const damp = Math.pow(0.5, (h || 1 / 60) * 60);
+  const walls = this.walls, holes = this.holes;
+  const inRect = (x, y, r) => x > r[0] && x < r[2] && y > r[1] && y < r[3];
+  // under a tile, or in a blended hole: the reference's holes are cut here
+  // by the tiles' planes into dozens of pieces, and its half-pixel step out
+  // of one piece is a step into the next
+  const under = (b, q) => q !== b && (q.blRigid ? inRect(b.x, b.y, q.hole.rect) : q.hole.pieces.some(pc => pointInPolygon(b.x, b.y, pc)));
+  const [CX0, CY0, CX1, CY1] = this.blClampBox();
+  // two newcomers under one tile are not stepped to one point: a site keeps
+  // two pixels from every other, or takes the next spot along the side
+  const others = this.bodies.filter(q => !q.isSelf && !q.blIsReserve);
+  let ground = null;
+  for (const b of this.bodies) {
+    if (b.isSelf || b.wall || b.hole || b.blIsReserve) continue;
+    if (!holes.some(q => under(b, q)) && !walls.some(w => inRect(b.x, b.y, w.wall))) continue;
+    if (!ground) ground = (this.domainPieces() || []).filter(p => p.length >= 3 && Math.abs(ringArea(p)) > 1);
+    let best = null, bd = Infinity;
+    const consider = (x, y) => {
+      x = Math.min(CX1, Math.max(CX0, x)); y = Math.min(CY1, Math.max(CY0, y));
+      const d = (x - b.x) * (x - b.x) + (y - b.y) * (y - b.y);
+      if (d >= bd) return;
+      for (const o of others) if (o !== b && (o.x - x) * (o.x - x) + (o.y - y) * (o.y - y) < 4) return;
+      for (const p of ground) if (pointInPolygon(x, y, p)) { bd = d; best = [x, y]; return; }
+    };
+    for (const p of ground) {
+      const o = ringArea(p) > 0 ? 1 : -1, n = p.length;
+      let cx = 0, cy = 0; for (const q of p) { cx += q[0]; cy += q[1]; }
+      consider(cx / n, cy / n);
+      for (let k = 0; k < n; k++) {
+        const P = p[k], Q = p[(k + 1) % n], dx = Q[0] - P[0], dy = Q[1] - P[1], L2 = dx * dx + dy * dy;
+        if (L2 < 1e-12) continue;
+        const L = Math.sqrt(L2), t0 = ((b.x - P[0]) * dx + (b.y - P[1]) * dy) / L2;
+        // half a pixel in from the side, on the inward normal (the reverse of
+        // convexPlanes' outward one), at the foot of the site and at the next spots along
+        for (const off of [0, 3, -3, 6, -6, 12, -12]) {
+          const t = Math.max(0, Math.min(1, t0 + off / L));
+          consider(P[0] + t * dx - o * dy / L * 0.5, P[1] + t * dy + o * dx / L * 0.5);
+        }
+      }
+    }
+    if (best) { b.x = best[0]; b.y = best[1]; b.vx *= damp; b.vy *= damp; }
+  }
+};
+
 const blOldPre = Hive.prototype.enforcePreconditions;
 Hive.prototype.enforcePreconditions = function(h) {
   blOldPre.call(this, h);
-  if (this.depth === 0) this.blPack(h || 1 / 60);
+  if (this.depth === 0) { this.blEvict(h); this.blPack(h || 1 / 60); }
 };
 
 const blOldSize = Hive.prototype.setSize;
@@ -4147,10 +4228,18 @@ Hive.prototype.computeWalls = function() {
   const tiles = [];
   for (const b of this.bodies) {
     b.blRigid = false;
+    const PW = this.PW, PH = this.PH;
+    if (b.isVoid && !b.blIsReserve && b.rect && !b.leaving && b.crystal >= 1) {
+      // whitespace at rest is a wall to the reference; to a tile crossing
+      // it, it is room: it yields the overlap, and nobody sees the notch
+      const r = b.rect, rect = [r[0] * PW, r[1] * PH, r[2] * PW, r[3] * PH];
+      tiles.push({ b, rect, onSlot: true, landed: true, fp: null, isVoid: true });
+      continue;
+    }
     const fp = this.blFootprint(b);
     if (!fp) continue;
     const at = this.blPlace(b, fp);
-    const r = b.rect, PW = this.PW, PH = this.PH;
+    const r = b.rect;
     const slot = [r[0] * PW, r[1] * PH, r[2] * PW, r[3] * PH];
     const rect = [at.x - at.hw, at.y - at.hh, at.x + at.hw, at.y + at.hh];
     const onSlot = rect.every((v, i) => Math.abs(v - slot[i]) < 1e-6);
@@ -4169,7 +4258,8 @@ Hive.prototype.computeWalls = function() {
       const u = tiles[j];
       if (u.rect[0] < t.rect[2] - 1e-6 && u.rect[2] > t.rect[0] + 1e-6 && u.rect[1] < t.rect[3] - 1e-6 && u.rect[3] > t.rect[1] + 1e-6) crossed = true;
     }
-    if (t.onSlot && t.landed && t.b.crystal >= 1 && !crossed) continue;   // the reference makes it a wall
+    if (t.onSlot && t.landed && t.b.crystal >= 1 && !crossed) continue;   // the reference makes it a wall (a void too)
+    if (t.isVoid && !crossed) continue;
     rigid.set(t.b, t);
   }
   if (!rigid.size) return blOldWalls.call(this);
@@ -4185,7 +4275,7 @@ Hive.prototype.computeWalls = function() {
   // tile displaced, or crossed, moves aside. So the overlap is cut from
   // the one that is moving aside anyway, and the notch lasts as long as
   // the packing takes to clear it.
-  const rank = t => t.landed && t.onSlot ? 3 : (t.fp.travelling ? 2 + (t.b.progress || 0) : 1 - this.blCompliance(t.b));
+  const rank = t => t.isVoid ? -1 : (t.landed && t.onSlot ? 3 : (t.fp.travelling ? 2 + (t.b.progress || 0) : 1 - this.blCompliance(t.b)));
   const list = Array.from(rigid.values()).sort((a, b) => rank(b) - rank(a));
   const unit = (hp) => hp.filter(h => Math.hypot(h.ax, h.ay) > 1e-9).map(h => { const L = Math.hypot(h.ax, h.ay); return { ax: h.ax / L, ay: h.ay / L, b: h.b / L }; });
   const placed = this.walls.map(w => { const r = w.wall; return [[{ ax: -1, ay: 0, b: -r[0] }, { ax: 1, ay: 0, b: r[2] }, { ax: 0, ay: -1, b: -r[1] }, { ax: 0, ay: 1, b: r[3] }]]; });
@@ -4312,6 +4402,44 @@ function blMergeRects(pieces) {
   return list.map(r => [[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]]]).concat(other);
 }
 
+// The page in slots: the window's lattice plus the bleed's ring. The
+// reference's flock scales its rest sizes to COLS*ROWS — the window — and
+// the reference's line is patched to ask for this instead, so a released
+// page fills the PAGE and every edge cell is cut by the crop.
+Hive.prototype.blSlots = function() {
+  if (this.depth !== 0) return this.COLS * this.ROWS;
+  return (this.COLS + 2 * BL_MARGIN) * (this.ROWS + 2 * BL_MARGIN);
+};
+
+// THE PAGE'S INK RUNS OFF THE CROP. A scene rectangle on the lattice's
+// edge is extended half a margin cell into the bleed (content and void
+// alike), so a settled page bleeds on all four sides: the outer gutter
+// and the rounded corner are off-screen, and the crop cuts the ink. The
+// reserve owns the outer half of the ring. (The reference's enterScene is
+// patched to pass every scene specification through here.)
+Hive.prototype.blSpec = function(spec) {
+  if (!spec || this.depth !== 0 || !BL_EXTEND) return spec;
+  const C = this.COLS, R = this.ROWS, e = BL_EXTEND * BL_MARGIN;
+  const ext = r => { const q = r.slice(); if (q[0] === 0) q[0] = -e; if (q[1] === 0) q[1] = -e; if (q[2] === C) q[2] = C + e; if (q[3] === R) q[3] = R + e; return q; };
+  const out = Object.assign({}, spec);
+  if (spec.content) out.content = spec.content.map(ext);
+  if (spec.voids) out.voids = spec.voids.map(ext);
+  return out;
+};
+
+// HOVER ON A TILE IS A LIFT, NOT A BULGE. The reference grows a hovered
+// wall a ring cut out of its neighbours, and lets a hovered member burst
+// past its field into the page's cells: both break the rule at the root
+// (a rectangle with a bulge, a neighbour with a bite). Here the root keeps
+// no shards: a hovered tile lifts into its own gutter and glows, as the
+// garment already draws it; inside a field the members' cells still grow
+// against each other, Voronoi cells growing, within the field's rectangle.
+const blOldShards = Hive.prototype.computeShards;
+Hive.prototype.computeShards = function() {
+  if (this.depth !== 0) return blOldShards.call(this);
+  this.shards = [];
+};
+
 // The reserve: a void body that is never seated, never retired, never a
 // source or a node of a change; its sites are the margin's lattice.
 Hive.prototype.blReserve = function() {
@@ -4344,21 +4472,34 @@ Hive.prototype.placeSeeds = function() {
   // each margin site claims the free area of its cell, in slots
   // what stands in the margin: walls and rigid tiles as rectangles, the
   // reference's blended holes as their convex pieces
+  // THE RESERVE TAKES WHAT IS LEFT. Not a timer and not a second ledger:
+  // the page is worth blSlots(), everyone else has asked for what they have
+  // asked for this frame, and the margin's sites share the remainder in
+  // proportion to the free area each of them stands on. At rest in a scene
+  // that remainder IS the free margin, so each site claims its own free
+  // area, the local rule; released, the flock's rest sizes are scaled to
+  // the page, the remainder falls to nothing, and the ring goes to the
+  // content on the content's own clock — no easing of ours to wobble
+  // against theirs, and the claims sum to the page every frame.
+  let taken = 0;
+  for (const b of this.bodies) if (!b.blIsReserve && !b.isSelf) taken += b.claim;
+  const left = Math.max(0, this.blSlots() - taken);
   const rects = [], polys = [];
   for (const b of this.bodies) {
     if (b.wall) rects.push(b.wall);
     else if (b.hole) { if (b.blRigid) rects.push(b.hole.rect); else for (const p of b.hole.pieces) polys.push(p); }
   }
+  let freeSum = 0;
   const inPoly = (x, y, poly) => { let inside = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], b = poly[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside; } return inside; };
   for (const s of r.subs) {
     const c = s.cell;
     // (the reference's placeSeeds moves every body's first site to the body:
     // the reserve's sites stand on their lattice cells, always)
     s.x = c[0] + PW / 2; s.y = c[1] + PH / 2;
-    let taken = 0, covered = false;
+    let under = 0, covered = false;
     for (const q of rects) {
       const ox = Math.min(c[2], q[2]) - Math.max(c[0], q[0]), oy = Math.min(c[3], q[3]) - Math.max(c[1], q[1]);
-      if (ox > 0 && oy > 0) taken += ox * oy;
+      if (ox > 0 && oy > 0) under += ox * oy;
       if (s.x > q[0] && s.x < q[2] && s.y > q[1] && s.y < q[3]) covered = true;
     }
     for (const p of polys) if (inPoly(s.x, s.y, p)) { covered = true; break; }
@@ -4367,9 +4508,14 @@ Hive.prototype.placeSeeds = function() {
     // it cannot find in five iterations (a tiny target beside its own dead
     // neighbours is an ill-conditioned row): both stand out of the auction
     // until the tile has passed, and the sliver is whitespace either way
-    const free = Math.max(0, 1 - taken / (PW * PH));
+    const free = Math.max(0, 1 - under / (PW * PH));
     s.claim = covered || free < BL_RESERVE_MIN ? 0 : free;
+    freeSum += s.claim;
   }
+  // the remainder, shared out; never more than the site's own free area
+  // (a tile standing in the margin covers sites and only the reserve shrinks)
+  const share = freeSum > 1e-9 ? Math.min(1, left / freeSum) : 0;
+  if (share < 1) for (const s of r.subs) s.claim *= share;
   // A MARGIN SITE ENTERS AT ITS NEIGHBOURS' WEIGHT. The reference brings a
   // newcomer in by bisection, fifty-odd auctions of one cell, and revives a
   // site whose cell came out empty the same way; a tile crossing the margin
@@ -4400,7 +4546,20 @@ Hive.prototype.placeSeeds = function() {
   }
   r.x = this.W / 2; r.y = this.H / 2; r.vx = 0; r.vy = 0;
   r.crystal = 0; r.hoverMix = 0;
+};
+
+// The pockets are the SOLVE'S, not the frame's: a frame whose signature is
+// unchanged keeps the auction it had, and must keep the ground that auction
+// gave the reserve with it — cleared per frame, a cached frame painted the
+// page without them, and the pocket read as a gap.
+const blOldMain = Hive.prototype.solveMain;
+Hive.prototype.solveMain = function() {
+  if (this.depth !== 0) return blOldMain.call(this);
+  const r = this.blReserve(), keep = r.blExtra || [], sig = this.lastSig;
   r.blExtra = [];
+  const out = blOldMain.call(this);
+  if (this.lastSig === sig && !r.blExtra.length) r.blExtra = keep;   // the solve was cached: so are its pockets
+  return out;
 };
 
 // Ground nobody bids for — a pocket the tiles have closed around — is
@@ -4426,8 +4585,69 @@ Hive.prototype.enterScene = function(name, origin) {
   if (this.depth !== 0) return blOldEnter.call(this, name, origin);
   const r = this.bodies.find(b => b.blIsReserve);
   if (r) this.bodies = this.bodies.filter(b => b !== r);
-  try { return blOldEnter.call(this, name, origin); }
+  try { const out = blOldEnter.call(this, name, origin); if (BL_ROUTE) this.blRoute(); return out; }
   finally { if (r) this.bodies.push(r); }
+};
+
+// THE ROUTE. A traveller's path is the reference's quadratic curve, bowed
+// by the swirl. Where that curve carries a rigid tile across a tile that is
+// staying where it is, the two would have to fit — one notched, the other
+// shoved — for as long as the crossing lasts. So the bow is chosen at the
+// change: of the curves through a fan of control points either side of the
+// chord, the one whose swept footprint crosses the least of what stays,
+// the page's margin counting as room. A curve that swings out past the
+// window's edge and back is the sweep the owner asked for, and it is what
+// the margin is for.
+Hive.prototype.blRoute = function() {
+  const t0 = this.t, PW = this.PW, PH = this.PH, [X0, Y0, X1, Y1] = this.blBox();
+  const stays = [];
+  for (const b of this.bodies) {
+    if (b.isVoid || b.isSelf || b.leaving || !b.rect || b.crystal < 1) continue;
+    if (b.journey && b.journey.t0 === t0 && b.journey.stamp) continue;   // moving this change
+    const r = b.rect; stays.push([r[0] * PW, r[1] * PH, r[2] * PW, r[3] * PH]);
+  }
+  const movers = this.bodies.filter(b => b.journey && b.journey.stamp && b.journey.t0 === t0 && b.path)
+    .map(b => { const r = b.rect, j = b.journey; return { b, p: b.path, hw: Math.max(b.sizeFrom ? b.sizeFrom[0] * PW : 0, (r[2] - r[0]) * PW / 2), hh: Math.max(b.sizeFrom ? b.sizeFrom[1] * PH : 0, (r[3] - r[1]) * PH / 2), start: j.t0 + j.delay + (j.hold || 0), dur: j.dur }; })
+    .sort((a, b) => a.start - b.start);
+  const ease = u => u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+  const at = (mv, tau) => { const u = Math.max(0, Math.min(1, (tau - mv.start) / mv.dur)), e = ease(u), m = 1 - e, p = mv.p; return [m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey]; };
+  this.blRouted = 0;
+  for (const mv of movers) {
+    const b = mv.b, p = mv.p, hw = mv.hw, hh = mv.hh;
+    const cost = (cx, cy) => {
+      let sum = 0;
+      for (let k = 1; k < 24; k++) {
+        const t = k / 24, e = ease(t), m = 1 - e;
+        const x = m * m * p.sx + 2 * m * e * cx + e * e * p.ex, y = m * m * p.sy + 2 * m * e * cy + e * e * p.ey;
+        if (x - hw < X0 || x + hw > X1 || y - hh < Y0 || y + hh > Y1) return Infinity;   // off the page: not a route
+        for (const q of stays) {
+          const ox = Math.min(x + hw, q[2]) - Math.max(x - hw, q[0]), oy = Math.min(y + hh, q[3]) - Math.max(y - hh, q[1]);
+          if (ox > 0 && oy > 0) sum += ox * oy;
+        }
+        // the other travellers, where each will be at this moment
+        const tau = mv.start + t * mv.dur;
+        for (const o of movers) {
+          if (o === mv) continue;
+          const [qx, qy] = at(o, tau);
+          const ox = Math.min(x + hw, qx + o.hw) - Math.max(x - hw, qx - o.hw), oy = Math.min(y + hh, qy + o.hh) - Math.max(y - hh, qy - o.hh);
+          if (ox > 0 && oy > 0) sum += 0.5 * ox * oy;
+        }
+      }
+      return sum;
+    };
+    const base = cost(p.cx, p.cy);
+    if (!(base > 0)) continue;
+    const dx = p.ex - p.sx, dy = p.ey - p.sy, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+    const mx = (p.sx + p.ex) / 2, my = (p.sy + p.ey) / 2;
+    let best = base, bcx = p.cx, bcy = p.cy;
+    for (const f of [0.35, 0.7, 1.05, 1.4, 1.75]) for (const sg of [1, -1]) {
+      const cx = mx + nx * f * L * sg, cy = my + ny * f * L * sg;
+      const c = cost(cx, cy);
+      if (c < best - 1e-6) { best = c; bcx = cx; bcy = cy; }
+    }
+    if (bcx !== p.cx || bcy !== p.cy) this.blRouted++;
+    p.cx = bcx; p.cy = bcy;
+  }
 };
 
 // The shadow auction reads the cell a blended hole would have. A rigid tile
@@ -4553,11 +4773,54 @@ Hive.prototype.hitPath = function(x, y) {
 
 // A field inside a rigid tile reads the tile's rectangle, notched or not:
 // the notch is the picture's last resort, not the field's world.
+// (for its world only: the picture clips the field's leaves to what the
+// tile actually paints, notch and all, or the members would paint into it)
 const blOldCellPoly = Hive.prototype.cellPoly;
 Hive.prototype.cellPoly = function(b) {
-  if (this.depth === 0 && b.hole && b.blRigid) { const r = b.hole.rect; return [[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]]]; }
+  if (this.depth === 0 && !this.blPainting && b.hole && b.blRigid) { const r = b.hole.rect; return [[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]]]; }
   return blOldCellPoly.call(this, b);
 };
+const blOldCollect = Hive.prototype.collectLeaves;
+Hive.prototype.collectLeaves = function(out, ox, oy, fade) {
+  if (this.depth !== 0) return blOldCollect.call(this, out, ox, oy, fade);
+  this.blPainting = true;
+  let res;
+  try { res = blOldCollect.call(this, out, ox, oy, fade); } finally { this.blPainting = false; }
+  // A POCKET IS PAINTED EVEN WHEN THE RESERVE HOLDS NOTHING ELSE. The
+  // reference gathers a body's leaf from the cells it won; on a page whose
+  // tiles cover every margin site the reserve wins none, and the pockets it
+  // adopted would be painted by nobody — a hole in the page where the
+  // auction has an owner. Its leaf is gathered here instead.
+  const r = this.blReserve();
+  if (r.blExtra && r.blExtra.length && !out.some(l => l.body === r)) {
+    const pieces = r.blExtra.map(pc => ({ pts: pc.pts.map(q => [q[0] + (ox || 0), q[1] + (oy || 0)]), labs: pc.labs }));
+    out.push({ path: [{ hive: this, body: r }], body: r, color: r.color, hv: 0, fade: fade === undefined ? 1 : fade, isVoid: true, labels: false, label: '', pieces, loops: null, touched: false });
+  }
+  return res;
+};
+// A FIELD INSIDE A NOTCHED TILE IS PAINTED INSIDE THE NOTCH. The field lays
+// itself out in the tile's rectangle (cellPoly above: the layout does not
+// re-solve as a notch passes), so where the tile yields a corner to a tile
+// across it, the field's outlines are cut to the tile's pieces here, in
+// the picture, and no ink lies under another tile's. (Called where the
+// picture chains its leaves' outlines, on the root's leaves.)
+function blClipNested(leaves) {
+  for (const leaf of leaves) {
+    if (!leaf.path || leaf.path.length < 2 || !leaf.loops) continue;
+    const b = leaf.path[0].body;
+    if (!b || !b.blRigid || !b.hole) continue;
+    const r = b.hole.rect, pieces = b.hole.pieces;
+    if (pieces.length === 1 && Math.abs(Math.abs(ringArea(pieces[0])) - (r[2] - r[0]) * (r[3] - r[1])) < 1e-6) continue;
+    const planes = pieces.map(pc => convexPlanes(pc));
+    const loops = [];
+    for (const lp of leaf.loops) for (const hp of planes) {
+      let q = lp;
+      for (const h of hp) { if (!q) break; q = clipPts(q, h.ax, h.ay, h.b); }
+      if (q && q.length >= 3 && Math.abs(ringArea(q)) > 1e-6) { if (lp.hole) q.hole = true; loops.push(q); }
+    }
+    leaf.loops = loops;
+  }
+}
 
 /* --------------------------------------------------------------- START */
 

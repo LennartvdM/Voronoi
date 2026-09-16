@@ -90,6 +90,12 @@ const RUN = ({ FRAMES, PX, PY }) => {
     // explain a concavity in a cell that wraps around them
     const rigidLoops = [];
     for (const l of pic.leaves) if (l.path.length === 1 && (l.body.wall || l.body.hole)) for (const lp of l.loops) if (!lp.hole && lp.length >= 3) rigidLoops.push(lp);
+    // a FIELD (a body with a nested hive) has no root leaf of its own — its
+    // members are the leaves — so its wall or hole is read from the engine's
+    // state, which every build keeps: root.walls (rectangles) and root.holes
+    // (convex pieces); a free cell wrapping a field is cut by it, not fractured
+    for (const b of r.walls) { const q = b.wall; if (q) rigidLoops.push([[q[0], q[1]], [q[2], q[1]], [q[2], q[3]], [q[0], q[3]]]); }
+    for (const b of r.holes) if (b.hole && b.hole.pieces) for (const pc of b.hole.pieces) if (pc.length >= 3) rigidLoops.push(pc);
     const rectsOf = [];
     const leaves = pic.leaves.filter(l => l.path.length === 1 && !l.isVoid);
     const classes = new Map();

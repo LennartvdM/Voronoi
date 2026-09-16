@@ -5,6 +5,8 @@ picture fixes, with a different root policy: tests/bleed/engine.js. The
 reference is never modified; the mark is regenerated from it.
 """
 from pathlib import Path
+import os
+import re
 import hashlib
 import re
 
@@ -48,16 +50,47 @@ replace("        if (d / 2 + (wi - weights[j]) / (2 * d) > rFar) continue;   // 
 # its loops as they are (the reserve is one leaf of many cells), and the union
 # that chains cells into one outline is never asked for.
 replace("  for (const leaf of leaves) leaf.loops = leafOutlines(leaf.pieces);",
-        "  for (const leaf of leaves) leaf.loops = leaf.isVoid ? leaf.pieces.filter(pc => pc.pts.length >= 3).map(pc => pc.pts) : leafOutlines(leaf.pieces);", 1)
+        "  for (const leaf of leaves) leaf.loops = leaf.isVoid ? leaf.pieces.filter(pc => pc.pts.length >= 3).map(pc => pc.pts) : leafOutlines(leaf.pieces);\n  blClipNested(leaves);", 1)
 # the reserve's leaf carries the pockets nobody bid for (see adoptGround)
 replace("        const pieces = [];\n        for (const i of subIdx) {",
         "        const pieces = b.blExtra ? b.blExtra.slice() : [];\n        for (const i of subIdx) {", 1)
 # a newcomer's weight to a hundredth of a px² is enough (the reference bisects
 # to a billionth: fifty-four auctions of one cell, a third of a slow frame)
+# the line search: the reference refuses a Newton step that would take any
+# cell below half the smallest target or area, and halves the step forty
+# times before giving up (development: BLEED_EPS0 and BLEED_HALVINGS)
+EPS0 = os.environ.get('BLEED_EPS0', '0.5')
+HALVINGS = os.environ.get('BLEED_HALVINGS', '40')
+replace('  const eps0 = 0.5 * Math.min(minOf(tgt), minOf(diag.areas));', '  const eps0 = ' + EPS0 + ' * Math.min(minOf(tgt), minOf(diag.areas));', 1)
+replace('    for (let bt = 0; bt < 40 && !accepted; bt++, t /= 2) {', '    for (let bt = 0; bt < ' + HALVINGS + ' && !accepted; bt++, t /= 2) {', 1)
+# the flock's rest sizes are scaled to the page, not the window
+replace('      const K = rel > 0 ? this.COLS * this.ROWS / rel : 1;',
+        '      const K = rel > 0 ? (BL_FILL ? this.blSlots() : this.COLS * this.ROWS) / rel : 1;', 1)
+# every scene specification passes through the engine: edge rectangles run into the bleed
+replace("    const spec = scenes[name] ? scenes[name](this.COLS, this.ROWS, content.length) : null;",
+        "    const spec = scenes[name] ? this.blSpec(scenes[name](this.COLS, this.ROWS, content.length)) : null;", 1)
+# the seed clamp is the page's, not the window's: a site evicted from a tile
+# may stand in the bleed when that is where the nearest free ground is
+replace('    const bodies = this.bodies, W = this.W, H = this.H;\n',
+        '    const bodies = this.bodies, W = this.W, H = this.H;\n    const [CX0, CY0, CX1, CY1] = this.blClampBox ? this.blClampBox() : [SEED_MARGIN, SEED_MARGIN, W - SEED_MARGIN, H - SEED_MARGIN];\n', 1)
+replace('b.x = Math.min(W - SEED_MARGIN, Math.max(SEED_MARGIN, b.x));', 'b.x = Math.min(CX1, Math.max(CX0, b.x));', 2)
+replace('b.y = Math.min(H - SEED_MARGIN, Math.max(SEED_MARGIN, b.y));', 'b.y = Math.min(CY1, Math.max(CY0, b.y));', 2)
 replace("  let lo = -scale, hi = scale;\n  for (let k = 0; k < 54; k++) {", "  let lo = -scale, hi = scale;\n  for (let k = 0; k < 32; k++) {", 1)
 marker = '/* --------------------------------------------------------------- START */'
-replace(marker, (ROOT / 'tests/bleed/engine.js').read_text() + '\n' + marker, 1)
-(ROOT / 'bleed.html').write_text(s)
+engine = (ROOT / 'tests/bleed/engine.js').read_text()
+# development only: BLEED_VARS="BL_YIELD=0,BL_LEAD=0" builds a variant with those constants
+for kv in filter(None, os.environ.get('BLEED_VARS', '').split(',')):
+    k, v = kv.split('=')
+    n = len(re.findall(r'^const ' + re.escape(k) + r' = [^;]+;', engine, flags=re.M))
+    if n != 1:
+        raise SystemExit(f'BLEED_VARS: {k} found {n} times')
+    engine = re.sub(r'^const ' + re.escape(k) + r' = [^;]+;', f'const {k} = {v};', engine, flags=re.M)
+replace(marker, engine + '\n' + marker, 1)
+import os
+OUT = Path(os.environ.get('BLEED_OUT', str(ROOT / 'bleed.html')))   # a variant build for an experiment, off the tree
+OUT.write_text(s)
+if OUT != ROOT / 'bleed.html':
+    raise SystemExit('Built variant ' + str(OUT))
 index_path = ROOT / 'index.html'
 index = index_path.read_text()
 # idempotent: the block goes with the newline that follows it and any blank
