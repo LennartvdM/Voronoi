@@ -760,7 +760,14 @@ the band the page should live in while anything moves), `rigidShare` (exactly
 frames, over TRANSITION frames only and over SEATED frames only. The split is
 the point: a rectangle is a legitimate DESTINATION for a template that asks
 for one, so a high seated `rigidShare` is fine, while a high `rigidShare` in
-transit means the cells are not alive, they are sliding rectangles. It also
+transit means the cells are not alive, they are sliding rectangles. It also reports FATNESS, because a corner budget alone cannot tell a cell
+from a splinter — a five-cornered wedge scores exactly like a five-cornered
+cell, and a page of shards passes a pure corner census. `iqMean` is the mean
+isoperimetric quotient 4piA/P^2 — for a 1:r box it is pi*r/(1+r)^2, so 1 a disc,
+0.785 a square, 0.698 a 1:2 box and 0.503 a 1:4 box — `sliverShare` the share
+thinner than a 1:4 box (IQ below 0.5027), and `iqMin` the worst single cell. A
+high `organicShare` with a high `sliverShare` is not the middle the page wants,
+it is shards; read the two together or not at all. It also
 reports `restingInset` and `worstRestingInset`, the distance from each window
 edge to the nearest ink once a scene has settled: positive is a gutter, the
 neat 100% page; negative is ink permanently off the crop, which is a bleed

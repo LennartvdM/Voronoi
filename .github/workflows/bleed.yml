@@ -87,7 +87,11 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git checkout -B publish FETCH_HEAD          # onto the tip, whoever moved it
+          # -f: the build step above regenerates index.html (its own gallery
+          # card goes first), so the tree is already dirty whenever another
+          # mark published last. Those are build outputs and the build below
+          # remakes them from the tip, so discarding them here is exact.
+          git checkout -f -B publish FETCH_HEAD          # onto the tip, whoever moved it
           python3 tests/bleed/build.py                # the same sources, so the same picture
           cp bleed-results/summary.json bleed-results.json
           git add bleed.html bleed-results.json index.html
