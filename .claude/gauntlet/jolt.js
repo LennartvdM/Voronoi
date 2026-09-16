@@ -230,7 +230,15 @@ function metrics(scenes) {
     const worstArea = rows.slice().sort((a, b) => b.areaStep - a.areaStep).slice(0, 3);
     by[s.scene] = {
       settleFrames: settle, medianMove: +median.toFixed(1),
-      areaStepMax: +p(0.999).toFixed(4), areaStepP99: +p(0.99).toFixed(4), areaStepP50: +p(0.5).toFixed(4),
+      // BOTH ARE EXACT MAXIMA, so the visible figure and the unclipped one are
+      // always the same frame. areaStepMax was a 99.9th percentile, which is
+      // the true max for a 220-frame scene but drops the top sample once a
+      // scene runs past a thousand frames — 1584 of them at 240 Hz — so the
+      // two fields could differ by an aggregation choice rather than by the
+      // clipping they exist to compare. areaStepP99 keeps the robust view,
+      // which is what a percentile is for.
+      areaStepMax: areas.length ? +areas[areas.length - 1].toFixed(4) : 0,
+      areaStepP99: +p(0.99).toFixed(4), areaStepP50: +p(0.5).toFixed(4),
       areaStepFullMax: areasF.length ? +areasF[areasF.length - 1].toFixed(4) : 0,
       spikeFrames, spikeMax: worstMove.length ? worstMove[0].spike : 0,
       joltFrames: rows.filter(r => r.ratio >= SPIKE_RATIO).length,
