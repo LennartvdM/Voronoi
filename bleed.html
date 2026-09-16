@@ -3942,7 +3942,8 @@ document.getElementById('remove').addEventListener('click', () => {
 const BL_RETURN_TAU = 0.22;   // s: a displaced footprint's return clock
 const BL_PIN_POW = 4;         // the lock's grip on a displacement: kept as (1 - pin^POW), so a low power pulls a shoved tile home early and a high one holds it to the last frames
 const BL_PUSH_MAX = 0;        // px, 0 = no cap: the furthest the packing may hold a tile from where it is going, as a share of its own half-size
-const BL_PACK_ITERS = 2;      // packing sweeps per motion step
+const BL_YIELD_RATE = 800;    // px/s, 0 = no cap: how fast a tile may be moved aside to clear an overlap — a yield faster than a travel reads as a jump
+const BL_PACK_ITERS = 4;      // packing sweeps per motion step: a chain needs one per link, and 93% of the overlaps that survived to be cut were in a chain
 const BL_PACK_TAU = 0.06;     // s: an overlap is taken out on this clock, not in one frame
 const BL_SNAP = 0.02;         // px: a displacement below this is none
 const BL_TRAVEL_COMP = 0.1;   // a traveller yields this much against a yielder's 1
@@ -3950,10 +3951,11 @@ const BL_DEPART_PUSH = 40;    // px: a waiter shoved this far off its slot depar
 const BL_MARGIN = 1;          // lattice cells of page past the viewport on every side: the bleed
 const BL_RESERVE_MIN = 0.25;  // slots: a margin cell freer than this bids for its free area; below it, its neighbours take it
 const BL_RESERVE_PITCH = 3;   // margin cells per reserve site along an edge: whitespace needs no fine lattice, and every site is a bidder the auction pays for
-const BL_ITERS = 20;          // Newton iterations the root may take in a frame: the reserve's cells change claims as tiles cross the margin, and ten left frames a tenth off
+const BL_REVIVE = 0.02;       // share of its fair area below which a seed is treated as a newcomer again: a crushed seed carries a weight the Newton cannot walk back from
+const BL_ITERS = 40;          // Newton iterations the root may take in a frame: a page of thirty with the margin re-auctioning around it starts further from its answer than the reference's five ever have to (ten left the thirty-body change a tenth off, twenty a thousandth)
 const BL_ROUTE = 1;           // a traveller's curve bows around the tiles that stay, out to the margin if that is where the room is
 const BL_LEAD = 0;            // s: the packing reads a traveller's footprint this far ahead (0.05 s measured: two more teleports, twenty more notched frames; off)
-const BL_YIELD = 1;           // a waiter in a traveller's way yields the whole overlap the frame it appears, not on the packing's clock
+const BL_YIELD = 2;           // 0: every overlap on the packing's clock; 1: a waiter in a traveller's way yields the whole overlap in the frame it appears; 2: every pair that can move at all parts in that frame, and only a pair that cannot is left to be cut
 const BL_EXTEND = 0.5;        // lattice cells: a scene rectangle on the lattice's edge runs this far into the bleed, so the page's ink runs off the crop
 const BL_FILL = 1;            // the flock fills the page: its rest sizes are scaled to the whole page, not the window (0: the flock keeps to the window and the reserve holds the ring)
 
@@ -4110,7 +4112,8 @@ Hive.prototype.blPack = function(h) {
         // picture never holds a traveller lying across a seated tile for
         // the packing's clock to clear; two travellers, or a traveller
         // against what cannot move, part on the clock as before
-        if (BL_YIELD && A.tr !== B.tr && (A.tr ? B : A).comp >= 1) { share = A.tr ? 0 : 1; r = 1; }
+        if (BL_YIELD >= 2) r = 1;
+        else if (BL_YIELD && A.tr !== B.tr && (A.tr ? B : A).comp >= 1) { share = A.tr ? 0 : 1; r = 1; }
         const against = (it, ax, ay, pen) => ((it.wx - it.x) * ax + (it.wy - it.y) * ay) < -(0.5 * pen + 1) ? 1 : 0;
         const cx = ox * (1 + 3 * (share * against(A, -sx, 0, ox) + (1 - share) * against(B, sx, 0, ox)));
         const cy = oy * (1 + 3 * (share * against(A, 0, -sy, oy) + (1 - share) * against(B, 0, sy, oy)));
@@ -4118,8 +4121,11 @@ Hive.prototype.blPack = function(h) {
         const prev = contacts.get(key);
         if (prev && ((prev.axis === 'x' && cx <= 2 * cy) || (prev.axis === 'y' && cy <= 2 * cx))) axis = prev.axis;
         contacts.set(key, { axis });
-        if (axis === 'x') { A.x -= sx * ox * share * r; B.x += sx * ox * (1 - share) * r; }
-        else { A.y -= sy * oy * share * r; B.y += sy * oy * (1 - share) * r; }
+        // a yield is a move like any other: no faster than a tile travels
+        const lim = BL_YIELD_RATE ? BL_YIELD_RATE * h / BL_PACK_ITERS : Infinity;
+        const mv = (d) => Math.min(Math.abs(d), lim) * Math.sign(d);
+        if (axis === 'x') { A.x -= mv(sx * ox * share * r); B.x += mv(sx * ox * (1 - share) * r); }
+        else { A.y -= mv(sy * oy * share * r); B.y += mv(sy * oy * (1 - share) * r); }
         moved = true;
       }
     }
@@ -4242,10 +4248,15 @@ Hive.prototype.computeWalls = function() {
   for (const b of this.bodies) {
     b.blRigid = false;
     const PW = this.PW, PH = this.PH;
-    if (b.isVoid && !b.blIsReserve && b.rect && !b.leaving && b.crystal >= 1) {
+    if (b.isVoid && !b.blIsReserve && b.rect && !b.leaving) {
       // whitespace at rest is a wall to the reference; to a tile crossing
-      // it, it is room: it yields the overlap, and nobody sees the notch
+      // it, it is room: it yields the overlap, and nobody sees the notch.
+      // The reference's own rule for a wall is the test — crystal home, or
+      // locked on a cell that is already its rectangle — because whatever
+      // it calls a wall is cut out of the ground and cuts whatever it lies
+      // across, and a void at crystal 0.9998 was doing exactly that
       const r = b.rect, rect = [r[0] * PW, r[1] * PH, r[2] * PW, r[3] * PH];
+      if (!(b.crystal >= 1 || ((b.pin || 0) > 0 && this.cellIsRect(b, r)))) continue;
       tiles.push({ b, rect, onSlot: true, landed: true, fp: null, isVoid: true });
       continue;
     }
@@ -4288,7 +4299,10 @@ Hive.prototype.computeWalls = function() {
   // tile displaced, or crossed, moves aside. So the overlap is cut from
   // the one that is moving aside anyway, and the notch lasts as long as
   // the packing takes to clear it.
-  const rank = t => t.isVoid ? -1 : (t.landed && t.onSlot ? 3 : (t.fp.travelling ? 2 + (t.b.progress || 0) : 1 - this.blCompliance(t.b)));
+  // and a traveller at the end of its curve does not tie with a tile that
+  // has landed and pinned: a tie was broken by body order, and half the time
+  // it gave the cut to the one body that cannot move out of the way
+  const rank = t => t.isVoid ? -1 : (t.landed && t.onSlot ? 3 : (t.fp.travelling ? 2 + 0.99 * (t.b.progress || 0) : 1 - this.blCompliance(t.b)));
   const list = Array.from(rigid.values()).sort((a, b) => rank(b) - rank(a));
   const unit = (hp) => hp.filter(h => Math.hypot(h.ax, h.ay) > 1e-9).map(h => { const L = Math.hypot(h.ax, h.ay); return { ax: h.ax / L, ay: h.ay / L, b: h.b / L }; });
   const placed = this.walls.map(w => { const r = w.wall; return [[{ ax: -1, ay: 0, b: -r[0] }, { ax: 1, ay: 0, b: r[2] }, { ax: 0, ay: -1, b: -r[1] }, { ax: 0, ay: 1, b: r[3] }]]; });
@@ -4322,7 +4336,7 @@ Hive.prototype.computeWalls = function() {
   // than any rigid tile: where one lies across a rigid footprint it loses
   // exactly the overlap, and where nothing is left it is gone
   if (rigidPlanes.length) {
-    const kept = [];
+    const kept = [], undercut = [];
     for (const h of this.holes) {
       if (h.blRigid) { kept.push(h); continue; }
       let pieces = h.hole.pieces;
@@ -4331,13 +4345,38 @@ Hive.prototype.computeWalls = function() {
         if (!pieces.length) break;
       }
       pieces = pieces.filter(p => p.length >= 3 && Math.abs(ringArea(p)) > 1e-3);
-      if (!pieces.length) { h.hole = null; h.holeCore = null; continue; }
+      // A BODY IS NEVER CUT AWAY TO NOTHING. A melting cell a tile has
+      // arrived on top of would leave the page for the frames it takes the
+      // tile to settle — a body blinking out and back is the worst thing
+      // the picture can do. It keeps the largest piece it had, and the
+      // tile above it gives that piece up instead (the last resort, taken
+      // out of the rectangle this time, and counted as such).
+      if (!pieces.length) {
+        let big0 = null, bigA0 = 0;
+        for (const p of h.hole.pieces) { const a = Math.abs(ringArea(p)); if (a > bigA0) { bigA0 = a; big0 = p; } }
+        if (!big0 || bigA0 <= 1e-3) { h.hole = null; h.holeCore = null; continue; }
+        pieces = [big0];
+        undercut.push(unit(convexPlanes(big0)));
+      }
       let big = pieces[0], bigA = 0;
       for (const p of pieces) { const a = Math.abs(ringArea(p)); if (a > bigA) { bigA = a; big = p; } }
       h.hole = { pieces, planes: pieces.map(p => unit(convexPlanes(p))), rect: h.hole.rect, pts: big, raw: h.hole.raw };
       kept.push(h);
     }
     this.holes = kept;
+    // and the tiles give up what they took from it
+    for (const planes of undercut) for (const t of list) {
+      const b = t.b;
+      if (!b.hole || !b.blRigid) continue;
+      let pieces = b.hole.pieces;
+      const next = [];
+      for (const p of pieces) next.push(...subtractPlanes(p, planes));
+      pieces = next.filter(p => p.length >= 3 && Math.abs(ringArea(p)) > 1e-3);
+      if (!pieces.length) continue;                       // it would leave nothing: the blend keeps its piece and this one keeps its rectangle
+      let big = pieces[0], bigA = 0;
+      for (const p of pieces) { const a = Math.abs(ringArea(p)); if (a > bigA) { bigA = a; big = p; } }
+      b.hole = { pieces, planes: pieces.map(p => unit(convexPlanes(p))), rect: b.hole.rect, pts: big, raw: b.hole.raw };
+    }
   }
   this.holes.sort((a, b) => b.crystal - a.crystal);
 };
@@ -4585,6 +4624,28 @@ Hive.prototype.solveMain = function() {
   if (this.depth !== 0) return blOldMain.call(this);
   const r = this.blReserve(), keep = r.blExtra || [], sig = this.lastSig;
   r.blExtra = [];
+  // A CRUSHED SEED COMES BACK AS A NEWCOMER. The reference revives a seed
+  // whose cell came out EMPTY, by bisecting its weight to the area it is
+  // painted at; a seed left owning a fiftieth of what it claims is in the
+  // same place but not caught by that test, and the weight it carries —
+  // a hundred thousand below its neighbours' — is one the Newton cannot
+  // walk back: the line search refuses every step and the frame is left
+  // as it is (in the thirty-to-four stress it was three frames off by
+  // half their area). Such a seed is handed back to the entry rule, which
+  // brings it in at the area it is drawn at this instant.
+  if (BL_REVIVE) {
+    let tot = 0, area = 0;
+    for (const b of this.bodies) for (const q of b.subs) if (q.claim >= ACTIVE_MIN && !b.hole && !b.wall) tot += q.claim;
+    const [x0, y0, x1, y1] = this.blBox();
+    area = (x1 - x0) * (y1 - y0);
+    if (tot > 1e-9) for (const b of this.bodies) for (const q of b.subs) {
+      if (!q.live || b.hole || b.wall || q.claim < ACTIVE_MIN) continue;
+      if ((q.blPaint || 0) >= BL_REVIVE * q.claim * area / tot) continue;
+      // and it comes back at the area it CLAIMS, not the speck it was left
+      // holding: entering at a fiftieth of a cell is entering crushed
+      q.live = false; q.blPaint = 0; q.shadowLive = false;
+    }
+  }
   const out = blOldMain.call(this);
   if (this.lastSig === sig && !r.blExtra.length) r.blExtra = keep;   // the solve was cached: so are its pockets
   return out;
