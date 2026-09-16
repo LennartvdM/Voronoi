@@ -1,0 +1,261 @@
+{
+ "clocks": {
+  "240hz": {
+   "corners": {
+    "organicShare": 0.7317,
+    "rigidShare": 0.2399,
+    "overBudget": 0.0039,
+    "iqMean": 0.697,
+    "sliverShare": 0.0881,
+    "vertsMax": 10,
+    "worstRestingInset": 0,
+    "pageErrors": 0
+   }
+  },
+  "120hz": {
+   "corners": {
+    "organicShare": 0.732,
+    "rigidShare": 0.2392,
+    "overBudget": 0.0041,
+    "iqMean": 0.697,
+    "sliverShare": 0.0884,
+    "vertsMax": 10,
+    "worstRestingInset": 0,
+    "pageErrors": 0
+   }
+  },
+  "60hz": {
+   "corners": {
+    "organicShare": 0.7332,
+    "rigidShare": 0.2373,
+    "overBudget": 0.0049,
+    "iqMean": 0.696,
+    "sliverShare": 0.0882,
+    "vertsMax": 10,
+    "worstRestingInset": 0,
+    "pageErrors": 0
+   },
+   "motion": {
+    "settleShare": 0.394,
+    "pathLen": 466.314,
+    "netDisp": 359.985,
+    "wander": 1.813,
+    "moveFrames": 81.788,
+    "burst": 0.629,
+    "peakRatio": 5.917
+   },
+   "motionReference": {
+    "peakRatio": 6.982,
+    "netDisp": 477.843,
+    "wander": 1.645,
+    "burst": 0.681
+   },
+   "reservoir": {
+    "scenesUsed": 3,
+    "scenes": 3,
+    "usersMean": 5.598,
+    "usersMax": 8,
+    "concentration": 0.38,
+    "worstShare": 0.61,
+    "edgesMean": 3.049,
+    "edgesMax": 4,
+    "spillShare": 0.391,
+    "outsideMaxPx2": 124612,
+    "restingPx2": 0
+   },
+   "reservoirByScene": {
+    "bento": {
+     "spillShare": 0.348,
+     "usersMean": 4.87,
+     "concentration": 0.441,
+     "worstShare": 0.606,
+     "restingPx2": 0
+    },
+    "hero": {
+     "spillShare": 0.376,
+     "usersMean": 5.443,
+     "concentration": 0.305,
+     "worstShare": 0.397,
+     "restingPx2": 0
+    },
+    "sidebar": {
+     "spillShare": 0.412,
+     "usersMean": 5.785,
+     "concentration": 0.388,
+     "worstShare": 0.61,
+     "restingPx2": 0
+    },
+    "frame": {
+     "spillShare": 0.386,
+     "usersMean": 5.549,
+     "concentration": 0.443,
+     "worstShare": 0.594,
+     "restingPx2": 0
+    },
+    "flock": {
+     "spillShare": 0,
+     "usersMean": 0,
+     "concentration": 0,
+     "worstShare": 0,
+     "restingPx2": 0
+    }
+   }
+  },
+  "30ms": {
+   "corners": {
+    "organicShare": 0.7293,
+    "rigidShare": 0.2419,
+    "overBudget": 0.0041,
+    "iqMean": 0.696,
+    "sliverShare": 0.0882,
+    "vertsMax": 10,
+    "worstRestingInset": 0,
+    "pageErrors": 0
+   },
+   "motion": {
+    "settleShare": 0.4,
+    "pathLen": 456.061,
+    "netDisp": 351.654,
+    "wander": 1.627,
+    "moveFrames": 49.636,
+    "burst": 0.675,
+    "peakRatio": 5.027
+   },
+   "motionReference": {
+    "peakRatio": 5.884,
+    "netDisp": 454.212,
+    "wander": 1.407,
+    "burst": 0.676
+   },
+   "reservoir": {
+    "scenesUsed": 3,
+    "scenes": 3,
+    "usersMean": 5.636,
+    "usersMax": 8,
+    "concentration": 0.383,
+    "worstShare": 0.604,
+    "edgesMean": 3.046,
+    "edgesMax": 4,
+    "spillShare": 0.391,
+    "outsideMaxPx2": 123935,
+    "restingPx2": 0
+   },
+   "reservoirByScene": {
+    "bento": {
+     "spillShare": 0.291,
+     "usersMean": 5.906,
+     "concentration": 0.311,
+     "worstShare": 0.367,
+     "restingPx2": 0
+    },
+    "hero": {
+     "spillShare": 0.377,
+     "usersMean": 5.47,
+     "concentration": 0.306,
+     "worstShare": 0.369,
+     "restingPx2": 0
+    },
+    "sidebar": {
+     "spillShare": 0.409,
+     "usersMean": 5.811,
+     "concentration": 0.391,
+     "worstShare": 0.601,
+     "restingPx2": 0
+    },
+    "frame": {
+     "spillShare": 0.386,
+     "usersMean": 5.612,
+     "concentration": 0.449,
+     "worstShare": 0.604,
+     "restingPx2": 0
+    },
+    "flock": {
+     "spillShare": 0,
+     "usersMean": 0,
+     "concentration": 0,
+     "worstShare": 0,
+     "restingPx2": 0
+    }
+   }
+  },
+  "jitter": {
+   "corners": {
+    "organicShare": 0.7315,
+    "rigidShare": 0.2391,
+    "overBudget": 0.0038,
+    "iqMean": 0.695,
+    "sliverShare": 0.0893,
+    "vertsMax": 10,
+    "worstRestingInset": 0,
+    "pageErrors": 0
+   },
+   "motion": {
+    "settleShare": 0.397,
+    "pathLen": 461.446,
+    "netDisp": 356.339,
+    "wander": 1.622,
+    "moveFrames": 57.758,
+    "burst": 0.674,
+    "peakRatio": 5.348
+   },
+   "motionReference": {
+    "peakRatio": 6.185,
+    "netDisp": 454.339,
+    "wander": 2.632,
+    "burst": 0.68
+   },
+   "reservoir": {
+    "scenesUsed": 3,
+    "scenes": 3,
+    "usersMean": 5.675,
+    "usersMax": 8,
+    "concentration": 0.382,
+    "worstShare": 0.602,
+    "edgesMean": 3.071,
+    "edgesMax": 4,
+    "spillShare": 0.389,
+    "outsideMaxPx2": 130875,
+    "restingPx2": 0
+   },
+   "reservoirByScene": {
+    "bento": {
+     "spillShare": 0.265,
+     "usersMean": 5.871,
+     "concentration": 0.304,
+     "worstShare": 0.369,
+     "restingPx2": 0
+    },
+    "hero": {
+     "spillShare": 0.375,
+     "usersMean": 5.545,
+     "concentration": 0.303,
+     "worstShare": 0.365,
+     "restingPx2": 0
+    },
+    "sidebar": {
+     "spillShare": 0.417,
+     "usersMean": 5.855,
+     "concentration": 0.39,
+     "worstShare": 0.595,
+     "restingPx2": 0
+    },
+    "frame": {
+     "spillShare": 0.375,
+     "usersMean": 5.606,
+     "concentration": 0.452,
+     "worstShare": 0.602,
+     "restingPx2": 0
+    },
+    "flock": {
+     "spillShare": 0,
+     "usersMean": 0,
+     "concentration": 0,
+     "worstShare": 0,
+     "restingPx2": 0
+    }
+   }
+  }
+ },
+ "passed": true,
+ "failures": []
+}

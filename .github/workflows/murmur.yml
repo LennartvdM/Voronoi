@@ -1,0 +1,81 @@
+name: Murmur one-species and shared-reservoir validation
+on:
+  pull_request:
+    paths:
+      - '**.html'
+      - '.claude/gauntlet/**'
+      - 'tests/murmur/**'
+      - '.github/workflows/murmur.yml'
+permissions:
+  contents: read
+jobs:
+  browser:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'claude/magical-tesla-edtq0p'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser runtime
+        run: |
+          npm install --prefix /tmp/murmur-runtime playwright@1.55.0
+          /tmp/murmur-runtime/node_modules/.bin/playwright install --with-deps chromium
+      - name: Build independent mark from pinned reference
+        run: python3 tests/murmur/build.py
+      - name: Validate one species, the choreography and the shared reservoir
+        env:
+          PLAYWRIGHT_MODULE: /tmp/murmur-runtime/node_modules/playwright
+        run: python3 tests/murmur/validate.py
+      - name: Publish generated files only to the experimental branch
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          BRANCH=claude/magical-tesla-edtq0p
+          git fetch origin "$BRANCH"
+          # The branch moves under this job: every mark in this repository was
+          # built on it, so their jobs run on the same pull request and publish
+          # their own generated files while this one is still measuring — and a
+          # fresh pull request per change makes that the normal case, not the
+          # rare one. The guard is therefore not "nothing has moved" — that can
+          # never hold — but "nothing I measured has moved".
+          if ! git merge-base --is-ancestor "$EXPECTED_HEAD" FETCH_HEAD; then
+            echo "The branch no longer contains $EXPECTED_HEAD; not publishing."
+            exit 0
+          fi
+          # .claude/gauntlet IS A SOURCE OF THIS RESULT. The summary about to be
+          # published was produced by the probes as they stood at $EXPECTED_HEAD,
+          # and this workflow is triggered BY probe changes — so a probe edited
+          # while this job was measuring would otherwise be checked out below and
+          # have last run's numbers published against it.
+          if ! git diff --quiet "$EXPECTED_HEAD" FETCH_HEAD -- tests/murmur .claude/gauntlet hive.html; then
+            echo "The mark's sources changed after $EXPECTED_HEAD; not publishing."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # -f: the build step above regenerates index.html (its own gallery
+          # card goes first), so the tree is already dirty whenever another
+          # mark published last. Those are build outputs and the build below
+          # remakes them from the tip, so discarding them here is exact.
+          git checkout -f -B publish FETCH_HEAD
+          python3 tests/murmur/build.py
+          cp murmur-results/summary.json murmur-results.json
+          git add murmur.html murmur-results.json index.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat: publish tested Murmur one-species mark'
+            git push origin HEAD:"$BRANCH"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: murmur-validation
+          path: |
+            murmur-results/
+            murmur.html
+          retention-days: 30
