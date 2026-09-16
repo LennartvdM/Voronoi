@@ -85,7 +85,7 @@ const RUN = ({ FRAMES, PX, PY, SEATED }) => {
   const step = (seated) => {
     window.__advance(1);
     const pic = X.fn('picture'), W = X.fn('W'), H = X.fn('H');
-    const rec = { f: n++, k: {}, seated: !!seated };
+    const rec = { f: n++, k: {}, seated: !!seated, n: 0, iqSum: 0, sliver: 0, iqMin: 1 };
     if (!pic) { frames.push(rec); return; }
     let L = Infinity, R = Infinity, T = Infinity, B = Infinity;
     for (const l of pic.leaves) {
@@ -95,6 +95,21 @@ const RUN = ({ FRAMES, PX, PY, SEATED }) => {
         const lp = clean(lp0);
         if (lp.length < 3) continue;
         rec.k[lp.length] = (rec.k[lp.length] || 0) + 1;
+        // HOW FAT THE CELL IS. A corner count alone cannot tell a cell from a
+        // splinter: a five-cornered wedge scores exactly like a five-cornered
+        // cell. The isoperimetric quotient 4*pi*A / P^2 is 1 for a disc,
+        // pi/4 = 0.785 for a square, 0.58 for a 1:2 box, 0.40 for a 1:4 box.
+        // Below SLIVER a card is thinner than 1:4 and reads as a shard.
+        let A2 = 0, P = 0;
+        for (let i = 0, m = lp.length; i < m; i++) {
+          const p = lp[i], q = lp[(i + 1) % m];
+          A2 += p[0] * q[1] - q[0] * p[1];
+          P += Math.hypot(q[0] - p[0], q[1] - p[1]);
+        }
+        const A = Math.abs(A2) / 2;
+        const iq = P > 0 ? Math.min(1, 4 * Math.PI * A / (P * P)) : 0;
+        rec.n++; rec.iqSum += iq; rec.iqMin = Math.min(rec.iqMin, iq);
+        if (iq < 0.40) rec.sliver++;
         for (const p of lp) {
           L = Math.min(L, p[0]); R = Math.min(R, W - p[0]);
           T = Math.min(T, p[1]); B = Math.min(B, H - p[1]);
@@ -124,8 +139,16 @@ function tally(frames) {
   };
   let vertsMax = 0;
   for (const k in hist) vertsMax = Math.max(vertsMax, +k);
+  let n = 0, iqSum = 0, sliver = 0, iqMin = 1;
+  for (const F of frames) { n += F.n || 0; iqSum += F.iqSum || 0; sliver += F.sliver || 0; if (F.n) iqMin = Math.min(iqMin, F.iqMin); }
   return {
     bodyFrames: total, hist, vertsMax,
+    // a cell that is not a splinter: mean fatness, and the share thinner
+    // than a 1:4 box. A high organicShare with a high sliverShare is not the
+    // middle the page wants — it is shards.
+    iqMean: n ? +(iqSum / n).toFixed(3) : 0,
+    iqMin: +iqMin.toFixed(3),
+    sliverShare: n ? +(sliver / n).toFixed(4) : 0,
     budgetShare: share(k => k >= 3 && k <= 9),      // the organic middle
     rigidShare: share(k => k === 4),                 // rectangles
     organicShare: share(k => k >= 5 && k <= 9),      // the band that must dominate in transit
