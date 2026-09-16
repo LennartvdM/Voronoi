@@ -4020,6 +4020,101 @@ document.getElementById('remove').addEventListener('click', () => {
   document.getElementById('countVal').textContent = String(n);
 });
 
+
+// A void body that is never seated, never retired, never a source or a node of
+// a change; its sites are the ring's lattice.
+Hive.prototype.tdReserve = function() {
+  let r = this.bodies.find(b => b.tdIsReserve);
+  if (r) return r;
+  const id = this.nextId;
+  r = this.makeBody(this.W / 2, this.H / 2, { isVoid: true, claim: 0 });
+  this.nextId = id; r.id = -1; r.name = 'reserve';
+  r.tdIsReserve = true; r.claim = 0; r.baseClaim = 0; r.claimTarget = 0; r.claim0 = 0;
+  r.subs = [];
+  this.bodies.push(r);
+  return r;
+};
+
+const tdOldPlace = Hive.prototype.placeSeeds;
+Hive.prototype.placeSeeds = function() {
+  tdOldPlace.call(this);
+  if (this.depth !== 0 || !TD_MARGIN) return;
+  const r = this.tdReserve();
+  const PW = this.PW, PH = this.PH, C = this.COLS, R = this.ROWS, k = TD_MARGIN;
+  const key = [this.W, this.H, C, R, k].join(',');
+  if (r.tdKey !== key) {
+    // one bidder per run of margin cells: whitespace needs no fine lattice,
+    // and every site is a row of the auction that has to be paid for
+    r.tdKey = key; r.subs = [];
+    const P = Math.max(1, TD_RESERVE_PITCH | 0);
+    const add = (x0, y0, x1, y1) => r.subs.push({ body: r, x: (x0 + x1) / 2, y: (y0 + y1) / 2, w: 0, claim: 0, live: false, cell: [x0, y0, x1, y1] });
+    const runs = (from, to) => { const out = []; for (let a = from; a < to; a += P) out.push([a, Math.min(to, a + P)]); return out; };
+    for (let row = -k; row < 0; row++) for (const [a, b] of runs(0, C)) add(a * PW, row * PH, b * PW, (row + 1) * PH);
+    for (let row = R; row < R + k; row++) for (const [a, b] of runs(0, C)) add(a * PW, row * PH, b * PW, (row + 1) * PH);
+    for (let col = -k; col < 0; col++) for (const [a, b] of runs(0, R)) add(col * PW, a * PH, (col + 1) * PW, b * PH);
+    for (let col = C; col < C + k; col++) for (const [a, b] of runs(0, R)) add(col * PW, a * PH, (col + 1) * PW, b * PH);
+    for (let row = -k; row < 0; row++) for (let col = -k; col < 0; col++) add(col * PW, row * PH, (col + 1) * PW, (row + 1) * PH);
+    for (let row = -k; row < 0; row++) for (let col = C; col < C + k; col++) add(col * PW, row * PH, (col + 1) * PW, (row + 1) * PH);
+    for (let row = R; row < R + k; row++) for (let col = -k; col < 0; col++) add(col * PW, row * PH, (col + 1) * PW, (row + 1) * PH);
+    for (let row = R; row < R + k; row++) for (let col = C; col < C + k; col++) add(col * PW, row * PH, (col + 1) * PW, (row + 1) * PH);
+  }
+  let taken = 0;
+  for (const b of this.bodies) if (!b.tdIsReserve && !b.isSelf) taken += b.claim;
+  const left = Math.max(0, this.tdSlots() - taken);
+  const rects = [];
+  for (const b of this.bodies) if (b.wall) rects.push(b.wall);
+  let freeSum = 0;
+  for (const s of r.subs) {
+    const c = s.cell;
+    // (the reference's placeSeeds moves every body's first site to the body:
+    // the reserve's sites stand on their lattice cells, always)
+    s.x = (c[0] + c[2]) / 2; s.y = (c[1] + c[3]) / 2;
+    let under = 0, covered = false;
+    for (const q of rects) {
+      const ox = Math.min(c[2], q[2]) - Math.max(c[0], q[0]), oy = Math.min(c[3], q[3]) - Math.max(c[1], q[1]);
+      if (ox > 0 && oy > 0) under += ox * oy;
+      if (s.x > q[0] && s.x < q[2] && s.y > q[1] && s.y < q[3]) covered = true;
+    }
+    // a site standing under a card owns nothing whatever it claims, and a site
+    // whose cell a card has all but covered would be asked for a sliver it
+    // cannot find: both stand out of the auction until the card has passed
+    const free = Math.max(0, (c[2] - c[0]) * (c[3] - c[1]) - under) / (PW * PH);
+    s.claim = covered || free < TD_RESERVE_MIN ? 0 : free;
+    freeSum += s.claim;
+  }
+  // the remainder, shared out; never more than the site's own free area, so a
+  // body standing in the ring costs the reserve and nobody else
+  const share = freeSum > 1e-9 ? Math.min(1, left / freeSum) : 0;
+  if (share < 1) for (const s of r.subs) s.claim *= share;
+};
+
+// the reserve is not a void a scene can dissolve
+const tdOldRetire = Hive.prototype.retireBody;
+Hive.prototype.retireBody = function(b, dur, T) {
+  if (b && b.tdIsReserve) return;
+  return tdOldRetire.call(this, b, dur, T);
+};
+
+// a scene is spoken to the page's bodies; the reserve is not one of them
+const tdOldEnter = Hive.prototype.enterScene;
+Hive.prototype.enterScene = function(name, origin) {
+  if (this.depth !== 0) return tdOldEnter.call(this, name, origin);
+  const r = this.bodies.find(b => b.tdIsReserve);
+  if (r) this.bodies = this.bodies.filter(b => b !== r);
+  try { return tdOldEnter.call(this, name, origin); }
+  finally { if (r) this.bodies.push(r); }
+};
+
+// The reserve is nobody's neighbour, occupant or source: a hit on its cell is
+// a hit on whitespace (bodyGraph asks hitTestAny what a body hangs off, and
+// must never be handed the reserve)
+const tdOldHitAny = Hive.prototype.hitTestAny;
+Hive.prototype.hitTestAny = function(x, y) {
+  const b = tdOldHitAny.call(this, x, y);
+  if (!b || b.tdIsReserve) return null;
+  return this.bodies.indexOf(b) >= 0 ? b : null;
+};
+
 /* --------------------------------------------------------------- START */
 
 function init() {
