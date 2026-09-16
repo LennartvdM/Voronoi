@@ -49,6 +49,14 @@ const FRAMES = +opt('--frames', 220);
 const PX = +opt('--parkx', -1000), PY = +opt('--parky', -1000);
 const SEATED = 5;      // frames at the end of a scene counted as settled
 const EPS_PX2 = 25;    // px² of outside ink below which a body is not spilling
+// px² of TOTAL outside ink below which "who owns the spill" is not a question
+// worth asking. A margin that grows continuously out of zero — as Bellows'
+// does — spends its first frames with a few hundred px² outside, and whichever
+// single cell crosses first owns 100% of it by arithmetic. Scoring that as a
+// private escape hatch would condemn the very property the design is for. The
+// floor is 0.15% of a 1440x900 window: below it the page is not using the
+// margin, it is touching it.
+const SHARE_FLOOR_PX2 = 2000;
 
 function instrument(src) {
   const s = fs.readFileSync(src, 'utf8');
@@ -143,28 +151,33 @@ function metrics(data) {
     const n = s.frames.length;
     let spillFrames = 0, usersSum = 0, usersMax = 0, concSum = 0, edgesMax = 0, edgesSum = 0;
     let outMax = 0, outSum = 0, worstShare = 0, restPx2 = 0;
+    let shareFrames = 0;
     for (let i = 0; i < n; i++) {
       const rows = s.frames[i];
       const total = rows.reduce((a, r) => a + r.outside, 0);
       if (i >= n - SEATED) restPx2 = Math.max(restPx2, total);
       if (!rows.length) continue;
       spillFrames++;
+      outMax = Math.max(outMax, total); outSum += total;
+      // the sharing statistics only count frames where there is a spill worth
+      // sharing; see SHARE_FLOOR_PX2
+      if (total < SHARE_FLOOR_PX2) continue;
+      shareFrames++;
       usersSum += rows.length; usersMax = Math.max(usersMax, rows.length);
       const top = Math.max(...rows.map(r => r.outside));
       const share = total > 0 ? top / total : 0;
       concSum += share; worstShare = Math.max(worstShare, share);
       const edges = [0, 1, 2, 3].filter(k => rows.reduce((a, r) => a + r.e[k], 0) > 25).length;
       edgesMax = Math.max(edgesMax, edges); edgesSum += edges;
-      outMax = Math.max(outMax, total); outSum += total;
     }
     const d = (x) => +x.toFixed(3);
     by[s.scene] = {
-      frames: n, spillFrames,
+      frames: n, spillFrames, shareFrames,
       spillShare: d(spillFrames / n),
-      usersMax, usersMean: spillFrames ? d(usersSum / spillFrames) : 0,
-      concentration: spillFrames ? d(concSum / spillFrames) : 0,
+      usersMax, usersMean: shareFrames ? d(usersSum / shareFrames) : 0,
+      concentration: shareFrames ? d(concSum / shareFrames) : 0,
       worstShare: d(worstShare),
-      edgesMax, edgesMean: spillFrames ? d(edgesSum / spillFrames) : 0,
+      edgesMax, edgesMean: shareFrames ? d(edgesSum / shareFrames) : 0,
       outsideMaxPx2: Math.round(outMax),
       outsideMeanPx2: spillFrames ? Math.round(outSum / spillFrames) : 0,
       restingPx2: Math.round(restPx2),
@@ -178,14 +191,15 @@ function metrics(data) {
   // averaging its 0.573 concentration with two zeros reported 0.191 — better
   // than a page that genuinely shares it. Scenes that never spill are counted
   // by scenesUsed instead, where their silence means what it says.
-  const wsum = T.reduce((a, s) => a + by[s].spillFrames, 0);
-  const wavg = (k) => wsum ? +(T.reduce((a, s) => a + by[s][k] * by[s].spillFrames, 0) / wsum).toFixed(3) : 0;
+  const wsum = T.reduce((a, s) => a + by[s].shareFrames, 0);
+  const wavg = (k) => wsum ? +(T.reduce((a, s) => a + by[s][k] * by[s].shareFrames, 0) / wsum).toFixed(3) : 0;
   const avg = (k) => T.length ? +(T.reduce((a, s) => a + by[s][k], 0) / T.length).toFixed(3) : 0;
   const worst = (k) => T.length ? Math.max(...T.map(s => by[s][k])) : 0;
   return {
     clock: { dtMs: DT, jitterMs: JIT }, frames: FRAMES,
     transition: {
       scenesUsed: T.filter(s => by[s].spillFrames > 0).length, scenes: T.length,
+      shareFrames: T.reduce((a, s) => a + by[s].shareFrames, 0),
       usersMean: wavg('usersMean'), usersMax: worst('usersMax'),
       concentration: wavg('concentration'), worstShare: worst('worstShare'),
       edgesMean: wavg('edgesMean'), edgesMax: worst('edgesMax'),
