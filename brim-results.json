@@ -46,6 +46,10 @@
      }
     }
    },
+   "joltInterrupted": {
+    "spikeMax": 1.09,
+    "spikeFrames": 0
+   },
    "reservoir": {
     "restingPx2": 0,
     "byScene": {
@@ -110,6 +114,10 @@
      }
     }
    },
+   "joltInterrupted": {
+    "spikeMax": 1.8,
+    "spikeFrames": 0
+   },
    "reservoir": {
     "restingPx2": 0,
     "byScene": {
@@ -173,6 +181,10 @@
       "settleFrames": 396
      }
     }
+   },
+   "joltInterrupted": {
+    "spikeMax": 2.16,
+    "spikeFrames": 0
    },
    "reservoir": {
     "restingPx2": 0,
@@ -253,6 +265,10 @@
      }
     }
    },
+   "joltInterrupted": {
+    "spikeMax": 2.85,
+    "spikeFrames": 0
+   },
    "reservoir": {
     "restingPx2": 0,
     "byScene": {
@@ -331,6 +347,10 @@
       "settleFrames": 264
      }
     }
+   },
+   "joltInterrupted": {
+    "spikeMax": 3.76,
+    "spikeFrames": 0
    },
    "reservoir": {
     "restingPx2": 0,
