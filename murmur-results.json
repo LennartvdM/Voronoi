@@ -53,6 +53,7 @@
    "reservoir": {
     "scenesUsed": 3,
     "scenes": 3,
+    "shareFrames": 465,
     "usersMean": 5.598,
     "usersMax": 8,
     "concentration": 0.38,
@@ -66,9 +67,9 @@
    "reservoirByScene": {
     "bento": {
      "spillShare": 0.348,
-     "usersMean": 4.87,
-     "concentration": 0.441,
-     "worstShare": 0.606,
+     "usersMean": 5.347,
+     "concentration": 0.418,
+     "worstShare": 0.584,
      "restingPx2": 0
     },
     "hero": {
@@ -130,6 +131,7 @@
    "reservoir": {
     "scenesUsed": 3,
     "scenes": 3,
+    "shareFrames": 258,
     "usersMean": 5.636,
     "usersMax": 8,
     "concentration": 0.383,
@@ -207,6 +209,7 @@
    "reservoir": {
     "scenesUsed": 3,
     "scenes": 3,
+    "shareFrames": 308,
     "usersMean": 5.675,
     "usersMax": 8,
     "concentration": 0.382,
