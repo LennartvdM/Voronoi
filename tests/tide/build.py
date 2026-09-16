@@ -266,6 +266,97 @@ replace('''        ax += (W / 2 - b.x) * 0.06 + (b.anchorX - b.x) * 0.9;
           if (Cc) { ax += (Cc[0] - b.x) * TD_LLOYD; ay += (Cc[1] - b.y) * TD_LLOYD; }
         }''', 1)
 
+# ============================================================ THE RESERVOIR
+# The margin is not a bigger page. The domain is the window plus one lattice
+# cell on every side, and a RESERVE owns that whole ring — so at rest the
+# content claims exactly the window and the page is 100%, gutter intact. The
+# ring is liquidity nobody is spending: a body travelling between slots may put
+# its seed out there, displacing the reserve where it stands, and the reserve
+# takes it back as the body settles. Spillover, then drained.
+#
+# What made Bleed's bleed permanent was never the enlarged domain. Measured on
+# a Bleed variant with its edge extension and flock-fill switched off, the
+# reserve holding the ring:
+#
+#     scene     ink outside at peak   frames using the margin
+#     bento          0 px²                  0 / 330
+#     hero      22,263 px²                 67 / 330
+#     sidebar   53,546 px²                 85 / 330
+#     frame     31,603 px²                 85 / 330
+#
+# — the margin untouched at rest and used only through a change. Bleed shipped
+# instead with blSpec extending every edge card half a margin cell outward
+# every frame, which is the 105% upscale: liquidity spent before anything
+# needed it. Tide has no such extension.
+#
+# The domain's GEOMETRY never changes, so there is no open/close schedule to
+# latch open, no hysteresis to tune, and the solve signatures stay valid —
+# solveMain's signature carries this.W/this.H and a domainSig that is empty
+# whenever the domain is a rectangle, so a margin that varied in size would be
+# invisible to the cache. A fixed ring sidesteps that entirely.
+replace('const TD_LLOYD = 0.8;', '''const TD_LLOYD = 0.8;          // gain of a free body's pull toward its cell's area centroid (0: off)
+const TD_MARGIN = 0;           // lattice cells of reservoir past the window on every side (0: no reservoir).
+                               // OFF until the reserve lands: the domain machinery and the containment rule
+                               // are in place, but without a reserve owning the ring the claims normalise to
+                               // the enlarged domain and the flock inflates to fill it (-120 px at rest).
+const TD_RESERVE_PITCH = 3;    // margin cells per reserve site along an edge: whitespace needs no fine lattice
+const TD_RESERVE_MIN = 0.25;   // slots: a margin cell freer than this bids for its free area; below it its neighbours take it''', 1)
+
+if os.environ.get('TIDE_NO_RESERVOIR') != '1':
+    # the domain is the window plus the ring
+    replace('''  domainPts() {''', '''  tdBox() {
+    const mx = TD_MARGIN * this.PW, my = TD_MARGIN * this.PH;
+    return [-mx, -my, this.W + mx, this.H + my];
+  }
+
+  tdSlots() {
+    if (this.depth !== 0) return this.COLS * this.ROWS;
+    return (this.COLS + 2 * TD_MARGIN) * (this.ROWS + 2 * TD_MARGIN);
+  }
+
+  domainPts() {
+    if (this.depth === 0 && TD_MARGIN > 0 && !this.domainPolyActive()) {
+      const [x0, y0, x1, y1] = this.tdBox();
+      return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+    }
+    return this.tdOldDomainPts();
+  }
+
+  tdOldDomainPts() {''', 1)
+
+    # A SETTLED SEED STAYS IN THE WINDOW; A TRAVELLING ONE MAY USE THE RING.
+    # This is the whole of "temporary". The reference clamps every seed inside
+    # the window, which would make the ring unreachable; clamping to the domain
+    # instead (as Bleed did) lets a settled free body drift out and sit there,
+    # which is how Bleed's flock spent the margin in 329 frames out of 330.
+    replace('''      b.x = Math.min(W - SEED_MARGIN, Math.max(SEED_MARGIN, b.x));
+      b.y = Math.min(H - SEED_MARGIN, Math.max(SEED_MARGIN, b.y));''',
+'''      {
+        const box = this.tdSeedBox(b);
+        b.x = Math.min(box[2], Math.max(box[0], b.x));
+        b.y = Math.min(box[3], Math.max(box[1], b.y));
+      }''', 1)
+    replace('''        b.x = Math.min(W - SEED_MARGIN, Math.max(SEED_MARGIN, b.x));
+        b.y = Math.min(H - SEED_MARGIN, Math.max(SEED_MARGIN, b.y));''',
+'''        {
+          const box = this.tdSeedBox(b);
+          b.x = Math.min(box[2], Math.max(box[0], b.x));
+          b.y = Math.min(box[3], Math.max(box[1], b.y));
+        }''', 1)
+
+    replace('  updateCrystal(b, t) {', '''  // where this body's seed may stand: the window, unless it is on its way
+  // somewhere, in which case the reservoir is open to it
+  tdSeedBox(b) {
+    const W = this.W, H = this.H;
+    if (this.depth !== 0 || !TD_MARGIN || !b.journey || b.crystal >= 1) {
+      return [SEED_MARGIN, SEED_MARGIN, W - SEED_MARGIN, H - SEED_MARGIN];
+    }
+    const [x0, y0, x1, y1] = this.tdBox();
+    return [x0 + SEED_MARGIN, y0 + SEED_MARGIN, x1 - SEED_MARGIN, y1 - SEED_MARGIN];
+  }
+
+  updateCrystal(b, t) {''', 1)
+
 # development only: TIDE_VARS="TD_LLOYD=0,TD_MELT=0.3" builds a variant
 for kv in filter(None, os.environ.get('TIDE_VARS', '').split(',')):
     k, v = kv.split('=', 1)
