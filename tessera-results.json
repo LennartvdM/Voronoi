@@ -38,7 +38,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.98e-07,
-        "msP95": 9.7
+        "msP95": 9.6
       },
       "tessera": {
         "jumpsIncludingStartup": 0,
@@ -49,7 +49,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.98e-07,
-        "msP95": 27.6
+        "msP95": 27.3
       }
     },
     "120hz": {
@@ -67,7 +67,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 4.01,
-        "msP95": 8.2
+        "msP95": 8.1
       },
       "astra-i": {
         "jumpsIncludingStartup": 0,
@@ -78,7 +78,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.92e-07,
-        "msP95": 9.9
+        "msP95": 9.7
       },
       "tessera": {
         "jumpsIncludingStartup": 0,
@@ -89,7 +89,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.94e-07,
-        "msP95": 28.3
+        "msP95": 28
       }
     },
     "60hz": {
@@ -105,7 +105,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 3.02,
-        "msP95": 9.6,
+        "msP95": 9.2,
         "transitionTeleports": 15,
         "teleportsByScene": {
           "flock0": 55,
@@ -161,7 +161,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.96e-07,
-        "msP95": 11,
+        "msP95": 10.7,
         "transitionTeleports": 10,
         "teleportsByScene": {
           "sidebar": 7,
@@ -214,7 +214,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.95e-07,
-        "msP95": 28,
+        "msP95": 27.9,
         "transitionTeleports": 19,
         "teleportsByScene": {
           "hero": 9,
@@ -276,7 +276,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 0.00772,
-        "msP95": 11,
+        "msP95": 10.8,
         "transitionTeleports": 19,
         "teleportsByScene": {
           "flock0": 71,
@@ -387,7 +387,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.83e-07,
-        "msP95": 29.3,
+        "msP95": 28.7,
         "transitionTeleports": 22,
         "teleportsByScene": {
           "flock0": 12,
@@ -451,7 +451,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 0.0668,
-        "msP95": 11.6,
+        "msP95": 11.4,
         "transitionTeleports": 16,
         "teleportsByScene": {
           "flock0": 71,
@@ -510,7 +510,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.91e-07,
-        "msP95": 11.7,
+        "msP95": 11.4,
         "transitionTeleports": 9,
         "teleportsByScene": {
           "flock0": 7,
@@ -568,7 +568,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.79e-07,
-        "msP95": 29.7,
+        "msP95": 29.8,
         "transitionTeleports": 34,
         "teleportsByScene": {
           "flock0": 7,
