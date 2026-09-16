@@ -819,10 +819,7 @@ const TD_MELT = 0.10;          // s: a settled cell softens for this long before
 const TD_LOCK_LEAD = 0.18;     // s before arrival at which the lock begins (reference 0.35)
 const TD_LOCK_SPAN = 0.22;     // s the lock takes (reference 0.50)
 const TD_LLOYD = 0.8;          // gain of a free body's pull toward its cell's area centroid (0: off)
-const TD_MARGIN = 0;           // lattice cells of reservoir past the window on every side (0: no reservoir).
-                               // OFF until the reserve lands: the domain machinery and the containment rule
-                               // are in place, but without a reserve owning the ring the claims normalise to
-                               // the enlarged domain and the flock inflates to fill it (-120 px at rest).
+const TD_MARGIN = 1;           // lattice cells of reservoir past the window on every side (0: no reservoir)
 const TD_RESERVE_PITCH = 3;    // margin cells per reserve site along an edge: whitespace needs no fine lattice
 const TD_RESERVE_MIN = 0.25;   // slots: a margin cell freer than this bids for its free area; below it its neighbours take it          // gain of a free body's pull toward its cell's area centroid (0: off)
 
@@ -2538,14 +2535,30 @@ class Hive {
 
   // --- the solve --------------------------------------------------------
 
+  // THE TIDE IS OUT UNLESS SOMEONE IS TRAVELLING. At rest the ring is not part
+  // of the tessellation at all — not defended by a reserve, simply absent — so
+  // content is strictly inside the window and the gutter is exact rather than
+  // balanced. A reserve holding the ring conserves area globally, which lets a
+  // cell bulge past the edge while a reserve site takes the difference
+  // elsewhere; there is nothing to bulge into when the domain stops there.
+  // The state is BINARY and changes only when a change begins or ends, so
+  // there is no schedule to latch and nothing to thrash.
+  tdOpen() {
+    if (this.depth !== 0 || !TD_MARGIN) return false;
+    for (const b of this.bodies) if (!b.isSelf && !b.tdIsReserve && b.journey) return true;
+    return false;
+  }
+
   tdBox() {
-    const mx = TD_MARGIN * this.PW, my = TD_MARGIN * this.PH;
+    const k = this.tdOpen() ? TD_MARGIN : 0;
+    const mx = k * this.PW, my = k * this.PH;
     return [-mx, -my, this.W + mx, this.H + my];
   }
 
   tdSlots() {
     if (this.depth !== 0) return this.COLS * this.ROWS;
-    return (this.COLS + 2 * TD_MARGIN) * (this.ROWS + 2 * TD_MARGIN);
+    const k = this.tdOpen() ? TD_MARGIN : 0;
+    return (this.COLS + 2 * k) * (this.ROWS + 2 * k);
   }
 
   domainPts() {
@@ -2595,7 +2608,7 @@ class Hive {
   // was made of. If it still reads the same the frame the last hole closes,
   // that ground is now the main auction's too.
   shadowSig() {
-    let s = this.domainPolyActive() ? this.domainSig : '';
+    let s = (this.domainPolyActive() ? this.domainSig : '') + (this.tdOpen() ? 'T' : '');
     for (const b of this.walls) s += 'W' + b.id + ':' + b.wall.map(v => v * 8 | 0).join(',') + ';';
     return s;
   }
@@ -2681,7 +2694,7 @@ class Hive {
     for (const s of subs) s.live = false;
     for (const s of active) s.live = true;
     if (tris && dArea <= 1e-6) { for (const q of subs) q.live = false; this.solved = null; this.solvedSubs = []; this.ownerOf = []; this.lastSig = null; return; }
-    let sig = active.length + '|' + (this.W * 8 | 0) + 'x' + (this.H * 8 | 0) + '|' + (domain ? this.domainSig : '') + '|';
+    let sig = active.length + '|' + (this.W * 8 | 0) + 'x' + (this.H * 8 | 0) + '|' + (domain ? this.domainSig : '') + '|' + (this.tdOpen() ? 'T' : '') + '|';
     for (const b of this.walls) sig += 'W' + b.id + ':' + b.wall.map(v => v * 8 | 0).join(',') + ';';
     for (const b of this.holes) for (const pc of b.hole.pieces) sig += 'H' + b.id + ':' + pc.map(p => (p[0] * 8 | 0) + ',' + (p[1] * 8 | 0)).join(';') + ';';
     for (let i = 0; i < active.length; i++) sig += (seeds[i][0] * 8 | 0) + ',' + (seeds[i][1] * 8 | 0) + ',' + (claims[i] * 1e4 | 0) + ';';

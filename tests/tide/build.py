@@ -295,23 +295,36 @@ replace('''        ax += (W / 2 - b.x) * 0.06 + (b.anchorX - b.x) * 0.9;
 # whenever the domain is a rectangle, so a margin that varied in size would be
 # invisible to the cache. A fixed ring sidesteps that entirely.
 replace('const TD_LLOYD = 0.8;', '''const TD_LLOYD = 0.8;          // gain of a free body's pull toward its cell's area centroid (0: off)
-const TD_MARGIN = 0;           // lattice cells of reservoir past the window on every side (0: no reservoir).
-                               // OFF until the reserve lands: the domain machinery and the containment rule
-                               // are in place, but without a reserve owning the ring the claims normalise to
-                               // the enlarged domain and the flock inflates to fill it (-120 px at rest).
+const TD_MARGIN = 1;           // lattice cells of reservoir past the window on every side (0: no reservoir)
 const TD_RESERVE_PITCH = 3;    // margin cells per reserve site along an edge: whitespace needs no fine lattice
 const TD_RESERVE_MIN = 0.25;   // slots: a margin cell freer than this bids for its free area; below it its neighbours take it''', 1)
 
 if os.environ.get('TIDE_NO_RESERVOIR') != '1':
     # the domain is the window plus the ring
-    replace('''  domainPts() {''', '''  tdBox() {
-    const mx = TD_MARGIN * this.PW, my = TD_MARGIN * this.PH;
+    replace('''  domainPts() {''', '''  // THE TIDE IS OUT UNLESS SOMEONE IS TRAVELLING. At rest the ring is not part
+  // of the tessellation at all — not defended by a reserve, simply absent — so
+  // content is strictly inside the window and the gutter is exact rather than
+  // balanced. A reserve holding the ring conserves area globally, which lets a
+  // cell bulge past the edge while a reserve site takes the difference
+  // elsewhere; there is nothing to bulge into when the domain stops there.
+  // The state is BINARY and changes only when a change begins or ends, so
+  // there is no schedule to latch and nothing to thrash.
+  tdOpen() {
+    if (this.depth !== 0 || !TD_MARGIN) return false;
+    for (const b of this.bodies) if (!b.isSelf && !b.tdIsReserve && b.journey) return true;
+    return false;
+  }
+
+  tdBox() {
+    const k = this.tdOpen() ? TD_MARGIN : 0;
+    const mx = k * this.PW, my = k * this.PH;
     return [-mx, -my, this.W + mx, this.H + my];
   }
 
   tdSlots() {
     if (this.depth !== 0) return this.COLS * this.ROWS;
-    return (this.COLS + 2 * TD_MARGIN) * (this.ROWS + 2 * TD_MARGIN);
+    const k = this.tdOpen() ? TD_MARGIN : 0;
+    return (this.COLS + 2 * k) * (this.ROWS + 2 * k);
   }
 
   domainPts() {
@@ -459,6 +472,11 @@ Hive.prototype.hitTestAny = function(x, y) {
 };
 
 /* --------------------------------------------------------------- START */''', 1)
+
+    replace("""    let sig = active.length + '|' + (this.W * 8 | 0) + 'x' + (this.H * 8 | 0) + '|' + (domain ? this.domainSig : '') + '|';""",
+            """    let sig = active.length + '|' + (this.W * 8 | 0) + 'x' + (this.H * 8 | 0) + '|' + (domain ? this.domainSig : '') + '|' + (this.tdOpen() ? 'T' : '') + '|';""", 1)
+    replace("""    let s = this.domainPolyActive() ? this.domainSig : '';""",
+            """    let s = (this.domainPolyActive() ? this.domainSig : '') + (this.tdOpen() ? 'T' : '');""", 1)
 
 # development only: TIDE_VARS="TD_LLOYD=0,TD_MELT=0.3" builds a variant
 for kv in filter(None, os.environ.get('TIDE_VARS', '').split(',')):
