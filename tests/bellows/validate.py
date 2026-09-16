@@ -11,6 +11,13 @@ to hold three things at once — and any two of them are easy on their own.
                   Bellows measures 2.5, and Bleed — whose margin is permanently
                   open and therefore never switches — 1.4.
     spikeFrames   no frame over the ratio at all.
+    ...INTERRUPTED  and the same two, measured again with every scene chosen 30
+                  frames into the previous change rather than after it. A
+                  settled run cannot see this case: `seatBody` resets a
+                  retargeted body's progress to 0, so anything read off
+                  progress steps. Before the swell was made a rate-limited
+                  state it read 10.3 here against 2.5 settled; it now reads
+                  2.8, and Murmur reads 60.9.
 
   THE BUFFER IS STILL THERE AND STILL SHARED. Removing the skip by removing
   the margin is Brim's job, and Brim is the control; this mark has to keep it.
@@ -140,6 +147,20 @@ def main():
             bad(f"spikeMax {jt['spikeMax']} > {SPIKE_MAX}: the buffer is stepping again")
         if jt['spikeFrames'] > SPIKE_FRAMES_MAX:
             bad(f"spikeFrames {jt['spikeFrames']} > {SPIKE_FRAMES_MAX}")
+
+        # AND THE SAME CHANGE, INTERRUPTED. A settled run cannot see this: when
+        # a scene is chosen before the last one has finished, `seatBody` resets
+        # every retargeted body's progress to 0, so anything read off progress
+        # steps. This is the case review found and the gate that would have
+        # caught it.
+        ji = run('jolt.js', page, extra + ['--interrupt', '30'])
+        jit = ji['transition']
+        row['joltInterrupted'] = {k: jit[k] for k in ('spikeMax', 'spikeFrames')}
+        if jit['spikeMax'] > SPIKE_MAX:
+            bad(f"interrupted spikeMax {jit['spikeMax']} > {SPIKE_MAX}: "
+                f"a change cut short steps")
+        if jit['spikeFrames'] > SPIKE_FRAMES_MAX:
+            bad(f"interrupted spikeFrames {jit['spikeFrames']} > {SPIKE_FRAMES_MAX}")
 
         # THE BUFFER, AND ITS DRAIN.
         r = run('reservoir.js', page, extra)

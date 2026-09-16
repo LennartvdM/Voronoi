@@ -39,10 +39,12 @@ and they are the whole mark:
   1. AT REST THERE IS NO MARGIN AT ALL. Nothing is travelling, so the loan is
      zero, so g = 1 and m = 0 EXACTLY — not a ring held empty by a reserve, no
      ring. The page is the window with its gutter intact.
-  2. THE MARGIN CANNOT STEP, because m is a continuous function of the loan,
-     the loan is a sum of humps on the travellers' own progress, and progress
-     is eased. It grows out of zero and returns to zero, with zero slope at
-     both ends. There is nothing to switch.
+  2. THE MARGIN CANNOT STEP. m is a continuous function of the loan, the loan
+     is a sum of the travellers' own swells, and each swell is a rate-limited
+     state rather than a reading of progress — so it stays continuous even
+     when a body is retargeted mid-journey and its progress is reset to 0,
+     which is what happens whenever a scene is chosen before the last has
+     settled. It grows out of zero and returns to zero. Nothing switches.
   3. A SETTLED CELL IS UNAFFECTED BY ANOTHER BODY'S TRAVEL. Its area is
      claim_i * PW * PH whatever anyone else is doing. Murmur's reserve had to
      defend the ring to approximate this; here it is an identity.
@@ -95,6 +97,7 @@ replace('&larr; Back</a>', '&larr; Back · Bellows</a>')
 replace('const scenes = {', '''// ============================================================ BELLOWS
 const BW_SWELL = 0.35;    // extra claim a traveller carries at mid-journey, per unit of its own (0: off)
 const BW_CAP = 0.25;      // most the domain may exceed the window by, as a share of it
+const BW_SLEW = 1.2;      // fastest the swell may change, per second (0: no limit)
 const BW_EPS = 1e-9;
 
 // A hump on a body's own journey: zero at the start, zero at the end, one in
@@ -226,23 +229,49 @@ const bwOldPlace = Hive.prototype.placeSeeds;
 Hive.prototype.placeSeeds = function() {
   bwOldPlace.call(this);
   if (this.depth !== 0 || BW_SWELL <= 0) return;
+  // THE SWELL IS A STATE, NOT A FUNCTION OF PROGRESS — and it has to be, for
+  // the one case the hump cannot describe.
+  //
+  // A journey's hump is continuous while that journey runs. But `seatBody`
+  // resets `b.progress` to 0 when a body is RETARGETED, which is what happens
+  // every time a scene is chosen before the last one has settled. Read straight
+  // off progress, a body mid-journey at hump 0.9 drops to hump 0 in one frame,
+  // the loan collapses with it, and the rim steps — measured, 33.68 px to 0 in
+  // a single frame on an interrupt 30 frames into a change. That is precisely
+  // the discontinuity this mark exists to remove, reached by another road, and
+  // the five-clock gate never saw it because it waits 6.6 s between clicks.
+  //
+  // (What it is NOT: the visible jump. A retarget moves the page about 300 px
+  // in that frame whatever the rim does — Murmur, whose ring does not change
+  // at all, moves 298.5 px against Bellows' 304.2. The rim collapse is worth
+  // fixing because it breaks the mark's own invariant and because it drops the
+  // buffer at the exact moment the page needs it, not because it is the bump.)
+  //
+  // So each body carries its swell and the swell is rate-limited. It can be
+  // asked for anything by anything; it can only ever get there smoothly. The
+  // domain is sized from what was actually applied, so the identity
+  // tgt = claim * PW * PH survives the limiter exactly.
+  const dt = Math.max(0, Math.min(0.25, this.t - (this.bwT === undefined ? this.t : this.bwT)));
+  this.bwT = this.t;
+  const step = BW_SLEW > 0 ? BW_SLEW * dt : Infinity;
   const rows = [];
   let want = 0;
   for (const b of this.bodies) {
-    if (!bwTravelling(b)) continue;
+    if (b.isSelf) continue;
     let own = 0; for (const sub of b.subs) own += sub.claim;
-    if (!(own > 0)) continue;
-    const h = bwHump(b.progress);
-    if (h <= 0) continue;
-    const w = BW_SWELL * h * own;
-    rows.push({ b, w, own }); want += w;
+    const target = (own > 0 && bwTravelling(b)) ? BW_SWELL * bwHump(b.progress) : 0;
+    const cur = b.bwSwell || 0;
+    const d = target - cur;
+    b.bwSwell = Math.abs(d) <= step ? target : cur + Math.sign(d) * step;
+    if (b.bwSwell > BW_EPS && own > 0) { rows.push({ b, own }); want += b.bwSwell * own; }
+    else if (b.bwSwell < BW_EPS) b.bwSwell = 0;
   }
   this.bwLoan = 0;
   if (want <= 0) return;
   const cap = BW_CAP * this.COLS * this.ROWS;
   const k = want > cap ? cap / want : 1;
   for (const r of rows) {
-    const g = 1 + (r.w * k) / r.own;
+    const g = 1 + r.b.bwSwell * k;
     for (const sub of r.b.subs) sub.claim *= g;
   }
   this.bwLoan = want * k;

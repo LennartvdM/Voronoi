@@ -11,6 +11,13 @@ Murmur's gate plus two changes that carry the whole experiment:
                   px — 61x at worst. With nothing to switch this must be
                   small, and it is measured at 2.6.
     spikeFrames   and there must be NO frame over the ratio at all.
+    ...INTERRUPTED  and both again with every scene chosen 30 frames into the
+                  previous change rather than after it, which resets each
+                  retargeted body's progress to 0. Brim has nothing that reads
+                  progress to size the ground, so it passes at 2.9 — but the
+                  gate is here because the machinery it shares with its
+                  siblings does read progress, and a settled run is blind to
+                  this whole case.
 
   THE MARGIN, which must not exist.
     spillShare    zero in every scene, at every clock. Not "empty at rest" —
@@ -140,6 +147,20 @@ def main():
             bad(f"spikeMax {jt['spikeMax']} > {SPIKE_MAX}: a frame the page cannot explain")
         if jt['spikeFrames'] > SPIKE_FRAMES_MAX:
             bad(f"spikeFrames {jt['spikeFrames']} > {SPIKE_FRAMES_MAX}")
+
+        # AND THE SAME CHANGE, INTERRUPTED. A settled run cannot see this: when
+        # a scene is chosen before the last one has finished, `seatBody` resets
+        # every retargeted body's progress to 0, so anything read off progress
+        # steps. This is the case review found and the gate that would have
+        # caught it.
+        ji = run('jolt.js', page, extra + ['--interrupt', '30'])
+        jit = ji['transition']
+        row['joltInterrupted'] = {k: jit[k] for k in ('spikeMax', 'spikeFrames')}
+        if jit['spikeMax'] > SPIKE_MAX:
+            bad(f"interrupted spikeMax {jit['spikeMax']} > {SPIKE_MAX}: "
+                f"a change cut short steps")
+        if jit['spikeFrames'] > SPIKE_FRAMES_MAX:
+            bad(f"interrupted spikeFrames {jit['spikeFrames']} > {SPIKE_FRAMES_MAX}")
 
         # THERE IS NO MARGIN. Every scene, every frame, at every clock. Without
         # this bound Brim is not a control — the thing under test could still
