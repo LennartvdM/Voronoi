@@ -62,7 +62,10 @@ def run(script, page, extra=()):
     src = (GAUNTLET / script).read_text().replace('/opt/node22/lib/node_modules/playwright', PW)
     tmp = OUT / ('_' + script)
     tmp.write_text(src)
-    cmd = ['node', str(tmp), str(page), '--dt', '30', *extra]
+    # NO default --dt here: the probes resolve options with argv.indexOf,
+    # which takes the FIRST occurrence, so a hardcoded --dt would silently
+    # win over the per-clock one and measure every clock at that rate.
+    cmd = ['node', str(tmp), str(page), *extra]
     p = subprocess.run(cmd, capture_output=True, text=True)
     if p.returncode != 0:
         raise SystemExit(f'{script} failed on {page}:\n{p.stderr[-2000:]}')
