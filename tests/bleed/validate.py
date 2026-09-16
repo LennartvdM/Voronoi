@@ -48,19 +48,7 @@ with tempfile.TemporaryDirectory(prefix='bleed-probes-') as tmp:
     results = {}
     for clock, dt, jitter in CLOCKS:
         for build in BUILDS:
-            # the fine clocks are for THIS mark: an earlier mark's picture at
-            # 240 Hz is not read by any assertion here and the run is 1320
-            # frames, so the comparison is taken where it is quoted — the
-            # three clocks that carry the masks
-            if clock not in MASK_CLOCKS and build != 'bleed':
-                continue
-            tests = ['score', 'shape'] + (['strobe', 'flicker', 'ripple'] if clock in MASK_CLOCKS else [])
-            # the whole-page raster and the spill are this mark's own questions:
-            # no earlier mark puts a pixel outside the window (measured, once,
-            # at 30 ms: outsideMaxPx2 0 for hive, astra-i and tessera), and with
-            # no bleed box the page raster IS the viewport raster
-            if build == 'bleed' and clock in MASK_CLOCKS:
-                tests += ['strobe-page', 'spill']
+            tests = ['score', 'shape'] + (['strobe', 'strobe-page', 'flicker', 'ripple', 'spill'] if clock in MASK_CLOCKS else [])
             for test in tests:
                 name = f'{build}-{test}-{clock}'
                 # the strobe twice: on the viewport raster every earlier mark
