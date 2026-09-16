@@ -677,3 +677,148 @@ is honest: a tile's edge steps where its neighbour changes from a tile to
 whitespace and back, and a corner meeting a corner within a pitch is an L2
 wedge. Neither is periodic and neither is a jump. `ripple.js` counts all
 three apart.
+
+## Bleed: rectangles or Voronoi cells, and a page wider than the window
+
+The owner's verdict on Tessera, read frame by frame: the cells are being
+turned into flubber. Its tiles were lattices of sites blending toward
+rectangles, and every tooth, wedge and step the owner has seen since Astra
+I is a lattice meeting a lattice. The rule for the next mark is the
+owner's, and it is short: a cell is EITHER an axis-aligned rectangle OR a
+convex Voronoi cell, cut straight where it meets a rectangle or the page;
+fracturing an edge beyond what fitting requires is a last resort. And the
+page must use the margin the owner has offered for five marks — the bleed
+around the screen — whether or not it improves a number.
+
+THE REFERENCE ALREADY HAS THE TWO SHAPES. A settled body is a WALL, its
+rectangle cut out of the auction's ground; a body between is a HOLE, a
+convex blend of its cell and its rectangle, cut out of the ground and not
+bidding; everything else is a POINT SITE, one convex power cell. What the
+reference does not have is a rectangle that travels: a re-seated wall melts
+where it stands (the "electric shock"), travels as a point, and locks along
+the blend. Astra I and Tessera replaced the holes with lattices to avoid
+the melt, and bought the flubber. Bleed keeps the reference's shapes and
+changes the policy. A settled tile asked to move travels as it is: a rigid
+rectangle, a hole in the ground at wherever it is this frame (Tessera's
+journey: hold 0, crystal 1, the lock only the pin), landing as a wall. A
+tile a traveller crosses, or one the packing displaces, is a hole at its
+rectangle too. The reference's blended holes — a body melting into the
+flock, a body locking out of it — keep their clocks and rank below any
+rigid tile. Nothing on the page is a lattice, so nothing corrugates.
+
+WHERE TWO RECTANGLES STILL MEET. Two rigid rectangles cannot both keep
+their shape where they overlap, so the mark spends its effort on not being
+there. FIRST, THE CHANGE DEPARTS IN ORDER: a tile standing where a
+traveller will sweep, and going somewhere outside that sweep, leaves no
+later than the traveller — a minimum over a graph read once, before
+anything moves, so a chain of blockers all leave in time and no delay is
+ever raised. SECOND, THE ROUTE: of the curves through a fan of control
+points either side of a traveller's chord, its path takes the one whose
+swept footprint crosses the least of what stays, the margin counting as
+room — so a tile swings out past the window's edge and back rather than
+through a neighbour, which is what the margin is for. THIRD, THE PACKING
+parts every pair it can in the frame the overlap appears, not on a clock
+that approaches contact without reaching it, in four sweeps because a chain
+needs one per link — but a yield is a move like any other and is bounded by
+what the body itself travels in that step, six tenths of it for a card on
+its curve and eight pixels for one that is not; what one side cannot take
+falls on the other. What neither can take is the last resort: the yielding
+tile loses exactly the overlap, a rectangle less a rectangle, the NOTCH,
+named and counted apart (shape.js calls it NOTCHED, never FRACTURED, and
+measures how deep it bites). Of the frames in which it was drawn, four in
+five were two cards both in flight — the frames a departure order and a
+one-step yield take away.
+
+THE MARGIN, AND WHO OWNS IT. The page's domain is the window plus one
+lattice cell on every side. VIBE.md's refutation of "merely enlarging the
+domain" is right for one design: ground nobody owns inflates every cell by
+the ratio of world to window as the page melts. So the margin has an owner,
+and the ledger is one line. The page is worth (COLS + 2)(ROWS + 2) slots;
+every body has asked for what it has asked for this frame; and the RESERVE
+— a void body that is never seated, never retired and never spoken to by a
+scene — shares what is left among sites standing in the margin, in
+proportion to the free area each stands on. At rest in a scene that
+remainder IS the free margin, so each site claims its own free area;
+released to the flock, whose rest sizes are scaled to the page rather than
+the window, the remainder falls to nothing and the ring goes to the content
+on the content's own clocks. No easing of ours to wobble against theirs:
+the claims sum to the page every frame. Ground no card and no site bids for
+— a pocket the tiles have closed around — is the reserve's too, unpainted:
+whitespace, not the nearest tile's (the reference glued such ground to a
+hole, the one way it could print a step on a rectangle).
+
+AND THE PAGE'S INK RUNS OFF THE CROP. A margin that only catches travellers
+is a margin the owner cannot see. Every scene rectangle that sits on the
+lattice's edge, content and whitespace alike, is extended half a margin cell
+outward, so the settled page bleeds on all four sides instead of stopping
+five pixels short with a rounded corner; the flock fills the sheet; and a
+cell that crosses the window's edge is cut by the edge, its ink continuing
+past it, with no border along the crop. spill.js reads what is painted:
+outside area, straddlers, and CROP BORDERS — a straddler's own edge lying
+along a window edge it crosses, which is what "computed wide, painted
+narrow" looks like from outside. True Buffer had none of it: it computed
+outside the window and then handed the picture the viewport crop, so every
+spilling cell was painted as a rounded card resting against the edge, and
+the owner saw no overflow because there was none to see.
+
+WHAT IT COSTS, AND WHAT WAS PAID. A rigid tile enters the ground sweep as a
+rectangle and the strips are merged (a fifth as many pieces); rigid tiles
+are walls to the shadow auction and do not bid in it (a shadow weight
+drifting on its own emptied the ring every frame); a margin site enters,
+and comes back, at its neighbours' weight corrected for the claims (the
+reference bisects a newcomer's weight fifty-four times, and a frame with
+twelve tiles moving spent a hundred such bisections); the reserve's sites
+stand on their own ground, not at the body's centre where the reference's
+placeSeeds puts every body's first site; and the margin's sites are gathered
+into runs of three cells along each side, because whitespace needs no fine
+lattice and every site is a row of the auction — one site per cell cost
+49.8 ms at the ninety-fifth percentile, runs of two 24.9, runs of three
+20.3, with the same picture to the pixel.
+
+A SEED UNDER A TILE GOES TO THE NEAREST FREE GROUND. The reference steps a
+seed out of a hole by half a pixel through its nearest side; between two
+tiles that share that side it is stepped into the other and back, every
+frame, and owns nothing. It is moved instead to the nearest point of the
+ground the auction will actually sell, half a pixel inside it, keeping two
+pixels from every other seed — and the seed clamp is the page, not the
+window, so when the window is full that ground is the bleed, and the
+newcomer's cell opens there and comes in as the tiles part.
+
+MEASURED at the owner's clock, 30 ms, pointer off the canvas, 1440 x 900,
+on the three transition scenes, against the same probes on the marks before
+it:
+
+                     Hive   Astra I  Tessera   Bleed
+  area jumps            8         0        0       2
+  teleports            19        10       22       6
+  corrugations         28        21       87       0
+  teeth              1161       902     3768     215
+  FRACTURED           547      1055     1537       0
+  notched               8         1        4     311
+  ink past the window   0         0        0   154096 px2
+
+A fractured cell is one whose outline has a reflex corner no rectangle and
+no page edge explains — the flubber, in one number, and this mark does not
+draw one in any scene at any clock. What it draws instead, where two
+rectangles have to fit past each other and nothing else will do, is the
+notch: 311 of 4044 body-frames, biting a twentieth of the rectangle on
+average and never more than half of it. Every one of them is a rectangle
+less a rectangle, and the packing is spending four sweeps a frame to keep
+them rare rather than to make them pretty.
+
+Over the five clocks (240 Hz, 120 Hz, 60 Hz, 30 ms, and 25 +- 12 ms of
+jitter) the page holds: every frame converged to a millionth, coverage
+exact — no gap, no overlap, nothing vanished — every scene settled, no
+corrugation and no fractured cell anywhere, the notch between 7.7% and
+10.4% of transition body-frames, area jumps between 2 and 6, and ink past
+the window in EVERY frame of every transition scene, 76,000 to 155,000 px2
+at its peak, with no cell bordered along an edge it crosses. The frame
+costs 12-18 ms at the ninety-fifth percentile, against Tessera's 34 and
+Astra I's 15. The thirty-body stress (counts, interruptions, resizes,
+hover, at 1440 and 390 px) is exact everywhere and converged to a millionth
+in every phase but one: the collapse from thirty cards to four, where
+twenty cells melt at once into a ground in pockets and the margin
+re-auctions the ring around them, misses by half a claim on two frames.
+The bodies that miss are the ones on their way out and the whitespace;
+Tessera reaches a millionth there and this mark does not, and the CI bound
+names it rather than hiding it.

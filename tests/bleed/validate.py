@@ -72,10 +72,11 @@ with tempfile.TemporaryDirectory(prefix='bleed-probes-') as tmp:
     TRANSITION = ['hero', 'sidebar', 'frame']
     # bounds for this mark, from the measured build (see SEED.md); every one
     # of them is a statement about the picture, not a tolerance for a failure
-    NOTCH_MAX = 0.16          # share of transition body-frames that may be a rectangle less a rectangle
-    JUMPS_MAX = 14            # area jumps outside the startup flock, per clock (the notch cuts read as steps)
-    SPILL_MIN_PX2 = 20000     # px² of ink past the window at a transition scene's peak (a lattice cell is ~15k)
-    CROP_BORDERS_MAX = 0      # a straddler is never bordered along an edge it crosses
+    NOTCH_MAX = 0.13          # share of transition body-frames that may be a rectangle less a rectangle (measured 7.7-10.4% over the five clocks)
+    JUMPS_MAX = 10            # area jumps outside the startup flock, per clock (measured 2-6; the notch cuts read as steps)
+    SPILL_MIN_PX2 = 40000     # px² of ink past the window at a transition scene's peak (measured 76k-155k; a lattice cell is ~15k)
+    BITE_MAX = 0.7            # the deepest a notch may bite into the rectangle it would otherwise be (measured 0.45 at 30 ms)
+    CROP_BORDERS_MAX = 0      # a straddler is never bordered along an edge it crosses, unless the cell beside it carries the ink on past the crop
     for clock, _, _ in CLOCKS:
         row = summary['clocks'][clock] = {}
         for build in BUILDS:
@@ -86,7 +87,7 @@ with tempfile.TemporaryDirectory(prefix='bleed-probes-') as tmp:
                           'vanish': a['vanish'], 'settledScenes': a['settledScenes'],
                           'areaRelativeErrorMax': a['errMax'], 'msP95': a['msP95']}
             sh = results[f'{build}-shape-{clock}']['transition']
-            row[build]['shape'] = {k: sh[k] for k in ['bodyFrames', 'rectangle', 'notched', 'voronoi', 'cut', 'fractured', 'fracturedFrames']}
+            row[build]['shape'] = {k: sh[k] for k in ['bodyFrames', 'rectangle', 'notched', 'voronoi', 'cut', 'fractured', 'fracturedFrames', 'biteMax', 'biteMean']}
             if build == 'bleed':
                 assert a['vanish'] == 0 and a['pageErrors'] == 0, (clock, a)
                 assert a['gapMax'] == 0 and a['overMax'] == 0, (clock, a)
@@ -97,6 +98,7 @@ with tempfile.TemporaryDirectory(prefix='bleed-probes-') as tmp:
                 # is counted apart and bounded
                 assert sh['fractured'] == 0, (clock, sh)
                 assert sh['notched'] <= NOTCH_MAX * sh['bodyFrames'], (clock, sh)
+                assert sh['biteMax'] <= BITE_MAX, (clock, sh)
             if clock in MASK_CLOCKS:
                 t = results[f'{build}-strobe-{clock}']
                 tp = results[f'{build}-strobe-page-{clock}']

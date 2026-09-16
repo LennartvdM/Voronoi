@@ -70,10 +70,18 @@ const RUN = ({ FRAMES, PX, PY }) => {
     }
     return out;
   };
+  const inLoop = (x, y, pts) => { let inside = false; for (let i = 0, m = pts.length, j = m - 1; i < m; j = i++) { const a = pts[i], b = pts[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside; } return inside; };
   const step = () => {
     window.__advance(1);
     const pic = X.fn('picture'), W = X.fn('W'), H = X.fn('H');
     const rec = { f: n++, out: 0, straddlers: 0, cropBorders: 0, bodies: [] };
+    // THE INK PAST THE EDGE, whoever's it is: a cell's own edge lying along a
+    // window edge it crosses is only a crop — a page computed wide and painted
+    // narrow — if the picture stops there. Where the cell beside it carries the
+    // ink on past the crop, the two cells simply meet on a line that happens to
+    // run along the window's edge, and nothing is cut short.
+    const painted = pic ? pic.leaves.filter(l => !l.isVoid).flatMap(l => l.loops.filter(lp => !lp.hole && lp.length >= 3)) : [];
+    const inkAt = (x, y) => { for (const lp of painted) if (inLoop(x, y, lp)) return true; return false; };
     if (pic) for (const l of pic.leaves) {
       if (l.path.length !== 1 || l.isVoid) continue;
       let outside = 0, inside = 0, borders = 0;
@@ -91,7 +99,13 @@ const RUN = ({ FRAMES, PX, PY }) => {
         for (let k = 0; k < m && crossed.length; k++) {
           const p = lp[k], q = lp[(k + 1) % m];
           if (Math.hypot(q[0] - p[0], q[1] - p[1]) < 4) continue;
-          for (const [ax, ay, b] of crossed) if (Math.abs(ax * p[0] + ay * p[1] - b) < 0.5 && Math.abs(ax * q[0] + ay * q[1] - b) < 0.5) { borders++; break; }
+          for (const [ax, ay, b] of crossed) {
+            if (!(Math.abs(ax * p[0] + ay * p[1] - b) < 0.5 && Math.abs(ax * q[0] + ay * q[1] - b) < 0.5)) continue;
+            // the far side of the line, a pixel out from the middle of this edge
+            const mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2, out = b > 0 ? 1 : -1;
+            if (inkAt(mx + ax * out, my + ay * out)) break;   // the ink runs on: the cells meet here, the crop does not cut
+            borders++; break;
+          }
         }
       }
       if (outside > 1) {
