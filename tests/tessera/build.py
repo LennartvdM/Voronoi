@@ -56,9 +56,6 @@ index_path = ROOT / 'index.html'
 index = index_path.read_text()
 # idempotent: the block goes with the newline that follows it and any blank
 # lines a previous build left, so a rebuild reproduces index.html byte for byte
-index = re.sub(r'\s*<!-- TESSERA -->.*?<!-- /TESSERA -->[ \t]*\n(?:[ \t]*\n)*', '\n', index, flags=re.S)
-index = index.replace('class="version-card latest"', 'class="version-card"')
-index = index.replace('<span class="latest-flag">Latest</span>', '')
 card = '''
         <!-- TESSERA -->
         <a href="tessera.html" class="version-card latest">
@@ -82,6 +79,11 @@ card = '''
 anchor = '<div class="previews">'
 if index.count(anchor) != 1:
     raise ValueError('Gallery anchor missing or ambiguous')
-index_path.write_text(index.replace(anchor, anchor + card, 1))
+IS_LATEST = False   # only the newest mark wears the flag
+if not IS_LATEST:
+    card = card.replace(' latest"', '"').replace('<span class="latest-flag">Latest</span>', '')
+own = re.compile(r'\n?[ \t]*<!-- TESSERA -->.*?<!-- /TESSERA -->[ \t]*\n?', re.S)
+index = own.sub(lambda m: card, index, count=1) if own.search(index) else index.replace(anchor, anchor + card, 1)
+index_path.write_text(index)
 print('Built tessera.html from reference blob', EXPECTED)
 print('Tessera SHA256', hashlib.sha256(s.encode()).hexdigest())
