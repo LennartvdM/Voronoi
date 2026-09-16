@@ -763,8 +763,9 @@ for one, so a high seated `rigidShare` is fine, while a high `rigidShare` in
 transit means the cells are not alive, they are sliding rectangles. It also reports FATNESS, because a corner budget alone cannot tell a cell
 from a splinter — a five-cornered wedge scores exactly like a five-cornered
 cell, and a page of shards passes a pure corner census. `iqMean` is the mean
-isoperimetric quotient 4piA/P^2 (1 a disc, 0.785 a square, 0.40 a 1:4 box),
-`sliverShare` the share thinner than 1:4, and `iqMin` the worst single cell. A
+isoperimetric quotient 4piA/P^2 — for a 1:r box it is pi*r/(1+r)^2, so 1 a disc,
+0.785 a square, 0.698 a 1:2 box and 0.503 a 1:4 box — `sliverShare` the share
+thinner than a 1:4 box (IQ below 0.5027), and `iqMin` the worst single cell. A
 high `organicShare` with a high `sliverShare` is not the middle the page wants,
 it is shards; read the two together or not at all. It also
 reports `restingInset` and `worstRestingInset`, the distance from each window

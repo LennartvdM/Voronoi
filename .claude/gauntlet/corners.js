@@ -41,6 +41,7 @@ const DT = +opt('--dt', 1000 / 60), JIT = +opt('--jitter', 0);
 const FRAMES = +opt('--frames', 220);
 const PX = +opt('--parkx', -1000), PY = +opt('--parky', -1000);
 const SEATED = 5;   // frames at the end of a scene counted as settled
+const SLIVER = Math.PI * 4 / 25;   // 0.5027: the isoperimetric quotient of a 1:4 box
 
 function instrument(src) {
   const s = fs.readFileSync(src, 'utf8');
@@ -61,7 +62,7 @@ const CLOCK = `(() => {
   window.__advance = (n) => { for (let i = 0; i < n; i++) { t += DT + (JIT ? (2 * rnd() - 1) * JIT : 0); const cbs = q.splice(0); for (const cb of cbs) cb(t); } };
 })();`;
 
-const RUN = ({ FRAMES, PX, PY, SEATED }) => {
+const RUN = ({ FRAMES, PX, PY, SEATED, SLIVER }) => {
   const X = window.__X;
   X.setMouse(PX, PY);
   // a loop with its collinear and near-duplicate vertices removed: a corner
@@ -97,9 +98,12 @@ const RUN = ({ FRAMES, PX, PY, SEATED }) => {
         rec.k[lp.length] = (rec.k[lp.length] || 0) + 1;
         // HOW FAT THE CELL IS. A corner count alone cannot tell a cell from a
         // splinter: a five-cornered wedge scores exactly like a five-cornered
-        // cell. The isoperimetric quotient 4*pi*A / P^2 is 1 for a disc,
-        // pi/4 = 0.785 for a square, 0.58 for a 1:2 box, 0.40 for a 1:4 box.
-        // Below SLIVER a card is thinner than 1:4 and reads as a shard.
+        // cell. The isoperimetric quotient 4*pi*A / P^2 is 1 for a disc; for a
+        // 1:r box it is pi*r / (1 + r)^2, so 0.785 for a square, 0.698 for 1:2,
+        // 0.589 for 1:3 and 0.503 for 1:4. Below SLIVER a card is thinner than
+        // a 1:4 box and reads as a shard. (An earlier cut of this probe used
+        // 0.40, which is 1:5.68 — it let every 1:4 to 1:5.7 wedge through as
+        // fat, which is exactly the shape the gate exists to catch.)
         let A2 = 0, P = 0;
         for (let i = 0, m = lp.length; i < m; i++) {
           const p = lp[i], q = lp[(i + 1) % m];
@@ -109,7 +113,7 @@ const RUN = ({ FRAMES, PX, PY, SEATED }) => {
         const A = Math.abs(A2) / 2;
         const iq = P > 0 ? Math.min(1, 4 * Math.PI * A / (P * P)) : 0;
         rec.n++; rec.iqSum += iq; rec.iqMin = Math.min(rec.iqMin, iq);
-        if (iq < 0.40) rec.sliver++;
+        if (iq < SLIVER) rec.sliver++;
         for (const p of lp) {
           L = Math.min(L, p[0]); R = Math.min(R, W - p[0]);
           T = Math.min(T, p[1]); B = Math.min(B, H - p[1]);
@@ -187,7 +191,7 @@ function metrics({ frames, marks, inset }) {
   const errs = []; p.on('pageerror', e => errs.push(String(e.message || e)));
   await p.goto('file://' + dst);
   await p.waitForTimeout(300);
-  const data = await p.evaluate(RUN, { FRAMES, PX, PY, SEATED });
+  const data = await p.evaluate(RUN, { FRAMES, PX, PY, SEATED, SLIVER });
   await b.close();
   const m = metrics(data); m.pageErrors = errs.length;
   if (OUT) fs.writeFileSync(OUT, JSON.stringify(m, null, 2));
