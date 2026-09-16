@@ -60,11 +60,29 @@ jobs:
         env:
           EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
-          cp tessera-results/summary.json tessera-results.json
-          git fetch origin claude/magical-tesla-edtq0p
-          test "$(git rev-parse FETCH_HEAD)" = "$EXPECTED_HEAD"
+          BRANCH=claude/magical-tesla-edtq0p
+          git fetch origin "$BRANCH"
+          # The branch moves under this job: every mark in this repository was
+          # built on it, so their jobs run on the same pull request and publish
+          # their own generated files while this one is still measuring — and a
+          # fresh pull request per change makes that the normal case, not the
+          # rare one. The guard is therefore not "nothing has moved" — that can
+          # never hold — but "nothing I measured has moved": the commit this job
+          # validated must be contained in the branch, and the sources the
+          # picture is built from must be identical to the ones it validated.
+          if ! git merge-base --is-ancestor "$EXPECTED_HEAD" FETCH_HEAD; then
+            echo "The branch no longer contains $EXPECTED_HEAD; not publishing."
+            exit 0
+          fi
+          if ! git diff --quiet "$EXPECTED_HEAD" FETCH_HEAD -- tests/tessera hive.html; then
+            echo "The mark's sources changed after $EXPECTED_HEAD; not publishing."
+            exit 0
+          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -B publish FETCH_HEAD
+          python3 tests/tessera/build.py
+          cp tessera-results/summary.json tessera-results.json
           git add tessera.html tessera-results.json index.html
           if ! git diff --cached --quiet; then
             git commit -m 'feat: publish tested Tessera conforming-tile mark'
