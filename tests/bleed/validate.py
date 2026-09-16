@@ -48,7 +48,19 @@ with tempfile.TemporaryDirectory(prefix='bleed-probes-') as tmp:
     results = {}
     for clock, dt, jitter in CLOCKS:
         for build in BUILDS:
-            tests = ['score', 'shape'] + (['strobe', 'strobe-page', 'flicker', 'ripple', 'spill'] if clock in MASK_CLOCKS else [])
+            # the fine clocks are for THIS mark: an earlier mark's picture at
+            # 240 Hz is not read by any assertion here and the run is 1320
+            # frames, so the comparison is taken where it is quoted — the
+            # three clocks that carry the masks
+            if clock not in MASK_CLOCKS and build != 'bleed':
+                continue
+            tests = ['score', 'shape'] + (['strobe', 'flicker', 'ripple'] if clock in MASK_CLOCKS else [])
+            # the whole-page raster and the spill are this mark's own questions:
+            # no earlier mark puts a pixel outside the window (measured, once,
+            # at 30 ms: outsideMaxPx2 0 for hive, astra-i and tessera), and with
+            # no bleed box the page raster IS the viewport raster
+            if build == 'bleed' and clock in MASK_CLOCKS:
+                tests += ['strobe-page', 'spill']
             for test in tests:
                 name = f'{build}-{test}-{clock}'
                 # the strobe twice: on the viewport raster every earlier mark
@@ -80,6 +92,8 @@ with tempfile.TemporaryDirectory(prefix='bleed-probes-') as tmp:
     for clock, _, _ in CLOCKS:
         row = summary['clocks'][clock] = {}
         for build in BUILDS:
+            if f'{build}-score-{clock}' not in results:
+                continue
             a = results[f'{build}-score-{clock}']
             row[build] = {'jumpsIncludingStartup': a['jumps'],
                           'transitionJumps': sum(v for k, v in a['byScene'].items() if k != 'flock0'),
@@ -101,10 +115,10 @@ with tempfile.TemporaryDirectory(prefix='bleed-probes-') as tmp:
                 assert sh['biteMax'] <= BITE_MAX, (clock, sh)
             if clock in MASK_CLOCKS:
                 t = results[f'{build}-strobe-{clock}']
-                tp = results[f'{build}-strobe-page-{clock}']
+                tp = results.get(f'{build}-strobe-page-{clock}', t)
                 f = results[f'{build}-flicker-{clock}']
                 r = results[f'{build}-ripple-{clock}']
-                p = results[f'{build}-spill-{clock}']
+                p = results.get(f'{build}-spill-{clock}')
                 row[build]['transitionTeleports'] = sum(v for k, v in t['teleportByScene'].items() if k in TRANSITION)
                 row[build]['teleportsByScene'] = t['teleportByScene']
                 row[build]['transitionTeleportsPageRaster'] = sum(v for k, v in tp['teleportByScene'].items() if k in TRANSITION)
@@ -113,7 +127,8 @@ with tempfile.TemporaryDirectory(prefix='bleed-probes-') as tmp:
                 row[build]['transitionCorrugations'] = r['transitionCorrugations']
                 row[build]['transitionTeeth'] = r['transitionTeeth']
                 row[build]['axisShareByScene'] = {k: v['axisShareMean'] for k, v in r['byScene'].items()}
-                row[build]['spill'] = {'transition': p['transition'], 'byScene': {k: {'outsideMaxPx2': v['outsideMaxPx2'], 'straddlerFrames': v['straddlerFrames'], 'cropBorders': v['cropBorders']} for k, v in p['byScene'].items()}}
+                if p:
+                    row[build]['spill'] = {'transition': p['transition'], 'byScene': {k: {'outsideMaxPx2': v['outsideMaxPx2'], 'straddlerFrames': v['straddlerFrames'], 'frames': v['frames'], 'cropBorders': v['cropBorders']} for k, v in p['byScene'].items()}}
                 if build == 'bleed':
                     # THE SECOND RULE: the margin is used, visibly, in every
                     # frame of every transition scene — at rest as well as in

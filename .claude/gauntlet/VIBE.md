@@ -747,6 +747,32 @@ thing that varies.
     node .claude/gauntlet/peek.js    <hive.html> <frame0> <frame1> <bodyId>
     node .claude/gauntlet/cap.js     <hive.html> <tag>          # deterministic captures at chosen scene frames
     node .claude/gauntlet/paintdet.js <hive.html> <tag>          # garment cost at the stress sliders
+    node .claude/gauntlet/shape.js   <hive.html> [out.json] [--dt 30] [--dump frames.json]
+    node .claude/gauntlet/spill.js   <hive.html> [out.json] [--dt 30]
+    node .claude/gauntlet/strobe.js  <hive.html> [out.json] [--dt 30] [--domain]
+
+`shape.js` answers WHAT SHAPE a cell is, which no other instrument here does.
+Per frame, per root content leaf: `rectangle` (an axis-aligned box), `notched`
+(axis-aligned, but a box less a box), `voronoi` (convex, no reflex corner),
+`cut` (every reflex corner explained by a rectangle or the page edge it wraps)
+and `fractured` (a reflex corner nothing explains — the flubber, in one
+number). It reads a field's wall or hole from the engine, since a field has no
+root leaf of its own, and it reports how deep a notch bites (`biteMax`,
+`biteMean`), because counting notched frames alone lets one deep bite hide
+among many shallow ones.
+
+`spill.js` answers WHETHER THE PAGE IS WIDER THAN THE WINDOW, for a mark that
+claims it is: `outsideMaxPx2` (ink past the window), `straddlerFrames` (frames
+with a cell on both sides of an edge) and `cropBorders` — a cell's own edge
+lying along a window edge it crosses, which is what "computed wide, painted
+narrow" looks like from outside. An edge only counts as a crop if the picture
+stops there; where the cell beside it carries the ink on past the edge, the
+two simply meet on a line that happens to run along the window's.
+
+`strobe.js --domain` rasters the whole page instead of the viewport (a mark
+with a bleed exposes `root.blBox()`), so a cell crossing the window's edge is
+measured whole rather than having the churn of its visible part read as a
+teleport. Report both rasters for such a mark; they differ.
 
 `flicker.js` fields: `shapeBackShare` (the share of shape motion undone within
 a frame; the number for "oscillates between two points"), `flipFrames`
