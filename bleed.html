@@ -3942,12 +3942,17 @@ document.getElementById('remove').addEventListener('click', () => {
 const BL_RETURN_TAU = 0.22;   // s: a displaced footprint's return clock
 const BL_PIN_POW = 4;         // the lock's grip on a displacement: kept as (1 - pin^POW), so a low power pulls a shoved tile home early and a high one holds it to the last frames
 const BL_PUSH_MAX = 0;        // px, 0 = no cap: the furthest the packing may hold a tile from where it is going, as a share of its own half-size
-const BL_YIELD_RATE = 800;    // px/s, 0 = no cap: how fast a tile may be moved aside to clear an overlap — a yield faster than a travel reads as a jump
+const BL_TRAVEL_CAP = 0.6;    // multiples of its own travel in this step: the furthest the packing may shove a TRAVELLER off its curve at once — what it cannot take falls on the other body, and what neither can take is what the cut takes (<0: no bound)
+const BL_SEAT_CAP = 8;        // px per motion step: the same bound for a body that is not on its curve (<0: no bound)
 const BL_PACK_ITERS = 4;      // packing sweeps per motion step: a chain needs one per link, and 93% of the overlaps that survived to be cut were in a chain
 const BL_PACK_TAU = 0.06;     // s: an overlap is taken out on this clock, not in one frame
 const BL_SNAP = 0.02;         // px: a displacement below this is none
 const BL_TRAVEL_COMP = 0.1;   // a traveller yields this much against a yielder's 1
 const BL_DEPART_PUSH = 40;    // px: a waiter shoved this far off its slot departs now
+const BL_INK_MIN = 1;         // px²: a blended hole with less ink than this has no shape to show, and its body goes back to the auction
+const BL_DEPART_ORDER = 1;    // a tile standing in a traveller's way departs no later than that traveller: nobody is cut if what was in the way has already left
+const BL_DEPART_MEET = 0.5;   // share of the smaller area: how much of a waiter's footprint the sweep must cover before the waiter is held to be in the way
+const BL_DEPART_PASSES = 8;   // passes of the departure cap: a chain of blockers all leave in time (a minimum over a fixed graph, so it settles)
 const BL_MARGIN = 1;          // lattice cells of page past the viewport on every side: the bleed
 const BL_RESERVE_MIN = 0.25;  // slots: a margin cell freer than this bids for its free area; below it, its neighbours take it
 const BL_RESERVE_PITCH = 3;   // margin cells per reserve site along an edge: whitespace needs no fine lattice, and every site is a bidder the auction pays for
@@ -4089,7 +4094,17 @@ Hive.prototype.blPack = function(h) {
     // in motion: on its curve, between departure and landing (a waiter with
     // a journey pending, and a tile that has landed, are not)
     const jn = b.journey, moving = !!(jn && jn.stamp && b.progress > 0 && b.progress < 1);
-    items.push({ b, hw: fp.hw, hh: fp.hh, x: at.x, y: at.y, comp, pk, wx, wy, x0: at.x, y0: at.y, lx, ly, tr: moving });
+    // HOW FAR THIS BODY MAY BE SHOVED IN THIS STEP. A traveller's painted
+    // position is its curve plus the packing's displacement: taking a whole
+    // overlap out of it at once is a jump the strobe sees. It is bounded by
+    // what the body itself travels in the step — a traveller standing still
+    // on its curve is not shoved at all, one at speed may be moved by about
+    // what it was going to move anyway — so the packing never outruns the
+    // motion it is packing.
+    const bud = moving
+      ? (BL_TRAVEL_CAP >= 0 ? BL_TRAVEL_CAP * Math.hypot(b.vx || 0, b.vy || 0) * h : Infinity)
+      : (BL_SEAT_CAP >= 0 ? BL_SEAT_CAP : Infinity);
+    items.push({ b, hw: fp.hw, hh: fp.hh, x: at.x, y: at.y, comp, pk, wx, wy, x0: at.x, y0: at.y, lx, ly, tr: moving, bud });
   }
   const live = new Set();
   const relax = 1 - Math.exp(-h / BL_PACK_TAU);
@@ -4112,7 +4127,7 @@ Hive.prototype.blPack = function(h) {
         // picture never holds a traveller lying across a seated tile for
         // the packing's clock to clear; two travellers, or a traveller
         // against what cannot move, part on the clock as before
-        if (BL_YIELD >= 2) r = 1;
+        if (BL_YIELD >= 2) { r = 1; if (A.tr !== B.tr && (A.tr ? B : A).comp > 0) share = A.tr ? 0 : 1; }
         else if (BL_YIELD && A.tr !== B.tr && (A.tr ? B : A).comp >= 1) { share = A.tr ? 0 : 1; r = 1; }
         const against = (it, ax, ay, pen) => ((it.wx - it.x) * ax + (it.wy - it.y) * ay) < -(0.5 * pen + 1) ? 1 : 0;
         const cx = ox * (1 + 3 * (share * against(A, -sx, 0, ox) + (1 - share) * against(B, sx, 0, ox)));
@@ -4121,11 +4136,21 @@ Hive.prototype.blPack = function(h) {
         const prev = contacts.get(key);
         if (prev && ((prev.axis === 'x' && cx <= 2 * cy) || (prev.axis === 'y' && cy <= 2 * cx))) axis = prev.axis;
         contacts.set(key, { axis });
-        // a yield is a move like any other: no faster than a tile travels
-        const lim = BL_YIELD_RATE ? BL_YIELD_RATE * h / BL_PACK_ITERS : Infinity;
-        const mv = (d) => Math.min(Math.abs(d), lim) * Math.sign(d);
-        if (axis === 'x') { A.x -= mv(sx * ox * share * r); B.x += mv(sx * ox * (1 - share) * r); }
-        else { A.y -= mv(sy * oy * share * r); B.y += mv(sy * oy * (1 - share) * r); }
+        // WHO ACTUALLY TAKES IT. A moves against the axis, B along it; each
+        // only as far as it has left this step. What one cannot take falls
+        // on the other, and what neither can take is exactly the overlap the
+        // cut will take.
+        const o = axis === 'x' ? ox : oy, sg = axis === 'x' ? sx : sy;
+        const cur = q => axis === 'x' ? q.x - q.x0 : q.y - q.y0;
+        const roomA = A.comp > 0 ? Math.max(0, A.bud + sg * cur(A)) : 0;
+        const roomB = B.comp > 0 ? Math.max(0, B.bud - sg * cur(B)) : 0;
+        const want = o * r;
+        let dA = want * share, dB = want - dA;
+        if (dA > roomA) { dB += dA - roomA; dA = roomA; }
+        if (dB > roomB) { dA = Math.min(roomA, dA + (dB - roomB)); dB = roomB; }
+        if (dA + dB <= 1e-9) continue;
+        if (axis === 'x') { A.x -= sg * dA; B.x += sg * dB; }
+        else { A.y -= sg * dA; B.y += sg * dB; }
         moved = true;
       }
     }
@@ -4354,10 +4379,16 @@ Hive.prototype.computeWalls = function() {
       if (!pieces.length) {
         let big0 = null, bigA0 = 0;
         for (const p of h.hole.pieces) { const a = Math.abs(ringArea(p)); if (a > bigA0) { bigA0 = a; big0 = p; } }
-        if (!big0 || bigA0 <= 1e-3) { h.hole = null; h.holeCore = null; continue; }
-        pieces = [big0];
-        undercut.push(unit(convexPlanes(big0)));
+        if (big0 && bigA0 >= BL_INK_MIN) { pieces = [big0]; undercut.push(unit(convexPlanes(big0))); }
       }
+      // LESS THAN A PIXEL OF INK IS NO INK. The reference sends a body whose
+      // hole is gone back to the auction, where it is a point site again; a
+      // hole cut down to a sliver is the same thing with a rounding error
+      // attached — it has no shape to show, it bids for nothing, and the body
+      // paints two tenths of a pixel and reads as vanished.
+      let ink = 0;
+      for (const p of pieces) ink += Math.abs(ringArea(p));
+      if (ink < BL_INK_MIN) { h.hole = null; h.holeCore = null; continue; }
       let big = pieces[0], bigA = 0;
       for (const p of pieces) { const a = Math.abs(ringArea(p)); if (a > bigA) { bigA = a; big = p; } }
       h.hole = { pieces, planes: pieces.map(p => unit(convexPlanes(p))), rect: h.hole.rect, pts: big, raw: h.hole.raw };
@@ -4674,8 +4705,68 @@ Hive.prototype.enterScene = function(name, origin) {
   if (this.depth !== 0) return blOldEnter.call(this, name, origin);
   const r = this.bodies.find(b => b.blIsReserve);
   if (r) this.bodies = this.bodies.filter(b => b !== r);
-  try { const out = blOldEnter.call(this, name, origin); if (BL_ROUTE) this.blRoute(); return out; }
+  try { const out = blOldEnter.call(this, name, origin); if (BL_DEPART_ORDER) this.blDepartOrder(); if (BL_ROUTE) this.blRoute(); return out; }
   finally { if (r) this.bodies.push(r); }
+};
+
+// DEPART IN ORDER. Nobody is cut if the tile in the way has already left.
+// At a scene change every tile takes a departure delay from the reference's
+// passageTimes — the change spreading through the page — and a tile whose
+// delay is later than that of a traveller that has to cross it is a tile
+// the traveller must fit past: the packing parts them by what it can in the
+// frames it has, and every frame of that crossing that is left over is a
+// notched frame. So the change carries a DEPENDENCY: where a traveller T
+// will sweep across a waiter S, and S is going somewhere outside that
+// sweep, S leaves no later than T. The rule is a minimum over a fixed graph
+// — the geometry is read once, at the change, before anything moves — so it
+// settles in a few passes and a chain of blockers all leave in time. It
+// never delays anybody: a delay only ever comes down.
+Hive.prototype.blDepartOrder = function() {
+  if (this.depth !== 0) return 0;
+  const PW = this.PW, PH = this.PH, t0 = this.t;
+  const mv = [];
+  for (const b of this.bodies) {
+    const j = b.journey;
+    if (!j || !j.stamp || j.t0 !== t0 || !b.rect) continue;   // this change's travellers, in the page's own order
+    const fp = this.blFootprint(b);
+    if (!fp) continue;
+    const at = this.blPlace(b, fp), r = b.rect;
+    const from = [at.x - at.hw, at.y - at.hh, at.x + at.hw, at.y + at.hh];
+    const dest = [r[0] * PW, r[1] * PH, r[2] * PW, r[3] * PH];
+    mv.push({ b, j, from, dest,
+      swept: [Math.min(from[0], dest[0]), Math.min(from[1], dest[1]), Math.max(from[2], dest[2]), Math.max(from[3], dest[3])],
+      dx: (dest[0] + dest[2]) / 2, dy: (dest[1] + dest[3]) / 2 });
+  }
+  if (mv.length < 2) return 0;
+  const area = q => Math.max(0, q[2] - q[0]) * Math.max(0, q[3] - q[1]);
+  const meet = (a, q) => Math.max(0, Math.min(a[2], q[2]) - Math.max(a[0], q[0])) * Math.max(0, Math.min(a[3], q[3]) - Math.max(a[1], q[1]));
+  const caps = [];
+  for (const T of mv) {
+    const aT = area(T.swept);
+    if (!(aT > 0)) continue;
+    for (const S of mv) {
+      if (S === T) continue;
+      const aS = area(S.from);
+      if (meet(S.from, T.swept) <= BL_DEPART_MEET * Math.min(aS, aT)) continue;
+      // and S is going somewhere else: a waiter whose own slot is inside the
+      // sweep is in the way wherever it stands, and leaving early cannot help
+      if (S.dx > T.swept[0] && S.dx < T.swept[2] && S.dy > T.swept[1] && S.dy < T.swept[3]) continue;
+      caps.push([S, T]);
+    }
+  }
+  if (!caps.length) return 0;
+  let changed = 0;
+  for (let pass = 0; pass < BL_DEPART_PASSES; pass++) {
+    let any = false;
+    for (const [S, T] of caps) if (S.j.delay > T.j.delay + 1e-9) { S.j.delay = T.j.delay; any = true; changed++; }
+    if (!any) break;
+  }
+  // a tile's field re-rosters on the tile's own clock (the reference sets
+  // fieldAt from the same delay): a tile that leaves earlier takes its
+  // field's roster with it
+  if (changed) for (const m of mv) { m.b.T = m.j.delay; if (m.b.fieldAt >= 0) m.b.fieldAt = t0 + m.j.delay; }
+  this.blDeparted = changed;
+  return changed;
 };
 
 // THE ROUTE. A traveller's path is the reference's quadratic curve, bowed
@@ -4769,7 +4860,11 @@ Hive.prototype.solveShadow = function() {
 const blOldHitAny = Hive.prototype.hitTestAny;
 Hive.prototype.hitTestAny = function(x, y) {
   const b = blOldHitAny.call(this, x, y);
-  return b && b.blIsReserve ? null : b;
+  if (!b || b.blIsReserve) return null;
+  // nor a body the page is not holding right now: the walls of the frame
+  // outlive a body the roster has reaped, and the graph that spreads a
+  // change looks every hit up in its own map of the page's bodies
+  return this.bodies.indexOf(b) >= 0 ? b : null;
 };
 
 // Newton's budget at the root: the reference allows three to eight
