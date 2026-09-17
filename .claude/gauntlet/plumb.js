@@ -1,5 +1,12 @@
 /* OUT OF PLUMB: how much of the page's ink is drawn on axis?
  *   node plumb.js <hive.html> [out.json] [--dt 30] [--frames N] [--tol 4]
+ *                                [--vw 1440] [--vh 900] [--count N]
+ *
+ * --vw/--vh/--count matter more than they look. The lattice is sized from the
+ * viewport (wantCols/wantRows) and the roster runs to 30, so a template that
+ * lays cells on a grid can run out of whole lattice slots on a short page and
+ * quietly fall back to the dissection it was meant to replace. One viewport
+ * and one roster size cannot see that; this is how the gate looks at both.
  *
  * corners.js counts how many corners a cell has; it cannot tell a rectangle
  * from a trapezoid, because both have four. But a bento READS as a bento
@@ -36,6 +43,8 @@ const DT = +opt('--dt', 30), JIT = +opt('--jitter', 0);
 const FRAMES = +opt('--frames', 220);
 const TOL = +opt('--tol', 4);        // degrees from an axis that still counts as on it
 const PX = +opt('--parkx', -1000), PY = +opt('--parky', -1000);
+const VW = +opt('--vw', 1440), VH = +opt('--vh', 900);
+const COUNT = +opt('--count', 0);    // 0: leave the page's own default roster
 const SEATED = 5;                    // frames at the end of a scene counted as settled
 const MIN_EDGE = 2;                  // px: shorter than this is a rounding artefact
 
@@ -58,7 +67,7 @@ const CLOCK = `(() => {
   window.__advance = (n) => { for (let i = 0; i < n; i++) { t += DT + (JIT ? (2 * rnd() - 1) * JIT : 0); const cbs = q.splice(0); for (const cb of cbs) cb(t); } };
 })();`;
 
-const RUN = ({ FRAMES, PX, PY, TOL, SEATED, MIN_EDGE }) => {
+const RUN = ({ FRAMES, PX, PY, TOL, SEATED, MIN_EDGE, COUNT }) => {
   const X = window.__X;
   X.setMouse(PX, PY);
   const W = X.fn('W'), H = X.fn('H');
@@ -95,6 +104,11 @@ const RUN = ({ FRAMES, PX, PY, TOL, SEATED, MIN_EDGE }) => {
     return cells;
   };
   const step = () => { window.__advance(1); };
+  if (COUNT) {
+    const c = document.getElementById('count');
+    c.value = String(COUNT);
+    c.dispatchEvent(new Event('input', { bubbles: true }));
+  }
   for (let i = 0; i < 120; i++) step();
   const out = {};
   for (const sc of ['bento', 'hero', 'sidebar', 'frame', 'flock']) {
@@ -130,6 +144,7 @@ function metrics(data) {
   const avg = (k) => T.length ? +(T.reduce((a, s) => a + by[s][k], 0) / T.length).toFixed(4) : 0;
   return {
     clock: { dtMs: DT, jitterMs: JIT }, frames: FRAMES, tolDeg: TOL,
+    viewport: { w: VW, h: VH }, count: COUNT || null,
     withVoid: { axisShare: avg('axisShare'), rectShare: avg('rectShare'), tiltMean: avg('tiltMean') },
     bento: by.bento, byScene: by,
   };
@@ -138,12 +153,12 @@ function metrics(data) {
 (async () => {
   const dst = instrument(SRC);
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox'] });
-  const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
+  const p = await b.newPage({ viewport: { width: VW, height: VH } });
   await p.addInitScript(CLOCK);
   const errs = []; p.on('pageerror', e => errs.push(String(e.message || e)));
   await p.goto('file://' + dst);
   await p.waitForTimeout(300);
-  const data = await p.evaluate(RUN, { FRAMES, PX, PY, TOL, SEATED, MIN_EDGE });
+  const data = await p.evaluate(RUN, { FRAMES, PX, PY, TOL, SEATED, MIN_EDGE, COUNT });
   await b.close();
   const m = metrics(data); m.pageErrors = errs.length;
   if (OUT) fs.writeFileSync(OUT, JSON.stringify(m, null, 2));

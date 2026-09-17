@@ -31,6 +31,20 @@ has to prove both halves of that trade, and either half alone is easy.
     small enough to be invisible and large enough to fix anything. The
     dissections that satisfy it everywhere are grids. Hence quilt().
 
+    AND ON PAGES THE DEFAULT READING CANNOT SEE. The first cut of quilt()
+    passed every bound in this file and still lapsed. wantCols() is 12 at
+    depth 0, so the sidebar is always 5 lattice units wide; wantRows() falls
+    to 4 or 5 on a short page, giving 20 or 25 whole slots against a roster
+    that goes to 30. Over that, no candidate grid fitted and the template
+    fell back to `guillotine` — the fanned column, reading 0.3505 against
+    Bellows' 0.3505 at 1440x620 with 24 elements, identical to four decimals.
+    The fix is that a sub-unit row is still a row: every cell in it shares
+    one y-extent, which is the whole of what makes a seam drawable plumb.
+    Integers were never the requirement, only `guillotine`'s habit. Those
+    cases now read 0.936-0.959 with 0.767-0.867 of their cells true
+    rectangles, and every case that already worked is unchanged to four
+    decimals. STRESS is here so that lapse cannot return quietly.
+
   AND THE SKIP DID NOT COME BACK. This is the half that is easy to lose: the
   straighter seam has a much better-scoring route, and that route brings the
   step back.
@@ -100,6 +114,12 @@ SIDEBAR_AXIS_MIN = 0.78   # measured 0.848-0.866; Bellows 0.700
 SIDEBAR_RECT_MIN = 0.45   # measured 0.556-0.600; Bellows 0.000
 BENTO_AXIS_MIN = 0.88     # measured 0.932-0.934; unchanged from Bellows
 BENTO_RECT_MIN = 0.55     # measured 0.667; unchanged from Bellows
+# THE MARK AGAIN, ON PAGES THE DEFAULT READING CANNOT SEE. The lattice is
+# sized from the viewport and the roster runs to 30, so these are the cases
+# where a grid template runs out of whole lattice slots.
+STRESS = [(1440, 540, 30), (1440, 620, 24), (1440, 720, 30)]
+STRESS_AXIS_MIN = 0.85    # measured 0.936-0.959; before the sub-unit grid,
+STRESS_RECT_MIN = 0.65    # 0.266-0.387 and ZERO rectangles — Bellows exactly
 # INHERITED FROM BELLOWS
 ORGANIC_MIN = 0.55      # measured 0.640-0.678; the reference 0.174-0.178
 OVER_MAX = 0.005        # measured 0.000; the reference 0.068-0.075
@@ -256,6 +276,30 @@ def main():
         if m['peakRatio'] > ref['peakRatio']:
             bad(f"peakRatio {m['peakRatio']} exceeds the reference's {ref['peakRatio']} "
                 f"on the same clock: the page arrives rather than travels")
+
+    # THE PAGES THE DEFAULT READING CANNOT SEE. This gate exists because the
+    # first cut of quilt() passed every bound above and still lapsed: at 12
+    # columns the sidebar is 5 lattice units wide, so a page short enough for
+    # 4 or 5 rows holds 20 or 25 whole slots against a roster of 30, and the
+    # surplus sent it back to `guillotine` — the fanned column, measured
+    # identical to Bellows to four decimals. One viewport and one roster size
+    # cannot see that, so the gate reads more than one of each.
+    stress = {}
+    summary['stress'] = stress
+    for vw, vh, n in STRESS:
+        key = f'{vw}x{vh}@{n}'
+        pl = run('plumb.js', page, ['--dt', '30', '--frames', '220',
+                                    '--vw', str(vw), '--vh', str(vh), '--count', str(n)])
+        sb = pl['byScene']['sidebar']
+        stress[key] = {k: sb[k] for k in ('axisShare', 'rectShare', 'cells')}
+        stress[key]['pageErrors'] = pl['pageErrors']
+        if pl['pageErrors']:
+            failures.append(f'[{key}] {pl["pageErrors"]} page errors')
+        if sb['axisShare'] < STRESS_AXIS_MIN:
+            failures.append(f"[{key}] sidebar axisShare {sb['axisShare']} < {STRESS_AXIS_MIN}: "
+                            f"the grid ran out of whole lattice slots and the column fanned")
+        if sb['rectShare'] < STRESS_RECT_MIN:
+            failures.append(f"[{key}] sidebar rectShare {sb['rectShare']} < {STRESS_RECT_MIN}")
 
     summary['passed'] = not failures
     summary['failures'] = failures

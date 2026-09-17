@@ -876,17 +876,38 @@ function quilt(rect, n, salt) {
   const x0 = rect[0], y0 = rect[1], x1 = rect[2], y1 = rect[3];
   const w = x1 - x0, h = y1 - y0;
   if (n <= 1 || w < 1 || h < 1) return [rect.slice()];
-  let best = null;
-  for (let cols = 1; cols <= Math.min(n, w); cols++) {
+  // A grid that gives every cell a whole lattice unit is preferred, because
+  // the jittered cut below needs one to work with. But WHEN NONE FITS THE
+  // MARK MUST NOT SILENTLY LAPSE: at 12 columns the sidebar is 5 units wide,
+  // so a page short enough for 4 or 5 rows holds at most 20 or 25 whole
+  // slots while the roster goes to 30. Falling back to `guillotine` there
+  // put the fanned column back exactly — measured identical to Bellows to
+  // four decimals at 1440x620 with 24 elements, 0.3505 against 0.3505. A
+  // sub-unit row is still a row: every cell in it shares one y-extent, which
+  // is the whole of what makes a seam drawable plumb. Integers were never
+  // the requirement, only `guillotine`'s habit.
+  let best = null, loose = null;
+  for (let cols = 1; cols <= n; cols++) {
     const rows = Math.ceil(n / cols);
-    if (rows > h) continue;
     const ar = (w / cols) / (h / rows);
     const score = (cols * rows - n) * 0.9 + Math.abs(Math.log(ar));
-    if (!best || score < best.score) best = { cols: cols, rows: rows, score: score };
+    const cand = { cols: cols, rows: rows, score: score };
+    if (cols <= w && rows <= h) { if (!best || score < best.score) best = cand; }
+    else if (!loose || score < loose.score) loose = cand;
   }
+  best = best || loose;
   if (!best) return guillotine(rect, n, salt);
   const cuts = (a, len, k, sa) => {
-    const at = [a]; let left = len;
+    const at = [a];
+    if (k <= 1) { at.push(a + len); return at; }
+    // Less than a lattice unit per cell: cut evenly. The jitter below rounds
+    // to whole units and would collapse every cell but the last onto 1.
+    if (len / k < 1) {
+      for (let i = 1; i < k; i++) at.push(a + len * i / k);
+      at.push(a + len);
+      return at;
+    }
+    let left = len;
     for (let i = 0; i < k - 1; i++) {
       const want = left / (k - i), jitter = 0.78 + 0.44 * hash01(i + 1, sa);
       const take = Math.max(1, Math.min(left - (k - 1 - i), Math.round(want * jitter)));
