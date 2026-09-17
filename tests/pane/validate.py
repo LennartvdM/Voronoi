@@ -12,13 +12,22 @@ Validate the Pane mark: whitespace that is the rectangle it was given.
   rectangle. It reads WALL UNION CELL: a growing pane is both at once, and
   either alone misreads the mark completely in one direction or the other.
     voidMiss    the symmetric difference over the rect's area. Measured
-                0.0000-0.0224 in hero, sidebar and frame; Plumb reads 0.0461,
-                0.1157 and 0.3100. frame is the one that shows why it matters:
-                the layout is a frame around a hole, and Plumb puts a third of
-                that hole somewhere else.
-    voidCorners collinear points collapsed. 4 is a rectangle. Plumb reads
-                6, 7 and 11 - a radial fan, because enterScene gives a void one
-                seed and refreshFormation pins it there.
+                0.0188, 0.0000 and 0.0224 in hero, sidebar and frame; Plumb
+                reads 0.1157, 0.0461 and 0.3100. frame is the one that shows
+                why it matters: the layout is a frame around a hole, and Plumb
+                puts a third of that hole somewhere else.
+    bboxFill    the share of its own bounding box the whitespace fills, read
+                off the same sampled union. A rectangle is 1.0.
+                    Pane     0.9806 / 1.0000 / 0.9371
+                    Plumb    0.9105 / 0.9408 / 0.7284
+                    Astra I  1.0000 / 1.0000 / 1.0000
+                ONLY THE SIDEBAR ACTUALLY BECOMES A RECTANGLE. hero and frame
+                improve a great deal by area and are still ragged - 11 and 45
+                boundary turns against a rectangle's 4, where Plumb has 117 and
+                338. An earlier draft of this file claimed 4 and 5 corners for
+                them; that was the residual auction CELL's outline, not the
+                whitespace, because computeOutlines overwrites a wall's
+                b.loops with its cell and the union is what a reader wants.
 
   AND NO CARD HAS BECOME A WALL. This is the line the mark is drawn along:
   whitespace draws no card, so making the WHITESPACE a wall adds no second kind
@@ -82,7 +91,9 @@ BENTO_RECT_MIN = 0.55     # measured 0.667; unchanged from Bellows
 # where a grid template runs out of whole lattice slots.
 STRESS = [(1440, 540, 30), (1440, 620, 24), (1440, 720, 30)]
 VOID_MISS_MAX = 0.05     # measured 0.0000-0.0224; Plumb 0.0461-0.3100
-VOID_CORNERS_MAX = 6     # measured 4-5; Plumb 6-11
+VOID_FILL_MIN = 0.93     # share of its own bounding box the whitespace fills.
+                         # A rectangle is 1.0. Measured 0.9371-1.0000; Plumb
+                         # 0.7284-0.9458; Astra I 1.0000 in every scene.
 STRESS_AXIS_MIN = 0.85    # measured 0.936-0.959; before the sub-unit grid,
 STRESS_RECT_MIN = 0.65    # 0.266-0.387 and ZERO rectangles — Bellows exactly
 # THE HEADLINE, READ TWO HARDER WAYS.
@@ -289,9 +300,12 @@ def main():
                 if v['miss'] is None or v['miss'] > VOID_MISS_MAX:
                     failures.append(f"[{key}] {sc} whitespace misses its rectangle by "
                                     f"{v['miss']} > {VOID_MISS_MAX}")
-                if v['corners'] > VOID_CORNERS_MAX:
-                    failures.append(f"[{key}] {sc} whitespace has {v['corners']} corners "
-                                    f"> {VOID_CORNERS_MAX}: it is a fan, not a pane")
+                if v.get('noGeometry'):
+                    failures.append(f"[{key}] {sc} void #{v['id']} is live and has no outline at all")
+                    continue
+                if v['bboxFill'] is None or v['bboxFill'] < VOID_FILL_MIN:
+                    failures.append(f"[{key}] {sc} whitespace fills only {v['bboxFill']} of its own "
+                                    f"bounding box (< {VOID_FILL_MIN}): it is a fan, not a pane")
         if pv.get('pageErrors'):
             failures.append(f"[{key}] {pv['pageErrors']} page errors in the pane probe")
         # AND NO CARD IS A WALL. The whole licence for this mark is that

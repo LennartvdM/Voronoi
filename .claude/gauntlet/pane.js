@@ -67,39 +67,76 @@ const CLOCK = `(() => { let t = 0; const q = [];
         } }
       return n; };
     const res = {}; let cardWalls = 0;
+    // A body that carries a CARD must never be a wall: that is the whole
+    // licence for making whitespace one. Sampled EVERY FRAME, not once after
+    // settling - a card that is a wall for six frames of a change and a bidder
+    // again by the time the page is still is exactly the case a settled
+    // snapshot cannot see, and the invariant is stated per frame.
+    const censusWalls = () => {
+      for (const bd of root.bodies) if (!bd.isVoid && !bd.isSelf && bd.wall) cardWalls++;
+    };
     for (const sc of ['bento','hero','sidebar','frame']) {
       document.querySelector('.scene-btn[data-scene="'+sc+'"]').click();
-      for (let i = 0; i < 260; i++) window.__advance(1);
+      for (let i = 0; i < 260; i++) { window.__advance(1); censusWalls(); }
       const out = [];
-      // AND THE SPECIES CHECK, counted here because it is the same walk: a
-      // body that carries a CARD must never be a wall. That is the whole
-      // licence for this mark - whitespace draws no card, so a wall there adds
-      // no second kind of card. Astra I has all thirteen as walls.
-      for (const bd of root.bodies) if (!bd.isVoid && !bd.isSelf && bd.wall) cardWalls++;
       for (const bd of root.bodies) {
-        if (!bd.isVoid || !bd.loops || !bd.loops.length || !bd.rect) continue;
+        if (!bd.isVoid || !bd.rect) continue;
+        const hasGeom = (bd.loops && bd.loops.length) || bd.wall;
+        if (!hasGeom) {
+          // A LIVE VOID WITH NO OUTLINE IS A FINDING, NOT A SKIP. Dropping it
+          // silently means a gate only notices loss when EVERY void in a scene
+          // is gone - and quilt() hands surplus slots back as extra voids, so
+          // one of several vanishing would leave the scene non-empty and read
+          // as a pass.
+          out.push({ id: bd.id, sites: bd.subs ? bd.subs.length : 0, rect: bd.rect,
+                     miss: null, corners: null, bboxFill: null, noGeometry: true });
+          continue;
+        }
+        const loops = (bd.loops && bd.loops.length) ? bd.loops : [];
         const PW = root.PW, PH = root.PH;
         const rx0 = bd.rect[0]*PW, ry0 = bd.rect[1]*PH, rx1 = bd.rect[2]*PW, ry1 = bd.rect[3]*PH;
-        // sample over the union of rect and drawn bbox
+        const w = bd.wall;
         let bx0 = rx0, by0 = ry0, bx1 = rx1, by1 = ry1;
-        for (const lp of bd.loops) for (const q of lp) { bx0=Math.min(bx0,q[0]); by0=Math.min(by0,q[1]); bx1=Math.max(bx1,q[0]); by1=Math.max(by1,q[1]); }
-        const K = 260; let diff = 0, rect = 0;
+        for (const lp of loops) for (const q of lp) { bx0=Math.min(bx0,q[0]); by0=Math.min(by0,q[1]); bx1=Math.max(bx1,q[0]); by1=Math.max(by1,q[1]); }
+        if (w) { bx0=Math.min(bx0,w[0]); by0=Math.min(by0,w[1]); bx1=Math.max(bx1,w[2]); by1=Math.max(by1,w[3]); }
+        const K = 260; let diff = 0, rect = 0, drawn = 0;
+        let ux0 = Infinity, uy0 = Infinity, ux1 = -Infinity, uy1 = -Infinity;
         const cw = (bx1-bx0)/K, ch = (by1-by0)/K;
+        const mask = new Uint8Array(K*K);
         for (let i = 0; i < K; i++) for (let j = 0; j < K; j++) {
           const x = bx0 + (i+0.5)*cw, y = by0 + (j+0.5)*ch;
-            const inR = x >= rx0 && x <= rx1 && y >= ry0 && y <= ry1;
-          // WALL UNION CELL. A body that is a wall has b.loops set to its wall
-          // rect (hive.html:3243) UNLESS it also won an auction cell, which
-          // overwrites it. A pane is both at once, so neither alone is the
-          // whitespace; the whitespace is their union.
-          const w = bd.wall;
+          const inR = x >= rx0 && x <= rx1 && y >= ry0 && y <= ry1;
+          // WALL UNION CELL, for every reading taken here. A pane is both a
+          // wall and a bidder at once and computeOutlines overwrites b.loops
+          // with the residual auction cell, so neither alone is the whitespace.
           const inW = !!w && x >= w[0] && x <= w[2] && y >= w[1] && y <= w[3];
-          const inD = inW || inLoops(x, y, bd.loops);
+          const inD = inW || (loops.length ? inLoops(x, y, loops) : false);
           if (inR) rect++;
+          if (inD) { drawn++; mask[i*K+j] = 1;
+            if (x < ux0) ux0 = x; if (x > ux1) ux1 = x;
+            if (y < uy0) uy0 = y; if (y > uy1) uy1 = y; }
           if (inR !== inD) diff++;
         }
+        // RECTANGULARITY OF THE UNION, off the same mask, because the union's
+        // outline is not a polygon either input carries. A rectangle fills its
+        // own bounding box; a staircase, an L or a fan does not - and a
+        // staircase is 100% on-axis, which is why an angle cannot say this.
+        const cells = (ux1 > ux0 && uy1 > uy0)
+          ? ((ux1-ux0)/cw + 1) * ((uy1-uy0)/ch + 1) : 0;
+        const bboxFill = cells > 0 ? +(drawn / cells).toFixed(4) : null;
+        // corners of the union, traced on the mask: a boundary cell whose
+        // 4-neighbourhood turns, counted then halved for the two runs meeting
+        let turns = 0;
+        const at = (i,j) => (i>=0 && j>=0 && i<K && j<K) ? mask[i*K+j] : 0;
+        for (let i = 0; i < K; i++) for (let j = 0; j < K; j++) {
+          if (!mask[i*K+j]) continue;
+          const l = at(i-1,j), r = at(i+1,j), u = at(i,j-1), d = at(i,j+1);
+          if ((l+r+u+d) === 2 && ((l!==r) && (u!==d))) turns++;
+        }
         out.push({ id: bd.id, sites: bd.subs ? bd.subs.length : 0, rect: bd.rect,
-                   miss: rect ? +(diff/rect).toFixed(4) : null, corners: corners(bd.loops) });
+                   miss: rect ? +(diff/rect).toFixed(4) : null,
+                   corners: corners(loops.length ? loops : [[[w[0],w[1]],[w[2],w[1]],[w[2],w[3]],[w[0],w[3]]]]),
+                   unionCorners: turns, bboxFill: bboxFill });
       }
       res[sc] = out;
     }
