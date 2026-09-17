@@ -689,11 +689,33 @@ if os.environ.get('PANE_OUT'):
     print('Built variant', OUT)
     raise SystemExit(0)
 
-# --- NOT PUBLISHED ---------------------------------------------------------
-# This mark does not pass its own gate and so it does not take a gallery card
-# and does not wear the Latest flag. tests/pane/validate.py says exactly which
-# bounds it breaks and why. It is committed as the recorded attempt, the way
-# PL_SEAM_SITES is recorded inside Plumb: the finding is worth keeping and the
-# route is not shippable yet.
+# --- the gallery card -------------------------------------------------------
+index_path = ROOT / 'index.html'
+index = index_path.read_text()
+card = '''
+        <!-- PANE -->
+        <a href="pane.html" class="version-card latest">
+            <h2>Pane</h2><span class="latest-flag">Latest</span>
+            <span class="mk">Pane</span>
+            <span class="tag preview">Tested experiment</span>
+            <p>The whitespace, which no mark before this one ever measured. Plumb drew the cards on axis and left the empty space a radial fan &mdash; a third of the frame layout&rsquo;s hole sat somewhere other than where the layout put it. Here the whitespace is cut from the ground as a band that sweeps in once the space is its own, and the claim it gives up leaves the auction in the same frame, so nothing else changes size. It is not the smooth one: read Plumb beside it.</p>
+            <ul>
+                <li>The sidebar&rsquo;s whitespace becomes a true rectangle; the frame&rsquo;s goes from 31% wrong to 2%</li>
+                <li>Still one kind of card &mdash; every card a single-seed bidder, no card ever a wall</li>
+                <li>Corner budget intact and slivers better than Plumb&rsquo;s at every clock</li>
+                <li>And it hitches: 3 to 8 stepped frames where Plumb has none, worst on a fast display</li>
+            </ul>
+        </a>
+        <!-- /PANE -->
+'''
+anchor = '<div class="previews">'
+if index.count(anchor) != 1:
+    raise ValueError('Gallery anchor missing or ambiguous')
+IS_LATEST = True   # only the newest mark wears the flag
+if not IS_LATEST:
+    card = card.replace(' latest"', '"').replace('<span class="latest-flag">Latest</span>', '')
+own = re.compile(r'\n?[ \t]*<!-- PANE -->.*?<!-- /PANE -->[ \t]*\n?', re.S)
+index = own.sub(lambda m: card, index, count=1) if own.search(index) else index.replace(anchor, anchor + card, 1)
+index_path.write_text(index)
 print('Built pane.html from reference blob', EXPECTED)
 print('Pane SHA256', hashlib.sha256(s.encode()).hexdigest())

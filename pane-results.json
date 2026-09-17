@@ -1,0 +1,1027 @@
+{
+ "clocks": {
+  "240hz": {
+   "plumb": {
+    "bento": {
+     "axisShare": 0.9341,
+     "rectShare": 0.6667,
+     "tiltMean": 28.25
+    },
+    "hero": {
+     "axisShare": 0.5011,
+     "rectShare": 0.1,
+     "tiltMean": 25.72
+    },
+    "sidebar": {
+     "axisShare": 0.9975,
+     "rectShare": 1,
+     "tiltMean": 39.87
+    },
+    "frame": {
+     "axisShare": 0.7873,
+     "rectShare": 0.4444,
+     "tiltMean": 30.52
+    },
+    "flock": {
+     "axisShare": 0.4429,
+     "rectShare": 0,
+     "tiltMean": 27.95
+    },
+    "pageErrors": 0
+   },
+   "roster": {
+    "bodiesMin": 12,
+    "notBiddingMax": 0,
+    "zeroAreaMax": 0,
+    "byScene": {
+     "bento": {
+      "bodies": 12,
+      "bidding": 12,
+      "zeroArea": 0
+     },
+     "hero": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "sidebar": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "frame": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "flock": {
+      "bodies": 12,
+      "bidding": 12,
+      "zeroArea": 0
+     }
+    }
+   },
+   "corners": {
+    "organicShare": 0.7286,
+    "rigidShare": 0.2648,
+    "overBudget": 0,
+    "iqMean": 0.689,
+    "iqMin": 0.018,
+    "sliverShare": 0.0605,
+    "vertsMax": 9,
+    "worstRestingInset": 0,
+    "pageErrors": 0
+   },
+   "jolt": {
+    "areaStepMax": 0.7694,
+    "areaStepP99": 0.0727,
+    "areaStepFullMax": 0.7694,
+    "spikeMax": 95.58,
+    "spikeFrames": 8,
+    "joltFrames": 137,
+    "byScene": {
+     "bento": {
+      "spikeMax": 1.07,
+      "spikeFrames": 0,
+      "settleFrames": 606
+     },
+     "hero": {
+      "spikeMax": 5.13,
+      "spikeFrames": 1,
+      "settleFrames": 728
+     },
+     "sidebar": {
+      "spikeMax": 67.66,
+      "spikeFrames": 2,
+      "settleFrames": 590
+     },
+     "frame": {
+      "spikeMax": 95.58,
+      "spikeFrames": 8,
+      "settleFrames": 763
+     },
+     "flock": {
+      "spikeMax": 49.85,
+      "spikeFrames": 5,
+      "settleFrames": 444
+     }
+    }
+   },
+   "joltInterrupted": {
+    "spikeMax": 95.58,
+    "spikeFrames": 6
+   },
+   "reservoir": {
+    "scenesUsed": 3,
+    "scenes": 3,
+    "shareFrames": 786,
+    "usersMean": 5.856,
+    "usersMax": 8,
+    "concentration": 0.276,
+    "worstShare": 0.437,
+    "edgesMean": 3.021,
+    "edgesMax": 4,
+    "spillShare": 0.186,
+    "outsideMaxPx2": 91007,
+    "restingPx2": 0,
+    "byScene": {
+     "bento": {
+      "spillShare": 0.348,
+      "outsideMaxPx2": 62688,
+      "restingPx2": 0
+     },
+     "hero": {
+      "spillShare": 0.262,
+      "outsideMaxPx2": 71522,
+      "restingPx2": 0
+     },
+     "sidebar": {
+      "spillShare": 0.184,
+      "outsideMaxPx2": 91007,
+      "restingPx2": 0
+     },
+     "frame": {
+      "spillShare": 0.112,
+      "outsideMaxPx2": 33759,
+      "restingPx2": 0
+     },
+     "flock": {
+      "spillShare": 0,
+      "outsideMaxPx2": 0,
+      "restingPx2": 0
+     }
+    }
+   }
+  },
+  "120hz": {
+   "plumb": {
+    "bento": {
+     "axisShare": 0.9339,
+     "rectShare": 0.6667,
+     "tiltMean": 28.34
+    },
+    "hero": {
+     "axisShare": 0.5013,
+     "rectShare": 0.1,
+     "tiltMean": 25.75
+    },
+    "sidebar": {
+     "axisShare": 0.9974,
+     "rectShare": 1,
+     "tiltMean": 39.52
+    },
+    "frame": {
+     "axisShare": 0.7935,
+     "rectShare": 0.4,
+     "tiltMean": 30.56
+    },
+    "flock": {
+     "axisShare": 0.3434,
+     "rectShare": 0,
+     "tiltMean": 25.45
+    },
+    "pageErrors": 0
+   },
+   "roster": {
+    "bodiesMin": 12,
+    "notBiddingMax": 0,
+    "zeroAreaMax": 0,
+    "byScene": {
+     "bento": {
+      "bodies": 12,
+      "bidding": 12,
+      "zeroArea": 0
+     },
+     "hero": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "sidebar": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "frame": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "flock": {
+      "bodies": 12,
+      "bidding": 12,
+      "zeroArea": 0
+     }
+    }
+   },
+   "corners": {
+    "organicShare": 0.7109,
+    "rigidShare": 0.2831,
+    "overBudget": 0,
+    "iqMean": 0.68,
+    "iqMin": 0.026,
+    "sliverShare": 0.0887,
+    "vertsMax": 9,
+    "worstRestingInset": 0,
+    "pageErrors": 0
+   },
+   "jolt": {
+    "areaStepMax": 0.7315,
+    "areaStepP99": 0.2066,
+    "areaStepFullMax": 0.7315,
+    "spikeMax": 49.67,
+    "spikeFrames": 5,
+    "joltFrames": 67,
+    "byScene": {
+     "bento": {
+      "spikeMax": 1.12,
+      "spikeFrames": 0,
+      "settleFrames": 296
+     },
+     "hero": {
+      "spikeMax": 2.38,
+      "spikeFrames": 0,
+      "settleFrames": 374
+     },
+     "sidebar": {
+      "spikeMax": 49.67,
+      "spikeFrames": 2,
+      "settleFrames": 295
+     },
+     "frame": {
+      "spikeMax": 34.1,
+      "spikeFrames": 5,
+      "settleFrames": 385
+     },
+     "flock": {
+      "spikeMax": 39.89,
+      "spikeFrames": 4,
+      "settleFrames": 573
+     }
+    }
+   },
+   "joltInterrupted": {
+    "spikeMax": 68.79,
+    "spikeFrames": 6
+   },
+   "reservoir": {
+    "scenesUsed": 3,
+    "scenes": 3,
+    "shareFrames": 392,
+    "usersMean": 5.969,
+    "usersMax": 8,
+    "concentration": 0.262,
+    "worstShare": 0.377,
+    "edgesMean": 3.209,
+    "edgesMax": 4,
+    "spillShare": 0.185,
+    "outsideMaxPx2": 91056,
+    "restingPx2": 0,
+    "byScene": {
+     "bento": {
+      "spillShare": 0.338,
+      "outsideMaxPx2": 63977,
+      "restingPx2": 0
+     },
+     "hero": {
+      "spillShare": 0.261,
+      "outsideMaxPx2": 80424,
+      "restingPx2": 0
+     },
+     "sidebar": {
+      "spillShare": 0.184,
+      "outsideMaxPx2": 91056,
+      "restingPx2": 0
+     },
+     "frame": {
+      "spillShare": 0.111,
+      "outsideMaxPx2": 35128,
+      "restingPx2": 0
+     },
+     "flock": {
+      "spillShare": 0,
+      "outsideMaxPx2": 0,
+      "restingPx2": 0
+     }
+    }
+   }
+  },
+  "60hz": {
+   "plumb": {
+    "bento": {
+     "axisShare": 0.9333,
+     "rectShare": 0.6667,
+     "tiltMean": 28.58
+    },
+    "hero": {
+     "axisShare": 0.5018,
+     "rectShare": 0.1,
+     "tiltMean": 25.84
+    },
+    "sidebar": {
+     "axisShare": 0.9982,
+     "rectShare": 1,
+     "tiltMean": 37.2
+    },
+    "frame": {
+     "axisShare": 0.7935,
+     "rectShare": 0.4,
+     "tiltMean": 30.63
+    },
+    "flock": {
+     "axisShare": 0.3085,
+     "rectShare": 0,
+     "tiltMean": 21.02
+    },
+    "pageErrors": 0
+   },
+   "roster": {
+    "bodiesMin": 12,
+    "notBiddingMax": 0,
+    "zeroAreaMax": 0,
+    "byScene": {
+     "bento": {
+      "bodies": 12,
+      "bidding": 12,
+      "zeroArea": 0
+     },
+     "hero": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "sidebar": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "frame": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "flock": {
+      "bodies": 12,
+      "bidding": 12,
+      "zeroArea": 0
+     }
+    }
+   },
+   "corners": {
+    "organicShare": 0.7155,
+    "rigidShare": 0.2787,
+    "overBudget": 0,
+    "iqMean": 0.68,
+    "iqMin": 0.021,
+    "sliverShare": 0.0881,
+    "vertsMax": 9,
+    "worstRestingInset": 0,
+    "pageErrors": 0
+   },
+   "jolt": {
+    "areaStepMax": 0.8205,
+    "areaStepP99": 0.3423,
+    "areaStepFullMax": 0.8205,
+    "spikeMax": 26.79,
+    "spikeFrames": 6,
+    "joltFrames": 42,
+    "byScene": {
+     "bento": {
+      "spikeMax": 1.46,
+      "spikeFrames": 0,
+      "settleFrames": 125
+     },
+     "hero": {
+      "spikeMax": 1.45,
+      "spikeFrames": 0,
+      "settleFrames": 189
+     },
+     "sidebar": {
+      "spikeMax": 26.79,
+      "spikeFrames": 1,
+      "settleFrames": 155
+     },
+     "frame": {
+      "spikeMax": 17.35,
+      "spikeFrames": 6,
+      "settleFrames": 193
+     },
+     "flock": {
+      "spikeMax": 19.98,
+      "spikeFrames": 4,
+      "settleFrames": 309
+     }
+    }
+   },
+   "joltInterrupted": {
+    "spikeMax": 41.31,
+    "spikeFrames": 3
+   },
+   "reservoir": {
+    "scenesUsed": 3,
+    "scenes": 3,
+    "shareFrames": 197,
+    "usersMean": 5.904,
+    "usersMax": 8,
+    "concentration": 0.266,
+    "worstShare": 0.421,
+    "edgesMean": 3.208,
+    "edgesMax": 4,
+    "spillShare": 0.187,
+    "outsideMaxPx2": 91274,
+    "restingPx2": 0,
+    "byScene": {
+     "bento": {
+      "spillShare": 0.323,
+      "outsideMaxPx2": 54964,
+      "restingPx2": 0
+     },
+     "hero": {
+      "spillShare": 0.263,
+      "outsideMaxPx2": 63443,
+      "restingPx2": 0
+     },
+     "sidebar": {
+      "spillShare": 0.184,
+      "outsideMaxPx2": 91274,
+      "restingPx2": 0
+     },
+     "frame": {
+      "spillShare": 0.114,
+      "outsideMaxPx2": 33444,
+      "restingPx2": 0
+     },
+     "flock": {
+      "spillShare": 0,
+      "outsideMaxPx2": 0,
+      "restingPx2": 0
+     }
+    }
+   },
+   "motion": {
+    "settleShare": 0.452,
+    "pathLen": 613.042,
+    "netDisp": 439.518,
+    "wander": 1.776,
+    "moveFrames": 86.53,
+    "burst": 0.675,
+    "peakRatio": 11.205
+   },
+   "motionReference": {
+    "peakRatio": 6.982,
+    "netDisp": 477.843,
+    "wander": 1.645,
+    "burst": 0.681
+   },
+   "peakOverReference": 4.223
+  },
+  "30ms": {
+   "plumb": {
+    "bento": {
+     "axisShare": 0.9318,
+     "rectShare": 0.6667,
+     "tiltMean": 29.11
+    },
+    "hero": {
+     "axisShare": 0.5019,
+     "rectShare": 0.1,
+     "tiltMean": 25.97
+    },
+    "sidebar": {
+     "axisShare": 0.9987,
+     "rectShare": 1,
+     "tiltMean": 41.44
+    },
+    "frame": {
+     "axisShare": 0.8028,
+     "rectShare": 0.4,
+     "tiltMean": 28.86
+    },
+    "flock": {
+     "axisShare": 0.3522,
+     "rectShare": 0,
+     "tiltMean": 25.38
+    },
+    "pageErrors": 0
+   },
+   "roster": {
+    "bodiesMin": 12,
+    "notBiddingMax": 0,
+    "zeroAreaMax": 0,
+    "byScene": {
+     "bento": {
+      "bodies": 12,
+      "bidding": 12,
+      "zeroArea": 0
+     },
+     "hero": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "sidebar": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "frame": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "flock": {
+      "bodies": 12,
+      "bidding": 12,
+      "zeroArea": 0
+     }
+    }
+   },
+   "corners": {
+    "organicShare": 0.7258,
+    "rigidShare": 0.268,
+    "overBudget": 0,
+    "iqMean": 0.685,
+    "iqMin": 0.245,
+    "sliverShare": 0.0811,
+    "vertsMax": 9,
+    "worstRestingInset": 0,
+    "pageErrors": 0
+   },
+   "jolt": {
+    "areaStepMax": 0.6198,
+    "areaStepP99": 0.3058,
+    "areaStepFullMax": 0.6198,
+    "spikeMax": 13.53,
+    "spikeFrames": 3,
+    "joltFrames": 21,
+    "byScene": {
+     "bento": {
+      "spikeMax": 1.34,
+      "spikeFrames": 0,
+      "settleFrames": 61
+     },
+     "hero": {
+      "spikeMax": 1.18,
+      "spikeFrames": 0,
+      "settleFrames": 86
+     },
+     "sidebar": {
+      "spikeMax": 13.53,
+      "spikeFrames": 1,
+      "settleFrames": 91
+     },
+     "frame": {
+      "spikeMax": 8.52,
+      "spikeFrames": 3,
+      "settleFrames": 96
+     },
+     "flock": {
+      "spikeMax": 6.97,
+      "spikeFrames": 1,
+      "settleFrames": 220
+     }
+    }
+   },
+   "joltInterrupted": {
+    "spikeMax": 22.13,
+    "spikeFrames": 3
+   },
+   "reservoir": {
+    "scenesUsed": 3,
+    "scenes": 3,
+    "shareFrames": 155,
+    "usersMean": 5.536,
+    "usersMax": 9,
+    "concentration": 0.305,
+    "worstShare": 0.467,
+    "edgesMean": 2.955,
+    "edgesMax": 4,
+    "spillShare": 0.259,
+    "outsideMaxPx2": 71922,
+    "restingPx2": 0,
+    "byScene": {
+     "bento": {
+      "spillShare": 0.268,
+      "outsideMaxPx2": 37010,
+      "restingPx2": 0
+     },
+     "hero": {
+      "spillShare": 0.268,
+      "outsideMaxPx2": 60467,
+      "restingPx2": 0
+     },
+     "sidebar": {
+      "spillShare": 0.282,
+      "outsideMaxPx2": 71922,
+      "restingPx2": 0
+     },
+     "frame": {
+      "spillShare": 0.227,
+      "outsideMaxPx2": 35353,
+      "restingPx2": 0
+     },
+     "flock": {
+      "spillShare": 0,
+      "outsideMaxPx2": 0,
+      "restingPx2": 0
+     }
+    }
+   },
+   "motion": {
+    "settleShare": 0.409,
+    "pathLen": 563.435,
+    "netDisp": 412.125,
+    "wander": 1.43,
+    "moveFrames": 52.393,
+    "burst": 0.749,
+    "peakRatio": 4.304
+   },
+   "motionReference": {
+    "peakRatio": 5.884,
+    "netDisp": 454.212,
+    "wander": 1.407,
+    "burst": 0.676
+   },
+   "peakOverReference": -1.58
+  },
+  "jitter": {
+   "plumb": {
+    "bento": {
+     "axisShare": 0.9321,
+     "rectShare": 0.6667,
+     "tiltMean": 28.98
+    },
+    "hero": {
+     "axisShare": 0.5017,
+     "rectShare": 0.1,
+     "tiltMean": 25.94
+    },
+    "sidebar": {
+     "axisShare": 0.9984,
+     "rectShare": 1,
+     "tiltMean": 41.16
+    },
+    "frame": {
+     "axisShare": 0.8034,
+     "rectShare": 0.4,
+     "tiltMean": 28.63
+    },
+    "flock": {
+     "axisShare": 0.383,
+     "rectShare": 0.0833,
+     "tiltMean": 22.89
+    },
+    "pageErrors": 0
+   },
+   "roster": {
+    "bodiesMin": 12,
+    "notBiddingMax": 0,
+    "zeroAreaMax": 0,
+    "byScene": {
+     "bento": {
+      "bodies": 12,
+      "bidding": 12,
+      "zeroArea": 0
+     },
+     "hero": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "sidebar": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "frame": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "flock": {
+      "bodies": 12,
+      "bidding": 12,
+      "zeroArea": 0
+     }
+    }
+   },
+   "corners": {
+    "organicShare": 0.7293,
+    "rigidShare": 0.2653,
+    "overBudget": 0,
+    "iqMean": 0.685,
+    "iqMin": 0.175,
+    "sliverShare": 0.0815,
+    "vertsMax": 9,
+    "worstRestingInset": 0,
+    "pageErrors": 0
+   },
+   "jolt": {
+    "areaStepMax": 0.3613,
+    "areaStepP99": 0.1961,
+    "areaStepFullMax": 0.3568,
+    "spikeMax": 26.08,
+    "spikeFrames": 3,
+    "joltFrames": 60,
+    "byScene": {
+     "bento": {
+      "spikeMax": 1.9,
+      "spikeFrames": 0,
+      "settleFrames": 75
+     },
+     "hero": {
+      "spikeMax": 3.36,
+      "spikeFrames": 0,
+      "settleFrames": 244
+     },
+     "sidebar": {
+      "spikeMax": 26.08,
+      "spikeFrames": 2,
+      "settleFrames": 109
+     },
+     "frame": {
+      "spikeMax": 10.1,
+      "spikeFrames": 3,
+      "settleFrames": 262
+     },
+     "flock": {
+      "spikeMax": 7.92,
+      "spikeFrames": 1,
+      "settleFrames": 262
+     }
+    }
+   },
+   "joltInterrupted": {
+    "spikeMax": 32.92,
+    "spikeFrames": 5
+   },
+   "reservoir": {
+    "scenesUsed": 3,
+    "scenes": 3,
+    "shareFrames": 183,
+    "usersMean": 5.557,
+    "usersMax": 9,
+    "concentration": 0.303,
+    "worstShare": 0.467,
+    "edgesMean": 2.973,
+    "edgesMax": 4,
+    "spillShare": 0.257,
+    "outsideMaxPx2": 71717,
+    "restingPx2": 0,
+    "byScene": {
+     "bento": {
+      "spillShare": 0.246,
+      "outsideMaxPx2": 49374,
+      "restingPx2": 0
+     },
+     "hero": {
+      "spillShare": 0.265,
+      "outsideMaxPx2": 69128,
+      "restingPx2": 0
+     },
+     "sidebar": {
+      "spillShare": 0.284,
+      "outsideMaxPx2": 71717,
+      "restingPx2": 0
+     },
+     "frame": {
+      "spillShare": 0.223,
+      "outsideMaxPx2": 35197,
+      "restingPx2": 0
+     },
+     "flock": {
+      "spillShare": 0,
+      "outsideMaxPx2": 0,
+      "restingPx2": 0
+     }
+    }
+   },
+   "motion": {
+    "settleShare": 0.776,
+    "pathLen": 587.387,
+    "netDisp": 425.71,
+    "wander": 1.453,
+    "moveFrames": 66.26,
+    "burst": 0.442,
+    "peakRatio": 5.816
+   },
+   "motionReference": {
+    "peakRatio": 6.185,
+    "netDisp": 454.339,
+    "wander": 2.632,
+    "burst": 0.68
+   },
+   "peakOverReference": -0.3689999999999998
+  }
+ },
+ "passed": true,
+ "voids": {
+  "1440x900@default": {
+   "hero": [
+    {
+     "id": 12,
+     "sites": 1,
+     "rect": [
+      0,
+      0,
+      3,
+      7
+     ],
+     "miss": 0.0188,
+     "corners": 4,
+     "unionCorners": 11,
+     "bboxFill": 0.9806
+    }
+   ],
+   "sidebar": [
+    {
+     "id": 13,
+     "sites": 1,
+     "rect": [
+      5,
+      0,
+      12,
+      7
+     ],
+     "miss": 0,
+     "corners": 4,
+     "unionCorners": 4,
+     "bboxFill": 1
+    }
+   ],
+   "frame": [
+    {
+     "id": 14,
+     "sites": 1,
+     "rect": [
+      2,
+      1,
+      10,
+      6
+     ],
+     "miss": 0.0224,
+     "corners": 5,
+     "unionCorners": 45,
+     "bboxFill": 0.9371
+    }
+   ],
+   "cardWalls": 0
+  },
+  "1440x540@30": {
+   "hero": "hero template over capacity: no void at this size",
+   "sidebar": [
+    {
+     "id": 30,
+     "sites": 1,
+     "rect": [
+      5,
+      0,
+      12,
+      4
+     ],
+     "miss": 0,
+     "corners": 4,
+     "unionCorners": 4,
+     "bboxFill": 1
+    }
+   ],
+   "frame": [
+    {
+     "id": 31,
+     "sites": 1,
+     "rect": [
+      2,
+      1,
+      10,
+      3
+     ],
+     "miss": 0.0178,
+     "corners": 3,
+     "unionCorners": 34,
+     "bboxFill": 0.9608
+    }
+   ],
+   "cardWalls": 0
+  },
+  "1440x620@24": {
+   "hero": [
+    {
+     "id": 24,
+     "sites": 1,
+     "rect": [
+      0,
+      0,
+      3,
+      4
+     ],
+     "miss": 0.0345,
+     "corners": 4,
+     "unionCorners": 21,
+     "bboxFill": 0.8912
+    }
+   ],
+   "sidebar": [
+    {
+     "id": 25,
+     "sites": 1,
+     "rect": [
+      5,
+      0,
+      12,
+      4
+     ],
+     "miss": 0,
+     "corners": 4,
+     "unionCorners": 4,
+     "bboxFill": 1
+    }
+   ],
+   "frame": [
+    {
+     "id": 26,
+     "sites": 1,
+     "rect": [
+      2,
+      1,
+      10,
+      3
+     ],
+     "miss": 0.0179,
+     "corners": 4,
+     "unionCorners": 32,
+     "bboxFill": 0.9618
+    }
+   ],
+   "cardWalls": 0
+  },
+  "1440x720@30": {
+   "hero": "hero template over capacity: no void at this size",
+   "sidebar": [
+    {
+     "id": 30,
+     "sites": 1,
+     "rect": [
+      5,
+      0,
+      12,
+      5
+     ],
+     "miss": 0,
+     "corners": 4,
+     "unionCorners": 4,
+     "bboxFill": 1
+    }
+   ],
+   "frame": [
+    {
+     "id": 31,
+     "sites": 1,
+     "rect": [
+      2,
+      1,
+      10,
+      4
+     ],
+     "miss": 0.0193,
+     "corners": 4,
+     "unionCorners": 26,
+     "bboxFill": 0.9763
+    }
+   ],
+   "cardWalls": 0
+  }
+ },
+ "harder": {
+  "tol2": {
+   "axisShare": 0.9987,
+   "rectShare": 1,
+   "cells": 45
+  },
+  "full": {
+   "axisShare": 0.9989,
+   "rectShare": 1,
+   "cells": 60
+  }
+ },
+ "stress": {
+  "1440x540@30": {
+   "axisShare": 0.9955,
+   "rectShare": 1,
+   "cells": 150,
+   "pageErrors": 0
+  },
+  "1440x620@24": {
+   "axisShare": 0.9945,
+   "rectShare": 1,
+   "cells": 120,
+   "pageErrors": 0
+  },
+  "1440x720@30": {
+   "axisShare": 0.9947,
+   "rectShare": 1,
+   "cells": 150,
+   "pageErrors": 0
+  }
+ },
+ "failures": []
+}

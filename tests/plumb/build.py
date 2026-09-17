@@ -548,7 +548,7 @@ card = '''
 anchor = '<div class="previews">'
 if index.count(anchor) != 1:
     raise ValueError('Gallery anchor missing or ambiguous')
-IS_LATEST = True   # only the newest mark wears the flag
+IS_LATEST = False  # only the newest mark wears the flag
 if not IS_LATEST:
     card = card.replace(' latest"', '"').replace('<span class="latest-flag">Latest</span>', '')
 own = re.compile(r'\n?[ \t]*<!-- PLUMB -->.*?<!-- /PLUMB -->[ \t]*\n?', re.S)
