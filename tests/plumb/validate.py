@@ -45,6 +45,35 @@ has to prove both halves of that trade, and either half alone is easy.
     rectangles, and every case that already worked is unchanged to four
     decimals. STRESS is here so that lapse cannot return quietly.
 
+    AND UNDER TWO HARDER READINGS, because both of plumb.js's defaults
+    flatter a result and neither is relied on here.
+      TOLERANCE. 4 degrees is a generous window. An independent nudge-based
+      route measured on this same page reaches sidebar 0.849 at 4 degrees and
+      0.696 at 2 — two thirds of its gain lives between the two. This mark
+      reads 0.848/0.556 at 4 degrees and 0.848/0.556 at 2. Not one cell drops
+      out, because the cells really are rectangles rather than near-misses.
+      (Bellows, read the same way, falls 0.700 -> 0.655.)
+      DENOMINATOR. plumb.js skips a body that has become a FIELD, since its
+      members are emitted at path length 2 — so the default reading covers
+      5-10 of 12 cards. --full reads every body's own outline instead. The
+      sidebar comes out HIGHER there, 0.886/0.667 against 0.703/0.000, and
+      the untouched scenes are identical between the two builds to four
+      decimals: bento 0.8643/0.500, hero 0.5066/0.000. Note that bento's
+      familiar 0.932/0.667 is a leaf-subset figure; over every body it is
+      0.864/0.500, in BOTH builds. The mark's claim does not rest on it.
+
+    AND EVERY BODY IS STILL BIDDING. This is the one thing an angle cannot
+    see, and it is the invariant a grid template is most likely to break: a
+    rectangle with no area sets claimTarget to 0, the body falls under
+    ACTIVE_MIN and stops bidding, and the page silently loses a card while
+    every angle on it still reads beautifully. A rival grid design measured
+    on this page did exactly that — 96 zero-area rectangles over a roster
+    sweep, four bodies not bidding and two cards missing from the window at
+    one slider-drag from the default, with its axis score reading 0.966.
+    So it is counted rather than inferred, at every clock and every stress
+    case, and separately over R=4..10 x n=4..30: 189 templates, zero
+    zero-area rectangles, exact tiling everywhere.
+
   AND THE SKIP DID NOT COME BACK. This is the half that is easy to lose: the
   straighter seam has a much better-scoring route, and that route brings the
   step back.
@@ -120,6 +149,13 @@ BENTO_RECT_MIN = 0.55     # measured 0.667; unchanged from Bellows
 STRESS = [(1440, 540, 30), (1440, 620, 24), (1440, 720, 30)]
 STRESS_AXIS_MIN = 0.85    # measured 0.936-0.959; before the sub-unit grid,
 STRESS_RECT_MIN = 0.65    # 0.266-0.387 and ZERO rectangles — Bellows exactly
+# THE HEADLINE, READ TWO HARDER WAYS.
+STRICT_TOL = 2            # degrees. A nudge-based route measured on this page
+STRICT_AXIS_MIN = 0.78    # loses two thirds of its gain between 4 and 2; this
+STRICT_RECT_MIN = 0.45    # mark loses NOTHING (0.848/0.556 at both).
+FULL_AXIS_MIN = 0.82      # --full: every body's own outline, so a body that has
+FULL_RECT_MIN = 0.55      # become a field counts too. Measured 0.886/0.667,
+                          # BETTER than the leaf reading, against Bellows' 0.703/0.000.
 # INHERITED FROM BELLOWS
 ORGANIC_MIN = 0.55      # measured 0.640-0.678; the reference 0.174-0.178
 OVER_MAX = 0.005        # measured 0.000; the reference 0.068-0.075
@@ -191,6 +227,17 @@ def main():
                 f"the scene that already worked has regressed")
         if bt['rectShare'] < BENTO_RECT_MIN:
             bad(f"bento rectShare {bt['rectShare']} < {BENTO_RECT_MIN}")
+
+        # THE ROSTER, which no angle can see. A template that hands out a
+        # rectangle with no area drops that body below ACTIVE_MIN and it stops
+        # bidding: the page quietly loses a card while every angle still reads
+        # beautifully. This is counted, not inferred.
+        row['roster'] = {'bodiesMin': pl['bodiesMin'], 'notBiddingMax': pl['notBiddingMax'],
+                         'zeroAreaMax': pl['zeroAreaMax'], 'byScene': pl['roster']}
+        if pl['zeroAreaMax']:
+            bad(f"{pl['zeroAreaMax']} body(s) hold a rectangle with no area")
+        if pl['notBiddingMax']:
+            bad(f"{pl['notBiddingMax']} body(s) stopped bidding: the page has lost a card")
 
         c = run('corners.js', page, extra)
         t = c['transition']
@@ -284,6 +331,26 @@ def main():
     # surplus sent it back to `guillotine` — the fanned column, measured
     # identical to Bellows to four decimals. One viewport and one roster size
     # cannot see that, so the gate reads more than one of each.
+    # THE SAME CLAIM, READ TWO HARDER WAYS. A 4-degree window is generous,
+    # and plumb's default denominator skips a body that has become a field
+    # (its members are emitted at path length 2). Both are stated rather than
+    # relied on: at 2 degrees this mark reads exactly what it reads at 4,
+    # because the cells really are rectangles and not near-misses; and over
+    # every body, fields included, it reads BETTER than the leaf view.
+    harder = {}
+    summary['harder'] = harder
+    for label, extra, amin, rmin in (
+            ('tol2', ['--tol', str(STRICT_TOL)], STRICT_AXIS_MIN, STRICT_RECT_MIN),
+            ('full', ['--full', '1'], FULL_AXIS_MIN, FULL_RECT_MIN)):
+        pl = run('plumb.js', page, ['--dt', '30', '--frames', '220', *extra])
+        sb = pl['byScene']['sidebar']
+        harder[label] = {k: sb[k] for k in ('axisShare', 'rectShare', 'cells')}
+        if sb['axisShare'] < amin:
+            failures.append(f"[{label}] sidebar axisShare {sb['axisShare']} < {amin}")
+        if sb['rectShare'] < rmin:
+            failures.append(f"[{label}] sidebar rectShare {sb['rectShare']} < {rmin}: "
+                            f"the rectangles do not survive a harder reading")
+
     stress = {}
     summary['stress'] = stress
     for vw, vh, n in STRESS:
@@ -300,6 +367,10 @@ def main():
                             f"the grid ran out of whole lattice slots and the column fanned")
         if sb['rectShare'] < STRESS_RECT_MIN:
             failures.append(f"[{key}] sidebar rectShare {sb['rectShare']} < {STRESS_RECT_MIN}")
+        if pl['zeroAreaMax']:
+            failures.append(f"[{key}] {pl['zeroAreaMax']} body(s) hold a rectangle with no area")
+        if pl['notBiddingMax']:
+            failures.append(f"[{key}] {pl['notBiddingMax']} body(s) stopped bidding")
 
     summary['passed'] = not failures
     summary['failures'] = failures

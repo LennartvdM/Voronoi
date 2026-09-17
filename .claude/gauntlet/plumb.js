@@ -45,6 +45,7 @@ const TOL = +opt('--tol', 4);        // degrees from an axis that still counts a
 const PX = +opt('--parkx', -1000), PY = +opt('--parky', -1000);
 const VW = +opt('--vw', 1440), VH = +opt('--vh', 900);
 const COUNT = +opt('--count', 0);    // 0: leave the page's own default roster
+const FULL = +opt('--full', 0);      // 1: read every body's own outline, fields included
 const SEATED = 5;                    // frames at the end of a scene counted as settled
 const MIN_EDGE = 2;                  // px: shorter than this is a rounding artefact
 
@@ -52,7 +53,7 @@ function instrument(src) {
   const s = fs.readFileSync(src, 'utf8');
   const i = s.lastIndexOf('})();');
   if (i < 0) throw new Error('IIFE close not found');
-  const exp = `\n window.__X = { fn: (n) => ({ picture: typeof picture !== 'undefined' ? picture : undefined, W: typeof W !== 'undefined' ? W : undefined, H: typeof H !== 'undefined' ? H : undefined })[n], setMouse: (x, y) => { mouseX = x; mouseY = y; } };\n`;
+  const exp = `\n window.__X = { fn: (n) => ({ picture: typeof picture !== 'undefined' ? picture : undefined, W: typeof W !== 'undefined' ? W : undefined, H: typeof H !== 'undefined' ? H : undefined, root: typeof root !== 'undefined' ? root : undefined })[n], setMouse: (x, y) => { mouseX = x; mouseY = y; } };\n`;
   const dst = path.join(os.tmpdir(), 'plumb-' + Buffer.from(src).toString('hex').slice(-24) + '.html');
   fs.writeFileSync(dst, s.slice(0, i) + exp + s.slice(i));
   return dst;
@@ -67,7 +68,7 @@ const CLOCK = `(() => {
   window.__advance = (n) => { for (let i = 0; i < n; i++) { t += DT + (JIT ? (2 * rnd() - 1) * JIT : 0); const cbs = q.splice(0); for (const cb of cbs) cb(t); } };
 })();`;
 
-const RUN = ({ FRAMES, PX, PY, TOL, SEATED, MIN_EDGE, COUNT }) => {
+const RUN = ({ FRAMES, PX, PY, TOL, SEATED, MIN_EDGE, COUNT, FULL }) => {
   const X = window.__X;
   X.setMouse(PX, PY);
   const W = X.fn('W'), H = X.fn('H');
@@ -76,30 +77,59 @@ const RUN = ({ FRAMES, PX, PY, TOL, SEATED, MIN_EDGE, COUNT }) => {
     return (Math.abs(a[0]) < e && Math.abs(b[0]) < e) || (Math.abs(a[0] - W) < e && Math.abs(b[0] - W) < e)
         || (Math.abs(a[1]) < e && Math.abs(b[1]) < e) || (Math.abs(a[1] - H) < e && Math.abs(b[1] - H) < e);
   };
+  const measure = (l) => {
+    let total = 0, onAxis = 0, tiltSum = 0, tiltLen = 0, edges = 0;
+    for (const lp of l.loops) {
+      for (let i = 0, m = lp.length; i < m; i++) {
+        const a = lp[i], b = lp[(i + 1) % m];
+        const dx = b[0] - a[0], dy = b[1] - a[1];
+        const len = Math.hypot(dx, dy);
+        if (len < MIN_EDGE) continue;
+        edges++;
+        total += len;
+        // angle to the NEARER axis, in degrees: 0 is on axis, 45 is diagonal
+        let ang = Math.abs(Math.atan2(dy, dx) * 180 / Math.PI) % 90;
+        if (ang > 45) ang = 90 - ang;
+        if (ang <= TOL) { onAxis += len; continue; }
+        if (onWindow(a, b)) { onAxis += len; continue; }   // the crop is on axis by construction
+        tiltSum += ang * len; tiltLen += len;
+      }
+    }
+    if (total <= 0) return null;
+    return { id: l.body.id, total, axisShare: onAxis / total, tilt: tiltLen ? tiltSum / tiltLen : 0, tiltLen, edges };
+  };
+  // THE ROSTER. Not an angle at all: the count of bodies that are still
+  // bidding, and any rectangle with no area. A template that hands out a
+  // zero-area rect drops that body below ACTIVE_MIN and it stops bidding —
+  // the page loses a card while every angle on it still reads beautifully.
+  // An axis measure cannot see that, so it is counted here beside it.
+  const census = () => {
+    const root = X.fn('root');
+    let bodies = 0, bidding = 0, zeroArea = 0;
+    if (root) for (const b of root.bodies) {
+      bodies++;
+      if (b.claim >= 0.01) bidding++;
+      const r = b.rect;
+      if (r && !((r[2] - r[0]) > 0 && (r[3] - r[1]) > 0)) zeroArea++;
+    }
+    return { bodies, bidding, zeroArea };
+  };
   const sample = () => {
     const pic = X.fn('picture');
     const cells = [];
+    if (FULL) {
+      const root = X.fn('root');
+      if (root) for (const b of root.bodies) {
+        if (b.isVoid || !b.loops || !b.loops.length) continue;
+        const c = measure({ loops: b.loops, body: b });
+        if (c) cells.push(c);
+      }
+      return cells;
+    }
     if (pic) for (const l of pic.leaves) {
       if (l.path.length !== 1 || l.isVoid || !l.loops) continue;
-      let total = 0, onAxis = 0, tiltSum = 0, tiltLen = 0, edges = 0;
-      for (const lp of l.loops) {
-        for (let i = 0, m = lp.length; i < m; i++) {
-          const a = lp[i], b = lp[(i + 1) % m];
-          const dx = b[0] - a[0], dy = b[1] - a[1];
-          const len = Math.hypot(dx, dy);
-          if (len < MIN_EDGE) continue;
-          edges++;
-          total += len;
-          // angle to the NEARER axis, in degrees: 0 is on axis, 45 is diagonal
-          let ang = Math.abs(Math.atan2(dy, dx) * 180 / Math.PI) % 90;
-          if (ang > 45) ang = 90 - ang;
-          if (ang <= TOL) { onAxis += len; continue; }
-          if (onWindow(a, b)) { onAxis += len; continue; }   // the crop is on axis by construction
-          tiltSum += ang * len; tiltLen += len;
-        }
-      }
-      if (total <= 0) continue;
-      cells.push({ id: l.body.id, total, axisShare: onAxis / total, tilt: tiltLen ? tiltSum / tiltLen : 0, tiltLen, edges });
+      const c = measure(l);
+      if (c) cells.push(c);
     }
     return cells;
   };
@@ -110,17 +140,19 @@ const RUN = ({ FRAMES, PX, PY, TOL, SEATED, MIN_EDGE, COUNT }) => {
     c.dispatchEvent(new Event('input', { bubbles: true }));
   }
   for (let i = 0; i < 120; i++) step();
-  const out = {};
+  const out = {}, roster = {};
   for (const sc of ['bento', 'hero', 'sidebar', 'frame', 'flock']) {
     document.querySelector('.scene-btn[data-scene="' + sc + '"]').click();
     let seated = [];
     for (let i = 0; i < FRAMES; i++) { step(); if (i >= FRAMES - SEATED) seated = seated.concat(sample()); }
     out[sc] = seated;
+    roster[sc] = census();
   }
-  return out;
+  return { cells: out, roster };
 };
 
-function metrics(data) {
+function metrics(payload) {
+  const data = payload.cells, roster = payload.roster;
   const by = {};
   for (const sc in data) {
     const cells = data[sc];
@@ -144,7 +176,12 @@ function metrics(data) {
   const avg = (k) => T.length ? +(T.reduce((a, s) => a + by[s][k], 0) / T.length).toFixed(4) : 0;
   return {
     clock: { dtMs: DT, jitterMs: JIT }, frames: FRAMES, tolDeg: TOL,
-    viewport: { w: VW, h: VH }, count: COUNT || null,
+    viewport: { w: VW, h: VH }, count: COUNT || null, full: !!FULL,
+    roster,
+    // the worst scene on each roster fact, so a gate needs one comparison
+    bodiesMin: Math.min(...Object.values(roster).map(r => r.bodies)),
+    notBiddingMax: Math.max(...Object.values(roster).map(r => r.bodies - r.bidding)),
+    zeroAreaMax: Math.max(...Object.values(roster).map(r => r.zeroArea)),
     withVoid: { axisShare: avg('axisShare'), rectShare: avg('rectShare'), tiltMean: avg('tiltMean') },
     bento: by.bento, byScene: by,
   };
@@ -158,7 +195,7 @@ function metrics(data) {
   const errs = []; p.on('pageerror', e => errs.push(String(e.message || e)));
   await p.goto('file://' + dst);
   await p.waitForTimeout(300);
-  const data = await p.evaluate(RUN, { FRAMES, PX, PY, TOL, SEATED, MIN_EDGE, COUNT });
+  const data = await p.evaluate(RUN, { FRAMES, PX, PY, TOL, SEATED, MIN_EDGE, COUNT, FULL });
   await b.close();
   const m = metrics(data); m.pageErrors = errs.length;
   if (OUT) fs.writeFileSync(OUT, JSON.stringify(m, null, 2));
