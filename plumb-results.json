@@ -29,6 +29,38 @@
     },
     "pageErrors": 0
    },
+   "roster": {
+    "bodiesMin": 12,
+    "notBiddingMax": 0,
+    "zeroAreaMax": 0,
+    "byScene": {
+     "bento": {
+      "bodies": 12,
+      "bidding": 12,
+      "zeroArea": 0
+     },
+     "hero": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "sidebar": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "frame": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "flock": {
+      "bodies": 12,
+      "bidding": 12,
+      "zeroArea": 0
+     }
+    }
+   },
    "corners": {
     "organicShare": 0.6714,
     "rigidShare": 0.3256,
@@ -150,6 +182,38 @@
     },
     "pageErrors": 0
    },
+   "roster": {
+    "bodiesMin": 12,
+    "notBiddingMax": 0,
+    "zeroAreaMax": 0,
+    "byScene": {
+     "bento": {
+      "bodies": 12,
+      "bidding": 12,
+      "zeroArea": 0
+     },
+     "hero": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "sidebar": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "frame": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "flock": {
+      "bodies": 12,
+      "bidding": 12,
+      "zeroArea": 0
+     }
+    }
+   },
    "corners": {
     "organicShare": 0.6399,
     "rigidShare": 0.357,
@@ -270,6 +334,38 @@
      "tiltMean": 27.04
     },
     "pageErrors": 0
+   },
+   "roster": {
+    "bodiesMin": 12,
+    "notBiddingMax": 0,
+    "zeroAreaMax": 0,
+    "byScene": {
+     "bento": {
+      "bodies": 12,
+      "bidding": 12,
+      "zeroArea": 0
+     },
+     "hero": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "sidebar": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "frame": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "flock": {
+      "bodies": 12,
+      "bidding": 12,
+      "zeroArea": 0
+     }
+    }
    },
    "corners": {
     "organicShare": 0.6397,
@@ -407,6 +503,38 @@
     },
     "pageErrors": 0
    },
+   "roster": {
+    "bodiesMin": 12,
+    "notBiddingMax": 0,
+    "zeroAreaMax": 0,
+    "byScene": {
+     "bento": {
+      "bodies": 12,
+      "bidding": 12,
+      "zeroArea": 0
+     },
+     "hero": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "sidebar": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "frame": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "flock": {
+      "bodies": 12,
+      "bidding": 12,
+      "zeroArea": 0
+     }
+    }
+   },
    "corners": {
     "organicShare": 0.6783,
     "rigidShare": 0.2934,
@@ -543,6 +671,38 @@
     },
     "pageErrors": 0
    },
+   "roster": {
+    "bodiesMin": 12,
+    "notBiddingMax": 0,
+    "zeroAreaMax": 0,
+    "byScene": {
+     "bento": {
+      "bodies": 12,
+      "bidding": 12,
+      "zeroArea": 0
+     },
+     "hero": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "sidebar": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "frame": {
+      "bodies": 13,
+      "bidding": 13,
+      "zeroArea": 0
+     },
+     "flock": {
+      "bodies": 12,
+      "bidding": 12,
+      "zeroArea": 0
+     }
+    }
+   },
    "corners": {
     "organicShare": 0.6768,
     "rigidShare": 0.2952,
@@ -652,6 +812,18 @@
   }
  },
  "passed": true,
+ "harder": {
+  "tol2": {
+   "axisShare": 0.8478,
+   "rectShare": 0.5556,
+   "cells": 45
+  },
+  "full": {
+   "axisShare": 0.8855,
+   "rectShare": 0.6667,
+   "cells": 60
+  }
+ },
  "stress": {
   "1440x540@30": {
    "axisShare": 0.9561,
