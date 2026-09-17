@@ -311,14 +311,22 @@ def main():
             rows = pv.get(sc) or []
             voids[key][sc] = rows
             if not rows:
-                # RECORDED, NOT FAILED. Some templates genuinely hand out no
-                # void at some lattice sizes - hero does at 1440x540 and
-                # 1440x720 with a full roster - and Plumb reads exactly the
+                # HERO ONLY, AND ONLY BECAUSE ITS TEMPLATE RUNS OUT OF SLOTS.
+                # Over capacity, hive.html:1805 discards the whole formation
+                # (spec.content.length < n) and falls back to a free layout
+                # with no whitespace at all: hero does that at 1440x540 and
+                # 1440x720 with a full roster, and Plumb reads exactly the
                 # same there, so it is the template's shape and not this
-                # mark's doing. The hazard Codex named is a void that EXISTS
-                # and has lost its geometry; that is caught per-void below by
-                # noGeometry, which does fail.
-                voids[key][sc] = 'no void in this template at this size'
+                # mark's doing.
+                #   sidebar and frame ALWAYS define a void, so an empty result
+                # from either is a void that has been removed or retired early
+                # - and noGeometry cannot catch that, because it is only
+                # emitted for a body that still exists. Blanket-exempting
+                # every scene would have let exactly that pass.
+                if sc == 'hero':
+                    voids[key][sc] = 'hero template over capacity: no void at this size'
+                    continue
+                failures.append(f'[{key}] {sc} has no void at all, and its template always defines one')
                 continue
             for v in rows:
                 if v['miss'] is None or v['miss'] > VOID_MISS_MAX:
