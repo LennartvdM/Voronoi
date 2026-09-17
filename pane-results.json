@@ -868,7 +868,7 @@
    "cardWalls": 0
   },
   "1440x540@30": {
-   "hero": "no void in this template at this size",
+   "hero": "hero template over capacity: no void at this size",
    "sidebar": [
     {
      "id": 30,
@@ -955,7 +955,7 @@
    "cardWalls": 0
   },
   "1440x720@30": {
-   "hero": "no void in this template at this size",
+   "hero": "hero template over capacity: no void at this size",
    "sidebar": [
     {
      "id": 30,
