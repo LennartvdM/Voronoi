@@ -652,5 +652,25 @@
   }
  },
  "passed": true,
+ "stress": {
+  "1440x540@30": {
+   "axisShare": 0.9561,
+   "rectShare": 0.8667,
+   "cells": 150,
+   "pageErrors": 0
+  },
+  "1440x620@24": {
+   "axisShare": 0.9381,
+   "rectShare": 0.8333,
+   "cells": 120,
+   "pageErrors": 0
+  },
+  "1440x720@30": {
+   "axisShare": 0.9326,
+   "rectShare": 0.7333,
+   "cells": 150,
+   "pageErrors": 0
+  }
+ },
  "failures": []
 }
