@@ -28,7 +28,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 3.73,
-        "msP95": 7.8,
+        "msP95": 8.3,
         "shape": {
           "bodyFrames": 35436,
           "rectangle": 22955,
@@ -50,7 +50,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.98e-07,
-        "msP95": 9.6,
+        "msP95": 9.9,
         "shape": {
           "bodyFrames": 33989,
           "rectangle": 18382,
@@ -72,7 +72,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.98e-07,
-        "msP95": 27.5,
+        "msP95": 27.9,
         "shape": {
           "bodyFrames": 33926,
           "rectangle": 22276,
@@ -97,7 +97,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.98e-07,
-        "msP95": 9.8,
+        "msP95": 10.1,
         "shape": {
           "bodyFrames": 29018,
           "rectangle": 26547,
@@ -126,7 +126,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 4.01,
-        "msP95": 8.2,
+        "msP95": 8.3,
         "shape": {
           "bodyFrames": 17815,
           "rectangle": 11454,
@@ -148,7 +148,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.92e-07,
-        "msP95": 10,
+        "msP95": 10.2,
         "shape": {
           "bodyFrames": 17009,
           "rectangle": 9192,
@@ -170,7 +170,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.94e-07,
-        "msP95": 28,
+        "msP95": 28.9,
         "shape": {
           "bodyFrames": 16942,
           "rectangle": 11144,
@@ -196,7 +196,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.92e-07,
-        "msP95": 10.6,
+        "msP95": 11.4,
         "shape": {
           "bodyFrames": 14484,
           "rectangle": 13085,
@@ -223,7 +223,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 3.02,
-        "msP95": 9.4,
+        "msP95": 9.6,
         "shape": {
           "bodyFrames": 8910,
           "rectangle": 5718,
@@ -318,7 +318,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.96e-07,
-        "msP95": 11,
+        "msP95": 10.9,
         "shape": {
           "bodyFrames": 8494,
           "rectangle": 4603,
@@ -407,7 +407,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.95e-07,
-        "msP95": 28.4,
+        "msP95": 28.9,
         "shape": {
           "bodyFrames": 8452,
           "rectangle": 5575,
@@ -502,7 +502,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.96e-07,
-        "msP95": 12.9,
+        "msP95": 12.7,
         "shape": {
           "bodyFrames": 7264,
           "rectangle": 6510,
@@ -602,7 +602,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 0.00772,
-        "msP95": 10.7,
+        "msP95": 11.6,
         "shape": {
           "bodyFrames": 4959,
           "rectangle": 3187,
@@ -697,7 +697,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.78e-07,
-        "msP95": 12.2,
+        "msP95": 12.9,
         "shape": {
           "bodyFrames": 4737,
           "rectangle": 2573,
@@ -790,7 +790,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.83e-07,
-        "msP95": 28.6,
+        "msP95": 29.5,
         "shape": {
           "bodyFrames": 4719,
           "rectangle": 3125,
@@ -889,7 +889,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.71e-07,
-        "msP95": 15.1,
+        "msP95": 15.5,
         "shape": {
           "bodyFrames": 4044,
           "rectangle": 3733,
@@ -990,7 +990,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 0.0668,
-        "msP95": 11.3,
+        "msP95": 11.7,
         "shape": {
           "bodyFrames": 5916,
           "rectangle": 3826,
@@ -1088,7 +1088,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.91e-07,
-        "msP95": 11.4,
+        "msP95": 11.5,
         "shape": {
           "bodyFrames": 5648,
           "rectangle": 3117,
@@ -1184,7 +1184,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.79e-07,
-        "msP95": 29.8,
+        "msP95": 31,
         "shape": {
           "bodyFrames": 5624,
           "rectangle": 3728,
@@ -1283,7 +1283,7 @@
         "vanish": 0,
         "settledScenes": "5/5",
         "areaRelativeErrorMax": 9.93e-07,
-        "msP95": 12.9,
+        "msP95": 13.5,
         "shape": {
           "bodyFrames": 4834,
           "rectangle": 4446,
