@@ -1,0 +1,98 @@
+{
+  "scope": "Actual solver and pointer routing; DOM/paint stubbed. Live Netlify hover remains the visual check.",
+  "hashes": {
+    "ferry": "f5930f96e356a17f95b56195383d514ce80eddbdce4bfd8ad56ffa7f0b20debf",
+    "buoy": "324510ae3880a69df7070139aa5b09ba133ac3aff040c68b64ea89c96acd9bba"
+  },
+  "hovering": [
+    {
+      "name": "ferry",
+      "scene": "bento",
+      "ratio": 0.9999999990971107,
+      "restored": 0.9999999990197501,
+      "voidPct": null
+    },
+    {
+      "name": "buoy",
+      "scene": "bento",
+      "ratio": 1.5081688277703915,
+      "restored": 0.9999999990280168,
+      "voidPct": null
+    },
+    {
+      "name": "ferry",
+      "scene": "sidebar",
+      "ratio": 0.9999999946811309,
+      "restored": 0.999999999833003,
+      "voidPct": 0.026154528385579624
+    },
+    {
+      "name": "buoy",
+      "scene": "sidebar",
+      "ratio": 1.5671600768487906,
+      "restored": 0.9999999998418839,
+      "voidPct": 0.02615452839935106
+    },
+    {
+      "name": "ferry",
+      "scene": "frame",
+      "ratio": 1,
+      "restored": 1,
+      "voidPct": 0.0000018624205637270557
+    },
+    {
+      "name": "buoy",
+      "scene": "frame",
+      "ratio": 1.5671600803958698,
+      "restored": 1.0000337953311595,
+      "voidPct": 0.00029314200068891163
+    },
+    {
+      "name": "ferry",
+      "scene": "hero",
+      "ratio": 1,
+      "restored": 1,
+      "voidPct": 0.0000060225549789994
+    },
+    {
+      "name": "buoy",
+      "scene": "hero",
+      "ratio": 1.5671601915569795,
+      "restored": 1.0000456026133007,
+      "voidPct": 0.00015700031891876688
+    }
+  ],
+  "slider": [
+    {
+      "boost": 1,
+      "ratio": 1.0000000000661817
+    },
+    {
+      "boost": 2.6,
+      "ratio": 2.238561604525361
+    }
+  ],
+  "nested": [
+    {
+      "inner": "organic",
+      "ratio": 1.9773145564534564,
+      "parentRatio": 1.5093746492658353
+    },
+    {
+      "inner": "grid",
+      "ratio": 2.044910239638651,
+      "parentRatio": 1.5093746527699345
+    }
+  ],
+  "comparedFrames": 2031,
+  "release": [
+    {
+      "from": "hero",
+      "hoverAfterOneSecond": 0.6300965554671056
+    },
+    {
+      "from": "frame",
+      "hoverAfterOneSecond": 0.5943521385028441
+    }
+  ]
+}
