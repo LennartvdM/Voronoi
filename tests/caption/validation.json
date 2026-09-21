@@ -1,0 +1,89 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed. Cell/anchor state and cell fill/stroke commands must exactly match Skim; text is intentionally changed.",
+  "hashes": [
+    {
+      "file": "skim.html",
+      "sha256": "44a3ab22b72ab444c28cfe20fa534e515a688d1a5a33e21c5f1eec62704c3a1f"
+    },
+    {
+      "file": "caption.html",
+      "sha256": "b595913da13062c7f0acfb1db15d0b65fe4ee30c17f9fe02829fa770005922c5"
+    }
+  ],
+  "matrix": [
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 16.666666666666668,
+      "inner": "flock",
+      "frames": 3470,
+      "hoverFrames": 288,
+      "compactFrames": 626
+    },
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 24,
+      "fields": 1,
+      "dt": 30,
+      "inner": "bento",
+      "frames": 1939,
+      "hoverFrames": 162,
+      "compactFrames": 2845
+    },
+    {
+      "width": 390,
+      "height": 720,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 8.333333333333334,
+      "inner": "flock",
+      "frames": 6940,
+      "hoverFrames": 576,
+      "compactFrames": 20817
+    },
+    {
+      "width": 1363,
+      "height": 846,
+      "count": 30,
+      "fields": 0,
+      "dt": 50,
+      "inner": "flock",
+      "frames": 1157,
+      "hoverFrames": 96,
+      "compactFrames": 20644
+    }
+  ],
+  "totalFrames": 13506,
+  "paintOps": 714704,
+  "textDraws": 304590,
+  "fonts": [
+    "600 32px system-ui, sans-serif",
+    "500 12px system-ui, sans-serif",
+    "600 20px system-ui, sans-serif"
+  ],
+  "readability": [
+    {
+      "scene": "bento",
+      "numbers": 12,
+      "names": 12
+    },
+    {
+      "scene": "hero",
+      "numbers": 12,
+      "names": 11
+    },
+    {
+      "scene": "sidebar",
+      "numbers": 12,
+      "names": 12
+    },
+    {
+      "scene": "frame",
+      "numbers": 12,
+      "names": 12
+    }
+  ]
+}

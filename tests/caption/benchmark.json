@@ -1,0 +1,275 @@
+{
+  "scope": "Full tick JavaScript CPU computation; native Canvas, GPU, browser layout and compositor excluded. Includes diagnostic cadence, content anchors and hover. Median of five alternating-order paired runs after two warmups per mark/workload. No instrumentation wrappers.",
+  "runtime": "v24.19.0",
+  "cpu": "AMD EPYC 9V74 80-Core Processor",
+  "platform": "linux",
+  "rows": [
+    {
+      "name": "default transitions",
+      "count": 12,
+      "fields": 0.55,
+      "moving": true,
+      "framesPerRun": 1600,
+      "repeats": 5,
+      "medians": {
+        "skim": {
+          "totalMs": 1063.1716529999994,
+          "meanFrameMs": 0.6627780374999839,
+          "p95FrameMs": 1.5046350000011444,
+          "p99FrameMs": 2.236597000000984
+        },
+        "caption": {
+          "totalMs": 1030.471286,
+          "meanFrameMs": 0.642096039999982,
+          "p95FrameMs": 1.4235429999998814,
+          "p99FrameMs": 2.121463000001313
+        }
+      },
+      "reductionPct": 3.0757372911257908,
+      "samples": {
+        "skim": [
+          {
+            "totalMs": 1066.749691,
+            "meanFrameMs": 0.6638071349999933,
+            "p95FrameMs": 1.5076689999996233,
+            "p99FrameMs": 2.1871820000005755
+          },
+          {
+            "totalMs": 1070.606380000001,
+            "meanFrameMs": 0.6671978187499815,
+            "p95FrameMs": 1.5261069999996835,
+            "p99FrameMs": 2.3582900000001246
+          },
+          {
+            "totalMs": 1000.8343290000012,
+            "meanFrameMs": 0.6240507500000001,
+            "p95FrameMs": 1.3259159999997792,
+            "p99FrameMs": 2.1107969999993657
+          },
+          {
+            "totalMs": 1063.1716529999994,
+            "meanFrameMs": 0.6627780374999839,
+            "p95FrameMs": 1.5046350000011444,
+            "p99FrameMs": 2.4180300000007264
+          },
+          {
+            "totalMs": 1031.471716,
+            "meanFrameMs": 0.6427160762499647,
+            "p95FrameMs": 1.417594000000463,
+            "p99FrameMs": 2.236597000000984
+          }
+        ],
+        "caption": [
+          {
+            "totalMs": 1144.3563540000005,
+            "meanFrameMs": 0.7132478431250019,
+            "p95FrameMs": 1.6428030000006402,
+            "p99FrameMs": 2.516287999999804
+          },
+          {
+            "totalMs": 1032.1397140000008,
+            "meanFrameMs": 0.6434614131249936,
+            "p95FrameMs": 1.4235429999998814,
+            "p99FrameMs": 2.153761999999915
+          },
+          {
+            "totalMs": 1019.6590830000005,
+            "meanFrameMs": 0.6354814824999948,
+            "p95FrameMs": 1.3407379999989644,
+            "p99FrameMs": 2.121463000001313
+          },
+          {
+            "totalMs": 1030.471286,
+            "meanFrameMs": 0.642096039999982,
+            "p95FrameMs": 1.404263999998875,
+            "p99FrameMs": 1.9656790000008186
+          },
+          {
+            "totalMs": 1014.1879800000006,
+            "meanFrameMs": 0.6313610387499853,
+            "p95FrameMs": 1.4280999999991764,
+            "p99FrameMs": 2.050826999999117
+          }
+        ]
+      }
+    },
+    {
+      "name": "dense transitions",
+      "count": 24,
+      "fields": 1,
+      "moving": true,
+      "framesPerRun": 1600,
+      "repeats": 5,
+      "medians": {
+        "skim": {
+          "totalMs": 2352.4951290000026,
+          "meanFrameMs": 1.4662185793750837,
+          "p95FrameMs": 2.959674999998242,
+          "p99FrameMs": 4.1680839999971795
+        },
+        "caption": {
+          "totalMs": 2290.9040200000018,
+          "meanFrameMs": 1.4286741293749219,
+          "p95FrameMs": 2.837210999998206,
+          "p99FrameMs": 4.18623099999968
+        }
+      },
+      "reductionPct": 2.618118449672713,
+      "samples": {
+        "skim": [
+          {
+            "totalMs": 1920.5631859999994,
+            "meanFrameMs": 1.197522989374952,
+            "p95FrameMs": 2.3946649999998044,
+            "p99FrameMs": 3.4514149999995425
+          },
+          {
+            "totalMs": 2124.998148999999,
+            "meanFrameMs": 1.3254724699999998,
+            "p95FrameMs": 2.6994530000010855,
+            "p99FrameMs": 3.795653000001039
+          },
+          {
+            "totalMs": 2352.4951290000026,
+            "meanFrameMs": 1.4662185793750837,
+            "p95FrameMs": 2.959674999998242,
+            "p99FrameMs": 4.1680839999971795
+          },
+          {
+            "totalMs": 2438.6943279999978,
+            "meanFrameMs": 1.5165207381250365,
+            "p95FrameMs": 3.15166400000453,
+            "p99FrameMs": 5.249958000000333
+          },
+          {
+            "totalMs": 2568.226545000005,
+            "meanFrameMs": 1.599800049374976,
+            "p95FrameMs": 3.156310999998823,
+            "p99FrameMs": 5.067046999996819
+          }
+        ],
+        "caption": [
+          {
+            "totalMs": 2027.7096319999982,
+            "meanFrameMs": 1.2651114162499584,
+            "p95FrameMs": 2.539151999997557,
+            "p99FrameMs": 3.499087000000145
+          },
+          {
+            "totalMs": 2116.891753,
+            "meanFrameMs": 1.3203968393750392,
+            "p95FrameMs": 2.628106000000116,
+            "p99FrameMs": 4.009824999997363
+          },
+          {
+            "totalMs": 2435.773906000002,
+            "meanFrameMs": 1.5178386600000657,
+            "p95FrameMs": 3.0454440000030445,
+            "p99FrameMs": 4.740685999997368
+          },
+          {
+            "totalMs": 2290.9040200000018,
+            "meanFrameMs": 1.4286741293749219,
+            "p95FrameMs": 2.837210999998206,
+            "p99FrameMs": 4.18623099999968
+          },
+          {
+            "totalMs": 2492.1086649999997,
+            "meanFrameMs": 1.5529067118750255,
+            "p95FrameMs": 3.16600599999947,
+            "p99FrameMs": 4.224608999997145
+          }
+        ]
+      }
+    },
+    {
+      "name": "settled sidebar",
+      "count": 12,
+      "fields": 0,
+      "moving": false,
+      "framesPerRun": 1600,
+      "repeats": 5,
+      "medians": {
+        "skim": {
+          "totalMs": 509.4498089999979,
+          "meanFrameMs": 0.31814551500001925,
+          "p95FrameMs": 0.7933339999945019,
+          "p99FrameMs": 1.3178530000004685
+        },
+        "caption": {
+          "totalMs": 492.6714040000006,
+          "meanFrameMs": 0.3078199268750586,
+          "p95FrameMs": 0.7963889999955427,
+          "p99FrameMs": 1.2354800000030082
+        }
+      },
+      "reductionPct": 3.293436311799136,
+      "samples": {
+        "skim": [
+          {
+            "totalMs": 557.5414369999999,
+            "meanFrameMs": 0.3483629218749138,
+            "p95FrameMs": 0.8844210000024759,
+            "p99FrameMs": 1.3178530000004685
+          },
+          {
+            "totalMs": 509.4498089999979,
+            "meanFrameMs": 0.31814551500001925,
+            "p95FrameMs": 0.7933339999945019,
+            "p99FrameMs": 1.3271380000005593
+          },
+          {
+            "totalMs": 615.9435309999972,
+            "meanFrameMs": 0.38487339187500763,
+            "p95FrameMs": 0.8619380000018282,
+            "p99FrameMs": 1.735091000002285
+          },
+          {
+            "totalMs": 467.787218999998,
+            "meanFrameMs": 0.292287164999957,
+            "p95FrameMs": 0.7818170000027749,
+            "p99FrameMs": 1.0212469999969471
+          },
+          {
+            "totalMs": 477.48945199999434,
+            "meanFrameMs": 0.29835091250000007,
+            "p95FrameMs": 0.7648610000032932,
+            "p99FrameMs": 1.1577519999991637
+          }
+        ],
+        "caption": [
+          {
+            "totalMs": 508.52101499999844,
+            "meanFrameMs": 0.31772967812504704,
+            "p95FrameMs": 0.7974000000031083,
+            "p99FrameMs": 1.4280199999993783
+          },
+          {
+            "totalMs": 492.6714040000006,
+            "meanFrameMs": 0.3078199268750586,
+            "p95FrameMs": 0.7963889999955427,
+            "p99FrameMs": 1.2865069999970729
+          },
+          {
+            "totalMs": 478.3190059999979,
+            "meanFrameMs": 0.298871721875048,
+            "p95FrameMs": 0.7702789999966626,
+            "p99FrameMs": 0.9589330000017071
+          },
+          {
+            "totalMs": 462.29089699999895,
+            "meanFrameMs": 0.2888523281249627,
+            "p95FrameMs": 0.7652320000051986,
+            "p99FrameMs": 0.9798749999972642
+          },
+          {
+            "totalMs": 499.3770099999965,
+            "meanFrameMs": 0.31202840500015555,
+            "p95FrameMs": 0.820134000001417,
+            "p99FrameMs": 1.2354800000030082
+          }
+        ]
+      }
+    }
+  ]
+}
