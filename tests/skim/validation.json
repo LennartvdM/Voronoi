@@ -1,0 +1,58 @@
+{
+  "scope": "Exact complete-frame state and Canvas command equivalence. Native Canvas rendering/GPU and browser layout are excluded.",
+  "hashes": [
+    {
+      "file": "buoy.html",
+      "sha256": "324510ae3880a69df7070139aa5b09ba133ac3aff040c68b64ea89c96acd9bba"
+    },
+    {
+      "file": "skim.html",
+      "sha256": "44a3ab22b72ab444c28cfe20fa534e515a688d1a5a33e21c5f1eec62704c3a1f"
+    }
+  ],
+  "matrix": [
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 16.666666666666668,
+      "inner": "flock",
+      "frames": 4238,
+      "hoverFrames": 360
+    },
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 24,
+      "fields": 1,
+      "dt": 30,
+      "inner": "bento",
+      "frames": 2363,
+      "hoverFrames": 204
+    },
+    {
+      "width": 390,
+      "height": 720,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 8.333333333333334,
+      "inner": "flock",
+      "frames": 8476,
+      "hoverFrames": 720
+    },
+    {
+      "width": 1363,
+      "height": 846,
+      "count": 30,
+      "fields": 0,
+      "dt": 50,
+      "inner": "flock",
+      "frames": 1413,
+      "hoverFrames": 120
+    }
+  ],
+  "totalFrames": 16490,
+  "drawCommands": 16538248,
+  "rasterCases": 503
+}
