@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Manifold — Voronoi</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#09090f;color:#dedee9;font:14px system-ui,sans-serif}header{padding:16px 22px;border-bottom:1px solid #292934;display:flex;align-items:center;gap:22px;flex-wrap:wrap}a{color:#aaa5ff;text-decoration:none}h1{font-size:19px;margin:0}button,select{background:#171720;border:1px solid #353545;border-radius:6px;color:#dddde8;padding:8px 12px;font:inherit;cursor:pointer}button[aria-pressed=true]{background:#363055;border-color:#9380d7}button:hover,a:hover{color:white}nav,.replay{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.replay{margin-left:auto}label{display:flex;align-items:center;gap:7px;font-size:12px;color:#a5a5b7}#note{margin:0;padding:10px 22px;color:#aaaabc;font-size:12px;min-height:38px}#status{color:#b5e4cf;margin-left:8px}iframe{display:block;width:100%;height:calc(100dvh - 126px);min-height:470px;border:0;background:#09090f}details{padding:18px 22px;line-height:1.6;border-top:1px solid #292934;color:#b4b4c5}summary{cursor:pointer;color:#d4d4e1}table{border-collapse:collapse;width:100%;max-width:1040px;margin-top:12px;text-align:left}th,td{padding:9px 14px 9px 0;border-bottom:1px solid #292934}th{font-size:12px;color:#aaa5ff}p{max-width:1000px} @media(max-width:750px){header{gap:12px;padding:12px}.replay{margin-left:0}#note{padding:10px 12px}iframe{height:calc(100dvh - 210px)}}
+</style></head><body>
+<header><a href="index.html">← Gallery</a><h1>Manifold</h1>
+<nav aria-label="Compare marks"><button data-mark="harbor" aria-pressed="true">Harbor · selected</button><button data-mark="selvedge" aria-pressed="false">Selvedge · baseline</button><button data-mark="quay" aria-pressed="false">Quay · alternate</button></nav>
+<div class="replay"><label>From <select id="from"><option>Flock</option><option>Bento</option><option>Hero</option><option>Sidebar</option><option selected>Frame</option></select></label><span>→</span><label>To <select id="to"><option selected>Flock</option><option>Bento</option><option>Hero</option><option>Sidebar</option><option>Frame</option></select></label><button id="replay">Replay transition</button><a id="full" href="harbor.html" target="_blank" rel="noopener">Full page ↗</a></div></header>
+<p id="note"><span id="description">Harbor keeps the original Hero arrangement and rebuilds Frame around a rectangular void.</span><span id="status" role="status">Loading Harbor…</span></p>
+<iframe id="preview" src="harbor.html" title="Harbor live motion experiment" inert></iframe>
+<details><summary>Screening decisions and measured limits</summary>
+<p>Harbor is the selected candidate from this batch. Quay is retained as a comparison, not a second recommendation. Selvedge is the unchanged control. Only one animation runs here at a time.</p>
+<table><thead><tr><th>Hypothesis</th><th>Outcome</th></tr></thead><tbody>
+<tr><td>Repair the overlapping void bands</td><td>Rejected in the static screen. Hero and Frame still missed their rectangles.</td></tr>
+<tr><td>Reflect neighbouring cells into the void</td><td>Kept for Harbor’s Hero after calibrating the site areas. Reflection alone did not solve Frame.</td></tr>
+<tr><td>Make the layout compatible with its boundaries</td><td>Kept for Frame in both candidates. Quay also tests a full-height Hero, but its surrounding cards are thinner and its Hero has more facets.</td></tr>
+<tr><td>Stop forcing seeds away from their valid destinations</td><td>Ambient wandering and repulsion decay over each existing Hero/Frame journey. There is no additional wait, content lattice, or rectangle-lock stage.</td></tr>
+</tbody></table>
+<p>Rectangular resting voids do not establish universally smooth transitions. The recorded comparison includes later motion peaks, shape changes and rapid interruptions; these can still regress. Hero’s inherited over-capacity fallback also remains in Harbor.</p>
+<p><a href="tests/manifold/results.json">Full measurements</a> · <a href="tests/manifold/README.md">Method and scope</a></p>
+</details>
+<script>
+(()=>{const frame=document.querySelector('#preview'),status=document.querySelector('#status'),from=document.querySelector('#from'),to=document.querySelector('#to');let timer=null,mark='harbor',ready=false;
+const labels={harbor:'Harbor keeps the original Hero arrangement and rebuilds Frame around a rectangular void.',selvedge:'Unchanged Selvedge: the control for the release behaviour you approved.',quay:'Alternate, not selected: a full-height Hero. Watch the thinner cards and the long faceted edge.'};
+const cancel=()=>{clearTimeout(timer);timer=null;};
+function scene(name){const button=frame.contentDocument?.querySelector('[data-scene="'+name.toLowerCase()+'"]');if(button)button.click();return !!button;}
+function replay(){cancel();if(!ready){status.textContent='Loading…';return;}if(!scene(from.value)){status.textContent='Scene controls unavailable; use Full page.';return;}status.textContent='Settling '+from.value+'…';timer=setTimeout(()=>{scene(to.value);status.textContent=from.value+' → '+to.value;timer=null;},8000);}
+frame.addEventListener('load',()=>{
+  const doc=frame.contentDocument;
+  ready=!!doc?.querySelector('[data-scene]');
+  if(!ready){status.textContent='Preview unavailable; use Full page.';return;}
+  // Back/Compare exits the embedded mark instead of nesting another gallery.
+  doc.querySelectorAll('a[href]').forEach(link=>{
+    const url=new URL(link.href,doc.baseURI);
+    if(url.origin===location.origin && /^\/(?:index|manifold)?(?:\.html)?\/?$/.test(url.pathname))link.target='_top';
+  });
+  frame.inert=false;
+  status.textContent='Ready';
+});
+document.querySelectorAll('[data-mark]').forEach(button=>button.addEventListener('click',()=>{if(mark===button.dataset.mark)return;cancel();ready=false;frame.inert=true;mark=button.dataset.mark;document.querySelectorAll('[data-mark]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));document.querySelector('#description').textContent=labels[mark];document.querySelector('#full').href=mark+'.html';frame.title=mark[0].toUpperCase()+mark.slice(1)+' live motion experiment';status.textContent='Loading…';frame.src=mark+'.html';}));
+document.querySelector('#replay').addEventListener('click',replay);
+})();
+</script></body></html>
