@@ -7,7 +7,7 @@
 <nav aria-label="Compare marks"><button data-mark="harbor" aria-pressed="true">Harbor · selected</button><button data-mark="selvedge" aria-pressed="false">Selvedge · baseline</button><button data-mark="quay" aria-pressed="false">Quay · alternate</button></nav>
 <div class="replay"><label>From <select id="from"><option>Flock</option><option>Bento</option><option>Hero</option><option>Sidebar</option><option selected>Frame</option></select></label><span>→</span><label>To <select id="to"><option selected>Flock</option><option>Bento</option><option>Hero</option><option>Sidebar</option><option>Frame</option></select></label><button id="replay">Replay transition</button><a id="full" href="harbor.html" target="_blank" rel="noopener">Full page ↗</a></div></header>
 <p id="note"><span id="description">Harbor keeps the original Hero arrangement and rebuilds Frame around a rectangular void.</span><span id="status" role="status">Loading Harbor…</span></p>
-<iframe id="preview" src="harbor.html" title="Harbor live motion experiment"></iframe>
+<iframe id="preview" src="harbor.html" title="Harbor live motion experiment" inert></iframe>
 <details><summary>Screening decisions and measured limits</summary>
 <p>Harbor is the selected candidate from this batch. Quay is retained as a comparison, not a second recommendation. Selvedge is the unchanged control. Only one animation runs here at a time.</p>
 <table><thead><tr><th>Hypothesis</th><th>Outcome</th></tr></thead><tbody>
@@ -34,9 +34,10 @@ frame.addEventListener('load',()=>{
     const url=new URL(link.href,doc.baseURI);
     if(url.origin===location.origin && /^\/(?:index|manifold)?(?:\.html)?\/?$/.test(url.pathname))link.target='_top';
   });
+  frame.inert=false;
   status.textContent='Ready';
 });
-document.querySelectorAll('[data-mark]').forEach(button=>button.addEventListener('click',()=>{if(mark===button.dataset.mark)return;cancel();ready=false;mark=button.dataset.mark;document.querySelectorAll('[data-mark]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));document.querySelector('#description').textContent=labels[mark];document.querySelector('#full').href=mark+'.html';frame.title=mark[0].toUpperCase()+mark.slice(1)+' live motion experiment';status.textContent='Loading…';frame.src=mark+'.html';}));
+document.querySelectorAll('[data-mark]').forEach(button=>button.addEventListener('click',()=>{if(mark===button.dataset.mark)return;cancel();ready=false;frame.inert=true;mark=button.dataset.mark;document.querySelectorAll('[data-mark]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));document.querySelector('#description').textContent=labels[mark];document.querySelector('#full').href=mark+'.html';frame.title=mark[0].toUpperCase()+mark.slice(1)+' live motion experiment';status.textContent='Loading…';frame.src=mark+'.html';}));
 document.querySelector('#replay').addEventListener('click',replay);
 })();
 </script></body></html>
