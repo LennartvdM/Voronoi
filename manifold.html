@@ -25,7 +25,17 @@ const labels={harbor:'Harbor keeps the original Hero arrangement and rebuilds Fr
 const cancel=()=>{clearTimeout(timer);timer=null;};
 function scene(name){const button=frame.contentDocument?.querySelector('[data-scene="'+name.toLowerCase()+'"]');if(button)button.click();return !!button;}
 function replay(){cancel();if(!ready){status.textContent='Loading…';return;}if(!scene(from.value)){status.textContent='Scene controls unavailable; use Full page.';return;}status.textContent='Settling '+from.value+'…';timer=setTimeout(()=>{scene(to.value);status.textContent=from.value+' → '+to.value;timer=null;},8000);}
-frame.addEventListener('load',()=>{ready=true;status.textContent='Ready';});
+frame.addEventListener('load',()=>{
+  const doc=frame.contentDocument;
+  ready=!!doc?.querySelector('[data-scene]');
+  if(!ready){status.textContent='Preview unavailable; use Full page.';return;}
+  // Back/Compare exits the embedded mark instead of nesting another gallery.
+  doc.querySelectorAll('a[href]').forEach(link=>{
+    const url=new URL(link.href,doc.baseURI);
+    if(url.origin===location.origin && /^\/(?:index|manifold)?(?:\.html)?\/?$/.test(url.pathname))link.target='_top';
+  });
+  status.textContent='Ready';
+});
 document.querySelectorAll('[data-mark]').forEach(button=>button.addEventListener('click',()=>{if(mark===button.dataset.mark)return;cancel();ready=false;mark=button.dataset.mark;document.querySelectorAll('[data-mark]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));document.querySelector('#description').textContent=labels[mark];document.querySelector('#full').href=mark+'.html';frame.title=mark[0].toUpperCase()+mark.slice(1)+' live motion experiment';status.textContent='Loading…';frame.src=mark+'.html';}));
 document.querySelector('#replay').addEventListener('click',replay);
 })();
