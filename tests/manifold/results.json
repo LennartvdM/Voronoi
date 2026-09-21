@@ -1,0 +1,2627 @@
+{
+  "scope": "Actual root motion and nested-field simulation; renderer stubbed. Whole-transition shape change is measured. Visual selection requires Netlify.",
+  "geometry": [
+    {
+      "w": 1900,
+      "h": 810,
+      "n": 12,
+      "scene": "hero",
+      "selvedge": {
+        "void": {
+          "pct": 7.2813503983505,
+          "edgePx": 46.2815796780601
+        },
+        "missing": 0,
+        "maxCorners": 8,
+        "nonconvex": 0,
+        "minFat": 0.4266393804749787,
+        "residual": 2.9520995382708503e-08,
+        "sites": 15
+      },
+      "harbor": {
+        "void": {
+          "pct": 8.008101243402293e-06,
+          "edgePx": 5.597671986379282e-05
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.43949098471551884,
+        "residual": 6.876424478946092e-07,
+        "sites": 15
+      },
+      "quay": {
+        "void": {
+          "pct": 6.81972906932651e-08,
+          "edgePx": 3.239372290408937e-07
+        },
+        "missing": 0,
+        "maxCorners": 14,
+        "nonconvex": 0,
+        "minFat": 0.30348714114449193,
+        "residual": 1.7943396777655115e-07,
+        "sites": 13
+      }
+    },
+    {
+      "w": 1900,
+      "h": 810,
+      "n": 12,
+      "scene": "sidebar",
+      "selvedge": {
+        "void": {
+          "pct": 0.015067788388500206,
+          "edgePx": 0.40234967239007347
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.6913134688593254,
+        "residual": 9.545859385810092e-09,
+        "sites": 15
+      },
+      "harbor": {
+        "void": {
+          "pct": 0.015067788388500206,
+          "edgePx": 0.40234967239007347
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.6913134688593254,
+        "residual": 9.545859385810092e-09,
+        "sites": 15
+      },
+      "quay": {
+        "void": {
+          "pct": 0.015067788388500206,
+          "edgePx": 0.40234967239007347
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.6913134688593254,
+        "residual": 9.545859385810092e-09,
+        "sites": 15
+      }
+    },
+    {
+      "w": 1900,
+      "h": 810,
+      "n": 12,
+      "scene": "frame",
+      "selvedge": {
+        "void": {
+          "pct": 39.35732766677393,
+          "edgePx": 166.39237572718196
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.5909110578162242,
+        "residual": 1.6611577140995196e-08,
+        "sites": 23
+      },
+      "harbor": {
+        "void": {
+          "pct": 5.2791506144604835e-06,
+          "edgePx": 5.003193928132532e-05
+        },
+        "missing": 0,
+        "maxCorners": 4,
+        "nonconvex": 0,
+        "minFat": 0.6295784101486243,
+        "residual": 2.494276069465339e-07,
+        "sites": 15
+      },
+      "quay": {
+        "void": {
+          "pct": 5.2791506144604835e-06,
+          "edgePx": 5.003193928132532e-05
+        },
+        "missing": 0,
+        "maxCorners": 4,
+        "nonconvex": 0,
+        "minFat": 0.6295784101486243,
+        "residual": 2.494276069465339e-07,
+        "sites": 15
+      }
+    },
+    {
+      "w": 1440,
+      "h": 620,
+      "n": 24,
+      "scene": "hero",
+      "selvedge": {
+        "void": {
+          "pct": 8.423849743249244,
+          "edgePx": 37.134902204661046
+        },
+        "missing": 0,
+        "maxCorners": 13,
+        "nonconvex": 0,
+        "minFat": 0.5477312304535085,
+        "residual": 6.541800435262562e-08,
+        "sites": 27
+      },
+      "harbor": {
+        "void": {
+          "pct": 1.599228570377955e-06,
+          "edgePx": 8.295210022879473e-06
+        },
+        "missing": 0,
+        "maxCorners": 13,
+        "nonconvex": 0,
+        "minFat": 0.4983293284929351,
+        "residual": 8.021678754190362e-07,
+        "sites": 27
+      },
+      "quay": {
+        "void": {
+          "pct": 8.285698843085104e-09,
+          "edgePx": 2.9828584047209006e-08
+        },
+        "missing": 0,
+        "maxCorners": 26,
+        "nonconvex": 0,
+        "minFat": 0.1602638596617465,
+        "residual": 1.2796578334683705e-07,
+        "sites": 25
+      }
+    },
+    {
+      "w": 1440,
+      "h": 620,
+      "n": 24,
+      "scene": "sidebar",
+      "selvedge": {
+        "void": {
+          "pct": 3.046893218182325,
+          "edgePx": 31.068730482810338
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.784757262788449,
+        "residual": 6.82504775639206e-08,
+        "sites": 30
+      },
+      "harbor": {
+        "void": {
+          "pct": 3.046893218182325,
+          "edgePx": 31.068730482810338
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.784757262788449,
+        "residual": 6.82504775639206e-08,
+        "sites": 30
+      },
+      "quay": {
+        "void": {
+          "pct": 3.046893218182325,
+          "edgePx": 31.068730482810338
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.784757262788449,
+        "residual": 6.82504775639206e-08,
+        "sites": 30
+      }
+    },
+    {
+      "w": 1440,
+      "h": 620,
+      "n": 24,
+      "scene": "frame",
+      "selvedge": {
+        "void": {
+          "pct": 32.844226541456464,
+          "edgePx": 118.29070939756411
+        },
+        "missing": 0,
+        "maxCorners": 8,
+        "nonconvex": 0,
+        "minFat": 0.4921764581208004,
+        "residual": 9.402389049418773e-08,
+        "sites": 39
+      },
+      "harbor": {
+        "void": {
+          "pct": 8.420717764942487e-06,
+          "edgePx": 5.2545836069839424e-05
+        },
+        "missing": 0,
+        "maxCorners": 4,
+        "nonconvex": 0,
+        "minFat": 0.7056348212538488,
+        "residual": 7.74685854121605e-07,
+        "sites": 40
+      },
+      "quay": {
+        "void": {
+          "pct": 8.420717764942487e-06,
+          "edgePx": 5.2545836069839424e-05
+        },
+        "missing": 0,
+        "maxCorners": 4,
+        "nonconvex": 0,
+        "minFat": 0.7056348212538488,
+        "residual": 7.74685854121605e-07,
+        "sites": 40
+      }
+    },
+    {
+      "w": 390,
+      "h": 760,
+      "n": 12,
+      "scene": "hero",
+      "selvedge": {
+        "void": {
+          "pct": 8.533274914591269,
+          "edgePx": 18.004696033695765
+        },
+        "missing": 0,
+        "maxCorners": 10,
+        "nonconvex": 0,
+        "minFat": 0.2614843665958688,
+        "residual": 5.750887411474981e-07,
+        "sites": 15
+      },
+      "harbor": {
+        "void": {
+          "pct": 3.834155513232576e-07,
+          "edgePx": 8.594540190642874e-07
+        },
+        "missing": 0,
+        "maxCorners": 9,
+        "nonconvex": 0,
+        "minFat": 0.2644367348599127,
+        "residual": 3.030999351763408e-07,
+        "sites": 15
+      },
+      "quay": {
+        "void": {
+          "pct": 0.18829134411150092,
+          "edgePx": 3.8824569782511844
+        },
+        "missing": 0,
+        "maxCorners": 12,
+        "nonconvex": 0,
+        "minFat": 0.2110865795649344,
+        "residual": 8.139271474465448e-07,
+        "sites": 13
+      }
+    },
+    {
+      "w": 390,
+      "h": 760,
+      "n": 12,
+      "scene": "sidebar",
+      "selvedge": {
+        "void": {
+          "pct": 1.0010771562801561,
+          "edgePx": 9.160118461334719
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.3536685647420839,
+        "residual": 5.548791599667875e-07,
+        "sites": 16
+      },
+      "harbor": {
+        "void": {
+          "pct": 1.0010771562801561,
+          "edgePx": 9.160118461334719
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.3536685647420839,
+        "residual": 5.548791599667875e-07,
+        "sites": 16
+      },
+      "quay": {
+        "void": {
+          "pct": 1.0010771562801561,
+          "edgePx": 9.160118461334719
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.3536685647420839,
+        "residual": 5.548791599667875e-07,
+        "sites": 16
+      }
+    },
+    {
+      "w": 390,
+      "h": 760,
+      "n": 12,
+      "scene": "frame",
+      "selvedge": {
+        "void": {
+          "pct": 36.86106338881528,
+          "edgePx": 65
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.5276916345025513,
+        "residual": 2.2487211799855171e-07,
+        "sites": 23
+      },
+      "harbor": {
+        "void": {
+          "pct": 3.2019652796226746e-06,
+          "edgePx": 6.907586680426903e-06
+        },
+        "missing": 0,
+        "maxCorners": 4,
+        "nonconvex": 0,
+        "minFat": 0.27411742598913685,
+        "residual": 4.045701503995445e-07,
+        "sites": 15
+      },
+      "quay": {
+        "void": {
+          "pct": 3.2019652796226746e-06,
+          "edgePx": 6.907586680426903e-06
+        },
+        "missing": 0,
+        "maxCorners": 4,
+        "nonconvex": 0,
+        "minFat": 0.27411742598913685,
+        "residual": 4.045701503995445e-07,
+        "sites": 15
+      }
+    },
+    {
+      "w": 1900,
+      "h": 810,
+      "n": 30,
+      "scene": "hero",
+      "selvedge": {
+        "void": null,
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.5405225023577133,
+        "residual": 6.409096755156375e-12,
+        "sites": 30
+      },
+      "harbor": {
+        "void": null,
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.5405225023577133,
+        "residual": 6.409096755156375e-12,
+        "sites": 30
+      },
+      "quay": {
+        "void": {
+          "pct": 2.555388175410989e-09,
+          "edgePx": 1.2138229976699222e-08
+        },
+        "missing": 0,
+        "maxCorners": 32,
+        "nonconvex": 0,
+        "minFat": 0.1288508455712788,
+        "residual": 2.7502410467463696e-07,
+        "sites": 31
+      }
+    },
+    {
+      "w": 1900,
+      "h": 810,
+      "n": 30,
+      "scene": "sidebar",
+      "selvedge": {
+        "void": {
+          "pct": 0.030086992259843542,
+          "edgePx": 0.5595501535102585
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.7794375774597575,
+        "residual": 2.1292322365654223e-08,
+        "sites": 36
+      },
+      "harbor": {
+        "void": {
+          "pct": 0.030086992259843542,
+          "edgePx": 0.5595501535102585
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.7794375774597575,
+        "residual": 2.1292322365654223e-08,
+        "sites": 36
+      },
+      "quay": {
+        "void": {
+          "pct": 0.030086992259843542,
+          "edgePx": 0.5595501535102585
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.7794375774597575,
+        "residual": 2.1292322365654223e-08,
+        "sites": 36
+      }
+    },
+    {
+      "w": 1900,
+      "h": 810,
+      "n": 30,
+      "scene": "frame",
+      "selvedge": {
+        "void": {
+          "pct": 32.873287687593894,
+          "edgePx": 154.1671074165962
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.480090955207456,
+        "residual": 4.967324147282298e-08,
+        "sites": 49
+      },
+      "harbor": {
+        "void": {
+          "pct": 1.30363791161946e-07,
+          "edgePx": 1.4196061783877667e-06
+        },
+        "missing": 0,
+        "maxCorners": 4,
+        "nonconvex": 0,
+        "minFat": 0.7033975726896472,
+        "residual": 2.649798626916426e-08,
+        "sites": 52
+      },
+      "quay": {
+        "void": {
+          "pct": 1.30363791161946e-07,
+          "edgePx": 1.4196061783877667e-06
+        },
+        "missing": 0,
+        "maxCorners": 4,
+        "nonconvex": 0,
+        "minFat": 0.7033975726896472,
+        "residual": 2.649798626916426e-08,
+        "sites": 52
+      }
+    },
+    {
+      "w": 1900,
+      "h": 810,
+      "n": 13,
+      "scene": "hero",
+      "selvedge": {
+        "void": {
+          "pct": 7.318836864427003,
+          "edgePx": 46.13360141462692
+        },
+        "missing": 0,
+        "maxCorners": 8,
+        "nonconvex": 0,
+        "minFat": 0.42207893628962473,
+        "residual": 2.6910111648947364e-08,
+        "sites": 16
+      },
+      "harbor": {
+        "void": {
+          "pct": 4.685848383711018e-06,
+          "edgePx": 3.433104893701966e-05
+        },
+        "missing": 0,
+        "maxCorners": 8,
+        "nonconvex": 0,
+        "minFat": 0.4350035900375101,
+        "residual": 5.023120762916463e-07,
+        "sites": 16
+      },
+      "quay": {
+        "void": {
+          "pct": 7.884008682843073e-08,
+          "edgePx": 3.7449046885740245e-07
+        },
+        "missing": 0,
+        "maxCorners": 15,
+        "nonconvex": 0,
+        "minFat": 0.28242335116452116,
+        "residual": 2.6679549697100315e-07,
+        "sites": 14
+      }
+    },
+    {
+      "w": 1900,
+      "h": 810,
+      "n": 13,
+      "scene": "sidebar",
+      "selvedge": {
+        "void": {
+          "pct": 3.391335537640186,
+          "edgePx": 38.498108401182435
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.6998542208861452,
+        "residual": 4.9274292065113886e-08,
+        "sites": 20
+      },
+      "harbor": {
+        "void": {
+          "pct": 3.391335537640186,
+          "edgePx": 38.498108401182435
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.6998542208861452,
+        "residual": 4.9274292065113886e-08,
+        "sites": 20
+      },
+      "quay": {
+        "void": {
+          "pct": 3.391335537640186,
+          "edgePx": 38.498108401182435
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.6998542208861452,
+        "residual": 4.9274292065113886e-08,
+        "sites": 20
+      }
+    },
+    {
+      "w": 1900,
+      "h": 810,
+      "n": 13,
+      "scene": "frame",
+      "selvedge": {
+        "void": {
+          "pct": 37.76131921560976,
+          "edgePx": 163.95475019503917
+        },
+        "missing": 0,
+        "maxCorners": 8,
+        "nonconvex": 0,
+        "minFat": 0.5841569528662327,
+        "residual": 3.065629210107511e-08,
+        "sites": 25
+      },
+      "harbor": {
+        "void": {
+          "pct": 4.266964020830827e-06,
+          "edgePx": 1.7142694900940114e-05
+        },
+        "missing": 0,
+        "maxCorners": 5,
+        "nonconvex": 0,
+        "minFat": 0.6031662955029566,
+        "residual": 1.921355563214096e-07,
+        "sites": 16
+      },
+      "quay": {
+        "void": {
+          "pct": 4.266964020830827e-06,
+          "edgePx": 1.7142694900940114e-05
+        },
+        "missing": 0,
+        "maxCorners": 5,
+        "nonconvex": 0,
+        "minFat": 0.6031662955029566,
+        "residual": 1.921355563214096e-07,
+        "sites": 16
+      }
+    },
+    {
+      "w": 1900,
+      "h": 810,
+      "n": 4,
+      "scene": "hero",
+      "selvedge": {
+        "void": {
+          "pct": 3.760558885629298,
+          "edgePx": 38.75277577192864
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.5509707379557246,
+        "residual": 1.0051575363471458e-08,
+        "sites": 7
+      },
+      "harbor": {
+        "void": {
+          "pct": 2.8935943102637154e-05,
+          "edgePx": 0.00013744572999030424
+        },
+        "missing": 0,
+        "maxCorners": 5,
+        "nonconvex": 0,
+        "minFat": 0.5411637549759165,
+        "residual": 4.2364440006315893e-07,
+        "sites": 5
+      },
+      "quay": {
+        "void": {
+          "pct": 1.4016626837231882e-06,
+          "edgePx": 6.6578978135112266e-06
+        },
+        "missing": 0,
+        "maxCorners": 6,
+        "nonconvex": 0,
+        "minFat": 0.6939095181833845,
+        "residual": 3.342266682649781e-07,
+        "sites": 5
+      }
+    },
+    {
+      "w": 1900,
+      "h": 810,
+      "n": 4,
+      "scene": "sidebar",
+      "selvedge": {
+        "void": {
+          "pct": 0.02967306355720392,
+          "edgePx": 0.7413583571546951
+        },
+        "missing": 0,
+        "maxCorners": 6,
+        "nonconvex": 0,
+        "minFat": 0.7509503548942607,
+        "residual": 2.1091222556100946e-09,
+        "sites": 6
+      },
+      "harbor": {
+        "void": {
+          "pct": 0.02967306355720392,
+          "edgePx": 0.7413583571546951
+        },
+        "missing": 0,
+        "maxCorners": 6,
+        "nonconvex": 0,
+        "minFat": 0.7509503548942607,
+        "residual": 2.1091222556100946e-09,
+        "sites": 6
+      },
+      "quay": {
+        "void": {
+          "pct": 0.02967306355720392,
+          "edgePx": 0.7413583571546951
+        },
+        "missing": 0,
+        "maxCorners": 6,
+        "nonconvex": 0,
+        "minFat": 0.7509503548942607,
+        "residual": 2.1091222556100946e-09,
+        "sites": 6
+      }
+    },
+    {
+      "w": 1900,
+      "h": 810,
+      "n": 4,
+      "scene": "frame",
+      "selvedge": {
+        "void": {
+          "pct": 28.907143464307115,
+          "edgePx": 106.75989908096327
+        },
+        "missing": 0,
+        "maxCorners": 7,
+        "nonconvex": 0,
+        "minFat": 0.3063274445314231,
+        "residual": 7.156184352030674e-09,
+        "sites": 8
+      },
+      "harbor": {
+        "void": {
+          "pct": 3.1398335753748216e-05,
+          "edgePx": 0.00012879387548991872
+        },
+        "missing": 0,
+        "maxCorners": 6,
+        "nonconvex": 0,
+        "minFat": 0.29831570234182575,
+        "residual": 4.0951364398866215e-07,
+        "sites": 5
+      },
+      "quay": {
+        "void": {
+          "pct": 3.1398335753748216e-05,
+          "edgePx": 0.00012879387548991872
+        },
+        "missing": 0,
+        "maxCorners": 6,
+        "nonconvex": 0,
+        "minFat": 0.29831570234182575,
+        "residual": 4.0951364398866215e-07,
+        "sites": 5
+      }
+    },
+    {
+      "w": 1900,
+      "h": 810,
+      "n": 7,
+      "scene": "hero",
+      "selvedge": {
+        "void": {
+          "pct": 6.789381876304477,
+          "edgePx": 44.529392632175245
+        },
+        "missing": 0,
+        "maxCorners": 8,
+        "nonconvex": 0,
+        "minFat": 0.48000411206047233,
+        "residual": 1.0416571436966677e-08,
+        "sites": 10
+      },
+      "harbor": {
+        "void": {
+          "pct": 5.092876288577518e-06,
+          "edgePx": 2.9094823275954695e-05
+        },
+        "missing": 0,
+        "maxCorners": 8,
+        "nonconvex": 0,
+        "minFat": 0.45361988393092695,
+        "residual": 6.33542960011317e-07,
+        "sites": 10
+      },
+      "quay": {
+        "void": {
+          "pct": 1.781912371661463e-08,
+          "edgePx": 8.464093070870149e-08
+        },
+        "missing": 0,
+        "maxCorners": 9,
+        "nonconvex": 0,
+        "minFat": 0.4789560932302195,
+        "residual": 1.5535205818229682e-07,
+        "sites": 8
+      }
+    },
+    {
+      "w": 1900,
+      "h": 810,
+      "n": 7,
+      "scene": "sidebar",
+      "selvedge": {
+        "void": {
+          "pct": 6.154979620286022,
+          "edgePx": 71.12526449852044
+        },
+        "missing": 0,
+        "maxCorners": 6,
+        "nonconvex": 0,
+        "minFat": 0.616251832375075,
+        "residual": 3.3878336536206045e-09,
+        "sites": 12
+      },
+      "harbor": {
+        "void": {
+          "pct": 6.154979620286022,
+          "edgePx": 71.12526449852044
+        },
+        "missing": 0,
+        "maxCorners": 6,
+        "nonconvex": 0,
+        "minFat": 0.616251832375075,
+        "residual": 3.3878336536206045e-09,
+        "sites": 12
+      },
+      "quay": {
+        "void": {
+          "pct": 6.154979620286022,
+          "edgePx": 71.12526449852044
+        },
+        "missing": 0,
+        "maxCorners": 6,
+        "nonconvex": 0,
+        "minFat": 0.616251832375075,
+        "residual": 3.3878336536206045e-09,
+        "sites": 12
+      }
+    },
+    {
+      "w": 1900,
+      "h": 810,
+      "n": 7,
+      "scene": "frame",
+      "selvedge": {
+        "void": {
+          "pct": 34.01321395559487,
+          "edgePx": 162
+        },
+        "missing": 0,
+        "maxCorners": 6,
+        "nonconvex": 0,
+        "minFat": 0.48952152157012196,
+        "residual": 5.3207648291881114e-09,
+        "sites": 13
+      },
+      "harbor": {
+        "void": {
+          "pct": 6.592069414236702e-07,
+          "edgePx": 4.31113812737749e-06
+        },
+        "missing": 0,
+        "maxCorners": 6,
+        "nonconvex": 0,
+        "minFat": 0.29965151006438884,
+        "residual": 4.996346686208134e-07,
+        "sites": 8
+      },
+      "quay": {
+        "void": {
+          "pct": 6.592069414236702e-07,
+          "edgePx": 4.31113812737749e-06
+        },
+        "missing": 0,
+        "maxCorners": 6,
+        "nonconvex": 0,
+        "minFat": 0.29965151006438884,
+        "residual": 4.996346686208134e-07,
+        "sites": 8
+      }
+    }
+  ],
+  "transitions": [
+    {
+      "dt": 0.016666666666666666,
+      "from": "flock",
+      "to": "bento",
+      "selvedge": {
+        "opening": 0,
+        "maxMove": 14.450912012572193,
+        "maxShape": 0.06455801401323442,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.4016853673888492,
+        "maxResidual": 9.33508118927567e-07
+      },
+      "harbor": {
+        "opening": 0,
+        "maxMove": 14.450912012572193,
+        "maxShape": 0.06455801401323442,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.4016853673888492,
+        "maxResidual": 9.33508118927567e-07
+      },
+      "quay": {
+        "opening": 0,
+        "maxMove": 14.450912012572193,
+        "maxShape": 0.06455801401323442,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.4016853673888492,
+        "maxResidual": 9.33508118927567e-07
+      }
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "flock",
+      "to": "hero",
+      "selvedge": {
+        "opening": 0.7617961139496529,
+        "maxMove": 46.666591774743864,
+        "maxShape": 0.23699338661475156,
+        "shapeEvents": 12,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 9,
+        "minFat": 0.3646625061620754,
+        "maxResidual": 0.04254846951776364
+      },
+      "harbor": {
+        "opening": 0.7617961139253535,
+        "maxMove": 56.51422347035559,
+        "maxShape": 0.2896955371455507,
+        "shapeEvents": 12,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 9,
+        "minFat": 0.3925408978753847,
+        "maxResidual": 0.004596520053228461
+      },
+      "quay": {
+        "opening": 0.7618111661550474,
+        "maxMove": 318.2084536694755,
+        "maxShape": 1.4839182345280821,
+        "shapeEvents": 16,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 14,
+        "minFat": 0.2997199329354613,
+        "maxResidual": 6.678616819292334e-06
+      }
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "flock",
+      "to": "sidebar",
+      "selvedge": {
+        "opening": 0.6789282767572958,
+        "maxMove": 144.28508713522893,
+        "maxShape": 0.9415032956109243,
+        "shapeEvents": 28,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.4209168589576101,
+        "maxResidual": 0.020314236934680863
+      },
+      "harbor": {
+        "opening": 0.6789282767572958,
+        "maxMove": 144.28508713522893,
+        "maxShape": 0.9415032956109243,
+        "shapeEvents": 28,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.4209168589576101,
+        "maxResidual": 0.020314236934680863
+      },
+      "quay": {
+        "opening": 0.6789282767572958,
+        "maxMove": 144.28508713522893,
+        "maxShape": 0.9415032956109243,
+        "shapeEvents": 28,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.4209168589576101,
+        "maxResidual": 0.020314236934680863
+      }
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "flock",
+      "to": "frame",
+      "selvedge": {
+        "opening": 0.5589685674174617,
+        "maxMove": 31.021214439707336,
+        "maxShape": 0.3497059741894163,
+        "shapeEvents": 7,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 12,
+        "minFat": 0.40041999529123773,
+        "maxResidual": 1.0423710679115659
+      },
+      "harbor": {
+        "opening": 0.5590127402733872,
+        "maxMove": 22.819561888219116,
+        "maxShape": 0.12637957110713435,
+        "shapeEvents": 3,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 9,
+        "minFat": 0.40941270201068675,
+        "maxResidual": 0.043911890560677375
+      },
+      "quay": {
+        "opening": 0.5590127402733872,
+        "maxMove": 22.819561888219116,
+        "maxShape": 0.12637957110713435,
+        "shapeEvents": 3,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 9,
+        "minFat": 0.40941270201068675,
+        "maxResidual": 0.043911890560677375
+      }
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "bento",
+      "to": "flock",
+      "selvedge": {
+        "opening": 0,
+        "maxMove": 4.548676894015995,
+        "maxShape": 0.033051232088245175,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.427855574805449,
+        "maxResidual": 9.982031503878316e-07
+      },
+      "harbor": {
+        "opening": 0,
+        "maxMove": 4.548676894015995,
+        "maxShape": 0.033051232088245175,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.427855574805449,
+        "maxResidual": 9.982031503878316e-07
+      },
+      "quay": {
+        "opening": 0,
+        "maxMove": 4.548676894015995,
+        "maxShape": 0.033051232088245175,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.427855574805449,
+        "maxResidual": 9.982031503878316e-07
+      }
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "bento",
+      "to": "hero",
+      "selvedge": {
+        "opening": 0.5897893387797578,
+        "maxMove": 17.001829150868762,
+        "maxShape": 0.09592577624454633,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 9,
+        "minFat": 0.39459973831682676,
+        "maxResidual": 0.36101044324231607
+      },
+      "harbor": {
+        "opening": 0.5897893387829739,
+        "maxMove": 19.957916855915936,
+        "maxShape": 0.09537543518047029,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 9,
+        "minFat": 0.3926056055673823,
+        "maxResidual": 0.09395123141260255
+      },
+      "quay": {
+        "opening": 0.5898010443730616,
+        "maxMove": 21.908612960176747,
+        "maxShape": 0.12892533484928537,
+        "shapeEvents": 1,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 14,
+        "minFat": 0.3034728556120692,
+        "maxResidual": 9.675913379126692e-07
+      }
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "bento",
+      "to": "sidebar",
+      "selvedge": {
+        "opening": 0.5210416680356525,
+        "maxMove": 185.28516984877535,
+        "maxShape": 0.9212497646791082,
+        "shapeEvents": 35,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.2821721457332426,
+        "maxResidual": 0.010978590814116552
+      },
+      "harbor": {
+        "opening": 0.5210416680356525,
+        "maxMove": 185.28516984877535,
+        "maxShape": 0.9212497646791082,
+        "shapeEvents": 35,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.2821721457332426,
+        "maxResidual": 0.010978590814116552
+      },
+      "quay": {
+        "opening": 0.5210416680356525,
+        "maxMove": 185.28516984877535,
+        "maxShape": 0.9212497646791082,
+        "shapeEvents": 35,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.2821721457332426,
+        "maxResidual": 0.010978590814116552
+      }
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "bento",
+      "to": "frame",
+      "selvedge": {
+        "opening": 0.487907350499481,
+        "maxMove": 34.40440417508219,
+        "maxShape": 0.20304398317558803,
+        "shapeEvents": 5,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 9,
+        "minFat": 0.500646659395894,
+        "maxResidual": 0.013691095237817105
+      },
+      "harbor": {
+        "opening": 0.4879462085377768,
+        "maxMove": 12.642622492204174,
+        "maxShape": 0.11310921927302148,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 9,
+        "minFat": 0.4339698345297237,
+        "maxResidual": 0.00010439861437223997
+      },
+      "quay": {
+        "opening": 0.4879462085377768,
+        "maxMove": 12.642622492204174,
+        "maxShape": 0.11310921927302148,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 9,
+        "minFat": 0.4339698345297237,
+        "maxResidual": 0.00010439861437223997
+      }
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "hero",
+      "to": "flock",
+      "selvedge": {
+        "opening": 0,
+        "maxMove": 15.362401595494392,
+        "maxShape": 0.0651814300072356,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.4216530429429025,
+        "maxResidual": 9.510453790748538e-07
+      },
+      "harbor": {
+        "opening": 6.029631379369726e-10,
+        "maxMove": 15.555346945407676,
+        "maxShape": 0.06244858014259081,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.4393294301251644,
+        "maxResidual": 9.995229838266696e-07
+      },
+      "quay": {
+        "opening": 2.3530514876136858e-09,
+        "maxMove": 33.17893153358337,
+        "maxShape": 0.11190423887967912,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 14,
+        "minFat": 0.11721442360484813,
+        "maxResidual": 4.936073006469321e-07
+      }
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "hero",
+      "to": "bento",
+      "selvedge": {
+        "opening": 0,
+        "maxMove": 24.628935873109114,
+        "maxShape": 0.2503727238478807,
+        "shapeEvents": 12,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.4030021049497209,
+        "maxResidual": 8.981421529713227e-07
+      },
+      "harbor": {
+        "opening": 1.923453963464819e-10,
+        "maxMove": 19.40847521494313,
+        "maxShape": 0.08588245209394516,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.43027387975917086,
+        "maxResidual": 1.9110124480971854e-05
+      },
+      "quay": {
+        "opening": 1.4914705880740023e-09,
+        "maxMove": 52.050966579081205,
+        "maxShape": 0.41624070286240783,
+        "shapeEvents": 57,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 14,
+        "minFat": 0.19620584986249612,
+        "maxResidual": 7.455741450819095e-05
+      }
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "hero",
+      "to": "sidebar",
+      "selvedge": {
+        "opening": 0.6136168253753274,
+        "maxMove": 652.4755005078332,
+        "maxShape": 1.1599227231601061,
+        "shapeEvents": 71,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 10,
+        "minFat": 0.13742663625997933,
+        "maxResidual": 0.005377146613198112
+      },
+      "harbor": {
+        "opening": 0.5452211747561992,
+        "maxMove": 581.5943107306472,
+        "maxShape": 1.3148403653161969,
+        "shapeEvents": 75,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 11,
+        "minFat": 0.09845970437008383,
+        "maxResidual": 0.02455164635122539
+      },
+      "quay": {
+        "opening": 1.27854881923588,
+        "maxMove": 749.5594828114022,
+        "maxShape": 1.3544883962168115,
+        "shapeEvents": 243,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 16,
+        "minFat": 0.12063780945509357,
+        "maxResidual": 0.00734228173667215
+      }
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "hero",
+      "to": "frame",
+      "selvedge": {
+        "opening": 1.4641380245649867,
+        "maxMove": 26.745018771956943,
+        "maxShape": 0.24102529306543496,
+        "shapeEvents": 10,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 16,
+        "minFat": 0.385192804307846,
+        "maxResidual": 1.0275244945670468
+      },
+      "harbor": {
+        "opening": 2.7875880564484143,
+        "maxMove": 28.403083341115366,
+        "maxShape": 0.204370358607396,
+        "shapeEvents": 11,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 11,
+        "minFat": 0.41294545508384595,
+        "maxResidual": 1.6287513862749956
+      },
+      "quay": {
+        "opening": 0.3418412408808716,
+        "maxMove": 146.71717131876974,
+        "maxShape": 0.9058816714282221,
+        "shapeEvents": 145,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 15,
+        "minFat": 0.14909959309845025,
+        "maxResidual": 0.5705946378407282
+      }
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "sidebar",
+      "to": "flock",
+      "selvedge": {
+        "opening": 0,
+        "maxMove": 24.58791627898999,
+        "maxShape": 0.06771388676617042,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.41193387984020585,
+        "maxResidual": 0.0038721737741972367
+      },
+      "harbor": {
+        "opening": 0,
+        "maxMove": 24.58791627898999,
+        "maxShape": 0.06771388676617042,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.41193387984020585,
+        "maxResidual": 0.0038721737741972367
+      },
+      "quay": {
+        "opening": 0,
+        "maxMove": 24.58791627898999,
+        "maxShape": 0.06771388676617042,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.41193387984020585,
+        "maxResidual": 0.0038721737741972367
+      }
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "sidebar",
+      "to": "bento",
+      "selvedge": {
+        "opening": 0,
+        "maxMove": 84.74363181852513,
+        "maxShape": 0.48201553024065963,
+        "shapeEvents": 53,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.376991002497025,
+        "maxResidual": 0.0013790328687739183
+      },
+      "harbor": {
+        "opening": 0,
+        "maxMove": 84.74363181852513,
+        "maxShape": 0.48201553024065963,
+        "shapeEvents": 53,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.376991002497025,
+        "maxResidual": 0.0013790328687739183
+      },
+      "quay": {
+        "opening": 0,
+        "maxMove": 84.74363181852513,
+        "maxShape": 0.48201553024065963,
+        "shapeEvents": 53,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.376991002497025,
+        "maxResidual": 0.0013790328687739183
+      }
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "sidebar",
+      "to": "hero",
+      "selvedge": {
+        "opening": 2.4502980544479236,
+        "maxMove": 455.09048565757126,
+        "maxShape": 1.4820942724641288,
+        "shapeEvents": 154,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 10,
+        "minFat": 0.2048410020159459,
+        "maxResidual": 0.013043061708022777
+      },
+      "harbor": {
+        "opening": 2.450298054387915,
+        "maxMove": 545.8850326628547,
+        "maxShape": 1.3606839673775075,
+        "shapeEvents": 173,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 11,
+        "minFat": 0.22534707661564518,
+        "maxResidual": 0.006812559705457655
+      },
+      "quay": {
+        "opening": 2.4503370812468703,
+        "maxMove": 168.51964269363123,
+        "maxShape": 0.6575360313339994,
+        "shapeEvents": 186,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 14,
+        "minFat": 0.14069480681044616,
+        "maxResidual": 0.01282329741343487
+      }
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "sidebar",
+      "to": "frame",
+      "selvedge": {
+        "opening": 1.1322254365979483,
+        "maxMove": 145.9088929412397,
+        "maxShape": 0.9435495204560457,
+        "shapeEvents": 50,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 9,
+        "minFat": 0.400804930202455,
+        "maxResidual": 0.03315156627897047
+      },
+      "harbor": {
+        "opening": 1.1323139780218716,
+        "maxMove": 148.43558129366687,
+        "maxShape": 0.6759165265821807,
+        "shapeEvents": 38,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 10,
+        "minFat": 0.2967105297087894,
+        "maxResidual": 0.05613075310459285
+      },
+      "quay": {
+        "opening": 1.1323139780218716,
+        "maxMove": 148.43558129366687,
+        "maxShape": 0.6759165265821807,
+        "shapeEvents": 38,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 10,
+        "minFat": 0.2967105297087894,
+        "maxResidual": 0.05613075310459285
+      }
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "frame",
+      "to": "flock",
+      "selvedge": {
+        "opening": 0,
+        "maxMove": 6.747893736518964,
+        "maxShape": 0.04764915230543889,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 12,
+        "minFat": 0.3604259584533368,
+        "maxResidual": 0.0009012923910370178
+      },
+      "harbor": {
+        "opening": 4.124240324454667e-10,
+        "maxMove": 7.842318385061139,
+        "maxShape": 0.0554520641583858,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.43976367745285777,
+        "maxResidual": 9.958392586054375e-07
+      },
+      "quay": {
+        "opening": 4.124240324454667e-10,
+        "maxMove": 7.842318385061139,
+        "maxShape": 0.0554520641583858,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.43976367745285777,
+        "maxResidual": 9.958392586054375e-07
+      }
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "frame",
+      "to": "bento",
+      "selvedge": {
+        "opening": 0,
+        "maxMove": 56.23944534207536,
+        "maxShape": 0.4278623448306203,
+        "shapeEvents": 2,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 9,
+        "minFat": 0.537019277108605,
+        "maxResidual": 4.521341526448747e-05
+      },
+      "harbor": {
+        "opening": 1.399585410111964e-10,
+        "maxMove": 10.922161225620174,
+        "maxShape": 0.10124792752482886,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.5495193812721249,
+        "maxResidual": 8.656074044300102e-07
+      },
+      "quay": {
+        "opening": 1.399585410111964e-10,
+        "maxMove": 10.922161225620174,
+        "maxShape": 0.10124792752482886,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.5495193812721249,
+        "maxResidual": 8.656074044300102e-07
+      }
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "frame",
+      "to": "hero",
+      "selvedge": {
+        "opening": 0.39458259493793557,
+        "maxMove": 89.49249085401071,
+        "maxShape": 0.5766630290467687,
+        "shapeEvents": 15,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 14,
+        "minFat": 0.29164343299068735,
+        "maxResidual": 0.1784789711609131
+      },
+      "harbor": {
+        "opening": 0.3392762776755089,
+        "maxMove": 106.29535618166861,
+        "maxShape": 0.6759813947537281,
+        "shapeEvents": 15,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 12,
+        "minFat": 0.25492968836865776,
+        "maxResidual": 0.006152741904174121
+      },
+      "quay": {
+        "opening": 0.33928306551011866,
+        "maxMove": 53.49855874817513,
+        "maxShape": 0.33314065534535137,
+        "shapeEvents": 36,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 14,
+        "minFat": 0.17833023689634403,
+        "maxResidual": 0.16685235507730364
+      }
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "frame",
+      "to": "sidebar",
+      "selvedge": {
+        "opening": 0.22754486262648413,
+        "maxMove": 231.62616244674558,
+        "maxShape": 1.0206315157501469,
+        "shapeEvents": 126,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 11,
+        "minFat": 0.24834072301813045,
+        "maxResidual": 0.9150070161744214
+      },
+      "harbor": {
+        "opening": 0.25818697276789,
+        "maxMove": 465.2482110247249,
+        "maxShape": 1.1125355218679858,
+        "shapeEvents": 106,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.19144309796957862,
+        "maxResidual": 0.010561589002296654
+      },
+      "quay": {
+        "opening": 0.25818697276789,
+        "maxMove": 465.2482110247249,
+        "maxShape": 1.1125355218679858,
+        "shapeEvents": 106,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.19144309796957862,
+        "maxResidual": 0.010561589002296654
+      }
+    },
+    {
+      "dt": 0.03,
+      "from": "flock",
+      "to": "bento",
+      "selvedge": {
+        "opening": 0,
+        "maxMove": 25.41713931386675,
+        "maxShape": 0.11323158851573681,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.39982751986277354,
+        "maxResidual": 9.367016703334619e-07
+      },
+      "harbor": {
+        "opening": 0,
+        "maxMove": 25.41713931386675,
+        "maxShape": 0.11323158851573681,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.39982751986277354,
+        "maxResidual": 9.367016703334619e-07
+      },
+      "quay": {
+        "opening": 0,
+        "maxMove": 25.41713931386675,
+        "maxShape": 0.11323158851573681,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.39982751986277354,
+        "maxResidual": 9.367016703334619e-07
+      }
+    },
+    {
+      "dt": 0.03,
+      "from": "flock",
+      "to": "hero",
+      "selvedge": {
+        "opening": 0.765807413217871,
+        "maxMove": 81.5772787802385,
+        "maxShape": 0.3841301180318244,
+        "shapeEvents": 14,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.3648540098132879,
+        "maxResidual": 9.902525459653482e-07
+      },
+      "harbor": {
+        "opening": 0.7658074131933089,
+        "maxMove": 98.27076724860162,
+        "maxShape": 0.46344695788417406,
+        "shapeEvents": 15,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 9,
+        "minFat": 0.3930775757422,
+        "maxResidual": 9.253079951858337e-07
+      },
+      "quay": {
+        "opening": 0.7658225469827674,
+        "maxMove": 372.18703013109996,
+        "maxShape": 1.4351705044267302,
+        "shapeEvents": 49,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 14,
+        "minFat": 0.29999373898961984,
+        "maxResidual": 9.628990561038167e-07
+      }
+    },
+    {
+      "dt": 0.03,
+      "from": "flock",
+      "to": "sidebar",
+      "selvedge": {
+        "opening": 0.6769117779087697,
+        "maxMove": 203.18745204811145,
+        "maxShape": 0.9041670697362817,
+        "shapeEvents": 46,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.4197430839111003,
+        "maxResidual": 9.186684078041551e-07
+      },
+      "harbor": {
+        "opening": 0.6769117779087697,
+        "maxMove": 203.18745204811145,
+        "maxShape": 0.9041670697362817,
+        "shapeEvents": 46,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.4197430839111003,
+        "maxResidual": 9.186684078041551e-07
+      },
+      "quay": {
+        "opening": 0.6769117779087697,
+        "maxMove": 203.18745204811145,
+        "maxShape": 0.9041670697362817,
+        "shapeEvents": 46,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.4197430839111003,
+        "maxResidual": 9.186684078041551e-07
+      }
+    },
+    {
+      "dt": 0.03,
+      "from": "flock",
+      "to": "frame",
+      "selvedge": {
+        "opening": 0.5569714929762963,
+        "maxMove": 55.23824772729077,
+        "maxShape": 0.6165378885046479,
+        "shapeEvents": 30,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 12,
+        "minFat": 0.4016389170501981,
+        "maxResidual": 0.027093434799588745
+      },
+      "harbor": {
+        "opening": 0.5570155175389202,
+        "maxMove": 40.62648302903967,
+        "maxShape": 0.21139640448392427,
+        "shapeEvents": 18,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 9,
+        "minFat": 0.41202824505052954,
+        "maxResidual": 2.46418706821353e-06
+      },
+      "quay": {
+        "opening": 0.5570155175389202,
+        "maxMove": 40.62648302903967,
+        "maxShape": 0.21139640448392427,
+        "shapeEvents": 18,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 9,
+        "minFat": 0.41202824505052954,
+        "maxResidual": 2.46418706821353e-06
+      }
+    },
+    {
+      "dt": 0.03,
+      "from": "bento",
+      "to": "flock",
+      "selvedge": {
+        "opening": 0,
+        "maxMove": 8.14949079815432,
+        "maxShape": 0.05770488927504947,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.42854920243055966,
+        "maxResidual": 5.691685447958908e-07
+      },
+      "harbor": {
+        "opening": 0,
+        "maxMove": 8.14949079815432,
+        "maxShape": 0.05770488927504947,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.42854920243055966,
+        "maxResidual": 5.691685447958908e-07
+      },
+      "quay": {
+        "opening": 0,
+        "maxMove": 8.14949079815432,
+        "maxShape": 0.05770488927504947,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.42854920243055966,
+        "maxResidual": 5.691685447958908e-07
+      }
+    },
+    {
+      "dt": 0.03,
+      "from": "bento",
+      "to": "hero",
+      "selvedge": {
+        "opening": 0.5900400292095712,
+        "maxMove": 30.268329490994518,
+        "maxShape": 0.16583131974549448,
+        "shapeEvents": 10,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 9,
+        "minFat": 0.39539103892422356,
+        "maxResidual": 0.00038238275466163463
+      },
+      "harbor": {
+        "opening": 0.5900400292127157,
+        "maxMove": 35.806932707790565,
+        "maxShape": 0.16495096449661956,
+        "shapeEvents": 17,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 9,
+        "minFat": 0.3933650533828191,
+        "maxResidual": 9.918311660079494e-07
+      },
+      "quay": {
+        "opening": 0.5900517396301557,
+        "maxMove": 39.28869520913109,
+        "maxShape": 0.21253127279200987,
+        "shapeEvents": 90,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 14,
+        "minFat": 0.30346762162389773,
+        "maxResidual": 9.025327321757656e-07
+      }
+    },
+    {
+      "dt": 0.03,
+      "from": "bento",
+      "to": "sidebar",
+      "selvedge": {
+        "opening": 0.5210199804717979,
+        "maxMove": 251.06086280583807,
+        "maxShape": 1.173318338623133,
+        "shapeEvents": 34,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.2801532607124763,
+        "maxResidual": 9.393568321952249e-07
+      },
+      "harbor": {
+        "opening": 0.5210199804717979,
+        "maxMove": 251.06086280583807,
+        "maxShape": 1.173318338623133,
+        "shapeEvents": 34,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.2801532607124763,
+        "maxResidual": 9.393568321952249e-07
+      },
+      "quay": {
+        "opening": 0.5210199804717979,
+        "maxMove": 251.06086280583807,
+        "maxShape": 1.173318338623133,
+        "shapeEvents": 34,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.2801532607124763,
+        "maxResidual": 9.393568321952249e-07
+      }
+    },
+    {
+      "dt": 0.03,
+      "from": "bento",
+      "to": "frame",
+      "selvedge": {
+        "opening": 0.4878878821778098,
+        "maxMove": 60.357270759586314,
+        "maxShape": 0.3286576473951308,
+        "shapeEvents": 16,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 9,
+        "minFat": 0.5050522686225984,
+        "maxResidual": 0.0007893315393965917
+      },
+      "harbor": {
+        "opening": 0.48792674015632376,
+        "maxMove": 22.635332077893807,
+        "maxShape": 0.19445709369747421,
+        "shapeEvents": 14,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.4347241154402847,
+        "maxResidual": 9.98111212349931e-07
+      },
+      "quay": {
+        "opening": 0.48792674015632376,
+        "maxMove": 22.635332077893807,
+        "maxShape": 0.19445709369747421,
+        "shapeEvents": 14,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.4347241154402847,
+        "maxResidual": 9.98111212349931e-07
+      }
+    },
+    {
+      "dt": 0.03,
+      "from": "hero",
+      "to": "flock",
+      "selvedge": {
+        "opening": 0,
+        "maxMove": 27.46180151424318,
+        "maxShape": 0.11287071180418266,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.4216406801574962,
+        "maxResidual": 9.817702330595424e-07
+      },
+      "harbor": {
+        "opening": 6.044618830750605e-10,
+        "maxMove": 27.789916912577578,
+        "maxShape": 0.10799048367066631,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.4393232570610204,
+        "maxResidual": 9.652629953389534e-07
+      },
+      "quay": {
+        "opening": 2.3842318885142398e-09,
+        "maxMove": 59.039781828399384,
+        "maxShape": 0.19357020494102506,
+        "shapeEvents": 20,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 14,
+        "minFat": 0.11525592062004535,
+        "maxResidual": 9.707352042201378e-07
+      }
+    },
+    {
+      "dt": 0.03,
+      "from": "hero",
+      "to": "bento",
+      "selvedge": {
+        "opening": 0,
+        "maxMove": 41.64828323167592,
+        "maxShape": 0.40420001888110973,
+        "shapeEvents": 18,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.4029912502953481,
+        "maxResidual": 9.864922772488418e-07
+      },
+      "harbor": {
+        "opening": 1.9242880116685456e-10,
+        "maxMove": 34.816229530096294,
+        "maxShape": 0.14896515755213344,
+        "shapeEvents": 3,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.4302775137982984,
+        "maxResidual": 6.638965691441431e-07
+      },
+      "quay": {
+        "opening": 1.5136742047727936e-09,
+        "maxMove": 92.21879497395804,
+        "maxShape": 0.6208878395793809,
+        "shapeEvents": 139,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 14,
+        "minFat": 0.19875090273570895,
+        "maxResidual": 9.385947273178064e-07
+      }
+    },
+    {
+      "dt": 0.03,
+      "from": "hero",
+      "to": "sidebar",
+      "selvedge": {
+        "opening": 0.6163284149872835,
+        "maxMove": 780.1253507794909,
+        "maxShape": 1.1962685697664532,
+        "shapeEvents": 66,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 10,
+        "minFat": 0.1857016857602309,
+        "maxResidual": 9.944400237502592e-07
+      },
+      "harbor": {
+        "opening": 0.5452100592965031,
+        "maxMove": 715.3007285275572,
+        "maxShape": 1.2615042231385727,
+        "shapeEvents": 91,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 11,
+        "minFat": 0.1299842133214987,
+        "maxResidual": 9.646744323151048e-07
+      },
+      "quay": {
+        "opening": 1.2785462872933548,
+        "maxMove": 926.3821080908561,
+        "maxShape": 1.3163881637471369,
+        "shapeEvents": 255,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 15,
+        "minFat": 0.12484652004041348,
+        "maxResidual": 9.74289565291726e-07
+      }
+    },
+    {
+      "dt": 0.03,
+      "from": "hero",
+      "to": "frame",
+      "selvedge": {
+        "opening": 1.4675066426859391,
+        "maxMove": 43.33499518674978,
+        "maxShape": 0.26823472955320704,
+        "shapeEvents": 20,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 16,
+        "minFat": 0.3865339861188623,
+        "maxResidual": 0.006544071743292843
+      },
+      "harbor": {
+        "opening": 2.787563693049448,
+        "maxMove": 50.91606535190881,
+        "maxShape": 0.317810247407131,
+        "shapeEvents": 19,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 11,
+        "minFat": 0.4132698907986748,
+        "maxResidual": 0.0052784866688762345
+      },
+      "quay": {
+        "opening": 0.3418459127439766,
+        "maxMove": 168.67027744098556,
+        "maxShape": 1.0061597666223392,
+        "shapeEvents": 155,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 15,
+        "minFat": 0.17666125057075363,
+        "maxResidual": 0.03300414594181728
+      }
+    },
+    {
+      "dt": 0.03,
+      "from": "sidebar",
+      "to": "flock",
+      "selvedge": {
+        "opening": 0,
+        "maxMove": 43.52861842944687,
+        "maxShape": 0.11847463165762522,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.41139140618882647,
+        "maxResidual": 9.45548182731915e-07
+      },
+      "harbor": {
+        "opening": 0,
+        "maxMove": 43.52861842944687,
+        "maxShape": 0.11847463165762522,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.41139140618882647,
+        "maxResidual": 9.45548182731915e-07
+      },
+      "quay": {
+        "opening": 0,
+        "maxMove": 43.52861842944687,
+        "maxShape": 0.11847463165762522,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.41139140618882647,
+        "maxResidual": 9.45548182731915e-07
+      }
+    },
+    {
+      "dt": 0.03,
+      "from": "sidebar",
+      "to": "bento",
+      "selvedge": {
+        "opening": 0,
+        "maxMove": 144.05421454115023,
+        "maxShape": 0.6544592371518431,
+        "shapeEvents": 49,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.38679699523016253,
+        "maxResidual": 9.758733263022773e-07
+      },
+      "harbor": {
+        "opening": 0,
+        "maxMove": 144.05421454115023,
+        "maxShape": 0.6544592371518431,
+        "shapeEvents": 49,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.38679699523016253,
+        "maxResidual": 9.758733263022773e-07
+      },
+      "quay": {
+        "opening": 0,
+        "maxMove": 144.05421454115023,
+        "maxShape": 0.6544592371518431,
+        "shapeEvents": 49,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.38679699523016253,
+        "maxResidual": 9.758733263022773e-07
+      }
+    },
+    {
+      "dt": 0.03,
+      "from": "sidebar",
+      "to": "hero",
+      "selvedge": {
+        "opening": 2.449504619549668,
+        "maxMove": 600.6142767587588,
+        "maxShape": 1.3823336980020449,
+        "shapeEvents": 181,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 10,
+        "minFat": 0.20853570077740674,
+        "maxResidual": 9.919738366708454e-07
+      },
+      "harbor": {
+        "opening": 2.449504619486643,
+        "maxMove": 617.7819712187248,
+        "maxShape": 1.1887937228890975,
+        "shapeEvents": 195,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 11,
+        "minFat": 0.23703454263206958,
+        "maxResidual": 9.593029167270847e-07
+      },
+      "quay": {
+        "opening": 2.4495436262177614,
+        "maxMove": 293.0160007021136,
+        "maxShape": 0.907072482313034,
+        "shapeEvents": 322,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 14,
+        "minFat": 0.13713277075472094,
+        "maxResidual": 1.1910310890985264e-05
+      }
+    },
+    {
+      "dt": 0.03,
+      "from": "sidebar",
+      "to": "frame",
+      "selvedge": {
+        "opening": 1.1322040017652009,
+        "maxMove": 222.46930584386925,
+        "maxShape": 0.9420058180408019,
+        "shapeEvents": 75,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 9,
+        "minFat": 0.4128981877762791,
+        "maxResidual": 0.00011612632742327319
+      },
+      "harbor": {
+        "opening": 1.132292551355286,
+        "maxMove": 181.5418852656558,
+        "maxShape": 0.6318207039711495,
+        "shapeEvents": 46,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 10,
+        "minFat": 0.2900397935574725,
+        "maxResidual": 9.434879695029919e-07
+      },
+      "quay": {
+        "opening": 1.132292551355286,
+        "maxMove": 181.5418852656558,
+        "maxShape": 0.6318207039711495,
+        "shapeEvents": 46,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 10,
+        "minFat": 0.2900397935574725,
+        "maxResidual": 9.434879695029919e-07
+      }
+    },
+    {
+      "dt": 0.03,
+      "from": "frame",
+      "to": "flock",
+      "selvedge": {
+        "opening": 0,
+        "maxMove": 11.909904532010259,
+        "maxShape": 0.08354893431123177,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 12,
+        "minFat": 0.3605848583495336,
+        "maxResidual": 8.810792221532984e-07
+      },
+      "harbor": {
+        "opening": 4.136531415291551e-10,
+        "maxMove": 13.916139464150797,
+        "maxShape": 0.09649263394966413,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.44190435916899706,
+        "maxResidual": 9.358859997236896e-07
+      },
+      "quay": {
+        "opening": 4.136531415291551e-10,
+        "maxMove": 13.916139464150797,
+        "maxShape": 0.09649263394966413,
+        "shapeEvents": 0,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.44190435916899706,
+        "maxResidual": 9.358859997236896e-07
+      }
+    },
+    {
+      "dt": 0.03,
+      "from": "frame",
+      "to": "bento",
+      "selvedge": {
+        "opening": 0,
+        "maxMove": 75.2299412724951,
+        "maxShape": 0.4041122254517884,
+        "shapeEvents": 17,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 9,
+        "minFat": 0.5406755584798305,
+        "maxResidual": 9.464773600015612e-07
+      },
+      "harbor": {
+        "opening": 1.3988905818928225e-10,
+        "maxMove": 19.355787247669912,
+        "maxShape": 0.1760608978647675,
+        "shapeEvents": 12,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.5511896474318304,
+        "maxResidual": 9.90055353158219e-07
+      },
+      "quay": {
+        "opening": 1.3988905818928225e-10,
+        "maxMove": 19.355787247669912,
+        "maxShape": 0.1760608978647675,
+        "shapeEvents": 12,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 7,
+        "minFat": 0.5511896474318304,
+        "maxResidual": 9.90055353158219e-07
+      }
+    },
+    {
+      "dt": 0.03,
+      "from": "frame",
+      "to": "hero",
+      "selvedge": {
+        "opening": 0.39454778218463415,
+        "maxMove": 139.77849951984925,
+        "maxShape": 0.857835335954061,
+        "shapeEvents": 24,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 14,
+        "minFat": 0.2933535666804987,
+        "maxResidual": 0.00405209839011152
+      },
+      "harbor": {
+        "opening": 0.3392741776786322,
+        "maxMove": 190.3893207847421,
+        "maxShape": 0.896557529778211,
+        "shapeEvents": 19,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 12,
+        "minFat": 0.25844969519924804,
+        "maxResidual": 9.898839402621158e-07
+      },
+      "quay": {
+        "opening": 0.3392809655136864,
+        "maxMove": 81.01340856742982,
+        "maxShape": 0.5161182830364051,
+        "shapeEvents": 114,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 14,
+        "minFat": 0.1814034739603229,
+        "maxResidual": 8.450028947316416e-07
+      }
+    },
+    {
+      "dt": 0.03,
+      "from": "frame",
+      "to": "sidebar",
+      "selvedge": {
+        "opening": 0.2274884349779813,
+        "maxMove": 378.6734876622107,
+        "maxShape": 1.123849666926803,
+        "shapeEvents": 147,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 11,
+        "minFat": 0.25990193295721054,
+        "maxResidual": 3.059990131488857e-06
+      },
+      "harbor": {
+        "opening": 0.2581861441718347,
+        "maxMove": 597.7717159095112,
+        "maxShape": 1.2080065417997408,
+        "shapeEvents": 119,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.19906503433442824,
+        "maxResidual": 8.276545616562543e-07
+      },
+      "quay": {
+        "opening": 0.2581861441718347,
+        "maxMove": 597.7717159095112,
+        "maxShape": 1.2080065417997408,
+        "shapeEvents": 119,
+        "missing": 0,
+        "nonconvex": 0,
+        "maxCorners": 8,
+        "minFat": 0.19906503433442824,
+        "maxResidual": 8.276545616562543e-07
+      }
+    }
+  ],
+  "interruptions": [
+    {
+      "name": "selvedge",
+      "delay": 0.08,
+      "maxOpening": 150.34691261199487,
+      "missing": 0
+    },
+    {
+      "name": "selvedge",
+      "delay": 0.23,
+      "maxOpening": 152.47698876389617,
+      "missing": 0
+    },
+    {
+      "name": "selvedge",
+      "delay": 0.6,
+      "maxOpening": 173.1330339255417,
+      "missing": 0
+    },
+    {
+      "name": "harbor",
+      "delay": 0.08,
+      "maxOpening": 122.25545339280933,
+      "missing": 0
+    },
+    {
+      "name": "harbor",
+      "delay": 0.23,
+      "maxOpening": 124.38689077769249,
+      "missing": 0
+    },
+    {
+      "name": "harbor",
+      "delay": 0.6,
+      "maxOpening": 160.34642796335265,
+      "missing": 0
+    },
+    {
+      "name": "quay",
+      "delay": 0.08,
+      "maxOpening": 164.54881547931618,
+      "missing": 0
+    },
+    {
+      "name": "quay",
+      "delay": 0.23,
+      "maxOpening": 167.03036938921008,
+      "missing": 0
+    },
+    {
+      "name": "quay",
+      "delay": 0.6,
+      "maxOpening": 194.89703195085318,
+      "missing": 0
+    }
+  ],
+  "resizes": [
+    {
+      "name": "selvedge",
+      "scene": "hero",
+      "missing": 0,
+      "maxCorners": 8,
+      "nonconvex": 0,
+      "minFat": 0.43620871807588263,
+      "void": {
+        "pct": 7.491964878589909,
+        "edgePx": 33.89875655941347
+      }
+    },
+    {
+      "name": "selvedge",
+      "scene": "frame",
+      "missing": 0,
+      "maxCorners": 6,
+      "nonconvex": 0,
+      "minFat": 0.5455006537653053,
+      "void": {
+        "pct": 38.34775725387539,
+        "edgePx": 219.4822278999004
+      }
+    },
+    {
+      "name": "harbor",
+      "scene": "hero",
+      "missing": 0,
+      "maxCorners": 8,
+      "nonconvex": 0,
+      "minFat": 0.4640098311916674,
+      "void": {
+        "pct": 7.034198202790669e-08,
+        "edgePx": 2.1635383973261924e-07
+      }
+    },
+    {
+      "name": "harbor",
+      "scene": "frame",
+      "missing": 0,
+      "maxCorners": 4,
+      "nonconvex": 0,
+      "minFat": 0.6231258085093343,
+      "void": {
+        "pct": 4.274839107488839e-06,
+        "edgePx": 3.073553125432227e-05
+      }
+    },
+    {
+      "name": "quay",
+      "scene": "hero",
+      "missing": 0,
+      "maxCorners": 14,
+      "nonconvex": 0,
+      "minFat": 0.32121844362611496,
+      "void": {
+        "pct": 3.7213963137387675e-08,
+        "edgePx": 1.3397033171713701e-07
+      }
+    },
+    {
+      "name": "quay",
+      "scene": "frame",
+      "missing": 0,
+      "maxCorners": 4,
+      "nonconvex": 0,
+      "minFat": 0.6231258085093343,
+      "void": {
+        "pct": 4.274839107488839e-06,
+        "edgePx": 3.073553125432227e-05
+      }
+    }
+  ],
+  "hashes": {
+    "selvedge": "61959c40a3c549da28e0736195f726c12d410f0ad9d692e8c7a5828224c064e8",
+    "harbor": "6d12a211b52708d00fb743109a2aa51f949609f82f6914c8f4dc48e46730c8a7",
+    "quay": "d286290cd9e25b6e7ed354b6037231c930bc905f5660500268660a2b84191146"
+  },
+  "selected": "harbor",
+  "geometryGatesPassed": true,
+  "laterRegressions": [
+    {
+      "dt": 0.016666666666666666,
+      "from": "flock",
+      "to": "hero",
+      "baseline": 46.666591774743864,
+      "harbor": 56.51422347035559
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "bento",
+      "to": "hero",
+      "baseline": 17.001829150868762,
+      "harbor": 19.957916855915936
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "sidebar",
+      "to": "hero",
+      "baseline": 455.09048565757126,
+      "harbor": 545.8850326628547
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "frame",
+      "to": "flock",
+      "baseline": 6.747893736518964,
+      "harbor": 7.842318385061139
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "frame",
+      "to": "hero",
+      "baseline": 89.49249085401071,
+      "harbor": 106.29535618166861
+    },
+    {
+      "dt": 0.016666666666666666,
+      "from": "frame",
+      "to": "sidebar",
+      "baseline": 231.62616244674558,
+      "harbor": 465.2482110247249
+    },
+    {
+      "dt": 0.03,
+      "from": "flock",
+      "to": "hero",
+      "baseline": 81.5772787802385,
+      "harbor": 98.27076724860162
+    },
+    {
+      "dt": 0.03,
+      "from": "bento",
+      "to": "hero",
+      "baseline": 30.268329490994518,
+      "harbor": 35.806932707790565
+    },
+    {
+      "dt": 0.03,
+      "from": "hero",
+      "to": "frame",
+      "baseline": 43.33499518674978,
+      "harbor": 50.91606535190881
+    },
+    {
+      "dt": 0.03,
+      "from": "frame",
+      "to": "flock",
+      "baseline": 11.909904532010259,
+      "harbor": 13.916139464150797
+    },
+    {
+      "dt": 0.03,
+      "from": "frame",
+      "to": "hero",
+      "baseline": 139.77849951984925,
+      "harbor": 190.3893207847421
+    },
+    {
+      "dt": 0.03,
+      "from": "frame",
+      "to": "sidebar",
+      "baseline": 378.6734876622107,
+      "harbor": 597.7717159095112
+    }
+  ],
+  "allTransitionsImproved": false
+}
