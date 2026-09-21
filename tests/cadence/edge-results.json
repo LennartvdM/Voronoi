@@ -1,0 +1,158 @@
+{
+  "interruptions": [
+    {
+      "name": "harbor",
+      "delay": 0.08,
+      "maxOpening": 70.44265438154143,
+      "maxSlip": 0
+    },
+    {
+      "name": "harbor",
+      "delay": 0.23,
+      "maxOpening": 70.51695219959568,
+      "maxSlip": 0
+    },
+    {
+      "name": "harbor",
+      "delay": 0.6,
+      "maxOpening": 138.82297303001417,
+      "maxSlip": 0
+    },
+    {
+      "name": "cadence",
+      "delay": 0.08,
+      "maxOpening": 70.4506424779476,
+      "maxSlip": 0
+    },
+    {
+      "name": "cadence",
+      "delay": 0.23,
+      "maxOpening": 70.53917253590501,
+      "maxSlip": 0
+    },
+    {
+      "name": "cadence",
+      "delay": 0.6,
+      "maxOpening": 130.19574042415036,
+      "maxSlip": 0
+    }
+  ],
+  "sizes": [
+    {
+      "w": 390,
+      "h": 760,
+      "n": 12,
+      "scene": "hero",
+      "voidPct": 2.547458279877901e-7,
+      "remaining": -22.95000000000067,
+      "content": 12
+    },
+    {
+      "w": 390,
+      "h": 760,
+      "n": 12,
+      "scene": "frame",
+      "voidPct": 0.0000012825163316239908,
+      "remaining": -22.95000000000067,
+      "content": 12
+    },
+    {
+      "w": 390,
+      "h": 760,
+      "n": 12,
+      "scene": "sidebar",
+      "voidPct": 0.8800007758887731,
+      "remaining": -22.95000000000067,
+      "content": 12
+    },
+    {
+      "w": 1440,
+      "h": 620,
+      "n": 24,
+      "scene": "hero",
+      "voidPct": 1.326793037842305e-8,
+      "remaining": -22.95000000000067,
+      "content": 24
+    },
+    {
+      "w": 1440,
+      "h": 620,
+      "n": 24,
+      "scene": "frame",
+      "voidPct": 0.0000052978607837305205,
+      "remaining": -22.95000000000067,
+      "content": 24
+    },
+    {
+      "w": 1440,
+      "h": 620,
+      "n": 24,
+      "scene": "sidebar",
+      "voidPct": 2.856009933831305,
+      "remaining": -22.95000000000067,
+      "content": 24
+    },
+    {
+      "w": 1900,
+      "h": 810,
+      "n": 13,
+      "scene": "hero",
+      "voidPct": 0.0000012988606473894535,
+      "remaining": -22.95000000000067,
+      "content": 13
+    },
+    {
+      "w": 1900,
+      "h": 810,
+      "n": 13,
+      "scene": "frame",
+      "voidPct": 0.0000018501969549352276,
+      "remaining": -22.95000000000067,
+      "content": 13
+    },
+    {
+      "w": 1900,
+      "h": 810,
+      "n": 13,
+      "scene": "sidebar",
+      "voidPct": 3.410463425935684,
+      "remaining": -22.95000000000067,
+      "content": 13
+    },
+    {
+      "w": 2560,
+      "h": 1440,
+      "n": 12,
+      "scene": "hero",
+      "voidPct": 0.0000012440402012240763,
+      "remaining": -22.95000000000067,
+      "content": 12
+    },
+    {
+      "w": 2560,
+      "h": 1440,
+      "n": 12,
+      "scene": "frame",
+      "voidPct": 0.000002713469469502646,
+      "remaining": -22.95000000000067,
+      "content": 12
+    },
+    {
+      "w": 2560,
+      "h": 1440,
+      "n": 12,
+      "scene": "sidebar",
+      "voidPct": 0.025084299090459745,
+      "remaining": -22.95000000000067,
+      "content": 12
+    }
+  ],
+  "governor": [
+    {
+      "maxSlip": 2.8414328462618426,
+      "minRate": 0.20135067467818377,
+      "finished": true
+    }
+  ],
+  "resizesPassed": 2
+}
