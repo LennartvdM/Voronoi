@@ -1,0 +1,202 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed. Cell/anchor state and cell fill/stroke commands must exactly match Caption; text and field tags are intentionally changed.",
+  "hashes": [
+    {
+      "file": "caption.html",
+      "sha256": "b595913da13062c7f0acfb1db15d0b65fe4ee30c17f9fe02829fa770005922c5"
+    },
+    {
+      "file": "plaque.html",
+      "sha256": "1fb47c3acf61e10ac996682bd85d340f34ed9f0d3503b798f656db4bcf1458ef"
+    }
+  ],
+  "matrix": [
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 16.666666666666668,
+      "inner": "flock",
+      "frames": 3470,
+      "hoverFrames": 288,
+      "travellingLeafFrames": 23757
+    },
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 24,
+      "fields": 1,
+      "dt": 30,
+      "inner": "bento",
+      "frames": 1939,
+      "hoverFrames": 162,
+      "travellingLeafFrames": 22878
+    },
+    {
+      "width": 390,
+      "height": 720,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 8.333333333333334,
+      "inner": "flock",
+      "frames": 6940,
+      "hoverFrames": 576,
+      "travellingLeafFrames": 70125
+    },
+    {
+      "width": 1363,
+      "height": 846,
+      "count": 30,
+      "fields": 0,
+      "dt": 50,
+      "inner": "flock",
+      "frames": 1157,
+      "hoverFrames": 96,
+      "travellingLeafFrames": 12795
+    }
+  ],
+  "totalFrames": 13506,
+  "paintOps": 710850,
+  "textDraws": 347694,
+  "tagDraws": 23508,
+  "fonts": [
+    "500 11px system-ui, sans-serif",
+    "500 12px system-ui, sans-serif",
+    "500 13px system-ui, sans-serif",
+    "600 12px system-ui, sans-serif",
+    "600 20px system-ui, sans-serif",
+    "600 30px system-ui, sans-serif",
+    "600 32px system-ui, sans-serif"
+  ],
+  "ghosts": 0,
+  "maxLabelStepPx": 61.9,
+  "labelStepsOver20px": 368,
+  "rest": [
+    {
+      "scene": "bento",
+      "desktop": {
+        "numbers": 12,
+        "names": 12
+      },
+      "desktopFields": {
+        "roots": 7,
+        "numbers": 7,
+        "names": 7,
+        "galleries": 5,
+        "tags": 5
+      },
+      "phone": {
+        "numbers": 12,
+        "names": 12
+      },
+      "phoneFields": {
+        "roots": 5,
+        "numbers": 5,
+        "names": 5,
+        "galleries": 7,
+        "tags": 7
+      }
+    },
+    {
+      "scene": "hero",
+      "desktop": {
+        "numbers": 12,
+        "names": 12
+      },
+      "desktopFields": {
+        "roots": 11,
+        "numbers": 11,
+        "names": 11,
+        "galleries": 1,
+        "tags": 1
+      },
+      "phone": {
+        "numbers": 11,
+        "names": 6
+      },
+      "phoneFields": {
+        "roots": 10,
+        "numbers": 9,
+        "names": 4,
+        "galleries": 2,
+        "tags": 1
+      }
+    },
+    {
+      "scene": "sidebar",
+      "desktop": {
+        "numbers": 12,
+        "names": 12
+      },
+      "desktopFields": {
+        "roots": 12,
+        "numbers": 12,
+        "names": 12,
+        "galleries": 0,
+        "tags": 0
+      },
+      "phone": {
+        "numbers": 8,
+        "names": 7
+      },
+      "phoneFields": {
+        "roots": 8,
+        "numbers": 4,
+        "names": 3,
+        "galleries": 4,
+        "tags": 3
+      }
+    },
+    {
+      "scene": "frame",
+      "desktop": {
+        "numbers": 12,
+        "names": 12
+      },
+      "desktopFields": {
+        "roots": 11,
+        "numbers": 11,
+        "names": 11,
+        "galleries": 1,
+        "tags": 1
+      },
+      "phone": {
+        "numbers": 12,
+        "names": 2
+      },
+      "phoneFields": {
+        "roots": 11,
+        "numbers": 11,
+        "names": 1,
+        "galleries": 1,
+        "tags": 1
+      }
+    },
+    {
+      "scene": "flock",
+      "desktop": {
+        "numbers": 12,
+        "names": 12
+      },
+      "desktopFields": {
+        "roots": 12,
+        "numbers": 12,
+        "names": 12,
+        "galleries": 0,
+        "tags": 0
+      },
+      "phone": {
+        "numbers": 12,
+        "names": 12
+      },
+      "phoneFields": {
+        "roots": 12,
+        "numbers": 12,
+        "names": 12,
+        "galleries": 0,
+        "tags": 0
+      }
+    }
+  ]
+}
