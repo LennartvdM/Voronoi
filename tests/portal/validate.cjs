@@ -53,6 +53,14 @@ function whereIs(st,name){
  if(l.path.length>1){const p=l.path[0].hive.cellPoly(b);let x=0,y=0;for(const q of p){x+=q[0];y+=q[1];}return{b,x:x/p.length,y:y/p.length,field:true};}
  return{b,x:b.caption.x,y:b.caption.y,field:false};
 }
+function isRect(pts,eps=.02){
+ let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;for(const p of pts){x0=Math.min(x0,p[0]);y0=Math.min(y0,p[1]);x1=Math.max(x1,p[0]);y1=Math.max(y1,p[1]);}
+ const off=pts.filter(p=>Math.min(Math.abs(p[0]-x0),Math.abs(p[0]-x1))>eps&&Math.min(Math.abs(p[1]-y0),Math.abs(p[1]-y1))>eps);
+ if(off.length)return{ok:false,why:'vertex off the box '+JSON.stringify(off.map(p=>p.map(v=>+v.toFixed(3))))};
+ const a=Math.abs(pts.reduce((q,p,i,arr)=>{const m=arr[(i+1)%arr.length];return q+p[0]*m[1]-m[0]*p[1];},0)/2),box=(x1-x0)*(y1-y0);
+ if(Math.abs(a-box)>eps*2*((x1-x0)+(y1-y0)))return{ok:false,why:'area '+a.toFixed(2)+' of box '+box.toFixed(2)};
+ return{ok:true,why:''};
+}
 function slot0(st){const e=st.e,n=e.root.bodies.filter(b=>!b.isVoid&&!b.leaving&&!b.isSelf).length;return e.scenes[e.config.scene](e.root.COLS,e.root.ROWS,n).content[0];}
 function opened(st,b,label,phone){
  const e=st.e,KINDS=e.kinds(),T=e.templates();assert(e.focus()===b,label+': focus');assert.equal(e.config.scene,KINDS[b.id%KINDS.length],label+': kind');
@@ -61,8 +69,11 @@ function opened(st,b,label,phone){
  const roots=rootsOf(st.pic).sort((p,q)=>area(q)-area(p));
  assert(roots[0].body===b,label+': the image is not the largest cell');
  assert(!st.pic.leaves.some(l=>l.path.length>1),label+': a field on a page');
- // the page grid is drawn exactly: every root cell a rectangle
- for(const l of roots)assert.equal(l.loops[0].length,4,label+': a page cell is not a rectangle ('+l.body.name+' has '+l.loops[0].length+' vertices)');
+ // the page grid is drawn exactly: every root cell a rectangle. The outline
+ // keeps a vertex where a neighbour's seam meets an edge if the auction's
+ // last residual left it a hair off the line, so the test is geometric: every
+ // vertex on the cell's bounding box, and the cell filling that box
+ for(const l of roots){const r=isRect(l.loops[0]);assert(r.ok,label+': a page cell is not a rectangle ('+l.body.name+': '+r.why+')');}
  assert.equal(e.meters().mRect[0],'100%',label+': rect meter '+e.meters().mRect[0]);
  // seams meet within a hairline: the auction's residual at a page's junctions,
  // gap and overlap together, stays under 0.3% of the page

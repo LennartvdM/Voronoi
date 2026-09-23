@@ -38,12 +38,16 @@ GRID = '''// PORTAL. A page is a scene a cell was clicked into. Every page is th
 // organic as ever. Templates are in fractions of the page; grid indices name
 // the blocks; rules are hairlines drawn along the text block, style only.
 const PORTAL_TEMPLATES = {
-  folio:   { cols: [0.24, 0.46, 0.30], rows: [1], image: [1, 0, 2, 1], text: [0, 0, 1, 1], gallery: [[2, 0, 3, 1]], rules: ['right'] },
-  plinth:  { cols: [0.66, 0.34], rows: [0.56, 0.44], image: [0, 0, 1, 1], text: [1, 0, 2, 1], gallery: [[0, 1, 2, 2]], rules: ['bottom'] },
-  essay:   { cols: [0.2, 0.6, 0.2], rows: [0.3, 0.45, 0.25], image: [1, 0, 2, 1], text: [1, 1, 2, 2], gallery: [[0, 0, 1, 1], [2, 0, 3, 1], [0, 1, 1, 2], [2, 1, 3, 2], [0, 2, 3, 3]], rules: ['top', 'bottom'] },
-  caption: { cols: [0.84, 0.16], rows: [1], image: [0, 0, 1, 1], text: null, gallery: [[1, 0, 2, 1]], rules: [] },
+  spread:        { cols: [0.44, 0.33, 0.23], rows: [0.75, 0.25], image: [0, 0, 1, 2], text: [1, 0, 2, 1], gallery: [[1, 1, 2, 2], [2, 0, 3, 2]], rules: ['right', 'bottom'] },
+  folio:         { cols: [0.24, 0.46, 0.3], rows: [1], image: [1, 0, 2, 1], text: [0, 0, 1, 1], gallery: [[2, 0, 3, 1]], rules: ['right'] },
+  showcase:      { cols: [0.12, 0.51, 0.37], rows: [0.72, 0.28], image: [1, 0, 2, 1], text: [2, 0, 3, 1], gallery: [[0, 0, 1, 1], [0, 1, 3, 2]], rules: ['left', 'bottom'] },
+  wall:          { cols: [0.58, 0.42], rows: [0.38, 0.62], image: [0, 0, 1, 2], text: [1, 0, 2, 1], gallery: [[1, 1, 2, 2]], rules: ['bottom'] },
+  interview:     { cols: [0.57, 0.43], rows: [0.415, 0.2925, 0.2925], image: [1, 0, 2, 2], text: [0, 0, 1, 1], gallery: [[0, 1, 1, 3], [1, 2, 2, 3]], rules: ['bottom'] },
+  documentation: { cols: [0.12, 0.48, 0.4], rows: [0.62, 0.38], image: [2, 0, 3, 1], text: [1, 0, 2, 2], gallery: [[0, 0, 1, 2], [2, 1, 3, 2]], rules: ['left', 'right'] },
+  essay:         { cols: [0.2, 0.6, 0.2], rows: [0.42, 0.38, 0.2], image: [1, 0, 2, 1], text: [1, 1, 2, 2], gallery: [[0, 0, 1, 1], [2, 0, 3, 1], [0, 1, 1, 2], [2, 1, 3, 2], [0, 2, 3, 3]], rules: ['top', 'bottom'] },
+  caption:       { cols: [0.84, 0.16], rows: [1], image: [0, 0, 1, 1], text: null, gallery: [[1, 0, 2, 1]], rules: [] },
 };
-const PORTAL_KINDS = ['folio', 'plinth', 'essay', 'caption'];
+const PORTAL_KINDS = ['spread', 'folio', 'showcase', 'wall', 'interview', 'documentation', 'essay', 'caption'];
 let portalFocus = null;                             // the body a page is open on; null at home
 function portalKind(b) { return PORTAL_KINDS[b.id % PORTAL_KINDS.length]; }
 function portalCuts(fr) { const out = [0]; let s = 0; for (const f of fr) { s += f; out.push(s); } out[out.length - 1] = 1; return out; }
@@ -60,6 +64,16 @@ function portalGrid(T, C, R, n) {
   let assigned = counts.reduce((s, c) => s + c, 0);
   while (assigned < m) { let best = 0, bs = -1; regions.forEach((r, i) => { const s = rectArea(r) / counts[i]; if (s > bs) { bs = s; best = i; } }); counts[best]++; assigned++; }
   while (assigned > m) { let best = -1, bs = Infinity; regions.forEach((r, i) => { if (counts[i] > 1) { const s = rectArea(r) / counts[i]; if (s < bs) { bs = s; best = i; } } }); if (best < 0) break; counts[best]--; assigned--; }
+  // a cell edge that lands within a quarter of a lattice unit of a cut the
+  // page already has takes that cut: a near miss would slice every block it
+  // crosses into a hair-thin sub-cell, a site with next to no ground to hold
+  const SNAP = 0.25, cutsX = xs.slice(), cutsY = ys.slice();
+  const snap = (v, cuts, span) => {
+    let best = v, bd = Infinity;
+    for (const c of cuts) { const d = Math.abs(c - v); if (d < bd) { bd = d; best = c; } }
+    if (bd <= Math.min(SNAP, 0.3 * span)) return best;
+    cuts.push(v); return v;
+  };
   const cells = [];
   regions.forEach((r, i) => {
     const k = counts[i], w = r[2] - r[0], h = r[3] - r[1];
@@ -67,8 +81,8 @@ function portalGrid(T, C, R, n) {
     for (let q = 1; q <= k; q++) { const cols = Math.ceil(k / q), score = Math.abs(Math.log((w / cols) / (h / q))) + 0.1 * (q * cols - k); if (score < bs) { bs = score; rows = q; } }
     const base = Math.floor(k / rows), extra = k - base * rows;
     for (let row = 0; row < rows; row++) {
-      const cols = base + (row < extra ? 1 : 0), y0 = r[1] + h * row / rows, y1 = r[1] + h * (row + 1) / rows;
-      for (let col = 0; col < cols; col++) cells.push([r6(r[0] + w * col / cols), r6(y0), r6(r[0] + w * (col + 1) / cols), r6(y1)]);
+      const cols = base + (row < extra ? 1 : 0), y0 = snap(r6(r[1] + h * row / rows), cutsY, h / rows), y1 = snap(r6(r[1] + h * (row + 1) / rows), cutsY, h / rows);
+      for (let col = 0; col < cols; col++) cells.push([snap(r6(r[0] + w * col / cols), cutsX, w / cols), y0, snap(r6(r[0] + w * (col + 1) / cols), cutsX, w / cols), y1]);
     }
   });
   const content = [image, ...cells], voids = text ? [text] : [];
@@ -150,11 +164,14 @@ function portalProseStep(ctx, type, dt, t) {
   const title = Math.round(type.num * 0.9), line = Math.max(4, Math.round(type.name * 0.55)), lead = Math.round(line * 2.1);
   ctx.save();
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.globalAlpha = 0.22 * p.alpha; ctx.beginPath();
+  // in the gutter: half the padding in from the seam, so the line sits
+  // between the text's margin and the neighbouring cards' ink
+  const g = Math.round(pad / 2) + 0.5;
   for (const e of T.rules) {
-    if (e === 'left') { ctx.moveTo(r[0] + 0.5, r[1] + pad); ctx.lineTo(r[0] + 0.5, r[3] - pad); }
-    if (e === 'right') { ctx.moveTo(r[2] - 0.5, r[1] + pad); ctx.lineTo(r[2] - 0.5, r[3] - pad); }
-    if (e === 'top') { ctx.moveTo(r[0] + pad, r[1] + 0.5); ctx.lineTo(r[2] - pad, r[1] + 0.5); }
-    if (e === 'bottom') { ctx.moveTo(r[0] + pad, r[3] - 0.5); ctx.lineTo(r[2] - pad, r[3] - 0.5); }
+    if (e === 'left') { ctx.moveTo(r[0] + g, r[1] + pad); ctx.lineTo(r[0] + g, r[3] - pad); }
+    if (e === 'right') { ctx.moveTo(r[2] - g, r[1] + pad); ctx.lineTo(r[2] - g, r[3] - pad); }
+    if (e === 'top') { ctx.moveTo(r[0] + pad, r[1] + g); ctx.lineTo(r[2] - pad, r[1] + g); }
+    if (e === 'bottom') { ctx.moveTo(r[0] + pad, r[3] - g); ctx.lineTo(r[2] - pad, r[3] - g); }
   }
   ctx.stroke();
   ctx.globalAlpha = 0.5 * p.alpha; ctx.beginPath(); ctx.moveTo(x0, y0 + Math.round(title * 1.3) + 0.5); ctx.lineTo(x0 + Math.round(title * 1.6), y0 + Math.round(title * 1.3) + 0.5); ctx.stroke();
@@ -266,6 +283,41 @@ replace('''document.querySelectorAll('.scene-btn').forEach(b => b.addEventListen
   config.scene = b.dataset.scene;''', '''document.querySelectorAll('.scene-btn').forEach(b => b.addEventListener('click', () => {
   portalFocus = null;                        // a scene button leaves any open page
   config.scene = b.dataset.scene;''')
+
+# --- a block travels as one cell and becomes its rectangle as it lands --------
+replace('''    b.wvU = Math.min(1, (b.wvU || 0) + du);
+    const u = b.wvU * b.wvU * (3 - 2 * b.wvU);
+    const cur = [];
+    let sum = 0;
+    for (let i = 0; i < b.wvFrom.length; i++) {
+      const a = b.wvFrom[i], z = b.wvTo[i];
+      const q = Math.max(WV_SITE_FLOOR, a.q + (z.q - a.q) * u);
+      const p = { x: a.x + (z.x - a.x) * u, y: a.y + (z.y - a.y) * u, q };
+      cur.push(p); sum += q;
+    }''', '''    b.wvU = Math.min(1, (b.wvU || 0) + du);
+    const u = b.wvU * b.wvU * (3 - 2 * b.wvU);
+    const cur = [];
+    let sum = 0;
+    // PORTAL: a travelling content block does not carry its formation across
+    // the page. Its sites close to one over the first third of the journey
+    // and open to the destination's over the last stretch, so a cell travels
+    // as one cell and becomes its rectangle as it lands. Whitespace, and a
+    // block re-cut where it stands, keep the slew.
+    const S = v => { v = Math.max(0, Math.min(1, v)); return v * v * (3 - 2 * v); };
+    const journeying = !b.isVoid && b.journey && b.progress < 1;
+    const s1 = journeying ? S(b.progress / 0.35) : 0, s2 = journeying ? S((b.progress - 0.55) / 0.45) : 0;
+    for (let i = 0; i < b.wvFrom.length; i++) {
+      const a = b.wvFrom[i], z = b.wvTo[i];
+      let p;
+      if (journeying) {
+        const m = { x: 0, y: 0, q: i === 0 ? 1 : WV_SITE_FLOOR };
+        const x1 = a.x + (m.x - a.x) * s1, y1 = a.y + (m.y - a.y) * s1, q1 = a.q + (m.q - a.q) * s1;
+        p = { x: x1 + (z.x - x1) * s2, y: y1 + (z.y - y1) * s2, q: Math.max(WV_SITE_FLOOR, q1 + (z.q - q1) * s2) };
+      } else {
+        p = { x: a.x + (z.x - a.x) * u, y: a.y + (z.y - a.y) * u, q: Math.max(WV_SITE_FLOOR, a.q + (z.q - a.q) * u) };
+      }
+      cur.push(p); sum += p.q;
+    }''')
 
 (ROOT / 'portal.html').write_text(s)
 print(hashlib.sha256(s.encode()).hexdigest())

@@ -7,7 +7,7 @@
     },
     {
       "file": "portal.html",
-      "sha256": "c2a907fa336cdcc84dd18ab86e157bf8f7db7db043a0aabed63223a6f42a86fa"
+      "sha256": "2eb6ed86145c22b126ca9764ca74c030e6f56732b1245c0b5205902d8af9e52a"
     }
   ],
   "matrix": [
@@ -53,36 +53,68 @@
   "clicks": {
     "kinds": [
       {
-        "kind": "folio",
+        "kind": "spread",
         "cell": "Drift",
+        "imageShare": 0.44,
+        "smallestCard": 0.0275,
+        "rect": "100%",
+        "gap": "436px²"
+      },
+      {
+        "kind": "folio",
+        "cell": "Ember",
         "imageShare": 0.46,
         "smallestCard": 0.025,
         "rect": "100%",
-        "gap": "452px²"
+        "gap": "224px²"
       },
       {
-        "kind": "plinth",
-        "cell": "Ember",
-        "imageShare": 0.37,
-        "smallestCard": 0.0367,
+        "kind": "showcase",
+        "cell": "Tide",
+        "imageShare": 0.367,
+        "smallestCard": 0.0288,
+        "rect": "100%",
+        "gap": "352px²"
+      },
+      {
+        "kind": "wall",
+        "cell": "Moss",
+        "imageShare": 0.58,
+        "smallestCard": 0.0217,
+        "rect": "100%",
+        "gap": "336px²"
+      },
+      {
+        "kind": "interview",
+        "cell": "Petal",
+        "imageShare": 0.304,
+        "smallestCard": 0.0417,
+        "rect": "100%",
+        "gap": "0px²"
+      },
+      {
+        "kind": "documentation",
+        "cell": "Aurora",
+        "imageShare": 0.248,
+        "smallestCard": 0.0216,
         "rect": "100%",
         "gap": "0px²"
       },
       {
         "kind": "essay",
-        "cell": "Tide",
-        "imageShare": 0.18,
-        "smallestCard": 0.045,
+        "cell": "Dune",
+        "imageShare": 0.252,
+        "smallestCard": 0.038,
         "rect": "100%",
-        "gap": "0px²"
+        "gap": "72px²"
       },
       {
         "kind": "caption",
-        "cell": "Moss",
+        "cell": "Jazz",
         "imageShare": 0.84,
         "smallestCard": 0.0133,
         "rect": "100%",
-        "gap": "304px²"
+        "gap": "308px²"
       }
     ],
     "home": {
@@ -91,16 +123,16 @@
     },
     "field": {
       "field": "Drift",
-      "scene": "folio"
+      "scene": "spread"
     },
     "void": {
-      "scene": "folio",
+      "scene": "spread",
       "voidClick": false
     },
     "interrupted": {
       "first": "Ember",
       "second": "Tide",
-      "scene": "essay"
+      "scene": "showcase"
     },
     "escape": {
       "numbers": 7
@@ -111,11 +143,27 @@
     },
     "phone": [
       {
+        "kind": "spread",
+        "rect": "100%"
+      },
+      {
         "kind": "folio",
         "rect": "100%"
       },
       {
-        "kind": "plinth",
+        "kind": "showcase",
+        "rect": "100%"
+      },
+      {
+        "kind": "wall",
+        "rect": "100%"
+      },
+      {
+        "kind": "interview",
+        "rect": "100%"
+      },
+      {
+        "kind": "documentation",
         "rect": "100%"
       },
       {

@@ -41,11 +41,16 @@ straight (the Plumb and Weave lineage). Portal extends that to content: every
 block is subdivided by the union of the page's cut lines and carries one
 site per sub-cell. Adjacent sub-cells across any seam then share an extent,
 and the power diagram at rest **is** the partition: every seam straight,
-every cell a four-vertex rectangle, on every page kind, at every count. In
-transit the sites ride with their body, and the page is as organic as it
-ever was. The engine change is three lines: a content body with sites on its
-rest rectangle takes them as its formation, and keeps them when its
-formation is refreshed.
+every cell a rectangle, on every page kind, at every count. The engine
+change is three lines: a content body with sites on its rest rectangle takes
+them as its formation, and keeps them when its formation is refreshed.
+
+In transit a block does not carry its formation across the page. Its sites
+close to one over the first 35% of its journey and open to the
+destination's over the last 45%, so a cell travels as one cell and becomes
+its rectangle as it lands; a fan of sub-cells would otherwise streak behind
+it. Whitespace, and a block re-cut where it stands, keep the slew Plumb
+gave them.
 
 The meters report a few hundred px² of gap or overlap on a settled page.
 That is rasterisation of exact seams, not geometry: a pixel sampler finds
@@ -56,8 +61,42 @@ the page and asserts the rectangles directly.
 ## The kinds
 
 A cell's kind is its id modulo the number of kinds, so pages repeat without
-being unique. The set is in `PORTAL_TEMPLATES` in the builder; each was
-judged on a settled screenshot and its lab metrics before it was kept.
+being unique. The set is in `PORTAL_TEMPLATES` in the builder. Eight kinds,
+each a different answer to where the reading goes, where the picture goes
+and how the rest is browsed:
+
+- **Spread**: the image a full-height column on the left, the text top
+  right, the cards in a column at the far right and a row underneath the
+  text. Rules right and below the text. A magazine opening.
+- **Folio**: text, image, cards, left to right in one band. The reading
+  column is the page's margin; a rule on its right.
+- **Showcase**: the image centred with a thin column of cards on its left,
+  the text on its right and a row of cards across the bottom. Rules left
+  and below the text. A product page.
+- **Wall**: the image the left three fifths, top to bottom; the text above
+  a block of cards on the right. One rule under the text. A gallery wall.
+- **Interview**: the text top left in two columns, the image the right
+  column, cards under the text and under the image. A rule under the text.
+- **Documentation**: a narrow column of cards on the left, the text a wide
+  middle column, the image top right over a block of cards. Rules on both
+  sides of the text. A manual.
+- **Essay**: the image centred at the top, the text centred under it,
+  cards in the margins on both sides and a row along the bottom. Rules
+  above and below the text. A long read.
+- **Caption**: no text block at all. The image fills the page but for one
+  column of cards on the right, with its title and one line set in its own
+  bottom-left corner. Enough for a picture that only needs a caption.
+
+Spread, Showcase, Wall, Interview and Documentation came out of a judged
+panel of ten designs (thirty scores on a settled screenshot and the lab's
+metrics); Folio, Essay and Caption were added by hand for the shapes the
+panel lacked: a plain band, a centred read and a picture alone. Near
+duplicates (a newspaper, a catalogue, a landing page) were dropped.
+
+Gallery regions are cut into rows of cards, the rows chosen for the
+squarest card. A card edge that lands within a quarter of a lattice unit
+of a cut the page already has takes that cut, so no block is sliced into a
+hair-thin sub-cell by a near miss.
 
 ## Visible change
 
@@ -94,8 +133,8 @@ hint sits beside the back link.
 - With clicks, at 1900 x 810 with fields at 55%, for every kind: the page
   opens from its cell; seven seconds on, the clicked cell's rect is the
   scene's first slot, it is the largest cell, no cell is a field, every root
-  cell has exactly four vertices, the rect meter reads 100%, and the seam
-  residual is under 0.3%. On a page with text the title is drawn inside the
+  cell is a rectangle (every vertex on its bounding box, and the box
+  filled), the rect meter reads 100%, and the seam residual is under 0.3%. On a page with text the title is drawn inside the
   seated reading void with paragraph bars, the image carries no label and no
   stray text; on a full-cell page there is no whitespace and the caption is
   drawn below the image's centre.
