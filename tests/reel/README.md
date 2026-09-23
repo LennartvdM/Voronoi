@@ -34,7 +34,11 @@ end, whatever is parked. At an end that is the page's edge a card
 whole slot's centre, off the page if need be, so it slides in and out as
 itself, its seams with its neighbours unchanged, instead of squeezing in
 as a sliver. At an end that is a divider (whitespace or the image) it is
-clipped, seed and all; nothing overflows into the whitespace.
+clipped, seed and all; nothing overflows into the whitespace, and the
+card fades: it is drawn at an alpha that rises with how much of it shows,
+over its first 72 px, so it fades in as it enters and out as it leaves.
+The factor rides on the leaf's own fade, so fill, stroke and label go
+together. A card at a page edge needs no fade; the page's edge cuts it.
 
 **The page is authored again at every scroll step.** The page's rest
 diagram (Portal's construction: the cells' weights solved per pocket with
@@ -91,6 +95,7 @@ draws nothing. The page keeps its count and its tiling owes it no sliver.
   a wall while it shows; parked, it is a wall off the page. A reel's seed is
   not clamped to the page's seed margin, so it can stand off the page.
 - The authored diagram takes a card's seed where the reel puts it.
+- A leaf's fade is multiplied by its body's reel fade, when it has one.
 - A made-up card's going is no change: the reaper does not re-lay the page
   for it.
 - The flow carries the strips in the tick before the reel step lays them.
@@ -125,8 +130,10 @@ draws nothing. The page keeps its count and its tiling owes it no sliver.
   brings new ones in, re-lays nothing and fractures nothing, no cell is
   ever more than 1 px into the whitespace while moving, a card's seed
   stands off the page only at a page-edge end and never past a divider,
-  every parked card is a wall off the page, and at a page edge some card
-  overflows; settled,
+  every parked card is a wall off the page, at a page edge some card
+  overflows, and a card clipped at a divider fades with how much of it
+  shows (its leaf drawn no brighter) while one at a page edge does not;
+  settled,
   the whitespace is exact again; 3000 px on, cards have come round the
   strip; the same way back, every first card is back in its slot and the
   whitespace exact; home returns twelve root cells and no reel. A made-up

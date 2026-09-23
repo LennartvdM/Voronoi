@@ -7,7 +7,7 @@
     },
     {
       "file": "reel.html",
-      "sha256": "41f2c7fbd015374d8dd2bcb94a187f4d9c8c61ebba8c50be0933f5993a63f52b"
+      "sha256": "c9660c9a8a68ab87cbd1687801a84b69d9ace2d3db0eb55fe93deb510b6b1c6c"
     }
   ],
   "matrix": [
@@ -331,7 +331,8 @@
         "extras": 5,
         "worstScrollingPx": 0.3,
         "farVisible": 14,
-        "overflowFrames": 253
+        "overflowFrames": 253,
+        "dividerFades": 0
       },
       {
         "kind": "folio",
@@ -339,7 +340,8 @@
         "extras": 5,
         "worstScrollingPx": 0,
         "farVisible": 14,
-        "overflowFrames": 253
+        "overflowFrames": 253,
+        "dividerFades": 0
       },
       {
         "kind": "band",
@@ -347,7 +349,8 @@
         "extras": 5,
         "worstScrollingPx": 0.6,
         "farVisible": 15,
-        "overflowFrames": 139
+        "overflowFrames": 139,
+        "dividerFades": 82
       },
       {
         "kind": "essay",
@@ -355,7 +358,8 @@
         "extras": 8,
         "worstScrollingPx": 0,
         "farVisible": 10,
-        "overflowFrames": 130
+        "overflowFrames": 130,
+        "dividerFades": 166
       },
       {
         "kind": "caption",
@@ -363,7 +367,8 @@
         "extras": 4,
         "worstScrollingPx": 0,
         "farVisible": 11,
-        "overflowFrames": 155
+        "overflowFrames": 155,
+        "dividerFades": 0
       },
       {
         "promoted": "Neon",

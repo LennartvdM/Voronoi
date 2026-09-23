@@ -261,7 +261,7 @@ for(const kind of ['spread','folio','band','essay','caption']){
  const visible=()=>R.strips.flatMap(S=>S.cards.filter(c=>!c.parked).map(c=>c.b.name));
  const before=visible(),serial=e.root.serial;
  // a scroll of 720 px at 8 px a frame: the cards move, the whitespace holds to within a few px, nothing fractures
- let worst=0,frac=0,offSeed=0;const W=e.root.W,H=e.root.H;
+ let worst=0,frac=0,offSeed=0,dividerFades=0;const W=e.root.W,H=e.root.H;
  for(let f=0;f<90;f++){assert(e.scroll(8),kind+': the scroll was refused');s.step(1);const sh=shapes(s);frac+=sh.fractured;
   // overflow: a visible card's seed may stand off the page at a page-edge end, never past a divider; a parked card is a wall off the page
   for(const S of R.strips)for(const c of S.cards){const b=c.b,g=S.def.g,PWx=e.root.PW,PHx=e.root.PH;
@@ -270,7 +270,12 @@ for(const kind of ['spread','folio','band','essay','caption']){
    const v=S.def.vertical,t=v?b.y:b.x,t0=v?g[1]*PHx:g[0]*PWx,t1=v?g[3]*PHx:g[2]*PWx,u=v?b.x:b.y,u0=v?g[0]*PWx:g[1]*PHx,u1=v?g[2]*PWx:g[3]*PHx;
    assert(u>=u0-1e-6&&u<=u1+1e-6,kind+': '+b.name+' seeds beside the strip');
    if(t<t0-1e-6){assert(S.pageT0,kind+': '+b.name+' seeds past the divider');offSeed++;}
-   if(t>t1+1e-6){assert(S.pageT1,kind+': '+b.name+' seeds past the divider');offSeed++;}}
+   if(t>t1+1e-6){assert(S.pageT1,kind+': '+b.name+' seeds past the divider');offSeed++;}
+   // the fade: a card clipped at a divider is drawn no brighter than how much of it shows over 72 px; one at a page edge does not fade
+   const sc=S.s,len=S.def.L,atDiv=(!S.pageT0&&c.sl.t0-sc<-1e-9)||(!S.pageT1&&c.sl.t1-sc>len+1e-9),shown=(c.t1-c.t0)*S.def.tPx;
+   if(atDiv){assert(Math.abs(b.reelFade-Math.min(1,shown/72))<1e-6,kind+': '+b.name+' fades '+b.reelFade+' for '+shown.toFixed(0)+' px shown');if(shown<72)dividerFades++;}
+   else assert.equal(b.reelFade,1,kind+': '+b.name+' fades at a page edge');
+   const lf=s.pic.leaves.find(l=>l.body===b);if(lf)assert(lf.fade<=b.reelFade+1e-9,kind+': '+b.name+' drawn brighter than its fade');}
   const PW=e.root.PW,PH=e.root.PH,boxes=e.root.bodies.filter(v=>v.isVoid&&!v.leaving&&v.rect).map(v=>[v.rect[0]*PW,v.rect[1]*PH,v.rect[2]*PW,v.rect[3]*PH]);
   for(const l of s.pic.leaves){if(l.path.length!==1||l.isVoid)continue;for(const lp of l.loops)for(const p of lp)for(const bx of boxes){const d=Math.min(p[0]-bx[0],bx[2]-p[0],p[1]-bx[1],bx[3]-p[1]);if(d>worst)worst=d;}}}
  assert.equal(frac,0,kind+': a fractured cell while scrolling');
@@ -289,7 +294,8 @@ for(const kind of ['spread','folio','band','essay','caption']){
  // home: the made-up cards go, the count returns
  e.click(e.focus().x,e.focus().y);s.step(120);assert.equal(e.config.scene,'bento');assert.equal(roots(),N,kind+': '+roots()+' cells at home');assert(!e.reel(),kind+': the reel stayed');
  if(R.strips.some(S=>S.pageT0||S.pageT1))assert(offSeed>0,kind+': no card overflowed a page edge');
- report.reel.push({kind,strips:R.strips.length,extras:R.strips.reduce((n,S)=>n+S.cards.filter(c=>c.b.reelSlack).length,0),worstScrollingPx:+worst.toFixed(1),farVisible:far.length,overflowFrames:offSeed});
+ if(R.strips.some(S=>!S.pageT0||!S.pageT1))assert(dividerFades>0,kind+': no card faded at a divider');
+ report.reel.push({kind,strips:R.strips.length,extras:R.strips.reduce((n,S)=>n+S.cards.filter(c=>c.b.reelSlack).length,0),worstScrollingPx:+worst.toFixed(1),farVisible:far.length,overflowFrames:offSeed,dividerFades});
 }
 { // a made-up card clicked becomes the next image, and the page keeps its count
  const {s}=openKind('spread',desk,0),e=s.e,R=e.reel();

@@ -102,7 +102,7 @@ function reelPlace(b, r, claim) {
   b.rect = r; b.formRect = r;
   const [ex, ey] = root.rectCenter(r);
   b.path = { sx: ex, sy: ey, ex, ey, cx: ex, cy: ey };
-  b.journey = null; b.progress = 1; b.pin = 1; b.leaving = false; b.table = null; b.reelPinned = true; b.reelParked = false;   // pinned: its seed holds its rectangle's centre; never a wall (see computeWalls)
+  b.journey = null; b.progress = 1; b.pin = 1; b.leaving = false; b.table = null; b.reelPinned = true; b.reelParked = false; b.reelFade = 1;   // pinned: its seed holds its rectangle's centre; never a wall (see computeWalls)
   b.claimTarget = Math.max(CLAIM_MIN, claim);
 }
 // A parked card leaves the page: a wall at a rectangle off the page's top
@@ -152,6 +152,7 @@ const REEL_DRIFT = 28;      // px/s along the strip: the flow's own pace
 const REEL_RELAX = 0.7;     // s: a push eases back to the flow's pace in about this
 const REEL_WHEEL = 4;       // px/s of speed for each px of wheel
 const REEL_VMAX = 2400;     // px/s, the most a push or a flick can give
+const REEL_FADE = 72;       // px: a card clipped at a divider fades in over this much of it
 let reelDrift = REEL_DRIFT;
 const reelClampV = v => Math.max(-REEL_VMAX, Math.min(REEL_VMAX, v));
 function reelFlow(dt) {
@@ -274,6 +275,9 @@ function reelStep() {
       const a = S.pageT0 ? c.sl.t0 - s : Math.max(0, c.sl.t0 - s), z = S.pageT1 ? c.sl.t1 - s : Math.min(len, c.sl.t1 - s);
       const tm = (a + z) / 2, um = (c.sl.u0 + c.sl.u1) / 2;
       r.reelSeed = d.vertical ? [d.g[0] + um, d.g[1] + tm] : [d.g[0] + tm, d.g[1] + um];
+      // the fade: how much of a card clipped at a divider shows, over its first 72 px
+      const atDivider = (!S.pageT0 && c.sl.t0 - s < -1e-9) || (!S.pageT1 && c.sl.t1 - s > len + 1e-9);
+      c.fade = atDivider ? Math.min(1, (c.t1 - c.t0) * d.tPx / REEL_FADE) : 1;
       rects.push(r); bodies.push(c.b);
     }
   }
@@ -282,6 +286,7 @@ function reelStep() {
   // handed to every body at once: the diagram is the rest state now, not a
   // target to ease toward, since the rectangles moved continuously
   dec.content.forEach((r, i) => { reelPlace(bodies[i], r, r.mfArea); bodies[i].claim = bodies[i].claimTarget; const q = bodies[i].subs[0]; q.w = dec.weights[i]; q.live = true; });   // the solved weight: exact this frame, no auction lag
+  for (const S of reel.strips) for (const c of S.cards) if (!c.parked) c.b.reelFade = c.fade;
   const vb = root.bodies.filter(b => b.isVoid && !b.leaving && b.rect);
   for (const r of dec.voids) { const v = vb.find(q => rectsEqual(q.rect, r)); if (!v) continue; r.reelLive = true; v.rect = r; v.formRect = r; v.claimTarget = rectArea(r); v.claim = v.claimTarget; }
 }
@@ -290,7 +295,7 @@ function reelStep() {
 function reelDrop(keep, relayout) {
   if (!reel) return;
   const r = reel; reel = null;
-  for (const v of root.bodies) { if (v.rect && v.rect.reelLive) v.rect.reelLive = false; if (v.reelPinned) { v.reelPinned = false; v.reelParked = false; v.pin = 0; } }   // unpinned: the next change finds them as Portal's page leaves them
+  for (const v of root.bodies) { if (v.rect && v.rect.reelLive) v.rect.reelLive = false; if (v.reelPinned) { v.reelPinned = false; v.reelParked = false; v.reelFade = undefined; v.pin = 0; } }   // unpinned: the next change finds them as Portal's page leaves them
   let owed = 0;
   for (const S of r.strips) for (const c of S.cards) {
     if (c.b === keep) { if (c.b.reelSlack) { c.b.reelSlack = false; owed++; } continue; }
@@ -353,6 +358,15 @@ replace("""        {
 # --- the authored diagram takes a card's seed where the reel puts it -------------
 replace("""  const seeds = rects.map(r => [(r[0] + r[2]) / 2, (r[1] + r[3]) / 2]), weights = new Array(n).fill(0);""",
         """  const seeds = content.map((c, i) => c.reelSeed ? [c.reelSeed[0] * PW, c.reelSeed[1] * PH] : [(rects[i][0] + rects[i][2]) / 2, (rects[i][1] + rects[i][3]) / 2]), weights = new Array(n).fill(0);   // REEL: a card at the page's edge seeds from its whole slot""")
+
+# --- a card percolating at a divider fades in and out ---------------------------
+# A card clipped at a divider (whitespace or the image) is drawn at an alpha
+# that rises with how much of it shows, over its first 72 px, so it fades in
+# as it enters and out as it leaves; at a page edge it overflows and needs no
+# fade. The factor rides on the leaf's own fade, so fill, stroke and label go
+# together; a body without it is drawn as before.
+replace("""      const f = fade * Math.max(0, Math.min(1, (b.claim - CLAIM_MIN) / 0.14));""",
+        """      const f = fade * Math.max(0, Math.min(1, (b.claim - CLAIM_MIN) / 0.14)) * (b.reelFade === undefined ? 1 : b.reelFade);   // REEL: a card percolating at a divider fades""")
 
 # --- the tick: the reel places its cards before the page steps ------------------
 replace('''  guestLeft = changeEnds(root) - simTime;
