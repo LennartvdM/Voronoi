@@ -27,18 +27,21 @@ across it. A slot index runs on without end in both directions.
 
 **A card is its slot clipped by the region.** Every card is still one root
 cell with one site, a rectangle as its destination and its claim. Under a
-scroll its rectangle is the part of its slot inside the region, so the
-region is tiled at every position: the band nearest each end reaches the
-end, whatever is parked. At an end that is the page's edge a card
-**overflows**: its rectangle is still cut at the page, but its seed is its
-whole slot's centre, off the page if need be, so it slides in and out as
-itself, its seams with its neighbours unchanged, instead of squeezing in
-as a sliver. At an end that is a divider (whitespace or the image) it is
-clipped, seed and all; nothing overflows into the whitespace, and the
-card fades: it is drawn at an alpha that rises with how much of it shows,
-over its first 72 px, so it fades in as it enters and out as it leaves.
-The factor rides on the leaf's own fade, so fill, stroke and label go
-together. A card at a page edge needs no fade; the page's edge cuts it.
+scroll its rectangle is the part of its slot inside the region. At an end
+that is the page's edge a card **overflows**: its rectangle is cut at the
+page and nothing else, no band is stretched to the edge, it is drawn at
+full strength, and its seed is the centre of what shows while the card is
+a sliver, moving out to the slot's centre as the card comes in (at
+shown/full of the way, shown^2 / (2 full) in from the edge). A sliver
+seeded far off the page would be a long hair along the edge that reached
+under the image beside the strip and moved its outline as it came and
+went; seeded in itself it is a crumb in its own column. At an end that is
+a divider (whitespace or the image) the card is clipped, seed and all, the
+band nearest the divider reaches it so the whitespace or the image keeps
+its contact, and the card fades: it is drawn at an alpha that rises with
+how much of it shows over its first 72 px, so it fades in as it enters and
+out as it leaves. The factor rides on the leaf's own fade, so fill, stroke
+and label go together.
 
 **The page is authored again at every scroll step.** The page's rest
 diagram (Portal's construction: the cells' weights solved per pocket with
@@ -79,11 +82,22 @@ and the flow waits. Let go moving, the strip goes on at the hand's speed
 (smoothed over the last 50 ms) and eases back to the flow; let go after
 holding still, it starts again from rest. A speed is capped at 2400 px/s.
 
-**Parking.** A card with less than twice the claim floor under the region
-is parked, its band with it: the auction would draw it larger than
-authored. A parked card leaves the page: it is a wall at a rectangle off
-the page's top left, which cuts nothing from the ground, bids nothing and
-draws nothing. The page keeps its count and its tiling owes it no sliver.
+**Parking.** A card is parked at the auction's own bidding floor, a fifth
+over it, a hair of a sliver, so its going hands its neighbours next to
+nothing and the image beside the strip does not twitch; a reel's card may
+claim under the page's claim floor for that. A parked card leaves the
+page: it is a wall at a rectangle off the page's top left, which cuts
+nothing from the ground, bids nothing and draws nothing, and its body
+goes with it, so the page's minimum-separation rule has nothing left
+near the strip to push a sliver card's seed from. The page keeps its
+count and its tiling owes it no sliver.
+
+**The text and the rules.** The reading void's text is set only once
+every journey of the change has ended, so nothing crosses it
+mid-transition; it fades in over 0.3 s. The rules along its edges come
+a beat after the text has fully appeared, 0.25 s, fading in over 0.45 s:
+the finishing flourish, never a line drawn through cells still
+travelling.
 
 ## The engine changes
 
@@ -96,6 +110,9 @@ draws nothing. The page keeps its count and its tiling owes it no sliver.
   not clamped to the page's seed margin, so it can stand off the page.
 - The authored diagram takes a card's seed where the reel puts it.
 - A leaf's fade is multiplied by its body's reel fade, when it has one.
+- A reel's card may claim under the page's claim floor, down to the
+  auction's bidding floor.
+- The page's text waits for the change to end; its rules wait for the text.
 - A made-up card's going is no change: the reaper does not re-lay the page
   for it.
 - The flow carries the strips in the tick before the reel step lays them.
@@ -123,17 +140,19 @@ draws nothing. The page keeps its count and its tiling owes it no sliver.
 - Portal's whole click suite: every kind opens from its cell with no
   fractured cell on any frame, the whitespace exact, one site per cell, the
   text set in the reading void; mirroring, crossers, home, Escape, hover,
-  the interrupted change, add/remove, the phone.
+  the interrupted change, add/remove, the phone. On the crossers' page
+  the text begins only once the change has ended and after the last
+  crosser has landed, and the rules begin only a beat after the text has
+  fully appeared.
 - The reel, for five kinds with the flow held: with the specks parked the
   page is exact and every cell one site; a scroll of 720 px at 8 px a
   frame moves the cards,
   brings new ones in, re-lays nothing and fractures nothing, no cell is
-  ever more than 1 px into the whitespace while moving, a card's seed
-  stands off the page only at a page-edge end and never past a divider,
-  every parked card is a wall off the page, at a page edge some card
-  overflows, and a card clipped at a divider fades with how much of it
-  shows (its leaf drawn no brighter) while one at a page edge does not;
-  settled,
+  ever more than 1 px into the whitespace while moving, every seed stays
+  in its strip, every parked card is a wall off the page, at a page edge a
+  card cut by the edge keeps its slot and its full strength and no band is
+  stretched to the edge, and a card clipped at a divider fades with how
+  much of it shows (its leaf drawn no brighter); settled,
   the whitespace is exact again; 3000 px on, cards have come round the
   strip; the same way back, every first card is back in its slot and the
   whitespace exact; home returns twelve root cells and no reel. A made-up

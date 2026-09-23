@@ -102,8 +102,9 @@ function reelPlace(b, r, claim) {
   b.rect = r; b.formRect = r;
   const [ex, ey] = root.rectCenter(r);
   b.path = { sx: ex, sy: ey, ex, ey, cx: ex, cy: ey };
+  b.x = ex; b.y = ey; b.vx = 0; b.vy = 0;   // its seed is its rectangle's centre this frame, not a spring's lag behind it
   b.journey = null; b.progress = 1; b.pin = 1; b.leaving = false; b.table = null; b.reelPinned = true; b.reelParked = false; b.reelFade = 1;   // pinned: its seed holds its rectangle's centre; never a wall (see computeWalls)
-  b.claimTarget = Math.max(CLAIM_MIN, claim);
+  b.claimTarget = Math.max(ACTIVE_MIN * 1.1, claim);   // a reel's card may claim under the page's floor, down to the auction's own
 }
 // A parked card leaves the page: a wall at a rectangle off the page's top
 // left, which cuts nothing from the ground, bids nothing and draws nothing.
@@ -112,7 +113,9 @@ function reelPark(b, i) {
   const r = [-2 - 1.5 * i, -2, -1 - 1.5 * i, -1];
   r.mfRest = true; r.mfArea = 1;
   b.rect = r; b.formRect = r;
-  b.path = { sx: b.x, sy: b.y, ex: b.x, ey: b.y, cx: b.x, cy: b.y };
+  const [ex, ey] = root.rectCenter(r);
+  b.path = { sx: ex, sy: ey, ex, ey, cx: ex, cy: ey };
+  b.x = ex; b.y = ey; b.vx = 0; b.vy = 0;   // its body goes with it: a body left where it was parked would be a seed for the page's minimum-separation rule to push its neighbours from
   b.journey = null; b.progress = 1; b.pin = 1; b.leaving = false; b.table = null; b.reelPinned = true; b.reelParked = true;
   b.claimTarget = CLAIM_MIN;
 }
@@ -153,6 +156,7 @@ const REEL_RELAX = 0.7;     // s: a push eases back to the flow's pace in about 
 const REEL_WHEEL = 4;       // px/s of speed for each px of wheel
 const REEL_VMAX = 2400;     // px/s, the most a push or a flick can give
 const REEL_FADE = 72;       // px: a card clipped at a divider fades in over this much of it
+const REEL_PARK = 0.012;    // lattice units: a card with less than this under the region is parked; a fifth over the auction's bidding floor (ACTIVE_MIN, declared below)
 let reelDrift = REEL_DRIFT;
 const reelClampV = v => Math.max(-REEL_VMAX, Math.min(REEL_VMAX, v));
 function reelFlow(dt) {
@@ -257,23 +261,39 @@ function reelStep() {
     // neighbours unchanged, instead of squeezing in as a sliver. At an end
     // that is a divider (whitespace or the image) it is clipped, seed and
     // all: nothing overflows into the whitespace.
+    // A card is parked at the auction's own bidding floor, a hair of a
+    // sliver, so its going hands its neighbours next to nothing and the
+    // image beside the strip does not twitch. At a divider end the band
+    // nearest the end reaches it, so the whitespace or the image beside it
+    // keeps its contact; at a page edge nothing is extended, since a card
+    // there overflows and the page's edge is the only cut.
     for (let guard = 0; guard < 64; guard++) {
       const vis = S.cards.filter(c => !c.parked);
       let thin = false;
-      for (const c of vis) if ((c.t1 - c.t0) * (c.sl.u1 - c.sl.u0) < CLAIM_MIN * 2) { c.parked = true; thin = true; }
+      for (const c of vis) if ((c.t1 - c.t0) * (c.sl.u1 - c.sl.u0) < REEL_PARK) { c.parked = true; thin = true; }
       if (thin) continue;
       if (!vis.length) break;
       let tMin = Infinity, tMax = -Infinity;
       for (const c of vis) { tMin = Math.min(tMin, c.t0); tMax = Math.max(tMax, c.t1); }
-      for (const c of vis) { if (c.t0 - tMin < 1e-9) c.t0 = 0; if (tMax - c.t1 < 1e-9) c.t1 = len; }
+      for (const c of vis) { if (!S.pageT0 && c.t0 - tMin < 1e-9) c.t0 = 0; if (!S.pageT1 && tMax - c.t1 < 1e-9) c.t1 = len; }
       break;
     }
     for (const c of S.cards) {
       if (c.parked) { reelPark(c.b, c.slot); continue; }
       const r = d.rect({ u0: c.sl.u0, u1: c.sl.u1, t0: c.t0 + s, t1: c.t1 + s }, s);
-      // the seed: the slot's centre along the strip, clipped only at a divider
-      const a = S.pageT0 ? c.sl.t0 - s : Math.max(0, c.sl.t0 - s), z = S.pageT1 ? c.sl.t1 - s : Math.min(len, c.sl.t1 - s);
-      const tm = (a + z) / 2, um = (c.sl.u0 + c.sl.u1) / 2;
+      // the seed along the strip. At a divider it is the centre of what
+      // shows. At a page edge it is the centre of what shows while the card
+      // is a sliver and moves out to the slot's centre as the card comes in:
+      // at shown/full of the way, shown^2 / (2 full) in from the edge, which
+      // is the slot's centre once the card is whole. A sliver seeded far off
+      // the page would be a long hair along the edge that reached under the
+      // image beside the strip and moved its outline as it came and went;
+      // seeded in the sliver it is a crumb in its own column.
+      const a0 = c.sl.t0 - s, z0 = c.sl.t1 - s, a = Math.max(0, a0), z = Math.min(len, z0), shown = z - a, full = z0 - a0;
+      let tm = (a + z) / 2;
+      if (S.pageT0 && a0 < -1e-9 && z0 <= len + 1e-9) tm = shown * shown / (2 * full);
+      else if (S.pageT1 && z0 > len + 1e-9 && a0 >= -1e-9) tm = len - shown * shown / (2 * full);
+      const um = (c.sl.u0 + c.sl.u1) / 2;
       r.reelSeed = d.vertical ? [d.g[0] + um, d.g[1] + tm] : [d.g[0] + tm, d.g[1] + um];
       // the fade: how much of a card clipped at a divider shows, over its first 72 px
       const atDivider = (!S.pageT0 && c.sl.t0 - s < -1e-9) || (!S.pageT1 && c.sl.t1 - s > len + 1e-9);
@@ -367,6 +387,37 @@ replace("""  const seeds = rects.map(r => [(r[0] + r[2]) / 2, (r[1] + r[3]) / 2]
 # together; a body without it is drawn as before.
 replace("""      const f = fade * Math.max(0, Math.min(1, (b.claim - CLAIM_MIN) / 0.14));""",
         """      const f = fade * Math.max(0, Math.min(1, (b.claim - CLAIM_MIN) / 0.14)) * (b.reelFade === undefined ? 1 : b.reelFade);   // REEL: a card percolating at a divider fades""")
+
+# --- a reel's card may claim under the page's claim floor --------------------------
+# The page floors a claim at CLAIM_MIN so a cell is never a hair; a reel's
+# card is a hair on purpose as it leaves or arrives, down to the auction's own
+# bidding floor, so that its going hands its neighbours next to nothing.
+replace("""      if (b.claim < CLAIM_MIN) b.claim = CLAIM_MIN;""",
+        """      if (b.claim < CLAIM_MIN && !b.reelPinned) b.claim = CLAIM_MIN;   // REEL: a reel's card may be a hair""")
+# --- the text waits for the change to end; the rules follow the text ------------
+# The reading void's text is set only once every journey of the change has
+# ended, so nothing crosses it mid-transition, and the rules along its edges
+# come after the text has fully appeared: the finishing flourish, never a
+# line drawn through cells still travelling.
+replace("""const portalProse = { alpha: 0, seen: -1 };""", """const portalProse = { alpha: 0, rule: 0, fullAt: -1, seen: -1 };""")
+replace("""  if (gap > 0.1) p.alpha = 0;
+  p.seen = t;
+  let v = null;
+  const T = portalFocus && PORTAL_TEMPLATES[config.scene];
+  if (T && T.text)
+    for (const b of root.bodies) if (b.isVoid && !b.leaving && b.rect && b.rect.portalText && b.crystal >= 0.99) v = b;
+  p.alpha += ((v ? 1 : 0) - p.alpha) * (1 - Math.exp(-el / (v ? 0.30 : 0.08)));""",
+        """  if (gap > 0.1) { p.alpha = 0; p.rule = 0; p.fullAt = -1; }
+  p.seen = t;
+  let v = null;
+  const T = portalFocus && PORTAL_TEMPLATES[config.scene];
+  if (T && T.text && guestLeft <= 0)   // REEL: only once the change has ended
+    for (const b of root.bodies) if (b.isVoid && !b.leaving && b.rect && b.rect.portalText && b.crystal >= 0.99) v = b;
+  p.alpha += ((v ? 1 : 0) - p.alpha) * (1 - Math.exp(-el / (v ? 0.30 : 0.08)));
+  if (!v || p.alpha <= 0.97) p.fullAt = -1; else if (p.fullAt < 0) p.fullAt = t;
+  p.rule += ((v && p.fullAt >= 0 && t - p.fullAt > 0.25 ? 1 : 0) - p.rule) * (1 - Math.exp(-el / (v ? 0.45 : 0.08)));   // REEL: the rules a beat after the text""")
+replace("""  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.globalAlpha = 0.22 * p.alpha; ctx.beginPath();""",
+        """  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.globalAlpha = 0.22 * p.rule; ctx.beginPath();""")
 
 # --- the tick: the reel places its cards before the page steps ------------------
 replace('''  guestLeft = changeEnds(root) - simTime;
