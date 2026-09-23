@@ -980,6 +980,7 @@ const PORTAL_PORTRAIT = {
 };
 const PORTAL_KINDS = ['spread', 'folio', 'showcase', 'band', 'lead', 'documentation', 'essay', 'caption'];
 let portalFocus = null;                             // the body a page is open on; null at home
+let portalFlip = false;                             // the page mirrored left-right, so it opens on the side clicked
 function portalKind(b) { return PORTAL_KINDS[b.id % PORTAL_KINDS.length]; }
 const PORTAL_E = 1e-6;
 // a gallery region cut into k cards: rows of cards, the rows chosen for the
@@ -998,7 +999,12 @@ function portalCards(r, k) {
 // the page's rectangles, in lattice units: the hero first, then the cards,
 // and the voids, the text first
 function portalPage(T0, C, R, n, W, H) {
-  const T = W < H ? PORTAL_PORTRAIT[T0.text ? 'text' : 'caption'] : Object.assign({}, T0, T0.fit ? T0.fit(W, H) : {});
+  let T = W < H ? PORTAL_PORTRAIT[T0.text ? 'text' : 'caption'] : Object.assign({}, T0, T0.fit ? T0.fit(W, H) : {});
+  if (portalFlip && W >= H) {
+    // mirrored left-right: the image's slot on the side the click came from
+    const M = f => [1 - f[2], f[1], 1 - f[0], f[3]], side = { left: 'right', right: 'left' };
+    T = { hero: M(T.hero), text: T.text && M(T.text), margins: (T.margins || []).map(M), galleries: T.galleries.map(M), rules: T.rules.map(e => side[e] || e) };
+  }
   const r6 = v => Math.round(v * 1e6) / 1e6, L = f => [r6(f[0] * C), r6(f[1] * R), r6(f[2] * C), r6(f[3] * R)];
   const hero = L(T.hero), regions = T.galleries.map(L);
   const m = n - 1, total = regions.reduce((s, g) => s + rectArea(g), 0);
@@ -1009,7 +1015,7 @@ function portalPage(T0, C, R, n, W, H) {
   const cards = [];
   regions.forEach((g, i) => cards.push(...portalCards(g, counts[i])));
   const voids = [];
-  if (T.text) { const t = L(T.text); t.portalText = true; voids.push(t); }
+  if (T.text) { const t = L(T.text); t.portalText = true; t.portalRules = T.rules; voids.push(t); }
   for (const f of T.margins || []) voids.push(L(f));
   return { content: [hero, ...cards], voids };
 }
@@ -1112,14 +1118,14 @@ function portalDecorate(content, voids, W, H, C, R) {
     q.mfSites = [];
     for (let i = owned[k][0]; i < owned[k][1]; i++) if (d.areas[i] > 1e-6) q.mfSites.push({ x: allSeeds[i][0] / PW - cx, y: allSeeds[i][1] / PH - cy, q: d.areas[i] / (PW * PH) });
     q.mfArea = q.mfSites.reduce((s, p) => s + p.q, 0);   // its claim: what its sites hold, which adjacent voids may share
-    q.mfKey = JSON.stringify(q.mfSites); q.mfRest = true; if (v.portalText) q.portalText = true;
+    q.mfKey = JSON.stringify(q.mfSites); q.mfRest = true; if (v.portalText) { q.portalText = true; q.portalRules = v.portalRules; }
     return q;
   });
   return { content: rows, voids: vs, seeds: allSeeds, weights: allWeights, owned };
 }
 const portalCache = new Map();
 function portalScene(h, name, n) {
-  const key = [name, h.COLS, h.ROWS, n, h.W, h.H].join('|');
+  const key = [name, h.COLS, h.ROWS, n, h.W, h.H, portalFlip ? 'm' : ''].join('|');
   if (portalCache.has(key)) return portalCache.get(key);
   const p = portalPage(PORTAL_TEMPLATES[name], h.COLS, h.ROWS, n, h.W, h.H), s = portalDecorate(p.content, p.voids, h.W, h.H, h.COLS, h.ROWS);
   portalCache.set(key, s); if (portalCache.size > 24) portalCache.delete(portalCache.keys().next().value);
@@ -2228,6 +2234,16 @@ class Hive {
       this.seatBody(b, r, b.T);
       b.fieldAt = this.t + b.T; b.fieldRect = r;
     }
+    // PORTAL: a page's long journeys take the time they need, so no cell
+    // rides the speed cap: the peak of an eased trip is one and a half
+    // times its average
+    if (name in PORTAL_TEMPLATES) for (const b of content) { const j = b.journey, p = b.path; if (j && p && j.t0 === this.t) j.dur = Math.max(j.dur, Math.hypot(p.ex - p.sx, p.ey - p.sy) / 600); }
+    // PORTAL: the image grows no faster than the page clears for it: its
+    // journey, and so its claim, ends when the last card's does
+    if (name in PORTAL_TEMPLATES && portalFocus && portalFocus.journey && portalFocus.journey.t0 === this.t) {
+      let last = 0; for (const b of content) if (b !== portalFocus && b.journey) last = Math.max(last, b.journey.delay + (b.journey.hold || 0) + b.journey.dur);
+      const j = portalFocus.journey; j.dur = Math.max(j.dur, last - j.delay - (j.hold || 0));
+    }
     // nobody lands before the body sitting there has left: the journey
     // stretches to reach past the occupant's own departure
     for (const b of content) {
@@ -2251,13 +2267,25 @@ class Hive {
       v.table = { mode: 'close', rows, wRem: Math.max(0, v.claim0 - W), f: 0 };
     }
     for (const v of newVoids) {
-      const r = rectOfVoid.get(v), rows = []; let W = 0;
+      const r = rectOfVoid.get(v), rows = []; let W = 0, wait = 0;
       for (const b of this.bodies) {
         if (b === v || b.isSelf || rectOfVoid.has(b) || stays.has(b)) continue;
-        if (this.inRect(r, b.x, b.y)) { rows.push({ body: b, journey: b.journey, w: b.claim }); W += b.claim; }
+        if (this.inRect(r, b.x, b.y)) { rows.push({ body: b, journey: b.journey, w: b.claim }); W += b.claim; continue; }
+        // PORTAL: a page's whitespace also waits for the cells whose journeys
+        // pass through it, so nothing crosses it as a sliver and its text is
+        // not set under a traveller: they are on its ledger, and it does not
+        // open on its own clock until the last of them is through
+        if (!(name in PORTAL_TEMPLATES) || !b.path || !b.journey || b.journey.t0 !== this.t) continue;
+        const p = b.path; let last = -1;
+        for (let k = 1; k < 20; k++) { const e = k / 20, m = 1 - e, x = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, y = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey; if (this.inRect(r, x, y)) last = e; }
+        if (last < 0) continue;
+        rows.push({ body: b, journey: b.journey, w: b.claim }); W += b.claim;
+        const u = last < 0.5 ? Math.cbrt(last / 4) : 1 - Math.cbrt(2 * (1 - last)) / 2;   // easeInOutCubic, inverted
+        wait = Math.max(wait, b.journey.delay + (b.journey.hold || 0) + b.journey.dur * Math.min(1, u + 0.05));
       }
-      this.seatBody(v, r, 0, { t0: this.t, delay: 0, dur: 0.9, c0: 0 });
+      this.seatBody(v, r, 0, { t0: this.t, delay: wait, dur: 0.9, c0: 0 });
       v.table = { mode: 'open', rows, wRem: Math.max(0, rectArea(r) - W), f: 0 };
+      if (wait > 0) v.table.wait = wait;   // a page's whitespace only: a scene's table is as it was
     }
   }
 
@@ -2560,7 +2588,8 @@ class Hive {
         const tb = b.table; let num = 0, den = 0, pmin = b.progress;
         for (const r of tb.rows) { const p = ferryLedgerProgress(this, r, t); num += r.w * p; den += r.w; pmin = Math.min(pmin, p); }
         num += tb.wRem * b.progress; den += tb.wRem;
-        const f = den > 0 ? Math.max(tb.f, Math.min(1, num / den)) : 1;
+        const f0 = den > 0 ? Math.min(1, num / den) : 1;
+        const f = Math.max(tb.f, tb.wait ? Math.min(f0, b.progress) : f0);   // PORTAL: a page's whitespace opens no faster than its own clock, which waits for the cells crossing it
         tb.f = f; tb.pmin = Math.max(tb.pmin || 0, pmin);
         if (tb.mode === 'open') {
           b.claim = CLAIM_MIN + (b.claimTarget - CLAIM_MIN) * f;
@@ -4153,8 +4182,7 @@ function portalProseStep(ctx, type, dt, t) {
   // in the gutter: half the padding in from the seam, so the line sits
   // between the text's margin and the neighbouring cards' ink
   const g = Math.round(pad / 2) + 0.5;
-  const rules = (W < H ? PORTAL_PORTRAIT.text : T).rules;
-  for (const e of rules) {
+  for (const e of v.rect.portalRules || []) {
     if (e === 'left') { ctx.moveTo(r[0] + g, r[1] + pad); ctx.lineTo(r[0] + g, r[3] - pad); }
     if (e === 'right') { ctx.moveTo(r[2] - g, r[1] + pad); ctx.lineTo(r[2] - g, r[3] - pad); }
     if (e === 'top') { ctx.moveTo(r[0] + pad, r[1] + g); ctx.lineTo(r[2] - pad, r[1] + g); }
@@ -4546,7 +4574,13 @@ function portalClick(x, y) {
   const b = path[0].body;
   if (b.isVoid || b.isSelf || b.leaving) return false;
   if (b === portalFocus) portalHome({ x, y });
-  else { portalFocus = b; portalEnter(portalKind(b), { x, y }); }
+  else {
+    // the page opens on the side the click came from: the template is
+    // mirrored when its image slot is nearer the click that way
+    const T = PORTAL_TEMPLATES[portalKind(b)], hx = (T.hero[0] + T.hero[2]) / 2 * W;
+    portalFlip = W >= H && Math.abs(x - (W - hx)) < Math.abs(x - hx) - 1;
+    portalFocus = b; portalEnter(portalKind(b), { x, y });
+  }
   return true;
 }
 let portalPress = null;

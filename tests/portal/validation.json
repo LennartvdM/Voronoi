@@ -7,7 +7,7 @@
     },
     {
       "file": "portal.html",
-      "sha256": "9fe5883209fe12f6810e0b4cc14e59b60e779f6675bd6567356940e0491e4e56"
+      "sha256": "63bc171f373b706256b916dcb20fec25ba060eeeda5de1a3bc07492040eda550"
     }
   ],
   "matrix": [
@@ -64,11 +64,11 @@
           "shortEdged": 0
         },
         "transition": {
-          "rectangle": 1297,
+          "rectangle": 1510,
           "notched": 0,
-          "voronoi": 3172,
+          "voronoi": 2963,
           "cut": 0,
-          "shortEdged": 87,
+          "shortEdged": 86,
           "fractured": 0
         },
         "gap": "0px²"
@@ -85,11 +85,11 @@
           "shortEdged": 0
         },
         "transition": {
-          "rectangle": 239,
+          "rectangle": 283,
           "notched": 0,
-          "voronoi": 4280,
+          "voronoi": 4258,
           "cut": 0,
-          "shortEdged": 40,
+          "shortEdged": 62,
           "fractured": 0
         },
         "gap": "0px²"
@@ -106,11 +106,11 @@
           "shortEdged": 1
         },
         "transition": {
-          "rectangle": 497,
+          "rectangle": 483,
           "notched": 0,
-          "voronoi": 3799,
+          "voronoi": 3844,
           "cut": 0,
-          "shortEdged": 281,
+          "shortEdged": 252,
           "fractured": 0
         },
         "gap": "0px²"
@@ -129,9 +129,9 @@
         "transition": {
           "rectangle": 275,
           "notched": 0,
-          "voronoi": 3474,
+          "voronoi": 3461,
           "cut": 0,
-          "shortEdged": 801,
+          "shortEdged": 802,
           "fractured": 0
         },
         "gap": "0px²"
@@ -150,9 +150,9 @@
         "transition": {
           "rectangle": 270,
           "notched": 0,
-          "voronoi": 3422,
+          "voronoi": 3397,
           "cut": 0,
-          "shortEdged": 814,
+          "shortEdged": 826,
           "fractured": 0
         },
         "gap": "0px²"
@@ -169,11 +169,11 @@
           "shortEdged": 3
         },
         "transition": {
-          "rectangle": 1215,
+          "rectangle": 1472,
           "notched": 0,
-          "voronoi": 2625,
+          "voronoi": 2216,
           "cut": 0,
-          "shortEdged": 667,
+          "shortEdged": 817,
           "fractured": 0
         },
         "gap": "0px²"
@@ -190,11 +190,11 @@
           "shortEdged": 0
         },
         "transition": {
-          "rectangle": 265,
+          "rectangle": 264,
           "notched": 0,
-          "voronoi": 4262,
+          "voronoi": 4226,
           "cut": 0,
-          "shortEdged": 59,
+          "shortEdged": 97,
           "fractured": 0
         },
         "gap": "0px²"
@@ -213,9 +213,9 @@
         "transition": {
           "rectangle": 482,
           "notched": 0,
-          "voronoi": 3781,
+          "voronoi": 3760,
           "cut": 0,
-          "shortEdged": 278,
+          "shortEdged": 280,
           "fractured": 0
         },
         "gap": "0px²"
@@ -238,8 +238,16 @@
       "second": "Tide",
       "scene": "showcase"
     },
+    "mirror": {
+      "checked": 3
+    },
+    "crossers": {
+      "count": 4,
+      "lastLanded": 149,
+      "textAt": 166
+    },
     "escape": {
-      "numbers": 7
+      "numbers": 6
     },
     "hover": {
       "imageHoverMix": 0,

@@ -64,6 +64,34 @@ they do when the void is at least that half-length deep or ends at the
 page. The spread's reading column widens on a squarer screen for that
 reason. In portrait every kind stacks: the image, its text, the cards.
 
+## The change
+
+A click is a scene change like any other: the same journeys, the same
+percolation from the point clicked, the same clocks. Four things are the
+page's own, because a page asks more of a change than a scene does: one
+cell grows to a third of the page or more, and the rest cross it.
+
+- **The page opens on the side the click came from.** The template is
+  mirrored left-right when its image slot is nearer the click that way, so
+  the clicked cell grows where it is instead of leaping across the page.
+- **The image grows no faster than the page clears for it.** Its journey,
+  and so its claim, ends when the last card's does. Left on its own clock
+  it was full size in under a second while the cards still had two seconds
+  to go, and crushed them into slivers against the edge.
+- **A page's whitespace waits for the cells whose journeys pass through
+  it.** They are on its ledger, and it does not open on its own clock until
+  the last of them is through, so nothing crosses it as a sliver and its
+  text is not set under a traveller.
+- **Long journeys take the time they need.** The engine caps a journey at
+  2.2 s and a seed at 900 px/s; a card crossing the page hit both and moved
+  in a straight line at one speed. On a page a journey lasts at least its
+  length over 600 px/s, so an eased trip peaks under the cap.
+
+Measured on the same engine, the same twelve cells, a click and a button:
+a page change has the shock and the jumps of a scene change and a few more
+cells thin for a frame; where it differs is length, about three seconds
+against two and a half, which is the cards' distance.
+
 ## The kinds
 
 A cell's kind is its id modulo the number of kinds, so pages repeat without
@@ -138,6 +166,10 @@ hint sits beside the back link.
   seated reading void with paragraph bars, the image carries no label and
   no stray text; on a full-cell page there is no whitespace and the caption
   is drawn below the image's centre.
+- The page opens on the side the click came from: for three kinds the
+  image's slot is the nearer of the template's and its mirror. The reading
+  void's text is set only after the last cell whose journey crossed the
+  void has landed.
 - Clicking the image returns to Bento with every root cell numbered. A
   member's click opens its field as one card. A click on the reading void
   does nothing. A click 0.3 s into a change wins the change. `home()`

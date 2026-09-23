@@ -138,7 +138,7 @@ function opened(st,b,label,phone){
  return{roots,tally,rest:shapes(st)};
 }
 const desk={width:1900,height:810,fields:.55},phone={width:390,height:720,fields:.55};
-const report={kinds:[],home:null,field:null,void:null,interrupted:null,escape:null,hover:null,phone:[]};
+const report={kinds:[],home:null,field:null,void:null,interrupted:null,mirror:null,crossers:null,escape:null,hover:null,phone:[]};
 {
  const st=fresh(desk),KINDS=st.e.kinds(),names={};
  for(const b of st.e.root.bodies)if(!b.isVoid&&!b.isSelf&&b.name&&!(b.id%KINDS.length in names))names[b.id%KINDS.length]=b.name;
@@ -176,6 +176,29 @@ const report={kinds:[],home:null,field:null,void:null,interrupted:null,escape:nu
  assert(s.e.click(a.caption.x,a.caption.y));s.step(18);
  const l=s.pic.leaves.find(l=>!l.isVoid&&l.loops.length&&l.path[0].body===b);let x=0,y=0;for(const p of l.loops[0]){x+=p[0];y+=p[1];}x/=l.loops[0].length;y/=l.loops[0].length;
  assert(s.e.click(x,y),'second click missed');opened(s,b,'interrupted');report.interrupted={first:a.name,second:b.name,scene:s.e.config.scene};
+}
+{ // the page opens on the side the click came from: the image's slot is the nearer of the template's and its mirror
+ const st=fresh(desk),KINDS=st.e.kinds(),T=st.e.templates();let checked=0;
+ for(const b of st.e.root.bodies){const k=KINDS[b.id%KINDS.length];if(b.isVoid||b.isSelf||!b.name||!T[k].text||k==='essay')continue;
+  const s=fresh(desk),w=whereIs(s,b.name);if(!s.e.click(w.x,w.y))continue;s.step(60);
+  const hx=(T[k].hero[0]+T[k].hero[2])/2*1900,slot=slot0(s),sx=(slot[0]+slot[2])/2*s.e.root.PW;
+  const near=Math.abs(w.x-hx)<=Math.abs(w.x-(1900-hx))+1?hx:1900-hx;
+  assert(Math.abs(sx-near)<Math.abs(sx-(1900-near)),k+' from '+b.name+': the image slot is on the far side of the click');checked++;
+  if(checked>=3)break;}
+ assert(checked>=1,'no mirror case checked');report.mirror={checked};
+}
+{ // a page's whitespace waits for the cells crossing it: the text is set only once the last crosser has landed
+ const s=fresh(desk),KINDS=s.e.kinds(),T=s.e.templates();let name=null;
+ for(const b of s.e.root.bodies)if(!b.isVoid&&!b.isSelf&&b.name&&KINDS[b.id%KINDS.length]==='spread'){name=b.name;break;}
+ const w=whereIs(s,name);assert(s.e.click(w.x,w.y));
+ const e=s.e,v=e.root.bodies.find(q=>q.isVoid&&!q.leaving&&q.rect&&q.rect.portalText);assert(v,'no reading void');
+ const r=v.rect,PW=e.root.PW,PH=e.root.PH,inR=(x,y)=>x>=r[0]*PW&&x<=r[2]*PW&&y>=r[1]*PH&&y<=r[3]*PH;
+ const crossers=e.root.bodies.filter(b=>!b.isVoid&&!b.isSelf&&b.path&&b.journey&&!inR(b.x,b.y)).filter(b=>{const p=b.path;for(let k=1;k<20;k++){const t=k/20,m=1-t;if(inR(m*m*p.sx+2*m*t*p.cx+t*t*p.ex,m*m*p.sy+2*m*t*p.cy+t*t*p.ey))return true;}return false;});
+ let textAt=-1,lastLanded=-1;
+ for(let f=0;f<420;f++){s.step(1);if(textAt<0&&e.commands.some(c=>c[0]==='fillText'&&c[1]===w.b.name&&inR(c[2],c[3])))textAt=f;if(crossers.some(b=>b.journey&&b.progress<1))lastLanded=f;}
+ assert(textAt>=0,'the text never came');assert(crossers.length>0,'no cell crossed the reading void');
+ assert(textAt>lastLanded,'the text was set at frame '+textAt+' while a crosser was still travelling at frame '+lastLanded);
+ report.crossers={count:crossers.length,lastLanded,textAt};
 }
 { // escape goes home
  const s=fresh(desk),rs=rootsOf(s.pic),a=rs[0].body;assert(s.e.click(a.caption.x,a.caption.y));s.step(300);s.e.home();
