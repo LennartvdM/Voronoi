@@ -1,5 +1,5 @@
 {
-  "scope": "Real full tick; native Canvas and browser DOM stubbed. Without a click, state and every drawing command must exactly match Plaque; with clicks, each page behaviour is asserted.",
+  "scope": "Real full tick; native Canvas and browser DOM stubbed. Without a click, state and every drawing command must exactly match Plaque; with clicks, each page kind, its text placement and every click behaviour are asserted.",
   "hashes": [
     {
       "file": "plaque.html",
@@ -7,7 +7,7 @@
     },
     {
       "file": "portal.html",
-      "sha256": "6ffe1758468f4219980f24a70e72a3617dad6f4e7f5bbd6edbe02747fe617978"
+      "sha256": "c312cb6bdf5e8630de73930a0c2b85927c51dc52289c4c730913a377cc99703d"
     }
   ],
   "matrix": [
@@ -54,24 +54,24 @@
     "pages": [
       {
         "cell": "Drift",
-        "scene": "story",
-        "focusArea": 1025999,
-        "nextArea": 51300,
-        "rect": "39.1%"
+        "scene": "article",
+        "focusArea": 461699,
+        "nextArea": 102600,
+        "rect": "59.6%"
       },
       {
         "cell": "Ember",
-        "scene": "hall",
-        "focusArea": 769499,
-        "nextArea": 76950,
-        "rect": "35.3%"
+        "scene": "gallery",
+        "focusArea": 512999,
+        "nextArea": 76949,
+        "rect": "32.7%"
       },
       {
-        "cell": "Tide",
-        "scene": "reader",
-        "focusArea": 769499,
-        "nextArea": 51299,
-        "rect": "36.3%"
+        "cell": "Moss",
+        "scene": "caption",
+        "focusArea": 1154249,
+        "nextArea": 51300,
+        "rect": "43.2%"
       }
     ],
     "home": {
@@ -80,28 +80,28 @@
     },
     "field": {
       "field": "Drift",
-      "scene": "story"
+      "scene": "article"
     },
     "void": {
-      "scene": "reader",
+      "scene": "article",
       "marginClick": false
     },
     "interrupted": {
       "first": "Ember",
       "second": "Tide",
-      "scene": "reader"
+      "scene": "article"
     },
     "escape": {
       "numbers": 7
     },
     "hover": {
       "focusHoverMix": 0,
-      "cardHovered": "Tide"
+      "cardHovered": "Drift"
     },
     "phone": {
       "cell": "Ember",
-      "scene": "hall",
-      "rect": "31.4%"
+      "scene": "gallery",
+      "rect": "26.9%"
     }
   }
 }

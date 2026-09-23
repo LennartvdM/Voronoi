@@ -5,7 +5,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 const {loadEngine}=require('./probe.cjs');
 const files=[path.resolve(__dirname,'../../plaque.html'),path.resolve(__dirname,'../../portal.html')];
 const hash=x=>require('node:crypto').createHash('sha256').update(x).digest('hex');
-const KINDS=['story','hall','reader'];
+const KINDS=['article','gallery','article','caption'];
 function state(e,p){
  const seen=new Map(),anchors=[];
  e.root.walk(h=>{for(const b of h.bodies){const c=b.anchorState;if(c)anchors.push([b.id,...['init','tox','toy','tr','at','area'].map(k=>c[k])]);}});
@@ -52,24 +52,37 @@ function whereIs(st,name){
  if(l.path.length>1){const p=l.path[0].hive.cellPoly(b);let x=0,y=0;for(const q of p){x+=q[0];y+=q[1];}return{b,x:x/p.length,y:y/p.length,field:true};}
  return{b,x:b.caption.x,y:b.caption.y,field:false};
 }
-function slot0(st){const e=st.e,n=e.root.bodies.filter(b=>!b.isVoid&&!b.leaving&&!b.isSelf).length;return e.scenes[e.config.scene](e.root.COLS,e.root.ROWS,n).content[0];}
+function slot0(st){const e=st.e,n=e.root.bodies.filter(b=>!b.isVoid&&!b.leaving&&!b.isSelf).length;const base=e.config.scene==='article'?'hero':e.config.scene;return e.scenes[base](e.root.COLS,e.root.ROWS,n).content[0];}
 function opened(st,b,label){
- const e=st.e;assert(e.focus()===b,label+': focus');assert.equal(e.config.scene,KINDS[b.id%3],label+': kind');
+ const e=st.e;assert(e.focus()===b,label+': focus');assert.equal(e.config.scene,KINDS[b.id%4],label+': kind');
  st.step(300);
  assert(e.rectsEqual(b.rect,slot0(st)),label+': the focus did not take slot 0 '+JSON.stringify([b.rect,slot0(st)]));
  const roots=rootsOf(st.pic).sort((p,q)=>area(q)-area(p));
  assert(roots[0].body===b,label+': the focus is not the largest cell');
  assert(!st.pic.leaves.some(l=>l.path.length>1&&l.path[0].body===b),label+': the focus became a field');
- assert(b.caption.alpha>.95&&b.caption.nameAlpha>.95,label+': the focus lost its label');
- const fills=e.commands.filter(c=>c[0]==='fill').length;assert(fills>=3,label+': no body text on the page');
+ assert(b.caption.alpha>.95,label+': the image lost its label');
+ // the text: in the reading void on an article or gallery page (the title
+ // inside the largest seated void, and paragraph bars); on the image, in its
+ // bottom-left, on a caption page
+ const texts=e.commands.filter(c=>c[0]==='fillText'&&c[1]===b.name),fills=e.commands.filter(c=>c[0]==='fill').length;
+ if(e.config.scene==='caption'){
+  assert(!st.pic.leaves.some(l=>l.isVoid&&l.loops.length),label+': a caption page has whitespace');
+  const t=texts.find(t=>t[3]>b.caption.y);assert(t,label+': no caption on the image');assert(fills>=1,label+': no caption line');
+ }else{
+  const voids=e.root.bodies.filter(v=>v.isVoid&&!v.leaving&&v.rect&&v.crystal>=.99).sort((p,q)=>(q.rect[2]-q.rect[0])*(q.rect[3]-q.rect[1])-(p.rect[2]-p.rect[0])*(p.rect[3]-p.rect[1]));
+  assert(voids.length,label+': no reading void');const r=voids[0].rect,PW=e.root.PW,PH=e.root.PH;
+  const inVoid=t=>t[2]>=r[0]*PW&&t[2]<=r[2]*PW&&t[3]>=r[1]*PH&&t[3]<=r[3]*PH;
+  if(st.e.root.W>=1000){assert(texts.some(inVoid),label+': no title in the reading void');assert(fills>=8,label+': no paragraphs in the reading void');}
+  assert(!texts.some(t=>t[2]===b.caption.x&&t[3]!==b.caption.y+b.caption.off&&t[3]!==b.caption.y),label+': stray text on the image');
+ }
  return roots;
 }
 const desk={width:1900,height:810,fields:.55},phone={width:390,height:720,fields:.55};
 const report={pages:[],home:null,field:null,void:null,interrupted:null,escape:null,hover:null,phone:null};
 {
- const st=fresh(desk),names={};for(const b of st.e.root.bodies)if(!b.isVoid&&!b.isSelf&&b.name&&!(b.id%3 in names))names[b.id%3]=b.name;
- assert.equal(Object.keys(names).length,3);
- for(const k of [0,1,2]){
+ const st=fresh(desk),names={};for(const b of st.e.root.bodies)if(!b.isVoid&&!b.isSelf&&b.name&&!(b.id%4 in names))names[b.id%4]=b.name;
+ assert.equal(Object.keys(names).length,4);
+ for(const k of [0,1,3]){
   const s=fresh(desk),w=whereIs(s,names[k]);
   assert(s.e.click(w.x,w.y),'click missed '+names[k]);
   const roots=opened(s,w.b,names[k]);
@@ -87,9 +100,9 @@ const report={pages:[],home:null,field:null,void:null,interrupted:null,escape:nu
  const fb=member.path[0].body;assert(s.e.click(member.body.caption.x,member.body.caption.y));opened(s,fb,'field '+fb.name);report.field={field:fb.name,scene:s.e.config.scene};
 }
 { // whitespace is not a cell
- const s=fresh(desk),names={};for(const b of s.e.root.bodies)if(!b.isVoid&&!b.isSelf&&b.name&&b.id%3===2){names.reader=b.name;break;}
- const w=whereIs(s,names.reader);assert(s.e.click(w.x,w.y));s.step(300);
- const hit=s.e.click(1900*0.9,810*0.5);assert.equal(hit,false,'a click on the margin did something');assert.equal(s.e.config.scene,'reader');assert(s.e.focus()===w.b);
+ const s=fresh(desk),names={};for(const b of s.e.root.bodies)if(!b.isVoid&&!b.isSelf&&b.name&&b.id%4===0){names.article=b.name;break;}
+ const w=whereIs(s,names.article);assert(s.e.click(w.x,w.y));s.step(300);
+ const hit=s.e.click(1900*0.1,810*0.5);assert.equal(hit,false,'a click on the reading column did something');assert.equal(s.e.config.scene,'article');assert(s.e.focus()===w.b);
  report.void={scene:s.e.config.scene,marginClick:hit};
 }
 { // a click mid-change is the change that wins
@@ -108,9 +121,9 @@ const report={pages:[],home:null,field:null,void:null,interrupted:null,escape:nu
  const other=rootsOf(s.pic).find(l=>l.body!==a).body;s.e.pointer(other.caption.x,other.caption.y);s.step(60);assert.equal(s.e.root.hoveredId,other.id,'a card beside the focus did not hover');
  report.hover={focusHoverMix:+a.hoverMix.toFixed(3),cardHovered:other.name};
 }
-{ // a phone
+{ // a phone: the page opens the same way; its reading column is too narrow for text, which is skipped
  const s=fresh(phone),rs=rootsOf(s.pic).filter(l=>l.body.caption.alpha>.5);assert(rs.length,'no phone cell to click');const a=rs[0].body;
  assert(s.e.click(a.caption.x,a.caption.y));opened(s,a,'phone');report.phone={cell:a.name,scene:s.e.config.scene,rect:s.e.meters().mRect[0]};
 }
-const result={scope:'Real full tick; native Canvas and browser DOM stubbed. Without a click, state and every drawing command must exactly match Plaque; with clicks, each page behaviour is asserted.',hashes:files.map(f=>({file:path.basename(f),sha256:hash(fs.readFileSync(f))})),matrix,totalFrames:total,drawingCommands:commandsTotal,clicks:report};
+const result={scope:'Real full tick; native Canvas and browser DOM stubbed. Without a click, state and every drawing command must exactly match Plaque; with clicks, each page kind, its text placement and every click behaviour are asserted.',hashes:files.map(f=>({file:path.basename(f),sha256:hash(fs.readFileSync(f))})),matrix,totalFrames:total,drawingCommands:commandsTotal,clicks:report};
 fs.writeFileSync(path.join(__dirname,'validation.json'),JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify({totalFrames:total,drawingCommands:commandsTotal,clicks:report}));
