@@ -1,10 +1,10 @@
 """Build Portal from Plaque: a click on a cell opens that cell's page.
 
 A page is text in the whitespace, one large hero image, and a gallery of
-smaller cells to browse. The clicked cell becomes the hero image; its text is
-set in the page's reading void, where it is not read through a photograph.
-Nothing else changes: on the existing scenes the tick, the picture and every
-drawing command are Plaque's (validate.cjs).
+smaller cells to browse, on a rectangular grid the engine draws exactly. The
+clicked cell becomes the hero image; its text is set in the page's reading
+void, where it is not read through a photograph. On the existing scenes the
+tick, the picture and every drawing command are Plaque's (validate.cjs).
 """
 from pathlib import Path
 import hashlib
@@ -23,25 +23,71 @@ def replace(old, new):
 replace('<title>Plaque — Hive</title>', '<title>Portal — Hive</title>')
 replace('&larr; Back · Plaque</a>', '&larr; Back · Portal</a> <span style="opacity:.55;margin-left:.6em">click a cell to open its page · click the image again for home</span>')
 
-# --- page kinds, the focus pin, and two page layouts -------------------------
-replace('''const scenes = {
-  flock: null,
-''', '''// PORTAL. A page is a scene a cell was clicked into. Every page is the same
+# --- page grids, kinds, and the focus pin --------------------------------------
+GRID = '''// PORTAL. A page is a scene a cell was clicked into. Every page is the same
 // three things: the page's TEXT, set in a reading void where it is not read
-// through a photograph; one large HERO image, the clicked cell, pinned to the
-// scene's first slot; and a GALLERY of the other cells to browse. Three
-// kinds by the cell's id, most of them articles, so a page is recognisable
-// without being unique:
-//   article  the engine's Hero: a reading column at the left, the image, strips
-//   gallery  the image at the left, the reading column beside it, a column to browse
-//   caption  the full-cell section: the image is the page, with a caption on it
-const PORTAL_KINDS = ['article', 'gallery', 'article', 'caption'];
-const PORTAL_BASE = { article: 'hero' };            // a page kind drawn by an existing scene
-const PORTAL_PROSE = { article: true, gallery: true };   // kinds whose text lives in a void
+// through a photograph; one large HERO IMAGE, the clicked cell, pinned to the
+// scene's first slot; and a GALLERY of the other cells to browse.
+//
+// PORTAL GRID. A page is a rectangular partition of the lattice: a TEXT block
+// (the reading void), an IMAGE block (the focus) and GALLERY regions cut into
+// the other cells. Every block is subdivided by the union of the page's cut
+// lines and carries one site per sub-cell, the way a manifold void does, so
+// the power diagram at rest IS the partition: every seam straight, every cell
+// a rectangle. In transit the sites ride with their body and the page is as
+// organic as ever. Templates are in fractions of the page; grid indices name
+// the blocks; rules are hairlines drawn along the text block, style only.
+const PORTAL_TEMPLATES = {
+  folio:   { cols: [0.24, 0.46, 0.30], rows: [1], image: [1, 0, 2, 1], text: [0, 0, 1, 1], gallery: [[2, 0, 3, 1]], rules: ['right'] },
+  plinth:  { cols: [0.66, 0.34], rows: [0.56, 0.44], image: [0, 0, 1, 1], text: [1, 0, 2, 1], gallery: [[0, 1, 2, 2]], rules: ['bottom'] },
+  essay:   { cols: [0.2, 0.6, 0.2], rows: [0.3, 0.45, 0.25], image: [1, 0, 2, 1], text: [1, 1, 2, 2], gallery: [[0, 0, 1, 1], [2, 0, 3, 1], [0, 1, 1, 2], [2, 1, 3, 2], [0, 2, 3, 3]], rules: ['top', 'bottom'] },
+  caption: { cols: [0.84, 0.16], rows: [1], image: [0, 0, 1, 1], text: null, gallery: [[1, 0, 2, 1]], rules: [] },
+};
+const PORTAL_KINDS = ['folio', 'plinth', 'essay', 'caption'];
 let portalFocus = null;                             // the body a page is open on; null at home
 function portalKind(b) { return PORTAL_KINDS[b.id % PORTAL_KINDS.length]; }
+function portalCuts(fr) { const out = [0]; let s = 0; for (const f of fr) { s += f; out.push(s); } out[out.length - 1] = 1; return out; }
+function portalGrid(T, C, R, n) {
+  const r6 = v => Math.round(v * 1e6) / 1e6;   // cuts are compared for identity; keep them exact
+  const xs = portalCuts(T.cols).map(f => r6(f * C)), ys = portalCuts(T.rows).map(f => r6(f * R));
+  const rect = g => [xs[g[0]], ys[g[1]], xs[g[2]], ys[g[3]]];
+  const image = rect(T.image), text = T.text ? rect(T.text) : null;
+  // the other n-1 cells over the gallery regions, by area; a region is cut
+  // into rows of cells, the first rows a cell wider where the count is uneven
+  const regions = T.gallery.map(rect), m = n - 1;
+  const total = regions.reduce((s, r) => s + rectArea(r), 0);
+  const counts = regions.map(r => Math.max(1, Math.floor(m * rectArea(r) / total)));
+  let assigned = counts.reduce((s, c) => s + c, 0);
+  while (assigned < m) { let best = 0, bs = -1; regions.forEach((r, i) => { const s = rectArea(r) / counts[i]; if (s > bs) { bs = s; best = i; } }); counts[best]++; assigned++; }
+  while (assigned > m) { let best = -1, bs = Infinity; regions.forEach((r, i) => { if (counts[i] > 1) { const s = rectArea(r) / counts[i]; if (s < bs) { bs = s; best = i; } } }); if (best < 0) break; counts[best]--; assigned--; }
+  const cells = [];
+  regions.forEach((r, i) => {
+    const k = counts[i], w = r[2] - r[0], h = r[3] - r[1];
+    let rows = 1, bs = Infinity;
+    for (let q = 1; q <= k; q++) { const cols = Math.ceil(k / q), score = Math.abs(Math.log((w / cols) / (h / q))) + 0.1 * (q * cols - k); if (score < bs) { bs = score; rows = q; } }
+    const base = Math.floor(k / rows), extra = k - base * rows;
+    for (let row = 0; row < rows; row++) {
+      const cols = base + (row < extra ? 1 : 0), y0 = r[1] + h * row / rows, y1 = r[1] + h * (row + 1) / rows;
+      for (let col = 0; col < cols; col++) cells.push([r6(r[0] + w * col / cols), r6(y0), r6(r[0] + w * (col + 1) / cols), r6(y1)]);
+    }
+  });
+  const content = [image, ...cells], voids = text ? [text] : [];
+  const X = new Set(), Y = new Set();
+  for (const r of content.concat(voids)) { X.add(r[0]); X.add(r[2]); Y.add(r[1]); Y.add(r[3]); }
+  const xcut = [...X].sort((a, b) => a - b), ycut = [...Y].sort((a, b) => a - b), E = 1e-9;
+  const sites = r => {
+    const cx = (r[0] + r[2]) / 2, cy = (r[1] + r[3]) / 2, out = [];
+    for (let i = 0; i + 1 < xcut.length; i++) {
+      const x0 = xcut[i], x1 = xcut[i + 1]; if (x0 < r[0] - E || x1 > r[2] + E) continue;
+      for (let j = 0; j + 1 < ycut.length; j++) { const y0 = ycut[j], y1 = ycut[j + 1]; if (y0 < r[1] - E || y1 > r[3] + E) continue; out.push({ x: (x0 + x1) / 2 - cx, y: (y0 + y1) / 2 - cy, q: (x1 - x0) * (y1 - y0) }); }
+    }
+    return out;
+  };
+  const dress = r => { const q = r.slice(); q.mfSites = sites(q); q.mfKey = JSON.stringify(q.mfSites); q.mfRest = true; return q; };
+  return { focus: true, content: content.map(dress), voids: voids.map(dress) };
+}
 function portalPin(content, gotS, name) {
-  if (!portalFocus || !(name in PORTAL_KINDS.reduce((o, k) => (o[k] = 1, o), {}))) return;
+  if (!portalFocus || !(name in PORTAL_TEMPLATES)) return;
   const k = content.indexOf(portalFocus);
   if (k < 0) return;
   const j = gotS.indexOf(0);
@@ -49,68 +95,82 @@ function portalPin(content, gotS, name) {
   gotS[j] = gotS[k]; gotS[k] = 0;          // the focus takes slot 0; its holder takes the focus's slot
 }
 
-const scenes = {
-  flock: null,
-''')
+'''
+replace('const scenes = {\n  flock: null,\n', GRID + 'const scenes = {\n  flock: null,\n')
 replace('''    return { content: distribute(ring, n, 4), voids: [[2, 1, C - 2, R - 1]] };
   },
 };''', '''    return { content: distribute(ring, n, 4), voids: [[2, 1, C - 2, R - 1]] };
   },
-
-  // PORTAL pages. content[0] is the image; voids[0] the reading column.
-  gallery(C, R, n) {
-    const w = Math.max(2, Math.round(C * 0.36)), m = Math.min(C - Math.ceil((n - 1) / R), Math.max(w + 2, Math.round(C * 0.62)));
-    return { content: [[0, 0, w, R], ...distribute([[m, 0, C, R]], n - 1, 8)], voids: [[w, 0, m, R]] };
-  },
-  caption(C, R, n) {                                        // the column must seat every other cell: one slot each at least
-    const w = Math.max(2, C - Math.max(2, Math.round(C * 0.17), Math.ceil((n - 1) / R)));
-    return { content: [[0, 0, w, R], ...distribute([[w, 0, C, R]], n - 1, 9)], voids: [] };
-  },
-};''')
-replace('''    const spec = this.depth===0 && (name==='hero'||name==='frame') ? mfScene(this,name,content.length) : scenes[name] ? scenes[name](this.COLS, this.ROWS, content.length) : null;''',
-        '''    const base = PORTAL_BASE[name] || name;
-    const spec = this.depth===0 && (base==='hero'||base==='frame') ? mfScene(this,base,content.length) : scenes[base] ? scenes[base](this.COLS, this.ROWS, content.length) : null;''')
-replace('''    if (this.depth===0 && (this.scene==='hero'||this.scene==='frame')) this.mfResize=true;''',
-        '''    if (this.depth===0 && ((PORTAL_BASE[this.scene]||this.scene)==='hero'||this.scene==='frame')) this.mfResize=true;''')
+};
+for (const kind of Object.keys(PORTAL_TEMPLATES)) scenes[kind] = (C, R, n) => portalGrid(PORTAL_TEMPLATES[kind], C, R, n);   // PORTAL page kinds''')
 replace('''    const gotS = assignStations(content, centers);
 ''', '''    const gotS = assignStations(content, centers);
     portalPin(content, gotS, name);
 ''')
 
-# --- the open page's image is one card, never a field ------------------------
+# --- a content block on a page grid carries a site per sub-cell ---------------
+replace('''    for (const v of live) {
+      if (!v.isVoid || v.leaving) continue;
+      const rv = v.formRect || v.rect;''', '''    for (const v of live) {
+      if (v.leaving) continue;
+      const rv = v.formRect || v.rect;
+      // PORTAL: a content block on a page grid carries a site per sub-cell,
+      // the way a manifold void does, so every seam it has is drawn straight
+      if (!v.isVoid) { if (rv && rv.mfSites) v.wvTo = rv.mfSites.map(p => ({ ...p })); continue; }''')
+replace('''    if (this.depth === 0 && b.isVoid && b.plCurrent) return;
+    b.subs.length = 1;''', '''    if (this.depth === 0 && b.plCurrent && (b.isVoid || b.plCurrent.length > 1)) return;   // PORTAL: a block keeps its sites too
+    b.subs.length = 1;''')
+
+# --- the open page's image is one card, never a field -------------------------
 replace('''    const gallery = b.kindRoll < config.fieldDensity * (this.depth === 0 ? 1 : 0.5);
     const k = gallery && this.depth < MAX_DEPTH && slots >= 4 ? Math.min(MAX_MEMBERS, Math.round(slots * 0.5 + 1)) : 0;''',
-        '''    const gallery = b !== portalFocus && b.kindRoll < config.fieldDensity * (this.depth === 0 ? 1 : 0.5);   // PORTAL: the page's image is one card
+        '''    const gallery = !portalFocus && b.kindRoll < config.fieldDensity * (this.depth === 0 ? 1 : 0.5);   // PORTAL: on a page every cell is one card
     const k = gallery && this.depth < MAX_DEPTH && slots >= 4 ? Math.min(MAX_MEMBERS, Math.round(slots * 0.5 + 1)) : 0;''')
 
 # --- the text, in the whitespace; the caption, on the image -------------------
 replace('''// PLAQUE TAG. A field's members carry numbers, not the field's name.''', '''// PORTAL PROSE. The page's text lives in the whitespace: the image's name as
 // a title and its paragraphs as bars, set in the page's reading void once
-// that void has seated, fading in with it. Never on a photograph.
+// that void has seated, fading in with it. Never on a photograph. The rules
+// are hairlines along the text block, in the gap, and a short one under the
+// title: style only, nothing reads them.
 const portalProse = { alpha: 0, seen: -1 };
 function portalProseStep(ctx, type, dt, t) {
   const p = portalProse, gap = t - p.seen, el = p.seen < 0 || gap > 0.1 ? dt : gap;
   if (gap > 0.1) p.alpha = 0;
   p.seen = t;
-  // the reading void: the largest seated void; its rectangle, in page px
   let v = null;
-  if (portalFocus && PORTAL_PROSE[config.scene])
+  const T = portalFocus && PORTAL_TEMPLATES[config.scene];
+  if (T && T.text)
     for (const b of root.bodies) if (b.isVoid && !b.leaving && b.rect && b.crystal >= 0.99 && (!v || rectArea(b.rect) > rectArea(v.rect))) v = b;
   p.alpha += ((v ? 1 : 0) - p.alpha) * (1 - Math.exp(-el / (v ? 0.30 : 0.08)));
   if (!v || p.alpha < 0.01) return;
   const q = v.rect, r = [q[0] * root.PW, q[1] * root.PH, q[2] * root.PW, q[3] * root.PH], pad = Math.max(16, Math.min(48, 0.024 * W));
-  const x0 = r[0] + pad, y0 = r[1] + pad, bottom = r[3] - pad, width = Math.min(560, r[2] - pad - x0);
-  if (width < 90) return;
+  const x0 = r[0] + pad, y0 = r[1] + pad, bottom = r[3] - pad;
+  if (r[2] - pad - x0 < 90) return;
   const title = Math.round(type.num * 0.9), line = Math.max(4, Math.round(type.name * 0.55)), lead = Math.round(line * 2.1);
   ctx.save();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.globalAlpha = 0.22 * p.alpha; ctx.beginPath();
+  for (const e of T.rules) {
+    if (e === 'left') { ctx.moveTo(r[0] + 0.5, r[1] + pad); ctx.lineTo(r[0] + 0.5, r[3] - pad); }
+    if (e === 'right') { ctx.moveTo(r[2] - 0.5, r[1] + pad); ctx.lineTo(r[2] - 0.5, r[3] - pad); }
+    if (e === 'top') { ctx.moveTo(r[0] + pad, r[1] + 0.5); ctx.lineTo(r[2] - pad, r[1] + 0.5); }
+    if (e === 'bottom') { ctx.moveTo(r[0] + pad, r[3] - 0.5); ctx.lineTo(r[2] - pad, r[3] - 0.5); }
+  }
+  ctx.stroke();
+  ctx.globalAlpha = 0.5 * p.alpha; ctx.beginPath(); ctx.moveTo(x0, y0 + Math.round(title * 1.3) + 0.5); ctx.lineTo(x0 + Math.round(title * 1.6), y0 + Math.round(title * 1.3) + 0.5); ctx.stroke();
   ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
   ctx.globalAlpha = 0.92 * p.alpha; ctx.font = `600 ${title}px system-ui, sans-serif`;
   ctx.fillText(portalFocus.name, x0, y0);
   ctx.globalAlpha = 0.20 * p.alpha;
-  let y = y0 + Math.round(title * 1.6);
-  for (const run of [[1, 1, 0.94, 1, 0.66], [1, 0.9, 1, 0.48], [1, 0.97, 0.8]]) {
-    if (y + run.length * lead > bottom) break;
-    for (const f of run) { roundedPath(ctx, [[x0, y], [x0 + width * f, y], [x0 + width * f, y + line], [x0, y + line]], line / 2, false); ctx.fill(); y += lead; }
+  // the paragraphs: one measure, or two columns of it when the block is a
+  // band wider than two measures
+  const measure = Math.min(560, r[2] - pad - x0), gutter = Math.round(title * 1.5);
+  const cols = r[2] - pad - x0 >= 2 * Math.min(400, measure) + gutter ? 2 : 1, colW = cols === 2 ? Math.min(400, Math.floor((r[2] - pad - x0 - gutter) / 2)) : measure;
+  const runs = [[1, 1, 0.94, 1, 0.66], [1, 0.9, 1, 0.48], [1, 0.97, 0.8], [1, 1, 0.72]];
+  let y = y0 + Math.round(title * 1.8), col = 0, x = x0;
+  for (const run of runs) {
+    if (y + run.length * lead > bottom) { if (cols === 2 && col === 0) { col = 1; x = x0 + colW + gutter; y = y0 + Math.round(title * 1.8); if (y + run.length * lead > bottom) break; } else break; }
+    for (const f of run) { roundedPath(ctx, [[x, y], [x + colW * f, y], [x + colW * f, y + line], [x, y + line]], line / 2, false); ctx.fill(); y += lead; }
     y += Math.round(lead * 0.8);
   }
   ctx.restore();
@@ -139,8 +199,11 @@ function portalCaption(ctx, pts, loops, c, type, alpha) {
 replace('''    const c = plaqueStep(ctx, b, bigPts, leaf.loops, leaf.labels, leaf.label, type, leaf.path.some(e => travelling(e.body)), dt, t, bigA, inner.absX + b.anchorX, inner.absY + b.anchorY);
     if (c.alpha > 0.01) {
       ctx.save();
-      if (bigTrace) { bigTrace(); ctx.clip('nonzero'); }''', '''    const c = plaqueStep(ctx, b, bigPts, leaf.loops, leaf.labels, leaf.label, type, leaf.path.some(e => travelling(e.body)), dt, t, bigA, inner.absX + b.anchorX, inner.absY + b.anchorY);
-    const captioned = b === portalFocus && config.scene === 'caption';   // the image is the page: a caption, not a label
+      if (bigTrace) { bigTrace(); ctx.clip('nonzero'); }''', '''    // the open page's image carries no label: its title is set in the text
+    // block beside it, or, on a full-cell page, as a caption on the image
+    const pageT = b === portalFocus && PORTAL_TEMPLATES[config.scene];
+    const c = plaqueStep(ctx, b, bigPts, leaf.loops, leaf.labels, leaf.label, type, leaf.path.some(e => travelling(e.body)) || (pageT && !!pageT.text), dt, t, bigA, inner.absX + b.anchorX, inner.absY + b.anchorY);
+    const captioned = pageT && !pageT.text;   // the image is the page: a caption, not a label
     if (c.alpha > 0.01 && captioned) {
       ctx.save();
       if (bigTrace) { bigTrace(); ctx.clip('nonzero'); }
@@ -159,7 +222,7 @@ replace('''      plaqueTag(ctx, leaf.path[k].hive, fb, type, leaf.path.slice(0, 
   portalProseStep(ctx, type, dt, t);
 }''')
 
-# --- no hover on the open page's image: a page is not a card -----------------
+# --- no hover on the open page's image: a page is not a card ------------------
 replace('''  const path = guestLeft > 0 ? [] : (hitLeaves(picture, mouseX, mouseY) || root.hitPath(mouseX, mouseY));
 ''', '''  const under = guestLeft > 0 ? [] : (hitLeaves(picture, mouseX, mouseY) || root.hitPath(mouseX, mouseY));
   const path = under.length && under[0].body === portalFocus ? [] : under;   // the open page's image is not a card

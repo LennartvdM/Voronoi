@@ -1,5 +1,5 @@
 {
-  "scope": "Real full tick; native Canvas and browser DOM stubbed. Without a click, state and every drawing command must exactly match Plaque; with clicks, each page kind, its text placement and every click behaviour are asserted.",
+  "scope": "Real full tick; native Canvas and browser DOM stubbed. Without a click, state and every drawing command must exactly match Plaque; with clicks, every page kind is drawn as an exact rectangular grid with its text in the reading void, and every click behaviour is asserted.",
   "hashes": [
     {
       "file": "plaque.html",
@@ -7,7 +7,7 @@
     },
     {
       "file": "portal.html",
-      "sha256": "c312cb6bdf5e8630de73930a0c2b85927c51dc52289c4c730913a377cc99703d"
+      "sha256": "c2a907fa336cdcc84dd18ab86e157bf8f7db7db043a0aabed63223a6f42a86fa"
     }
   ],
   "matrix": [
@@ -51,27 +51,38 @@
   "totalFrames": 13506,
   "drawingCommands": 12887553,
   "clicks": {
-    "pages": [
+    "kinds": [
       {
+        "kind": "folio",
         "cell": "Drift",
-        "scene": "article",
-        "focusArea": 461699,
-        "nextArea": 102600,
-        "rect": "59.6%"
+        "imageShare": 0.46,
+        "smallestCard": 0.025,
+        "rect": "100%",
+        "gap": "452px²"
       },
       {
+        "kind": "plinth",
         "cell": "Ember",
-        "scene": "gallery",
-        "focusArea": 512999,
-        "nextArea": 76949,
-        "rect": "32.7%"
+        "imageShare": 0.37,
+        "smallestCard": 0.0367,
+        "rect": "100%",
+        "gap": "0px²"
       },
       {
+        "kind": "essay",
+        "cell": "Tide",
+        "imageShare": 0.18,
+        "smallestCard": 0.045,
+        "rect": "100%",
+        "gap": "0px²"
+      },
+      {
+        "kind": "caption",
         "cell": "Moss",
-        "scene": "caption",
-        "focusArea": 1154249,
-        "nextArea": 51300,
-        "rect": "43.2%"
+        "imageShare": 0.84,
+        "smallestCard": 0.0133,
+        "rect": "100%",
+        "gap": "304px²"
       }
     ],
     "home": {
@@ -80,28 +91,41 @@
     },
     "field": {
       "field": "Drift",
-      "scene": "article"
+      "scene": "folio"
     },
     "void": {
-      "scene": "article",
-      "marginClick": false
+      "scene": "folio",
+      "voidClick": false
     },
     "interrupted": {
       "first": "Ember",
       "second": "Tide",
-      "scene": "article"
+      "scene": "essay"
     },
     "escape": {
       "numbers": 7
     },
     "hover": {
-      "focusHoverMix": 0,
+      "imageHoverMix": 0,
       "cardHovered": "Drift"
     },
-    "phone": {
-      "cell": "Ember",
-      "scene": "gallery",
-      "rect": "26.9%"
-    }
+    "phone": [
+      {
+        "kind": "folio",
+        "rect": "100%"
+      },
+      {
+        "kind": "plinth",
+        "rect": "100%"
+      },
+      {
+        "kind": "essay",
+        "rect": "100%"
+      },
+      {
+        "kind": "caption",
+        "rect": "100%"
+      }
+    ]
   }
 }
