@@ -1,0 +1,369 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed. Without the Tell II button, state and every drawing command must exactly match Tell, a click, a scroll, a Tell story and home included; with the story, every slide's cast (one, two or three cells, taking turns) stands exactly on its places around the box and the rest in the cluster, the whitespace exactly the rectangles the cells leave, every cell one site and never fractured, the last cast back in the cluster, the text set once the entry has ended and the rule a beat later and kept through every slide, a wheel notch of any size turning one slide, a drag and a flick carrying the story on, a slow story snapping to its slide, the story stopping at its ends, and home returning the count.",
+  "hashes": [
+    {
+      "file": "tell.html",
+      "sha256": "0cd09badc2ed802684a9883c28474480a65265e0d123555eb9df93b663e03c93"
+    },
+    {
+      "file": "tell2.html",
+      "sha256": "7f97b53feca2b7bb12515d1171c1086a95f83a76cf9ab5b6aa6f021343a8853e"
+    }
+  ],
+  "matrix": [
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 16.666666666666668,
+      "inner": "flock",
+      "frames": 3470
+    },
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 24,
+      "fields": 1,
+      "dt": 30,
+      "inner": "bento",
+      "frames": 1939
+    },
+    {
+      "width": 390,
+      "height": 720,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 8.333333333333334,
+      "inner": "flock",
+      "frames": 6940
+    },
+    {
+      "width": 1363,
+      "height": 846,
+      "count": 30,
+      "fields": 0,
+      "dt": 50,
+      "inner": "flock",
+      "frames": 1157
+    }
+  ],
+  "totalFrames": 16012,
+  "drawingCommands": 14910618,
+  "story": {
+    "clickIdentity": {
+      "frames": 2506,
+      "kind": "band",
+      "tell": true
+    },
+    "start": {
+      "k": 0,
+      "cast": [
+        "Drift"
+      ],
+      "places": [
+        "top"
+      ],
+      "voids": 5,
+      "rest": {
+        "rectangle": 2,
+        "voronoi": 10,
+        "cut": 0,
+        "shortEdged": 0
+      }
+    },
+    "slides": [
+      {
+        "k": 0,
+        "cast": [
+          "Drift"
+        ],
+        "places": [
+          "top"
+        ],
+        "voids": 5,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0,
+          "shortEdged": 0
+        }
+      },
+      {
+        "changedAt": 15,
+        "k": 1,
+        "cast": [
+          "Ember",
+          "Tide"
+        ],
+        "places": [
+          "tl",
+          "br"
+        ],
+        "voids": 7,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0,
+          "shortEdged": 0
+        }
+      },
+      {
+        "slide": 3,
+        "k": 3,
+        "cast": [
+          "Petal",
+          "Aurora",
+          "Dune"
+        ],
+        "places": [
+          "top",
+          "below",
+          "right"
+        ],
+        "voids": 8,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0,
+          "shortEdged": 0
+        }
+      },
+      {
+        "k": 4,
+        "cast": [
+          "Jazz"
+        ],
+        "places": [
+          "bl"
+        ],
+        "voids": 5,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0,
+          "shortEdged": 0
+        }
+      },
+      {
+        "k": 5,
+        "cast": [
+          "Coal",
+          "Mint"
+        ],
+        "places": [
+          "tr",
+          "left"
+        ],
+        "voids": 7,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0,
+          "shortEdged": 0
+        }
+      },
+      {
+        "k": 6,
+        "cast": [
+          "Haze"
+        ],
+        "places": [
+          "below"
+        ],
+        "voids": 5,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0,
+          "shortEdged": 0
+        }
+      },
+      {
+        "k": 7,
+        "cast": [
+          "Coral",
+          "Drift",
+          "Ember"
+        ],
+        "places": [
+          "tl",
+          "tr",
+          "bl"
+        ],
+        "voids": 8,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0,
+          "shortEdged": 0
+        }
+      }
+    ],
+    "text": {
+      "endAt": 210,
+      "textAt": 210,
+      "textFull": 273,
+      "ruleAt": 289,
+      "ruleFull": 369
+    },
+    "push": {
+      "changedAt": 15,
+      "k": 1,
+      "cast": [
+        "Ember",
+        "Tide"
+      ],
+      "places": [
+        "tl",
+        "br"
+      ],
+      "voids": 7,
+      "rest": {
+        "rectangle": 3,
+        "voronoi": 9,
+        "cut": 0,
+        "shortEdged": 0
+      }
+    },
+    "drag": {
+      "slide": 3,
+      "k": 3,
+      "cast": [
+        "Petal",
+        "Aurora",
+        "Dune"
+      ],
+      "places": [
+        "top",
+        "below",
+        "right"
+      ],
+      "voids": 8,
+      "rest": {
+        "rectangle": 2,
+        "voronoi": 10,
+        "cut": 0,
+        "shortEdged": 0
+      }
+    },
+    "notch": {
+      "one": 1,
+      "tiny": 1,
+      "back": -1,
+      "threeQuick": 2
+    },
+    "snap": {
+      "short": 0.3,
+      "long": 0.6
+    },
+    "ends": {
+      "last": 7
+    },
+    "back": {
+      "k": 0,
+      "cast": [
+        "Drift"
+      ],
+      "places": [
+        "top"
+      ],
+      "voids": 5,
+      "rest": {
+        "rectangle": 2,
+        "voronoi": 10,
+        "cut": 0,
+        "shortEdged": 0
+      }
+    },
+    "interrupted": {
+      "turnedAt": 15,
+      "k": 1,
+      "cast": [
+        "Ember",
+        "Tide"
+      ],
+      "places": [
+        "tl",
+        "br"
+      ],
+      "voids": 7,
+      "rest": {
+        "rectangle": 3,
+        "voronoi": 9,
+        "cut": 0,
+        "shortEdged": 0
+      }
+    },
+    "home": {
+      "cells": 12,
+      "roots": 6,
+      "numbers": 6
+    },
+    "phone": {
+      "text": {
+        "endAt": 169,
+        "textAt": 169,
+        "textFull": 232,
+        "ruleAt": 248,
+        "ruleFull": 328
+      },
+      "slides": [
+        {
+          "k": 0,
+          "cast": [
+            "Drift"
+          ],
+          "places": [
+            "top"
+          ],
+          "voids": 5,
+          "rest": {
+            "rectangle": 2,
+            "voronoi": 10,
+            "cut": 0,
+            "shortEdged": 0
+          }
+        },
+        {
+          "k": 1,
+          "cast": [
+            "Ember",
+            "Tide"
+          ],
+          "places": [
+            "tl",
+            "br"
+          ],
+          "voids": 3,
+          "rest": {
+            "rectangle": 2,
+            "voronoi": 8,
+            "cut": 0,
+            "shortEdged": 2
+          }
+        },
+        {
+          "k": 3,
+          "cast": [
+            "Petal",
+            "Aurora",
+            "Dune"
+          ],
+          "places": [
+            "top",
+            "below",
+            "right"
+          ],
+          "voids": 3,
+          "rest": {
+            "rectangle": 3,
+            "voronoi": 9,
+            "cut": 0,
+            "shortEdged": 0
+          }
+        }
+      ]
+    }
+  }
+}
