@@ -1,5 +1,5 @@
 {
-  "scope": "Real full tick; native Canvas and browser DOM stubbed. Without a click, state and every drawing command must exactly match Plaque; with clicks, every page kind is drawn as an exact rectangular grid with its text in the reading void, and every click behaviour is asserted.",
+  "scope": "Real full tick; native Canvas and browser DOM stubbed. Without a click, state and every drawing command must exactly match Plaque; with clicks, every page kind opens with its whitespace exactly the rectangles it was given, every cell one site and never fractured, its text in the reading void, and every click behaviour is asserted.",
   "hashes": [
     {
       "file": "plaque.html",
@@ -7,7 +7,7 @@
     },
     {
       "file": "portal.html",
-      "sha256": "2eb6ed86145c22b126ca9764ca74c030e6f56732b1245c0b5205902d8af9e52a"
+      "sha256": "9fe5883209fe12f6810e0b4cc14e59b60e779f6675bd6567356940e0491e4e56"
     }
   ],
   "matrix": [
@@ -55,66 +55,170 @@
       {
         "kind": "spread",
         "cell": "Drift",
-        "imageShare": 0.44,
-        "smallestCard": 0.0275,
-        "rect": "100%",
-        "gap": "436px²"
+        "imageShare": 0.42,
+        "smallestCard": 0.0233,
+        "rest": {
+          "rectangle": 6,
+          "voronoi": 6,
+          "cut": 0,
+          "shortEdged": 0
+        },
+        "transition": {
+          "rectangle": 1297,
+          "notched": 0,
+          "voronoi": 3172,
+          "cut": 0,
+          "shortEdged": 87,
+          "fractured": 0
+        },
+        "gap": "0px²"
       },
       {
         "kind": "folio",
         "cell": "Ember",
         "imageShare": 0.46,
         "smallestCard": 0.025,
-        "rect": "100%",
-        "gap": "224px²"
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0,
+          "shortEdged": 0
+        },
+        "transition": {
+          "rectangle": 239,
+          "notched": 0,
+          "voronoi": 4280,
+          "cut": 0,
+          "shortEdged": 40,
+          "fractured": 0
+        },
+        "gap": "0px²"
       },
       {
         "kind": "showcase",
         "cell": "Tide",
-        "imageShare": 0.367,
-        "smallestCard": 0.0288,
-        "rect": "100%",
-        "gap": "352px²"
+        "imageShare": 0.48,
+        "smallestCard": 0.0133,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 9,
+          "cut": 0,
+          "shortEdged": 1
+        },
+        "transition": {
+          "rectangle": 497,
+          "notched": 0,
+          "voronoi": 3799,
+          "cut": 0,
+          "shortEdged": 281,
+          "fractured": 0
+        },
+        "gap": "0px²"
       },
       {
-        "kind": "wall",
+        "kind": "band",
         "cell": "Moss",
-        "imageShare": 0.58,
-        "smallestCard": 0.0217,
-        "rect": "100%",
-        "gap": "336px²"
+        "imageShare": 0.372,
+        "smallestCard": 0.0207,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 8,
+          "cut": 0,
+          "shortEdged": 3
+        },
+        "transition": {
+          "rectangle": 275,
+          "notched": 0,
+          "voronoi": 3474,
+          "cut": 0,
+          "shortEdged": 801,
+          "fractured": 0
+        },
+        "gap": "0px²"
       },
       {
-        "kind": "interview",
+        "kind": "lead",
         "cell": "Petal",
-        "imageShare": 0.304,
-        "smallestCard": 0.0417,
-        "rect": "100%",
+        "imageShare": 0.39,
+        "smallestCard": 0.0217,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 8,
+          "cut": 0,
+          "shortEdged": 3
+        },
+        "transition": {
+          "rectangle": 270,
+          "notched": 0,
+          "voronoi": 3422,
+          "cut": 0,
+          "shortEdged": 814,
+          "fractured": 0
+        },
         "gap": "0px²"
       },
       {
         "kind": "documentation",
         "cell": "Aurora",
-        "imageShare": 0.248,
-        "smallestCard": 0.0216,
-        "rect": "100%",
+        "imageShare": 0.38,
+        "smallestCard": 0.02,
+        "rest": {
+          "rectangle": 6,
+          "voronoi": 3,
+          "cut": 0,
+          "shortEdged": 3
+        },
+        "transition": {
+          "rectangle": 1215,
+          "notched": 0,
+          "voronoi": 2625,
+          "cut": 0,
+          "shortEdged": 667,
+          "fractured": 0
+        },
         "gap": "0px²"
       },
       {
         "kind": "essay",
         "cell": "Dune",
-        "imageShare": 0.252,
-        "smallestCard": 0.038,
-        "rect": "100%",
-        "gap": "72px²"
+        "imageShare": 0.319,
+        "smallestCard": 0.0084,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0,
+          "shortEdged": 0
+        },
+        "transition": {
+          "rectangle": 265,
+          "notched": 0,
+          "voronoi": 4262,
+          "cut": 0,
+          "shortEdged": 59,
+          "fractured": 0
+        },
+        "gap": "0px²"
       },
       {
         "kind": "caption",
         "cell": "Jazz",
         "imageShare": 0.84,
         "smallestCard": 0.0133,
-        "rect": "100%",
-        "gap": "308px²"
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 9,
+          "cut": 0,
+          "shortEdged": 1
+        },
+        "transition": {
+          "rectangle": 482,
+          "notched": 0,
+          "voronoi": 3781,
+          "cut": 0,
+          "shortEdged": 278,
+          "fractured": 0
+        },
+        "gap": "0px²"
       }
     ],
     "home": {
@@ -144,35 +248,67 @@
     "phone": [
       {
         "kind": "spread",
-        "rect": "100%"
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "shortEdged": 0
+        }
       },
       {
         "kind": "folio",
-        "rect": "100%"
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "shortEdged": 0
+        }
       },
       {
         "kind": "showcase",
-        "rect": "100%"
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "shortEdged": 0
+        }
       },
       {
-        "kind": "wall",
-        "rect": "100%"
+        "kind": "band",
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "shortEdged": 0
+        }
       },
       {
-        "kind": "interview",
-        "rect": "100%"
+        "kind": "lead",
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "shortEdged": 0
+        }
       },
       {
         "kind": "documentation",
-        "rect": "100%"
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "shortEdged": 0
+        }
       },
       {
         "kind": "essay",
-        "rect": "100%"
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "shortEdged": 0
+        }
       },
       {
         "kind": "caption",
-        "rect": "100%"
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "shortEdged": 0
+        }
       }
     ]
   }

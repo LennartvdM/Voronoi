@@ -947,76 +947,183 @@ function quilt(rect, n, salt) {
 // through a photograph; one large HERO IMAGE, the clicked cell, pinned to the
 // scene's first slot; and a GALLERY of the other cells to browse.
 //
-// PORTAL GRID. A page is a rectangular partition of the lattice: a TEXT block
-// (the reading void), an IMAGE block (the focus) and GALLERY regions cut into
-// the other cells. Every block is subdivided by the union of the page's cut
-// lines and carries one site per sub-cell, the way a manifold void does, so
-// the power diagram at rest IS the partition: every seam straight, every cell
-// a rectangle. In transit the sites ride with their body and the page is as
-// organic as ever. Templates are in fractions of the page; grid indices name
-// the blocks; rules are hairlines drawn along the text block, style only.
+// A page is a claim table, like the engine's own scenes: every cell ONE site
+// with a rectangle as its destination and its claim, the text a void. Cells
+// are convex power cells, straight where they meet the void or the page and
+// organic where they meet each other. The void is the rectangle it was given
+// the way the Hero and Frame scenes' voids are: its sites are authored so the
+// rest diagram draws it exactly (portalDecorate), and the auction is handed
+// that diagram's areas. Templates are in fractions of the page; forced cuts
+// (x, y) keep a gallery's cards from straddling the void's corners; rules are
+// hairlines drawn along the text block, style only.
 const PORTAL_TEMPLATES = {
-  spread:        { cols: [0.44, 0.33, 0.23], rows: [0.75, 0.25], image: [0, 0, 1, 2], text: [1, 0, 2, 1], gallery: [[1, 1, 2, 2], [2, 0, 3, 2]], rules: ['right', 'bottom'] },
-  folio:         { cols: [0.24, 0.46, 0.3], rows: [1], image: [1, 0, 2, 1], text: [0, 0, 1, 1], gallery: [[2, 0, 3, 1]], rules: ['right'] },
-  showcase:      { cols: [0.12, 0.51, 0.37], rows: [0.72, 0.28], image: [1, 0, 2, 1], text: [2, 0, 3, 1], gallery: [[0, 0, 1, 1], [0, 1, 3, 2]], rules: ['left', 'bottom'] },
-  wall:          { cols: [0.58, 0.42], rows: [0.38, 0.62], image: [0, 0, 1, 2], text: [1, 0, 2, 1], gallery: [[1, 1, 2, 2]], rules: ['bottom'] },
-  interview:     { cols: [0.57, 0.43], rows: [0.415, 0.2925, 0.2925], image: [1, 0, 2, 2], text: [0, 0, 1, 1], gallery: [[0, 1, 1, 3], [1, 2, 2, 3]], rules: ['bottom'] },
-  documentation: { cols: [0.12, 0.48, 0.4], rows: [0.62, 0.38], image: [2, 0, 3, 1], text: [1, 0, 2, 2], gallery: [[0, 0, 1, 2], [2, 1, 3, 2]], rules: ['left', 'right'] },
-  essay:         { cols: [0.2, 0.6, 0.2], rows: [0.42, 0.38, 0.2], image: [1, 0, 2, 1], text: [1, 1, 2, 2], gallery: [[0, 0, 1, 1], [2, 0, 3, 1], [0, 1, 1, 2], [2, 1, 3, 2], [0, 2, 3, 3]], rules: ['top', 'bottom'] },
-  caption:       { cols: [0.84, 0.16], rows: [1], image: [0, 0, 1, 1], text: null, gallery: [[1, 0, 2, 1]], rules: [] },
+  // Two rules the templates keep. A void's corners are page corners or
+  // another void's, so no cell meets a void at a corner of it, where two
+  // edges' mirrors would have to agree. And the cards that touch the hero
+  // stand beside its short edge, far across from its centre: a seam between
+  // two cells is square to the line between their sites, so a card offset
+  // far along the hero's edge and close across it is a wedge.
+  spread:        { hero: [0, 0, 0.42, 1], text: [0.42, 0, 0.72, 1], galleries: [[0.72, 0, 1, 1]], rules: ['right'],
+                   fit: (W, H) => { const v = Math.max(0.3, 0.54 * H / W); return { hero: [0, 0, 0.72 - v, 1], text: [0.72 - v, 0, 0.72, 1] }; } },
+  folio:         { hero: [0.24, 0, 0.7, 1], text: [0, 0, 0.24, 1], galleries: [[0.7, 0, 1, 1]], rules: ['right'] },
+  showcase:      { hero: [0.16, 0, 0.64, 1], text: [0.64, 0, 1, 1], galleries: [[0, 0, 0.16, 1]], rules: ['left'] },
+  band:          { hero: [0, 0, 0.6, 0.62], text: [0, 0.62, 1, 1], galleries: [[0.6, 0, 1, 0.62]], rules: ['top'] },
+  lead:          { hero: [0, 0.35, 0.6, 1], text: [0, 0, 1, 0.35], galleries: [[0.6, 0.35, 1, 1]], rules: ['bottom'] },
+  documentation: { hero: [0.62, 0, 1, 1], text: [0.24, 0, 0.62, 1], galleries: [[0, 0, 0.24, 1]], rules: ['left', 'right'] },
+  essay:         { hero: [0.12, 0, 0.88, 0.42], text: [0.12, 0.42, 0.88, 1], margins: [[0, 0.42, 0.12, 1], [0.88, 0.42, 1, 1]], galleries: [[0, 0, 0.12, 0.42], [0.88, 0, 1, 0.42]], rules: ['top'] },
+  caption:       { hero: [0, 0, 0.84, 1], text: null, galleries: [[0.84, 0, 1, 1]], rules: [] },
 };
-const PORTAL_KINDS = ['spread', 'folio', 'showcase', 'wall', 'interview', 'documentation', 'essay', 'caption'];
+// a portrait page stacks: the image, its text, the cards
+const PORTAL_PORTRAIT = {
+  text:    { hero: [0, 0, 1, 0.4], text: [0, 0.4, 1, 0.76], galleries: [[0, 0.76, 1, 1]], rules: ['top'] },
+  caption: { hero: [0, 0, 1, 0.8], text: null, galleries: [[0, 0.8, 1, 1]], rules: [] },
+};
+const PORTAL_KINDS = ['spread', 'folio', 'showcase', 'band', 'lead', 'documentation', 'essay', 'caption'];
 let portalFocus = null;                             // the body a page is open on; null at home
 function portalKind(b) { return PORTAL_KINDS[b.id % PORTAL_KINDS.length]; }
-function portalCuts(fr) { const out = [0]; let s = 0; for (const f of fr) { s += f; out.push(s); } out[out.length - 1] = 1; return out; }
-function portalGrid(T, C, R, n) {
-  const r6 = v => Math.round(v * 1e6) / 1e6;   // cuts are compared for identity; keep them exact
-  const xs = portalCuts(T.cols).map(f => r6(f * C)), ys = portalCuts(T.rows).map(f => r6(f * R));
-  const rect = g => [xs[g[0]], ys[g[1]], xs[g[2]], ys[g[3]]];
-  const image = rect(T.image), text = T.text ? rect(T.text) : null;
-  // the other n-1 cells over the gallery regions, by area; a region is cut
-  // into rows of cells, the first rows a cell wider where the count is uneven
-  const regions = T.gallery.map(rect), m = n - 1;
-  const total = regions.reduce((s, r) => s + rectArea(r), 0);
-  const counts = regions.map(r => Math.max(1, Math.floor(m * rectArea(r) / total)));
+const PORTAL_E = 1e-6;
+// a gallery region cut into k cards: rows of cards, the rows chosen for the
+// squarest card, the first rows a card wider where the count is uneven
+function portalCards(r, k) {
+  const r6 = v => Math.round(v * 1e6) / 1e6, w = r[2] - r[0], h = r[3] - r[1], cards = [];
+  let rows = 1, bs = Infinity;
+  for (let n = 1; n <= k; n++) { const cols = Math.ceil(k / n), score = Math.abs(Math.log((w / cols) / (h / n))) + 0.1 * (n * cols - k); if (score < bs) { bs = score; rows = n; } }
+  const base = Math.floor(k / rows), extra = k - base * rows;
+  for (let row = 0; row < rows; row++) {
+    const cols = base + (row < extra ? 1 : 0), y0 = r6(r[1] + h * row / rows), y1 = r6(r[1] + h * (row + 1) / rows);
+    for (let col = 0; col < cols; col++) cards.push([r6(r[0] + w * col / cols), y0, r6(r[0] + w * (col + 1) / cols), y1]);
+  }
+  return cards;
+}
+// the page's rectangles, in lattice units: the hero first, then the cards,
+// and the voids, the text first
+function portalPage(T0, C, R, n, W, H) {
+  const T = W < H ? PORTAL_PORTRAIT[T0.text ? 'text' : 'caption'] : Object.assign({}, T0, T0.fit ? T0.fit(W, H) : {});
+  const r6 = v => Math.round(v * 1e6) / 1e6, L = f => [r6(f[0] * C), r6(f[1] * R), r6(f[2] * C), r6(f[3] * R)];
+  const hero = L(T.hero), regions = T.galleries.map(L);
+  const m = n - 1, total = regions.reduce((s, g) => s + rectArea(g), 0);
+  const counts = regions.map(g => Math.max(1, Math.floor(m * rectArea(g) / total)));
   let assigned = counts.reduce((s, c) => s + c, 0);
-  while (assigned < m) { let best = 0, bs = -1; regions.forEach((r, i) => { const s = rectArea(r) / counts[i]; if (s > bs) { bs = s; best = i; } }); counts[best]++; assigned++; }
-  while (assigned > m) { let best = -1, bs = Infinity; regions.forEach((r, i) => { if (counts[i] > 1) { const s = rectArea(r) / counts[i]; if (s < bs) { bs = s; best = i; } } }); if (best < 0) break; counts[best]--; assigned--; }
-  // a cell edge that lands within a quarter of a lattice unit of a cut the
-  // page already has takes that cut: a near miss would slice every block it
-  // crosses into a hair-thin sub-cell, a site with next to no ground to hold
-  const SNAP = 0.25, cutsX = xs.slice(), cutsY = ys.slice();
-  const snap = (v, cuts, span) => {
-    let best = v, bd = Infinity;
-    for (const c of cuts) { const d = Math.abs(c - v); if (d < bd) { bd = d; best = c; } }
-    if (bd <= Math.min(SNAP, 0.3 * span)) return best;
-    cuts.push(v); return v;
+  while (assigned < m) { let best = 0, bs = -1; regions.forEach((g, i) => { const s = rectArea(g) / counts[i]; if (s > bs) { bs = s; best = i; } }); counts[best]++; assigned++; }
+  while (assigned > m) { let best = -1, bs = Infinity; regions.forEach((g, i) => { if (counts[i] > 1) { const s = rectArea(g) / counts[i]; if (s < bs) { bs = s; best = i; } } }); if (best < 0) break; counts[best]--; assigned--; }
+  const cards = [];
+  regions.forEach((g, i) => cards.push(...portalCards(g, counts[i])));
+  const voids = [];
+  if (T.text) { const t = L(T.text); t.portalText = true; voids.push(t); }
+  for (const f of T.margins || []) voids.push(L(f));
+  return { content: [hero, ...cards], voids };
+}
+// THE VOID, EXACT. As the Hero scene's: the cells' weights are solved for
+// their rectangles' areas with the voids cut out of the domain, one solve per
+// pocket the voids leave; then every cell the solve puts against a void's
+// edge is mirrored across that edge into the void, at the weight that makes
+// the two tie exactly along the edge's whole line. The mirrors tile the
+// void; their seams with one another meet the edge where the cells' own
+// seams do; a cell that does not touch the void has the higher power all
+// along it. Nothing else is inside the void, so it is drawn exactly. Rest
+// targets only: the live auction, motion and one-site content bodies remain
+// as they are, and the auction is handed the solve's areas, which are the
+// rectangles' own.
+function portalOutline(rects) {
+  // the outline of a set of rectangles that tile a region: their directed
+  // edges, split at every corner they pass, with the shared ones cancelled
+  const E = 1e-6, xs = [...new Set(rects.flatMap(r => [r[0], r[2]]))].sort((p, q) => p - q), ys = [...new Set(rects.flatMap(r => [r[1], r[3]]))].sort((p, q) => p - q);
+  const segs = new Map(), key = (p, q) => p.join(',') + '>' + q.join(',');
+  const put = (p, q) => { const back = key(q, p); if (segs.has(back)) segs.delete(back); else segs.set(key(p, q), [p, q]); };
+  const run = (p, q, axis, cuts) => {
+    const lo = Math.min(p[axis], q[axis]), hi = Math.max(p[axis], q[axis]), inner = cuts.filter(c => c > lo + E && c < hi - E);
+    const pts = [p, ...(p[axis] < q[axis] ? inner : inner.slice().reverse()).map(c => axis ? [p[0], c] : [c, p[1]]), q];
+    for (let i = 0; i + 1 < pts.length; i++) put(pts[i], pts[i + 1]);
   };
-  const cells = [];
-  regions.forEach((r, i) => {
-    const k = counts[i], w = r[2] - r[0], h = r[3] - r[1];
-    let rows = 1, bs = Infinity;
-    for (let q = 1; q <= k; q++) { const cols = Math.ceil(k / q), score = Math.abs(Math.log((w / cols) / (h / q))) + 0.1 * (q * cols - k); if (score < bs) { bs = score; rows = q; } }
-    const base = Math.floor(k / rows), extra = k - base * rows;
-    for (let row = 0; row < rows; row++) {
-      const cols = base + (row < extra ? 1 : 0), y0 = snap(r6(r[1] + h * row / rows), cutsY, h / rows), y1 = snap(r6(r[1] + h * (row + 1) / rows), cutsY, h / rows);
-      for (let col = 0; col < cols; col++) cells.push([snap(r6(r[0] + w * col / cols), cutsX, w / cols), y0, snap(r6(r[0] + w * (col + 1) / cols), cutsX, w / cols), y1]);
+  for (const r of rects) { run([r[0], r[1]], [r[2], r[1]], 0, xs); run([r[2], r[1]], [r[2], r[3]], 1, ys); run([r[2], r[3]], [r[0], r[3]], 0, xs); run([r[0], r[3]], [r[0], r[1]], 1, ys); }
+  const byStart = new Map(); for (const [p, q] of segs.values()) byStart.set(p.join(','), q);
+  let best = null;
+  const seen = new Set();
+  for (const [p] of segs.values()) {
+    const k0 = p.join(','); if (seen.has(k0)) continue;
+    const loop = []; let cur = p;
+    while (cur && !seen.has(cur.join(','))) { seen.add(cur.join(',')); loop.push(cur); cur = byStart.get(cur.join(',')); }
+    if (!best || Math.abs(ringArea(loop)) > Math.abs(ringArea(best))) best = loop;
+  }
+  return best;
+}
+function portalDecorate(content, voids, W, H, C, R) {
+  const PW = W / C, PH = H / R, E = 1e-6, px = r => [r[0] * PW, r[1] * PH, r[2] * PW, r[3] * PH];
+  const rects = content.map(px), vr = voids.map(px), n = rects.length;
+  const seeds = rects.map(r => [(r[0] + r[2]) / 2, (r[1] + r[3]) / 2]), weights = new Array(n).fill(0);
+  // the pockets: cells grouped by the edges they share
+  const parent = rects.map((_, i) => i), find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));
+  const touch = (p, q) => ((Math.abs(p[2] - q[0]) < E || Math.abs(p[0] - q[2]) < E) && Math.min(p[3], q[3]) - Math.max(p[1], q[1]) > E) || ((Math.abs(p[3] - q[1]) < E || Math.abs(p[1] - q[3]) < E) && Math.min(p[2], q[2]) - Math.max(p[0], q[0]) > E);
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) if (touch(rects[i], rects[j])) parent[find(i)] = find(j);
+  const pockets = new Map(); for (let i = 0; i < n; i++) { const k = find(i); if (!pockets.has(k)) pockets.set(k, []); pockets.get(k).push(i); }
+  const mirrors = voids.map(() => []);   // per void: [x, y, weight]
+  for (const idx of pockets.values()) {
+    const poly = portalOutline(idx.map(i => rects[i]));
+    const ref = idx.length === 1 ? null : solveWeights(idx.map(i => seeds[i]), idx.map(i => (rects[i][2] - rects[i][0]) * (rects[i][3] - rects[i][1])), poly, null, { maxIter: 60, tol: 1e-9 });
+    const cells = ref ? ref.diagram.cells : [{ pts: poly }];
+    idx.forEach((i, k) => weights[i] = ref ? ref.weights[k] : 0);
+    // the contacts: a cell's edge lying on a void's edge. The pocket's gauge
+    // puts the mean power at the contacts' midpoints at zero, and a mirror
+    // sits close behind its edge: a cell's power varies along its edge by
+    // the square of half the edge's length, and the mirrors from the void's
+    // far side must stay above that all along it, which they do when the
+    // void is at least that half-length deep and the mirrors sit close
+    const contacts = [];
+    idx.forEach((i, k) => {
+      const pts = cells[k].pts;
+      for (let e = 0; e < pts.length; e++) {
+        const p = pts[e], q = pts[(e + 1) % pts.length];
+        if (Math.hypot(q[0] - p[0], q[1] - p[1]) < 1e-5) continue;
+        vr.forEach((v, vi) => {
+          const on = (c, lo, hi, ax) => Math.abs(p[ax] - c) < 1e-5 && Math.abs(q[ax] - c) < 1e-5 && Math.min(p[1 - ax], q[1 - ax]) > lo - 1e-5 && Math.max(p[1 - ax], q[1 - ax]) < hi + 1e-5;
+          let side = null;
+          if (on(v[0], v[1], v[3], 0)) side = 'left'; else if (on(v[2], v[1], v[3], 0)) side = 'right'; else if (on(v[1], v[0], v[2], 1)) side = 'top'; else if (on(v[3], v[0], v[2], 1)) side = 'bottom';
+          if (side && !contacts.some(c => c.i === i && c.vi === vi && c.side === side)) contacts.push({ i, vi, side, mid: [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2] });
+        });
+      }
+    });
+    if (contacts.length) {
+      let mean = 0;
+      for (const c of contacts) mean += (c.mid[0] - seeds[c.i][0]) ** 2 + (c.mid[1] - seeds[c.i][1]) ** 2 - weights[c.i];
+      mean /= contacts.length;
+      for (const i of idx) weights[i] += mean;
     }
+    for (const c of contacts) {
+      const v = vr[c.vi], s = seeds[c.i], w = weights[c.i];
+      let d, g, x, y;
+      if (c.side === 'left') { d = v[0] - s[0]; g = Math.min(d, 0.03 * (v[2] - v[0])); x = v[0] + g; y = s[1]; }
+      else if (c.side === 'right') { d = s[0] - v[2]; g = Math.min(d, 0.03 * (v[2] - v[0])); x = v[2] - g; y = s[1]; }
+      else if (c.side === 'top') { d = v[1] - s[1]; g = Math.min(d, 0.03 * (v[3] - v[1])); x = s[0]; y = v[1] + g; }
+      else { d = s[1] - v[3]; g = Math.min(d, 0.03 * (v[3] - v[1])); x = s[0]; y = v[3] - g; }
+      mirrors[c.vi].push([x, y, w + g * g - d * d]);
+    }
+  }
+  // one site where two adjacent voids mirror the same cell across the same
+  // line: it goes to the void it stands in, and is counted once
+  const near = (p, q) => Math.abs(p[0] - q[0]) < 1e-6 && Math.abs(p[1] - q[1]) < 1e-6 && Math.abs(p[2] - q[2]) < 1e-6;
+  const inside = (m, v) => m[0] > v[0] - 1e-6 && m[0] < v[2] + 1e-6 && m[1] > v[1] - 1e-6 && m[1] < v[3] + 1e-6;
+  mirrors.forEach((list, vi) => { mirrors[vi] = list.filter(m => !mirrors.some((other, vj) => vj !== vi && other.some(o => near(o, m)) && (inside(m, vr[vj]) && !inside(m, vr[vi]) || (vj < vi && inside(m, vr[vj]) === inside(m, vr[vi]))))); });
+  const allSeeds = seeds.slice(), allWeights = weights.slice(), owned = [];
+  mirrors.forEach(list => { const s0 = allSeeds.length; for (const [x, y, w] of list) { allSeeds.push([x, y]); allWeights.push(w); } owned.push([s0, allSeeds.length]); });
+  const d = computeDiagram(allSeeds, allWeights, [[0, 0], [W, 0], [W, H], [0, H]]);
+  const rows = content.map((r, i) => { const q = r.slice(); q.mfArea = d.areas[i] / (PW * PH); q.mfSeed = [seeds[i][0] / PW, seeds[i][1] / PH]; q.mfRest = true; return q; });
+  const vs = voids.map((v, k) => {
+    const q = v.slice(), cx = (v[0] + v[2]) / 2, cy = (v[1] + v[3]) / 2;
+    q.mfSites = [];
+    for (let i = owned[k][0]; i < owned[k][1]; i++) if (d.areas[i] > 1e-6) q.mfSites.push({ x: allSeeds[i][0] / PW - cx, y: allSeeds[i][1] / PH - cy, q: d.areas[i] / (PW * PH) });
+    q.mfArea = q.mfSites.reduce((s, p) => s + p.q, 0);   // its claim: what its sites hold, which adjacent voids may share
+    q.mfKey = JSON.stringify(q.mfSites); q.mfRest = true; if (v.portalText) q.portalText = true;
+    return q;
   });
-  const content = [image, ...cells], voids = text ? [text] : [];
-  const X = new Set(), Y = new Set();
-  for (const r of content.concat(voids)) { X.add(r[0]); X.add(r[2]); Y.add(r[1]); Y.add(r[3]); }
-  const xcut = [...X].sort((a, b) => a - b), ycut = [...Y].sort((a, b) => a - b), E = 1e-9;
-  const sites = r => {
-    const cx = (r[0] + r[2]) / 2, cy = (r[1] + r[3]) / 2, out = [];
-    for (let i = 0; i + 1 < xcut.length; i++) {
-      const x0 = xcut[i], x1 = xcut[i + 1]; if (x0 < r[0] - E || x1 > r[2] + E) continue;
-      for (let j = 0; j + 1 < ycut.length; j++) { const y0 = ycut[j], y1 = ycut[j + 1]; if (y0 < r[1] - E || y1 > r[3] + E) continue; out.push({ x: (x0 + x1) / 2 - cx, y: (y0 + y1) / 2 - cy, q: (x1 - x0) * (y1 - y0) }); }
-    }
-    return out;
-  };
-  const dress = r => { const q = r.slice(); q.mfSites = sites(q); q.mfKey = JSON.stringify(q.mfSites); q.mfRest = true; return q; };
-  return { focus: true, content: content.map(dress), voids: voids.map(dress) };
+  return { content: rows, voids: vs, seeds: allSeeds, weights: allWeights, owned };
+}
+const portalCache = new Map();
+function portalScene(h, name, n) {
+  const key = [name, h.COLS, h.ROWS, n, h.W, h.H].join('|');
+  if (portalCache.has(key)) return portalCache.get(key);
+  const p = portalPage(PORTAL_TEMPLATES[name], h.COLS, h.ROWS, n, h.W, h.H), s = portalDecorate(p.content, p.voids, h.W, h.H, h.COLS, h.ROWS);
+  portalCache.set(key, s); if (portalCache.size > 24) portalCache.delete(portalCache.keys().next().value);
+  return s;
 }
 function portalPin(content, gotS, name) {
   if (!portalFocus || !(name in PORTAL_TEMPLATES)) return;
@@ -1061,7 +1168,7 @@ const scenes = {
     return { content: distribute(ring, n, 4), voids: [[2, 1, C - 2, R - 1]] };
   },
 };
-for (const kind of Object.keys(PORTAL_TEMPLATES)) scenes[kind] = (C, R, n) => portalGrid(PORTAL_TEMPLATES[kind], C, R, n);   // PORTAL page kinds
+for (const kind of Object.keys(PORTAL_TEMPLATES)) scenes[kind] = (C, R, n) => portalPage(PORTAL_TEMPLATES[kind], C, R, n, root.W, root.H);   // PORTAL page kinds
 
 
 /* ============================================================== GARMENT
@@ -1870,7 +1977,7 @@ class Hive {
     // on retirement or resizing the page must not erase that geometry while
     // the void still owns area. plSeamSites places and funds these same sites
     // until the existing claim ledger has drained and reap removes the body.
-    if (this.depth === 0 && b.plCurrent && (b.isVoid || b.plCurrent.length > 1)) return;   // PORTAL: a block keeps its sites too
+    if (this.depth === 0 && b.isVoid && b.plCurrent) return;
     b.subs.length = 1;
   }
 
@@ -2040,7 +2147,7 @@ class Hive {
     this.serial++;
     const salt = 40 + this.serial;
     const content = this.bodies.filter(b => !b.isVoid && !b.leaving && !b.isSelf);
-    const spec = this.depth===0 && (name==='hero'||name==='frame') ? mfScene(this,name,content.length) : scenes[name] ? scenes[name](this.COLS, this.ROWS, content.length) : null;
+    const spec = this.depth===0 && (name==='hero'||name==='frame') ? mfScene(this,name,content.length) : this.depth===0 && (name in PORTAL_TEMPLATES) ? portalScene(this,name,content.length) : scenes[name] ? scenes[name](this.COLS, this.ROWS, content.length) : null;   // PORTAL: a page is an authored rest diagram too
     const pending = this.bodies.filter(b => b.pendingRetire);
     for (const b of pending) b.pendingRetire = false;
 
@@ -4034,7 +4141,7 @@ function portalProseStep(ctx, type, dt, t) {
   let v = null;
   const T = portalFocus && PORTAL_TEMPLATES[config.scene];
   if (T && T.text)
-    for (const b of root.bodies) if (b.isVoid && !b.leaving && b.rect && b.crystal >= 0.99 && (!v || rectArea(b.rect) > rectArea(v.rect))) v = b;
+    for (const b of root.bodies) if (b.isVoid && !b.leaving && b.rect && b.rect.portalText && b.crystal >= 0.99) v = b;
   p.alpha += ((v ? 1 : 0) - p.alpha) * (1 - Math.exp(-el / (v ? 0.30 : 0.08)));
   if (!v || p.alpha < 0.01) return;
   const q = v.rect, r = [q[0] * root.PW, q[1] * root.PH, q[2] * root.PW, q[3] * root.PH], pad = Math.max(16, Math.min(48, 0.024 * W));
@@ -4046,7 +4153,8 @@ function portalProseStep(ctx, type, dt, t) {
   // in the gutter: half the padding in from the seam, so the line sits
   // between the text's margin and the neighbouring cards' ink
   const g = Math.round(pad / 2) + 0.5;
-  for (const e of T.rules) {
+  const rules = (W < H ? PORTAL_PORTRAIT.text : T).rules;
+  for (const e of rules) {
     if (e === 'left') { ctx.moveTo(r[0] + g, r[1] + pad); ctx.lineTo(r[0] + g, r[3] - pad); }
     if (e === 'right') { ctx.moveTo(r[2] - g, r[1] + pad); ctx.lineTo(r[2] - g, r[3] - pad); }
     if (e === 'top') { ctx.moveTo(r[0] + pad, r[1] + g); ctx.lineTo(r[2] - pad, r[1] + g); }
@@ -4079,8 +4187,13 @@ function portalCaption(ctx, pts, loops, c, type, alpha) {
   for (const p of pts) { if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] > y1) y1 = p[1]; }
   const pad = Math.max(config.cornerRadius + 8, Math.min(40, 0.02 * W)), title = Math.round(type.num * 0.8), line = Math.max(4, Math.round(type.name * 0.55));
   const width = Math.min(360, 0.5 * (x1 - x0)), h = title + Math.round(line * 2.4);
-  const bx = x0 + pad, by = y1 - pad - h;
-  if (width < 60 || !plaqueBoxFits(pts, loops, bx, by, bx + width, by + h, PLAQUE_MARGIN)) return;
+  if (width < 60) return;
+  // bottom left; where a seam cuts that corner off, a little higher, else
+  // the top left, which a page's image always keeps
+  let y0 = Infinity; for (const p of pts) if (p[1] < y0) y0 = p[1];
+  const bx = x0 + pad; let by = -1;
+  for (const y of [y1 - pad - h, y1 - pad - 2 * h, y0 + pad]) if (plaqueBoxFits(pts, loops, bx, y, bx + width, y + h, PLAQUE_MARGIN)) { by = y; break; }
+  if (by < 0) return;
   ctx.save();
   ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
   ctx.globalAlpha = 0.9 * alpha; ctx.font = `600 ${title}px system-ui, sans-serif`;
@@ -4594,11 +4707,8 @@ Hive.prototype.plSeamSites = function() {
     }
     const over = (a0, a1, b0, b1) => Math.min(a1, b1) - Math.max(a0, b0) > E;
     for (const v of live) {
-      if (v.leaving) continue;
+      if (!v.isVoid || v.leaving) continue;
       const rv = v.formRect || v.rect;
-      // PORTAL: a content block on a page grid carries a site per sub-cell,
-      // the way a manifold void does, so every seam it has is drawn straight
-      if (!v.isVoid) { if (rv && rv.mfSites) v.wvTo = rv.mfSites.map(p => ({ ...p })); continue; }
       const cv = [(rv[0] + rv[2]) / 2, (rv[1] + rv[3]) / 2];
       const target = [];
       for (const c of live) {
@@ -4633,25 +4743,11 @@ Hive.prototype.plSeamSites = function() {
     const u = b.wvU * b.wvU * (3 - 2 * b.wvU);
     const cur = [];
     let sum = 0;
-    // PORTAL: a travelling content block does not carry its formation across
-    // the page. Its sites close to one over the first third of the journey
-    // and open to the destination's over the last stretch, so a cell travels
-    // as one cell and becomes its rectangle as it lands. Whitespace, and a
-    // block re-cut where it stands, keep the slew.
-    const S = v => { v = Math.max(0, Math.min(1, v)); return v * v * (3 - 2 * v); };
-    const journeying = !b.isVoid && b.journey && b.progress < 1;
-    const s1 = journeying ? S(b.progress / 0.35) : 0, s2 = journeying ? S((b.progress - 0.55) / 0.45) : 0;
     for (let i = 0; i < b.wvFrom.length; i++) {
       const a = b.wvFrom[i], z = b.wvTo[i];
-      let p;
-      if (journeying) {
-        const m = { x: 0, y: 0, q: i === 0 ? 1 : WV_SITE_FLOOR };
-        const x1 = a.x + (m.x - a.x) * s1, y1 = a.y + (m.y - a.y) * s1, q1 = a.q + (m.q - a.q) * s1;
-        p = { x: x1 + (z.x - x1) * s2, y: y1 + (z.y - y1) * s2, q: Math.max(WV_SITE_FLOOR, q1 + (z.q - q1) * s2) };
-      } else {
-        p = { x: a.x + (z.x - a.x) * u, y: a.y + (z.y - a.y) * u, q: Math.max(WV_SITE_FLOOR, a.q + (z.q - a.q) * u) };
-      }
-      cur.push(p); sum += p.q;
+      const q = Math.max(WV_SITE_FLOOR, a.q + (z.q - a.q) * u);
+      const p = { x: a.x + (z.x - a.x) * u, y: a.y + (z.y - a.y) * u, q };
+      cur.push(p); sum += q;
     }
     b.plCurrent = cur;
     // placeSeeds already funded the content body's eased hover request.

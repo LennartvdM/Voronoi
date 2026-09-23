@@ -1,7 +1,10 @@
-// Portal adds a click and page grids. Without a click, the real tick must
+// Portal adds a click and page layouts. Without a click, the real tick must
 // produce exactly the same state and the same drawing commands as Plaque;
 // with clicks, every page kind and every behaviour the page promises is
-// checked, whatever the set of kinds is.
+// checked, whatever the set of kinds is: the whitespace is exactly the
+// rectangles it was given, every cell is one convex power cell or a
+// rectangle (the owner's shape rule, never a fractured edge), and the text
+// is set in the reading void.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {loadEngine}=require('./probe.cjs');
 const files=[path.resolve(__dirname,'../../plaque.html'),path.resolve(__dirname,'../../portal.html')];
@@ -53,46 +56,86 @@ function whereIs(st,name){
  if(l.path.length>1){const p=l.path[0].hive.cellPoly(b);let x=0,y=0;for(const q of p){x+=q[0];y+=q[1];}return{b,x:x/p.length,y:y/p.length,field:true};}
  return{b,x:b.caption.x,y:b.caption.y,field:false};
 }
-function isRect(pts,eps=.02){
- let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;for(const p of pts){x0=Math.min(x0,p[0]);y0=Math.min(y0,p[1]);x1=Math.max(x1,p[0]);y1=Math.max(y1,p[1]);}
- const off=pts.filter(p=>Math.min(Math.abs(p[0]-x0),Math.abs(p[0]-x1))>eps&&Math.min(Math.abs(p[1]-y0),Math.abs(p[1]-y1))>eps);
- if(off.length)return{ok:false,why:'vertex off the box '+JSON.stringify(off.map(p=>p.map(v=>+v.toFixed(3))))};
- const a=Math.abs(pts.reduce((q,p,i,arr)=>{const m=arr[(i+1)%arr.length];return q+p[0]*m[1]-m[0]*p[1];},0)/2),box=(x1-x0)*(y1-y0);
- if(Math.abs(a-box)>eps*2*((x1-x0)+(y1-y0)))return{ok:false,why:'area '+a.toFixed(2)+' of box '+box.toFixed(2)};
+const ring=pts=>Math.abs(pts.reduce((q,p,i,a)=>{const m=a[(i+1)%a.length];return q+p[0]*m[1]-m[0]*p[1];},0)/2);
+// THE WHITESPACE IS EXACT: every point of every void's outline lies in the
+// union of the voids' rectangles, and no root cell's vertex lies inside one
+function voidsExact(st,eps=.05){
+ const e=st.e,PW=e.root.PW,PH=e.root.PH;
+ const boxes=e.root.bodies.filter(v=>v.isVoid&&!v.leaving&&v.rect).map(v=>[v.rect[0]*PW,v.rect[1]*PH,v.rect[2]*PW,v.rect[3]*PH]);
+ const inBox=(p,b,d)=>p[0]>b[0]+d&&p[0]<b[2]-d&&p[1]>b[1]+d&&p[1]<b[3]-d;
+ for(const l of st.pic.leaves){
+  if(l.path.length!==1)continue;
+  for(const lp of l.loops)for(const p of lp){
+   if(l.isVoid){if(!boxes.some(b=>inBox(p,b,-eps)))return{ok:false,why:'whitespace outside its rectangles at '+p.map(v=>+v.toFixed(1))};}
+   else if(boxes.some(b=>inBox(p,b,eps)))return{ok:false,why:(l.body.name||'a cell')+' inside the whitespace at '+p.map(v=>+v.toFixed(1))};
+  }
+ }
  return{ok:true,why:''};
+}
+// THE SHAPE RULE (.claude/gauntlet/shape.js): a root content cell is a
+// rectangle, or a convex power cell, cut only where it meets a rigid
+// neighbour or the page's edge. A reflex corner nothing explains is a
+// fracture. Edges under 2 px are counted apart: a three-way junction a hair
+// off, which Plaque's own scenes draw too.
+const clean=lp=>{let a=[];for(const p of lp){const q=a[a.length-1];if(!q||Math.hypot(p[0]-q[0],p[1]-q[1])>0.5)a.push(p);}
+ while(a.length>1&&Math.hypot(a[0][0]-a[a.length-1][0],a[0][1]-a[a.length-1][1])<=0.5)a.pop();if(a.length<3)return a;
+ const out=[];for(let i=0;i<a.length;i++){const p=a[(i+a.length-1)%a.length],c=a[i],q=a[(i+1)%a.length];const ux=c[0]-p[0],uy=c[1]-p[1],vx=q[0]-c[0],vy=q[1]-c[1];if(Math.abs(ux*vy-uy*vx)/(Math.hypot(ux,uy)*Math.hypot(vx,vy))>1e-3)out.push(c);}
+ return out.length>=3?out:a;};
+function shapes(st){
+ const e=st.e,W=e.root.W,H=e.root.H,rigid=[],pic=st.pic;
+ for(const l of pic.leaves)if(l.path.length===1&&(l.body.wall||l.body.hole))for(const lp of l.loops)if(!lp.hole&&lp.length>=3)rigid.push(lp);
+ for(const b of e.root.walls){const q=b.wall;if(q)rigid.push([[q[0],q[1]],[q[2],q[1]],[q[2],q[3]],[q[0],q[3]]]);}
+ for(const b of e.root.holes)if(b.hole&&b.hole.pieces)for(const pc of b.hole.pieces)if(pc.length>=3)rigid.push(pc);
+ const rects=[],leaves=pic.leaves.filter(l=>l.path.length===1&&!l.isVoid),cls=new Map();
+ for(const l of leaves)for(const lp0 of l.loops){if(lp0.hole)continue;const lp=clean(lp0);if(lp.length<3)continue;
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;for(const p of lp){x0=Math.min(x0,p[0]);y0=Math.min(y0,p[1]);x1=Math.max(x1,p[0]);y1=Math.max(y1,p[1]);}
+  const onBox=lp.every(p=>Math.abs(p[0]-x0)<0.5||Math.abs(p[0]-x1)<0.5||Math.abs(p[1]-y0)<0.5||Math.abs(p[1]-y1)<0.5);
+  const axisAll=lp.every((p,i)=>{const q=lp[(i+1)%lp.length];return Math.abs(p[0]-q[0])<0.5||Math.abs(p[1]-q[1])<0.5;});
+  if(onBox&&axisAll&&ring(lp)>=0.995*(x1-x0)*(y1-y0)){rects.push([x0,y0,x1,y1]);cls.set(lp0,{cls:'rectangle',lp});continue;}
+  cls.set(lp0,{cls:axisAll?'notched':null,lp});}
+ const segDist=(p,a,b)=>{const ex=b[0]-a[0],ey=b[1]-a[1],L2=ex*ex+ey*ey||1e-9;let t=((p[0]-a[0])*ex+(p[1]-a[1])*ey)/L2;t=Math.max(0,Math.min(1,t));return Math.hypot(a[0]+t*ex-p[0],a[1]+t*ey-p[1]);};
+ const near=p=>{if(Math.abs(p[0])<1||Math.abs(p[0]-W)<1||Math.abs(p[1])<1||Math.abs(p[1]-H)<1)return true;
+  for(const q of rects){const inX=p[0]>q[0]-1&&p[0]<q[2]+1,inY=p[1]>q[1]-1&&p[1]<q[3]+1;if((Math.abs(p[0]-q[0])<1||Math.abs(p[0]-q[2])<1)&&inY)return true;if((Math.abs(p[1]-q[1])<1||Math.abs(p[1]-q[3])<1)&&inX)return true;}
+  for(const lp of rigid)for(let k=0;k<lp.length;k++)if(segDist(p,lp[k],lp[(k+1)%lp.length])<1)return true;return false;};
+ const out={rectangle:0,notched:0,voronoi:0,cut:0,shortEdged:0,fractured:0,worst:null};
+ for(const l of leaves)for(const lp0 of l.loops){const c=cls.get(lp0);if(!c)continue;const lp=c.lp;
+  if(c.cls==='rectangle'){out.rectangle++;continue;}if(c.cls==='notched'){out.notched++;continue;}
+  const m=lp.length,sgn=Math.sign(lp.reduce((q,p,i,a)=>{const n=a[(i+1)%a.length];return q+p[0]*n[1]-n[0]*p[1];},0))||1;let reflex=0,unexplained=0,shortEdges=0;
+  for(let k=0;k<m;k++){const p=lp[(k+m-1)%m],cpt=lp[k],q=lp[(k+1)%m];const ux=cpt[0]-p[0],uy=cpt[1]-p[1],vx=q[0]-cpt[0],vy=q[1]-cpt[1];const cr=(ux*vy-uy*vx)/(Math.hypot(ux,uy)*Math.hypot(vx,vy)||1);if(Math.hypot(vx,vy)<2)shortEdges++;if(cr*sgn<-1e-3){reflex++;if(!near(cpt))unexplained++;}}
+  if(unexplained||m>24){out.fractured++;out.worst=out.worst||{name:l.body.name,verts:m,reflex,unexplained};}
+  else if(shortEdges)out.shortEdged++;else if(!reflex&&m<=16)out.voronoi++;else out.cut++;}
+ return out;
 }
 function slot0(st){const e=st.e,n=e.root.bodies.filter(b=>!b.isVoid&&!b.leaving&&!b.isSelf).length;return e.scenes[e.config.scene](e.root.COLS,e.root.ROWS,n).content[0];}
 function opened(st,b,label,phone){
  const e=st.e,KINDS=e.kinds(),T=e.templates();assert(e.focus()===b,label+': focus');assert.equal(e.config.scene,KINDS[b.id%KINDS.length],label+': kind');
- st.step(420);
+ // through the change and at rest: never a fractured cell
+ const tally={rectangle:0,notched:0,voronoi:0,cut:0,shortEdged:0,fractured:0};
+ for(let f=0;f<420;f++){st.step(1);const sh=shapes(st);for(const k in tally)tally[k]+=sh[k];assert.equal(sh.fractured,0,label+': a fractured cell '+JSON.stringify(sh.worst)+' at frame '+f);}
  assert(e.rectsEqual(b.rect,slot0(st)),label+': the image did not take the first slot '+JSON.stringify([b.rect,slot0(st)]));
  const roots=rootsOf(st.pic).sort((p,q)=>area(q)-area(p));
  assert(roots[0].body===b,label+': the image is not the largest cell');
  assert(!st.pic.leaves.some(l=>l.path.length>1),label+': a field on a page');
- // the page grid is drawn exactly: every root cell a rectangle. The outline
- // keeps a vertex where a neighbour's seam meets an edge if the auction's
- // last residual left it a hair off the line, so the test is geometric: every
- // vertex on the cell's bounding box, and the cell filling that box
- for(const l of roots){const r=isRect(l.loops[0]);assert(r.ok,label+': a page cell is not a rectangle ('+l.body.name+': '+r.why+')');}
- assert.equal(e.meters().mRect[0],'100%',label+': rect meter '+e.meters().mRect[0]);
- // seams meet within a hairline: the auction's residual at a page's junctions,
- // gap and overlap together, stays under 0.3% of the page
+ // the whitespace is exactly the rectangles it was given; the cells are one
+ // site each; coverage is exact to a hairline of rasterisation
+ const vx=voidsExact(st);assert(vx.ok,label+': '+vx.why);
+ for(const l of roots)assert.equal(l.body.subs.length,1,label+': '+l.body.name+' has '+l.body.subs.length+' sites');
  const px=parseFloat(e.meters().mGap[0])+parseFloat(e.meters().mOver[0]);
  assert(px<=0.003*e.root.W*e.root.H,label+': seam residual '+e.meters().mGap[0]+' gap, '+e.meters().mOver[0]+' overlap');
  const t=T[e.config.scene],texts=e.commands.filter(c=>c[0]==='fillText'&&c[1]===b.name),fills=e.commands.filter(c=>c[0]==='fill').length;
  if(t.text){
   // the text: the title inside the seated reading void with paragraph bars; no label on the image
-  const voids=e.root.bodies.filter(v=>v.isVoid&&!v.leaving&&v.rect&&v.crystal>=.99).sort((p,q)=>(q.rect[2]-q.rect[0])*(q.rect[3]-q.rect[1])-(p.rect[2]-p.rect[0])*(p.rect[3]-p.rect[1]));
-  assert(voids.length,label+': no reading void');const r=voids[0].rect,PW=e.root.PW,PH=e.root.PH;
+  const v=e.root.bodies.find(v=>v.isVoid&&!v.leaving&&v.rect&&v.rect.portalText);
+  assert(v&&v.crystal>=.99,label+': no seated reading void');const r=v.rect,PW=e.root.PW,PH=e.root.PH;
   const inVoid=q=>q[2]>=r[0]*PW&&q[2]<=r[2]*PW&&q[3]>=r[1]*PH&&q[3]<=r[3]*PH;
-  if(!phone){assert(texts.some(inVoid),label+': no title in the reading void');assert(fills>=8,label+': no paragraphs in the reading void');}
+  assert(texts.some(inVoid),label+': no title in the reading void');assert(fills>=8,label+': no paragraphs in the reading void');
   assert(b.caption.alpha<.05,label+': the image still carries its label');
   assert(!texts.some(q=>!inVoid(q)),label+': stray text on the image');
  }else{
   assert(!st.pic.leaves.some(l=>l.isVoid&&l.loops.length),label+': a caption page has whitespace');
   const c=texts.find(q=>q[3]>b.caption.y);assert(c,label+': no caption on the image');assert(fills>=1,label+': no caption line');
  }
- return roots;
+ return{roots,tally,rest:shapes(st)};
 }
 const desk={width:1900,height:810,fields:.55},phone={width:390,height:720,fields:.55};
 const report={kinds:[],home:null,field:null,void:null,interrupted:null,escape:null,hover:null,phone:[]};
@@ -104,8 +147,8 @@ const report={kinds:[],home:null,field:null,void:null,interrupted:null,escape:nu
  for(const k of Object.keys(names).map(Number).sort((a,b)=>a-b)){
   const s=fresh(desk),w=whereIs(s,names[k]);
   assert(s.e.click(w.x,w.y),'click missed '+names[k]);
-  const roots=opened(s,w.b,KINDS[k]);
-  report.kinds.push({kind:KINDS[k],cell:names[k],imageShare:+(area(roots[0])/(1900*810)).toFixed(3),smallestCard:+(area(roots[roots.length-1])/(1900*810)).toFixed(4),rect:s.e.meters().mRect[0],gap:s.e.meters().mGap[0]});
+  const {roots,tally,rest}=opened(s,w.b,KINDS[k]);
+  report.kinds.push({kind:KINDS[k],cell:names[k],imageShare:+(area(roots[0])/(1900*810)).toFixed(3),smallestCard:+(area(roots[roots.length-1])/(1900*810)).toFixed(4),rest:{rectangle:rest.rectangle,voronoi:rest.voronoi,cut:rest.cut,shortEdged:rest.shortEdged},transition:tally,gap:s.e.meters().mGap[0]});
   if(first){first=false;
    // the image, clicked, goes home; every root cell is numbered again
    const l=s.pic.leaves.find(l=>l.body===w.b);let x=0,y=0;for(const p of l.loops[0]){x+=p[0];y+=p[1];}x/=l.loops[0].length;y/=l.loops[0].length;
@@ -143,21 +186,21 @@ const report={kinds:[],home:null,field:null,void:null,interrupted:null,escape:nu
  const l=s.pic.leaves.find(l=>l.body===a);let x=0,y=0;for(const p of l.loops[0]){x+=p[0];y+=p[1];}x/=l.loops[0].length;y/=l.loops[0].length;
  s.e.pointer(x,y);s.step(60);assert(s.e.root.hoveredId!==a.id&&a.hoverMix<.05,'the image hovered');
  const other=rootsOf(s.pic).find(q=>q.body!==a).body;s.e.pointer(other.caption.x,other.caption.y);s.step(60);assert.equal(s.e.root.hoveredId,other.id,'a card beside the image did not hover');
- s.e.pointer(-1e9,-1e9);s.step(180);assert.equal(s.e.meters().mRect[0],'100%','the page did not recover from hover');
+ s.e.pointer(-1e9,-1e9);s.step(180);{const v=voidsExact(s);assert(v.ok,'the page did not recover from hover: '+v.why);}
  report.hover={imageHoverMix:+a.hoverMix.toFixed(3),cardHovered:other.name};
 }
 { // add and remove a cell on an open page: the image keeps its slot, the grid stays exact
  const s=fresh(desk),rs=rootsOf(s.pic),a=rs[0].body;assert(s.e.click(a.caption.x,a.caption.y));s.step(420);
- s.e.root.addBody();s.step(360);assert(s.e.rectsEqual(a.rect,slot0(s)),'the image lost its slot after add');assert.equal(s.e.meters().mRect[0],'100%','not exact after add');
- s.e.root.removeBody();s.step(360);assert(s.e.rectsEqual(a.rect,slot0(s)),'the image lost its slot after remove');assert.equal(s.e.meters().mRect[0],'100%','not exact after remove');
+ s.e.root.addBody();s.step(360);assert(s.e.rectsEqual(a.rect,slot0(s)),'the image lost its slot after add');{const v=voidsExact(s);assert(v.ok,'not exact after add: '+v.why);}
+ s.e.root.removeBody();s.step(360);assert(s.e.rectsEqual(a.rect,slot0(s)),'the image lost its slot after remove');{const v=voidsExact(s);assert(v.ok,'not exact after remove: '+v.why);}
 }
-{ // a phone: every kind opens the same way; a reading column under 90 px gets no text
+{ // a phone: every kind opens the same way, stacked, its text set full width
  const st=fresh(phone),KINDS=st.e.kinds(),names={};
  for(const b of st.e.root.bodies)if(!b.isVoid&&!b.isSelf&&b.name&&!(b.id%KINDS.length in names))names[b.id%KINDS.length]=b.name;
  for(const k of Object.keys(names).map(Number).sort((a,b)=>a-b)){
-  const s=fresh(phone),w=whereIs(s,names[k]);assert(s.e.click(w.x,w.y),'phone click missed '+names[k]);opened(s,w.b,'phone '+KINDS[k],true);
-  report.phone.push({kind:KINDS[k],rect:s.e.meters().mRect[0]});
+  const s=fresh(phone),w=whereIs(s,names[k]);assert(s.e.click(w.x,w.y),'phone click missed '+names[k]);const o=opened(s,w.b,'phone '+KINDS[k],true);
+  report.phone.push({kind:KINDS[k],rest:{rectangle:o.rest.rectangle,voronoi:o.rest.voronoi,shortEdged:o.rest.shortEdged}});
  }
 }
-const result={scope:'Real full tick; native Canvas and browser DOM stubbed. Without a click, state and every drawing command must exactly match Plaque; with clicks, every page kind is drawn as an exact rectangular grid with its text in the reading void, and every click behaviour is asserted.',hashes:files.map(f=>({file:path.basename(f),sha256:hash(fs.readFileSync(f))})),matrix,totalFrames:total,drawingCommands:commandsTotal,clicks:report};
+const result={scope:'Real full tick; native Canvas and browser DOM stubbed. Without a click, state and every drawing command must exactly match Plaque; with clicks, every page kind opens with its whitespace exactly the rectangles it was given, every cell one site and never fractured, its text in the reading void, and every click behaviour is asserted.',hashes:files.map(f=>({file:path.basename(f),sha256:hash(fs.readFileSync(f))})),matrix,totalFrames:total,drawingCommands:commandsTotal,clicks:report};
 fs.writeFileSync(path.join(__dirname,'validation.json'),JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify({totalFrames:total,drawingCommands:commandsTotal,clicks:report}));

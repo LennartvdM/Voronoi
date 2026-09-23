@@ -19,84 +19,80 @@ the clicked cell, pinned to the scene's first slot. A **gallery** of the
 other cells to browse. The cells are meant to carry photographs, so text on
 top of them is a caption at most; the reading lives in the whitespace.
 
-## The page grid
+## The page
 
-A page is a rectangular partition of the lattice, written as a template in
-fractions of the page:
+A page is a claim table, like the engine's own scenes: every cell one site
+with a rectangle as its destination and its claim, the text a void. Cells
+are convex power cells, straight where they meet the whitespace or the
+page and organic where they meet each other. That is the rule this
+repository's marks have kept since Bleed, and the one Caption keeps: a cell
+is either an axis-aligned rectangle or a convex Voronoi cell of a point
+site, cut straight where it meets a rectangle or the page's edge, and an
+edge fractured beyond what fitting requires is a fault. No cell here has a
+lattice of sites; nothing is subdivided.
 
-```
-folio: { cols: [0.24, 0.46, 0.30], rows: [1],
-         image: [1, 0, 2, 1], text: [0, 0, 1, 1], gallery: [[2, 0, 3, 1]], rules: ['right'] }
-```
+**The whitespace is exact by construction**, the way the Hero and Frame
+scenes' voids are. The cells' weights are solved for their rectangles'
+areas with the voids cut out of the domain, one solve per pocket the voids
+leave. Then every cell the solve puts against a void's edge is mirrored
+across that edge into the void, at the weight that makes the pair tie
+exactly along the edge's whole line. The mirrors tile the void; their seams
+with one another meet the edge where the cells' own seams do; a cell that
+does not touch the void has the higher power all along it. Nothing else is
+inside the void, so it is drawn as its rectangle, and the auction is handed
+that diagram's areas, which are the rectangles' own. The engine change is
+one line: a page kind is dispatched to its authored rest diagram as the
+Hero and Frame scenes are.
 
-`image` is the hero block, `text` the reading void (or `null` for a
-full-cell page), `gallery` the regions the other cells are cut into as rows
-of rectangular cards, and `rules` the edges of the text block that get a
-hairline. The blocks must partition the grid.
+Two rules make that hold, and the templates keep them:
 
-The engine draws root cells as free bodies in a power diagram, so a cell is
-a rectangle only where its neighbours' seeds line up with its own. A void
-already gets one seed per neighbouring cell so that its seams come out
-straight (the Plumb and Weave lineage). Portal extends that to content: every
-block is subdivided by the union of the page's cut lines and carries one
-site per sub-cell. Adjacent sub-cells across any seam then share an extent,
-and the power diagram at rest **is** the partition: every seam straight,
-every cell a rectangle, on every page kind, at every count. The engine
-change is three lines: a content body with sites on its rest rectangle takes
-them as its formation, and keeps them when its formation is refreshed.
+- **A void's corners are page corners, or another void's.** A cell that met
+  a void at a corner of it would need the mirrors across two edges to
+  agree, and a single site's power varies along its own edge by the square
+  of half that edge's length; nothing makes them agree.
+- **The cards that touch the hero stand beside its short edge, far across
+  from its centre.** A seam between two cells is square to the line
+  between their sites, so a card offset far along the hero's edge and close
+  across it is a wedge. Where the hero meets only whitespace and the page,
+  it is a rectangle.
 
-In transit a block does not carry its formation across the page. Its sites
-close to one over the first 35% of its journey and open to the
-destination's over the last 45%, so a cell travels as one cell and becomes
-its rectangle as it lands; a fan of sub-cells would otherwise streak behind
-it. Whitespace, and a block re-cut where it stands, keep the slew Plumb
-gave them.
-
-The meters report a few hundred px² of gap or overlap on a settled page.
-That is rasterisation of exact seams, not geometry: a pixel sampler finds
-no overlap anywhere and "gaps" only on points lying exactly on cut lines
-that fall on integer pixels. `validate.cjs` allows a residual under 0.3% of
-the page and asserts the rectangles directly.
+A pocket's weights are gauged so the mean power at its contacts with the
+whitespace is zero, and a mirror sits close behind its edge: a cell's power
+along its edge varies by the square of half the edge's length, and the
+mirrors from a void's far side must stay above that all along it, which
+they do when the void is at least that half-length deep or ends at the
+page. The spread's reading column widens on a squarer screen for that
+reason. In portrait every kind stacks: the image, its text, the cards.
 
 ## The kinds
 
 A cell's kind is its id modulo the number of kinds, so pages repeat without
-being unique. The set is in `PORTAL_TEMPLATES` in the builder. Eight kinds,
-each a different answer to where the reading goes, where the picture goes
-and how the rest is browsed:
+being unique. The set is in `PORTAL_TEMPLATES` in the builder:
 
-- **Spread**: the image a full-height column on the left, the text top
-  right, the cards in a column at the far right and a row underneath the
-  text. Rules right and below the text. A magazine opening.
-- **Folio**: text, image, cards, left to right in one band. The reading
-  column is the page's margin; a rule on its right.
-- **Showcase**: the image centred with a thin column of cards on its left,
-  the text on its right and a row of cards across the bottom. Rules left
-  and below the text. A product page.
-- **Wall**: the image the left three fifths, top to bottom; the text above
-  a block of cards on the right. One rule under the text. A gallery wall.
-- **Interview**: the text top left in two columns, the image the right
-  column, cards under the text and under the image. A rule under the text.
-- **Documentation**: a narrow column of cards on the left, the text a wide
-  middle column, the image top right over a block of cards. Rules on both
-  sides of the text. A manual.
-- **Essay**: the image centred at the top, the text centred under it,
-  cards in the margins on both sides and a row along the bottom. Rules
-  above and below the text. A long read.
-- **Caption**: no text block at all. The image fills the page but for one
-  column of cards on the right, with its title and one line set in its own
-  bottom-left corner. Enough for a picture that only needs a caption.
+- **Spread**: the image a full-height column on the left, the text a
+  column beside it, the cards a grid down the right. The image is a
+  rectangle. A magazine opening.
+- **Folio**: text, image, cards, left to right. The reading column is the
+  page's margin.
+- **Showcase**: a column of thumbnails, the image, the text at the right.
+  A product page.
+- **Band**: the image top left with cards beside it, the text a band across
+  the bottom, in two columns.
+- **Lead**: the text a band across the top, the image and the cards below
+  it. A headline and standfirst over the picture.
+- **Documentation**: a grid of cards, the text, the image, in three
+  columns. The image is a rectangle. A manual.
+- **Essay**: the image centred at the top with thumbnails at its sides,
+  the text centred under it between white margins. The image is a
+  rectangle. A long read.
+- **Caption**: no text block. The image fills the page but for one column
+  of cards, its title and one line set in its own corner. Enough for a
+  picture that only needs a caption.
 
-Spread, Showcase, Wall, Interview and Documentation came out of a judged
-panel of ten designs (thirty scores on a settled screenshot and the lab's
-metrics); Folio, Essay and Caption were added by hand for the shapes the
-panel lacked: a plain band, a centred read and a picture alone. Near
-duplicates (a newspaper, a catalogue, a landing page) were dropped.
-
-Gallery regions are cut into rows of cards, the rows chosen for the
-squarest card. A card edge that lands within a quarter of a lattice unit
-of a cut the page already has takes that cut, so no block is sliced into a
-hair-thin sub-cell by a near miss.
+Five of these came out of a judged panel of ten designs and were then
+re-cut to the two rules; the rest were added for the shapes the panel
+lacked. Rules are 1 px hairlines at 22% white along the chosen edges of
+the text block, drawn in the gap. Style only; nothing reads them.
 
 ## Visible change
 
@@ -107,14 +103,14 @@ hair-thin sub-cell by a near miss.
   is open; the browsing cards stay cards.
 - **The image carries no label** on a page with text: its title is set in
   the reading void beside it. On a full-cell page the title and one line sit
-  in the image's bottom-left corner. The image does not hover; the cards
-  beside it do, and the page recovers.
+  in the image's bottom-left corner, or a little higher where a seam cuts
+  that corner off. The image does not hover; the cards beside it do, and
+  the page recovers.
 - **The text fades in with its void**: the image's name as a title with a
   short rule under it, and its paragraphs as bars, in one measure or in two
-  columns when the block is a band wider than two measures. A reading column
-  narrower than 90 px (a phone) gets no text.
-- **Rules**: 1 px hairlines at 22% white along the chosen edges of the text
-  block, drawn in the gap. Style only; nothing reads them.
+  columns when the block is a band wider than two measures and the first
+  column runs out. On a phone the page stacks and the text is set full
+  width.
 - **Home**: click the image, or press Escape. A scene button also leaves any
   open page. Whitespace is not a cell; a press that moved more than 6 px or
   lasted over half a second is not a click.
@@ -131,23 +127,31 @@ hint sits beside the back link.
   crossings, hover, interrupted changes, Organic and Grid fields, add/remove
   and resize, at 120 Hz, 60 Hz, 30 ms and 50 ms.
 - With clicks, at 1900 x 810 with fields at 55%, for every kind: the page
-  opens from its cell; seven seconds on, the clicked cell's rect is the
-  scene's first slot, it is the largest cell, no cell is a field, every root
-  cell is a rectangle (every vertex on its bounding box, and the box
-  filled), the rect meter reads 100%, and the seam residual is under 0.3%. On a page with text the title is drawn inside the
-  seated reading void with paragraph bars, the image carries no label and no
-  stray text; on a full-cell page there is no whitespace and the caption is
-  drawn below the image's centre.
+  opens from its cell; on every one of the seven seconds' frames through the
+  change and at rest, no root cell is fractured by the shape lens's rule
+  (`.claude/gauntlet/shape.js`: a reflex corner no rigid neighbour or page
+  edge explains); at rest the clicked cell's rect is the scene's first
+  slot, it is the largest cell, no cell is a field, every cell has one
+  site, every point of the whitespace's outline lies in the rectangles the
+  whitespace was given and no cell's vertex lies inside them, and the seam
+  residual is under 0.3%. On a page with text the title is drawn inside the
+  seated reading void with paragraph bars, the image carries no label and
+  no stray text; on a full-cell page there is no whitespace and the caption
+  is drawn below the image's centre.
 - Clicking the image returns to Bento with every root cell numbered. A
   member's click opens its field as one card. A click on the reading void
   does nothing. A click 0.3 s into a change wins the change. `home()`
   (Escape) returns to Bento. The image does not hover, a card beside it
-  does, and the grid is exact again after the pointer leaves. Adding and
-  removing a cell on an open page keeps the image in its slot and the grid
-  exact. At 390 x 720 every kind opens the same way.
+  does, and the whitespace is exact again after the pointer leaves. Adding
+  and removing a cell on an open page keeps the image in its slot and the
+  whitespace exact. At 390 x 720 every kind opens the same way, stacked,
+  with its text set full width.
+
+Edges under 2 px, a three-way junction a hair off, are counted apart from
+fractures and reported: Plaque's own scenes draw them too.
 
 There is no benchmark: a page carries a few more seeds than a scene (one
-per sub-cell), the same order as a field's members.
+mirror per cell against the whitespace), the same order as the Hero scene's.
 
 ## Reproduce
 
