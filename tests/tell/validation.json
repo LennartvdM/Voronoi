@@ -1,0 +1,285 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed. Without the Tell button, state and every drawing command must exactly match Reel, a click, a scroll, a drag and home included; with the story, every slide is a page with its column exactly the rectangle it was given, every cell one site and never fractured, the image the cell that volunteered at the slide's place, the text set only once the change has ended and the rules a beat later, a wheel notch of any size turning one slide, a drag and a flick carrying the story on, a slow story snapping to its slide, the story stopping at its ends, and home returning the count.",
+  "hashes": [
+    {
+      "file": "reel.html",
+      "sha256": "62ca63c8af9b3a424b628ee08fd9178275714a58db14a8736f3571b233f1fcf3"
+    },
+    {
+      "file": "tell.html",
+      "sha256": "be1224debcc185776c3492133160d15a665adbe042341147191b52aa2cd40ebc"
+    }
+  ],
+  "matrix": [
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 16.666666666666668,
+      "inner": "flock",
+      "frames": 3470
+    },
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 24,
+      "fields": 1,
+      "dt": 30,
+      "inner": "bento",
+      "frames": 1939
+    },
+    {
+      "width": 390,
+      "height": 720,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 8.333333333333334,
+      "inner": "flock",
+      "frames": 6940
+    },
+    {
+      "width": 1363,
+      "height": 846,
+      "count": 30,
+      "fields": 0,
+      "dt": 50,
+      "inner": "flock",
+      "frames": 1157
+    }
+  ],
+  "totalFrames": 14836,
+  "drawingCommands": 14103659,
+  "story": {
+    "clickIdentity": {
+      "frames": 1330,
+      "kind": "band"
+    },
+    "start": {
+      "k": 0,
+      "hero": "Coal",
+      "col": "left",
+      "side": "right",
+      "imageShare": 0.209,
+      "rest": {
+        "rectangle": 1,
+        "voronoi": 11,
+        "cut": 0,
+        "shortEdged": 0
+      }
+    },
+    "slides": [
+      {
+        "k": 0,
+        "hero": "Coal",
+        "col": "left",
+        "side": "right",
+        "imageShare": 0.209,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0,
+          "shortEdged": 0
+        }
+      },
+      {
+        "changedAt": 15,
+        "k": 1,
+        "hero": "Aurora",
+        "col": "centre",
+        "side": "left",
+        "imageShare": 0.213,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0,
+          "shortEdged": 0
+        }
+      },
+      {
+        "slide": 3,
+        "k": 3,
+        "hero": "Haze",
+        "col": "centre",
+        "side": "right",
+        "imageShare": 0.209,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0,
+          "shortEdged": 0
+        }
+      },
+      {
+        "k": 4,
+        "hero": "Jazz",
+        "col": "left",
+        "side": "right",
+        "imageShare": 0.209,
+        "rest": {
+          "rectangle": 0,
+          "voronoi": 12,
+          "cut": 0,
+          "shortEdged": 0
+        }
+      },
+      {
+        "k": 5,
+        "hero": "Mint",
+        "col": "right",
+        "side": "left",
+        "imageShare": 0.209,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0,
+          "shortEdged": 0
+        }
+      },
+      {
+        "k": 6,
+        "hero": "Petal",
+        "col": "centre",
+        "side": "left",
+        "imageShare": 0.209,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0,
+          "shortEdged": 0
+        }
+      },
+      {
+        "k": 7,
+        "hero": "Coral",
+        "col": "left",
+        "side": "right",
+        "imageShare": 0.213,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0,
+          "shortEdged": 0
+        }
+      }
+    ],
+    "text": {
+      "endAt": 170,
+      "textAt": 170,
+      "textFull": 233,
+      "ruleAt": 249,
+      "ruleFull": 329
+    },
+    "push": {
+      "changedAt": 15,
+      "k": 1,
+      "hero": "Aurora",
+      "col": "centre",
+      "side": "left",
+      "imageShare": 0.213,
+      "rest": {
+        "rectangle": 2,
+        "voronoi": 10,
+        "cut": 0,
+        "shortEdged": 0
+      }
+    },
+    "drag": {
+      "slide": 3,
+      "k": 3,
+      "hero": "Haze",
+      "col": "centre",
+      "side": "right",
+      "imageShare": 0.209,
+      "rest": {
+        "rectangle": 2,
+        "voronoi": 10,
+        "cut": 0,
+        "shortEdged": 0
+      }
+    },
+    "notch": {
+      "one": 1,
+      "tiny": 1,
+      "back": -1,
+      "threeQuick": 2
+    },
+    "snap": {
+      "short": 0.3,
+      "long": 0.6
+    },
+    "ends": {
+      "last": 7
+    },
+    "back": {
+      "hero": "Coal",
+      "kept": true,
+      "k": 0,
+      "col": "left",
+      "side": "right",
+      "imageShare": 0.209,
+      "rest": {
+        "rectangle": 1,
+        "voronoi": 11,
+        "cut": 0,
+        "shortEdged": 0
+      }
+    },
+    "interrupted": {
+      "turnedAt": 15,
+      "k": 1,
+      "hero": "Dune",
+      "col": "centre",
+      "side": "left",
+      "imageShare": 0.213,
+      "rest": {
+        "rectangle": 2,
+        "voronoi": 10,
+        "cut": 0,
+        "shortEdged": 0
+      }
+    },
+    "home": {
+      "cells": 12,
+      "roots": 6,
+      "numbers": 6
+    },
+    "phone": {
+      "text": {
+        "endAt": 126,
+        "textAt": 126,
+        "textFull": 189,
+        "ruleAt": 205,
+        "ruleFull": 285
+      },
+      "slides": [
+        {
+          "k": 0,
+          "hero": "Coral",
+          "col": "left",
+          "side": "right",
+          "imageShare": 0.18,
+          "rest": {
+            "rectangle": 2,
+            "voronoi": 10,
+            "cut": 0,
+            "shortEdged": 0
+          }
+        },
+        {
+          "k": 1,
+          "hero": "Dune",
+          "col": "centre",
+          "side": "left",
+          "imageShare": 0.18,
+          "rest": {
+            "rectangle": 2,
+            "voronoi": 10,
+            "cut": 0,
+            "shortEdged": 0
+          }
+        }
+      ]
+    }
+  }
+}
