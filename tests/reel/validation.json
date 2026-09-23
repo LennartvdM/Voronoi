@@ -7,7 +7,7 @@
     },
     {
       "file": "reel.html",
-      "sha256": "cb9ce090e110b40756fb99225812bcf9a24b71b6d3f046bced8dafe2a3dbb926"
+      "sha256": "20701f2cf7c8225e102d4e7b8ccb1b7126f2a2e8e835ac4268ed603b14d9d571"
     }
   ],
   "matrix": [
@@ -61,7 +61,7 @@
         "kind": "spread",
         "cell": "Drift",
         "imageShare": 0.42,
-        "smallestCard": 0.0008,
+        "smallestCard": 0.0025,
         "rest": {
           "rectangle": 7,
           "voronoi": 10,
@@ -69,11 +69,11 @@
           "shortEdged": 0
         },
         "transition": {
-          "rectangle": 1755,
+          "rectangle": 1691,
           "notched": 31,
-          "voronoi": 4761,
+          "voronoi": 4769,
           "cut": 0,
-          "shortEdged": 110,
+          "shortEdged": 166,
           "fractured": 0
         },
         "gap": "0px²"
@@ -82,19 +82,19 @@
         "kind": "folio",
         "cell": "Ember",
         "imageShare": 0.46,
-        "smallestCard": 0.0016,
+        "smallestCard": 0.0041,
         "rest": {
-          "rectangle": 1,
-          "voronoi": 16,
+          "rectangle": 0,
+          "voronoi": 17,
           "cut": 0,
           "shortEdged": 0
         },
         "transition": {
-          "rectangle": 283,
+          "rectangle": 162,
           "notched": 0,
-          "voronoi": 6336,
+          "voronoi": 6222,
           "cut": 0,
-          "shortEdged": 81,
+          "shortEdged": 316,
           "fractured": 0
         },
         "gap": "0px²"
@@ -103,19 +103,19 @@
         "kind": "showcase",
         "cell": "Tide",
         "imageShare": 0.48,
-        "smallestCard": 0.0011,
+        "smallestCard": 0.0022,
         "rest": {
-          "rectangle": 2,
-          "voronoi": 13,
+          "rectangle": 1,
+          "voronoi": 15,
           "cut": 0,
-          "shortEdged": 1
+          "shortEdged": 0
         },
         "transition": {
-          "rectangle": 483,
+          "rectangle": 253,
           "notched": 2,
-          "voronoi": 5463,
+          "voronoi": 5816,
           "cut": 0,
-          "shortEdged": 309,
+          "shortEdged": 186,
           "fractured": 0
         },
         "gap": "0px²"
@@ -124,19 +124,19 @@
         "kind": "band",
         "cell": "Moss",
         "imageShare": 0.372,
-        "smallestCard": 0.0007,
+        "smallestCard": 0.0024,
         "rest": {
           "rectangle": 1,
-          "voronoi": 16,
+          "voronoi": 14,
           "cut": 0,
-          "shortEdged": 0
+          "shortEdged": 2
         },
         "transition": {
-          "rectangle": 282,
+          "rectangle": 223,
           "notched": 20,
-          "voronoi": 6244,
+          "voronoi": 6225,
           "cut": 0,
-          "shortEdged": 89,
+          "shortEdged": 167,
           "fractured": 0
         },
         "gap": "0px²"
@@ -145,19 +145,19 @@
         "kind": "lead",
         "cell": "Petal",
         "imageShare": 0.39,
-        "smallestCard": 0.0008,
+        "smallestCard": 0.0025,
         "rest": {
           "rectangle": 1,
-          "voronoi": 16,
+          "voronoi": 14,
           "cut": 0,
-          "shortEdged": 0
+          "shortEdged": 2
         },
         "transition": {
-          "rectangle": 281,
+          "rectangle": 215,
           "notched": 26,
-          "voronoi": 6156,
+          "voronoi": 6174,
           "cut": 0,
-          "shortEdged": 108,
+          "shortEdged": 156,
           "fractured": 0
         },
         "gap": "0px²"
@@ -166,19 +166,19 @@
         "kind": "documentation",
         "cell": "Aurora",
         "imageShare": 0.38,
-        "smallestCard": 0.0007,
+        "smallestCard": 0.0022,
         "rest": {
           "rectangle": 7,
-          "voronoi": 7,
+          "voronoi": 5,
           "cut": 0,
-          "shortEdged": 3
+          "shortEdged": 5
         },
         "transition": {
-          "rectangle": 1700,
+          "rectangle": 1657,
           "notched": 14,
-          "voronoi": 4044,
+          "voronoi": 3984,
           "cut": 0,
-          "shortEdged": 827,
+          "shortEdged": 930,
           "fractured": 0
         },
         "gap": "0px²"
@@ -187,7 +187,7 @@
         "kind": "essay",
         "cell": "Dune",
         "imageShare": 0.319,
-        "smallestCard": 0.0008,
+        "smallestCard": 0.0011,
         "rest": {
           "rectangle": 1,
           "voronoi": 19,
@@ -195,11 +195,11 @@
           "shortEdged": 0
         },
         "transition": {
-          "rectangle": 263,
+          "rectangle": 581,
           "notched": 4,
-          "voronoi": 7414,
+          "voronoi": 6152,
           "cut": 0,
-          "shortEdged": 267,
+          "shortEdged": 1211,
           "fractured": 0
         },
         "gap": "0px²"
@@ -208,19 +208,19 @@
         "kind": "caption",
         "cell": "Jazz",
         "imageShare": 0.84,
-        "smallestCard": 0.0011,
+        "smallestCard": 0.0021,
         "rest": {
-          "rectangle": 2,
-          "voronoi": 12,
+          "rectangle": 0,
+          "voronoi": 14,
           "cut": 0,
           "shortEdged": 2
         },
         "transition": {
-          "rectangle": 510,
+          "rectangle": 268,
           "notched": 1,
-          "voronoi": 5131,
+          "voronoi": 5682,
           "cut": 0,
-          "shortEdged": 545,
+          "shortEdged": 236,
           "fractured": 0
         },
         "gap": "0px²"
@@ -363,6 +363,23 @@
       {
         "promoted": "Neon",
         "scene": "documentation"
+      }
+    ],
+    "flow": [
+      {
+        "kind": "spread",
+        "drift": 28,
+        "pushV": 27.6
+      },
+      {
+        "kind": "band",
+        "drift": 28,
+        "pushV": 27.6
+      },
+      {
+        "kind": "phone band",
+        "drift": 28,
+        "sideways": true
       }
     ]
   }

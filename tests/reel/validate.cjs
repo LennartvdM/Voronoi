@@ -33,7 +33,7 @@ const matrix=[
  {width:1363,height:846,count:30,fields:0,dt:50,inner:'flock'}
 ];
 let total=0,commandsTotal=0;
-const report={clickIdentity:null,kinds:[],home:null,field:null,void:null,interrupted:null,mirror:null,crossers:null,escape:null,hover:null,phone:[],reel:[]};
+const report={clickIdentity:null,kinds:[],home:null,field:null,void:null,interrupted:null,mirror:null,crossers:null,escape:null,hover:null,phone:[],reel:[],flow:[]};
 for(const cfg of matrix){
  const es=files.map(f=>loadEngine(f,{...cfg,record:true}));es.forEach(e=>e.inner(cfg.inner));
  let now=1000,frame=0;
@@ -55,7 +55,7 @@ for(const cfg of matrix){
  es.forEach(e=>e.size(cfg.width*.83,cfg.height*.93));advance(4);
  cfg.frames=frame;console.log(JSON.stringify(cfg));
 }
-// --- a click, no scroll: Portal's page, its cards where Portal put them ---------
+// --- a click, the flow held: Portal's page, its cards where Portal put them ------
 // The reel adds made-up cards parked as specks in a sliver under one card of
 // the gallery, so the drawing after a click is not Portal's; the page's own
 // cards are, to the lattice unit.
@@ -65,7 +65,7 @@ for(const cfg of matrix){
  const step=n=>{for(let k=0;k<n;k++){e.clear();e.advance(now);now+=cfg.dt;total++;}};
  step(300);
  const b=e.root.bodies.find(b=>!b.isVoid&&!b.isSelf&&b.name&&e.kinds()[b.id%e.kinds().length]==='folio');
- assert(e.click(b.caption.x,b.caption.y));step(420);
+ e.drift(0);assert(e.click(b.caption.x,b.caption.y));step(420);   // the flow held before the reel is made: the page as it opens
  const R=e.reel();assert(R,'no reel after the click');
  const spec=e.page('folio',12);
  // every card of the page stands in Portal's rectangle for it; the hosts of the parked specks give up a sliver of theirs at the strip's end
@@ -247,10 +247,11 @@ const desk={width:1900,height:810,fields:.55},phone={width:390,height:720,fields
  s.e.root.removeBody();s.step(360);assert(s.e.rectsEqual(a.rect,slot0(s)),'the image lost its slot after remove');{const v=voidsExact(s);assert(v.ok,'not exact after remove: '+v.why);}
 }
 // --- the reel ----------------------------------------------------------------------
-function openKind(kind,cfg){const s=fresh(cfg),KINDS=s.e.kinds();let name=null;for(const b of s.e.root.bodies)if(!b.isVoid&&!b.isSelf&&b.name&&KINDS[b.id%KINDS.length]===kind){name=b.name;break;}
- const w=whereIs(s,name);assert(s.e.click(w.x,w.y),'click missed '+name);s.step(420);return{s,b:w.b};}
+function openKind(kind,cfg,drift){const s=fresh(cfg),KINDS=s.e.kinds();let name=null;for(const b of s.e.root.bodies)if(!b.isVoid&&!b.isSelf&&b.name&&KINDS[b.id%KINDS.length]===kind){name=b.name;break;}
+ const w=whereIs(s,name);if(drift!==undefined)s.e.drift(drift);assert(s.e.click(w.x,w.y),'click missed '+name);s.step(420);return{s,b:w.b};}
+// the displacement suite runs with the flow held (drift 0), so every scroll is a known distance
 for(const kind of ['spread','folio','band','essay','caption']){
- const {s,b}=openKind(kind,desk),e=s.e,R=e.reel();assert(R,kind+': no reel');
+ const {s,b}=openKind(kind,desk,0),e=s.e,R=e.reel();assert(R,kind+': no reel');
  const N=12,roots=()=>e.root.bodies.filter(q=>!q.isVoid&&!q.isSelf&&!q.leaving).length;
  const T=e.templates()[kind];
  // the page with its parked extras is still exact and one site a cell, never fractured
@@ -281,7 +282,7 @@ for(const kind of ['spread','folio','band','essay','caption']){
  report.reel.push({kind,strips:R.strips.length,extras:R.strips.reduce((n,S)=>n+S.cards.filter(c=>c.b.reelSlack).length,0),worstScrollingPx:+worst.toFixed(1),farVisible:far.length});
 }
 { // a made-up card clicked becomes the next image, and the page keeps its count
- const {s}=openKind('spread',desk),e=s.e,R=e.reel();
+ const {s}=openKind('spread',desk,0),e=s.e,R=e.reel();
  for(let f=0;f<120;f++){e.scroll(8);s.step(1);}s.step(60);
  const c=R.strips[0].cards.find(c=>c.b.reelSlack&&!c.parked);assert(c,'no made-up card visible');
  const l=s.pic.leaves.find(l=>l.body===c.b);let x=0,y=0;for(const p of l.loops[0]){x+=p[0];y+=p[1];}x/=l.loops[0].length;y/=l.loops[0].length;
@@ -290,11 +291,42 @@ for(const kind of ['spread','folio','band','essay','caption']){
  assert.equal(e.root.bodies.filter(q=>!q.isVoid&&!q.isSelf&&!q.leaving).length,12,'the count changed');
  report.reel.push({promoted:c.b.name,scene:e.config.scene});
 }
+// --- the flow -------------------------------------------------------------------
+// The strip runs on its own at its pace; a wheel push speeds it and eases back
+// within seconds; a drag moves the strip exactly the hand's travel along it;
+// a flick sends it on; a hand held still lets go still; the whitespace holds
+// through all of it.
+for(const kind of ['spread','band']){
+ const {s}=openKind(kind,desk),e=s.e,R=e.reel(),S=R.strips[0],tPx=S.def.tPx,PW=e.root.PW,PH=e.root.PH,drift=e.drift();
+ const worstNow=()=>{const v=voidsExact(s,1.5);return v.ok;};
+ let s0=S.s;s.step(60);const flowed=(S.s-s0)*tPx;assert(Math.abs(flowed-drift)<0.5,kind+': the flow moved '+flowed.toFixed(1)+' px in a second, not '+drift);
+ e.wheel(100);assert(e.flow()[0]>drift+300,kind+': the wheel push did not speed the flow');
+ s0=S.s;for(let f=0;f<300;f++){s.step(1);assert(worstNow(),kind+': the whitespace gave while pushed');}
+ assert(Math.abs(e.flow()[0]-drift)<1,kind+': the push did not ease back: v '+e.flow()[0].toFixed(2));
+ assert((S.s-s0)*tPx>drift*4+150,kind+': the push carried the strip only '+((S.s-s0)*tPx).toFixed(0)+' px');
+ e.wheel(-100);s.step(30);assert(e.flow()[0]<0,kind+': a wheel back did not turn the flow');s.step(210);
+ const g=S.def.g,gx=(g[0]+g[2])/2*PW,gy=(g[1]+g[3])/2*PH,vert=S.def.vertical;
+ let t=e.time()*1000;assert(e.dragStart(gx,gy,t),kind+': the drag did not take the strip');assert.equal(e.flow()[0],0,kind+': the strip kept moving in hand');
+ s0=S.s;for(let f=1;f<=10;f++){t=e.time()*1000;e.dragMove(vert?gx:gx-15*f,vert?gy-15*f:gy,t);s.step(1);assert(worstNow(),kind+': the whitespace gave in hand');}
+ assert(Math.abs((S.s-s0)*tPx-150)<1e-6,kind+': the strip did not follow the hand: '+((S.s-s0)*tPx).toFixed(2));
+ e.dragEnd(e.time()*1000);assert(e.flow()[0]>600,kind+': no flick: v '+e.flow()[0].toFixed(0));
+ s0=S.s;for(let f=0;f<300;f++){s.step(1);assert(worstNow(),kind+': the whitespace gave in the flick');}
+ assert((S.s-s0)*tPx>300,kind+': the flick carried only '+((S.s-s0)*tPx).toFixed(0)+' px');assert(Math.abs(e.flow()[0]-drift)<3,kind+': the flick did not ease back: v '+e.flow()[0].toFixed(2));
+ t=e.time()*1000;e.dragStart(gx,gy,t);for(let f=1;f<=5;f++){t=e.time()*1000;e.dragMove(vert?gx:gx+8*f,vert?gy+8*f:gy,t);s.step(1);}s.step(20);e.dragEnd(e.time()*1000);
+ assert.equal(e.flow()[0],0,kind+': a hand held still flicked');s.step(180);assert(Math.abs(e.flow()[0]-drift)<1,kind+': the flow did not resume: v '+e.flow()[0].toFixed(2));
+ {const v=voidsExact(s,0.5);assert(v.ok,kind+': not exact in the flow: '+v.why);}
+ report.flow.push({kind,drift,pushV:+e.flow()[0].toFixed(1)});
+}
+{ // on a phone the strip runs sideways under the text; the flow holds the whitespace to a hairline
+ const {s}=openKind('band',phone),e=s.e;assert(e.reel()&&!e.reel().strips[0].def.vertical,'the phone strip is not sideways');
+ for(let f=0;f<300;f++){s.step(1);const v=voidsExact(s,1.5);assert(v.ok,'phone flow: '+v.why);}
+ report.flow.push({kind:'phone band',drift:e.drift(),sideways:true});
+}
 { // a phone: every kind opens the same way, stacked, its text set full width
  const st=fresh(phone),KINDS=st.e.kinds(),names={};
  for(const b of st.e.root.bodies)if(!b.isVoid&&!b.isSelf&&b.name&&!(b.id%KINDS.length in names))names[b.id%KINDS.length]=b.name;
  for(const k of Object.keys(names).map(Number).sort((a,b)=>a-b)){
-  const s=fresh(phone),w=whereIs(s,names[k]);assert(s.e.click(w.x,w.y),'phone click missed '+names[k]);const o=opened(s,w.b,'phone '+KINDS[k],true);
+  const s=fresh(phone),w=whereIs(s,names[k]);s.e.drift(0);assert(s.e.click(w.x,w.y),'phone click missed '+names[k]);const o=opened(s,w.b,'phone '+KINDS[k],true);   // the flow held: the page as it opens
   report.phone.push({kind:KINDS[k],rest:{rectangle:o.rest.rectangle,voronoi:o.rest.voronoi,shortEdged:o.rest.shortEdged}});
  }
 }

@@ -9,8 +9,10 @@ The builder reads that file from the repository root and checks the hash.
 That a page's cards can be browsed without leaving the tiling. On a Portal
 page the gallery is the cells that are not the image, laid in the region
 the page kind gives them, and there are as many as the page has. Reel makes
-that region a window on a strip that has no end: the wheel scrolls the
-cards under it, cards slide in at one edge and out at the other, and the
+that region a window on a strip that has no end and runs on its own, an
+upward waterfall: cards rise at a walking pace, slide in at one edge and
+out at the other, and come round again; the wheel pushes the flow along or
+holds it back, a drag takes the strip in hand and a flick sends it on. The
 whitespace, the image and the text stay exactly what the page authored.
 The strip needs only a band's worth of cards more than the region shows.
 
@@ -56,6 +58,18 @@ window shifts only when it must: the card past one end takes the slot
 beyond the other. No slot under the region is ever empty, and a card is
 never handed back and forth at an edge.
 
+**The flow.** The strip has a speed, and the page is authored again
+wherever that speed has carried it each frame; nothing is stepped. Left
+alone the speed is the flow's own pace, 28 px a second along the strip,
+cards rising. The wheel is a push: each pixel of wheel adds 4 px/s along
+the flow, or against it, and the speed eases back to the flow's pace with
+a time constant of 0.7 s, so one notch carries the strip about 300 px and
+settles within a couple of seconds. A pointer pressed on the gallery takes
+the strip in hand: its travel along the strip is the pointer's, exactly,
+and the flow waits. Let go moving, the strip goes on at the hand's speed
+(smoothed over the last 50 ms) and eases back to the flow; let go after
+holding still, it starts again from rest. A speed is capped at 2400 px/s.
+
 **Parking.** A card with less than twice the claim floor under the region
 is parked, its band with it: the auction would draw it larger than
 authored. Parked cards wait as specks in a sliver at the strip's end no
@@ -76,12 +90,15 @@ with its band in turn.
   a wall.
 - A made-up card's going is no change: the reaper does not re-lay the page
   for it.
-- The wheel scrolls the open page's gallery; a click on the image, Escape
+- The flow carries the strips in the tick before the reel step lays them.
+- The wheel pushes the open page's gallery along its flow (line and page
+  deltas normalised); a pointer drag on the gallery takes it in hand, with
+  pointer capture, and a release flicks it. A click on the image, Escape
   and the scene buttons drop the reel first. The hint line says so.
 
 ## Not done
 
-- No momentum or touch drag; the wheel's own delta is the scroll.
+- The flow does not pause under the pointer; a card is clicked on the move.
 - A resize or an add/remove drops the reel and re-lays the page.
 - The cards stay single cells; no clusters or fields ride in the strip.
 
@@ -99,14 +116,26 @@ with its band in turn.
   fractured cell on any frame, the whitespace exact, one site per cell, the
   text set in the reading void; mirroring, crossers, home, Escape, hover,
   the interrupted change, add/remove, the phone.
-- The reel, for five kinds: with the specks parked the page is exact and
-  every cell one site; a scroll of 720 px at 8 px a frame moves the cards,
+- The reel, for five kinds with the flow held: with the specks parked the
+  page is exact and every cell one site; a scroll of 720 px at 8 px a
+  frame moves the cards,
   brings new ones in, re-lays nothing and fractures nothing, and no cell is
   ever more than 1 px into the whitespace while moving; settled,
   the whitespace is exact again; 3000 px on, cards have come round the
   strip; the same way back, every first card is back in its slot and the
   whitespace exact; home returns twelve root cells and no reel. A made-up
   card clicked becomes the image and the page keeps its twelve.
+- The flow, for two kinds: left alone the strip moves 28 px in a second;
+  a wheel notch speeds it by over 300 px/s, carries it over 260 px and
+  eases back to within 1 px/s in five seconds; a wheel back turns it; a
+  drag moves the strip exactly the hand's 150 px; a flick sends it on at
+  over 600 px/s and 300 px, then eases back within five seconds; a hand
+  held still releases it at rest and the flow resumes within three; the
+  whitespace holds to 1.5 px through every push, drag and flick, and is
+  exact again in the flow. On a phone the strip runs sideways under the
+  text and the flow holds the whitespace to 1.5 px over five seconds (it
+  measures 0.9 px, at the page's corner). Portal's page checks run with
+  the flow held, as the page is judged as it opens.
 
 ## Reproduce
 

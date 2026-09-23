@@ -52,7 +52,7 @@
 </head>
 <body>
   <div class="stage">
-    <a class="back" href="index.html">&larr; Back · Reel</a> <span style="opacity:.55;margin-left:.6em">click a cell to open its page · scroll to browse its gallery · click the image again for home</span>
+    <a class="back" href="index.html">&larr; Back · Reel</a> <span style="opacity:.55;margin-left:.6em">click a cell to open its page · its gallery flows: scroll, drag or flick it · click the image again for home</span>
     <canvas id="c"></canvas>
     <div class="meters" id="meters">
       area err <b id="mArea">–</b> · gap <b id="mGap">–</b> · overlap <b id="mOver">–</b> · rect <b id="mRect">–</b> · cells <b id="mSeeds">–</b> · solve <b id="mIter">–</b> · fields <b id="mInner">–</b>
@@ -1114,7 +1114,7 @@ function reelEnter() {
     const cards = [];
     for (let p = 0; p < st.k; p++) { const r = spec.content[offset + p]; const b = root.bodies.find(q => !q.isVoid && !q.isSelf && !q.leaving && rectsEqual(q.rect, r)); if (b) cards.push({ b, p, parked: false }); }
     offset += st.k;
-    const g = st.g, S = { def: st, cards, s: 0, M: st.k, parkEdge: 1, voidU0: false, voidU1: false, pageU0: false, pageU1: false, pageT: false };
+    const g = st.g, S = { def: st, cards, s: 0, v: reelDrift, drag: null, M: st.k, parkEdge: 1, voidU0: false, voidU1: false, pageU0: false, pageU1: false, pageT: false };
     // where the specks wait: the strip's end no void touches, under the
     // edge band's cards away from any void beside the strip
     const over = (a0, a1, b0, b1) => Math.min(a1, b1) - Math.max(a0, b0) > 1e-6;
@@ -1138,11 +1138,74 @@ function reelEnter() {
   }
   reel = { strips, serial: root.serial, scene: config.scene, spec, fresh: true, moved: false, settled: false };
 }
-function reelScroll(dy) {
+// THE FLOW. The strip runs on its own, an upward waterfall: every card rises
+// at a walking pace and comes round again. The wheel is a push along it, or
+// against it, and the speed eases back to the flow's own within a second; a
+// drag takes the strip in hand, its travel the pointer's, and a flick sends
+// it on at the hand's speed. Nothing is stepped: the strip has a speed, and
+// the page is authored again wherever that speed has carried it each frame.
+const REEL_DRIFT = 28;      // px/s along the strip: the flow's own pace
+const REEL_RELAX = 0.7;     // s: a push eases back to the flow's pace in about this
+const REEL_WHEEL = 4;       // px/s of speed for each px of wheel
+const REEL_VMAX = 2400;     // px/s, the most a push or a flick can give
+let reelDrift = REEL_DRIFT;
+const reelClampV = v => Math.max(-REEL_VMAX, Math.min(REEL_VMAX, v));
+function reelFlow(dt) {
+  if (!reel || guestLeft > 0) return;
+  for (const S of reel.strips) {
+    if (S.drag) continue;
+    S.v += (reelDrift - S.v) * (1 - Math.exp(-dt / REEL_RELAX));
+    if (Math.abs(S.v - reelDrift) < 0.05) S.v = reelDrift;
+    const step = S.v * dt;
+    if (!step) continue;
+    S.s += step / S.def.tPx; reel.moved = true;
+  }
+}
+function reelScroll(dy) {   // the wheel: a push along the flow
+  if (!reel || guestLeft > 0) return false;
+  for (const S of reel.strips) if (!S.drag) S.v = reelClampV(S.v + dy * REEL_WHEEL);
+  return true;
+}
+function reelMove(dy) {     // a plain displacement of the strip, for the tests
   if (!reel || guestLeft > 0) return false;
   for (const S of reel.strips) S.s += dy / S.def.tPx;
   reel.moved = true;
   return true;
+}
+function reelStripAt(x, y) {
+  if (!reel) return null;
+  for (const S of reel.strips) { const g = S.def.g; if (x >= g[0] * root.PW && x <= g[2] * root.PW && y >= g[1] * root.PH && y <= g[3] * root.PH) return S; }
+  return null;
+}
+function reelDragStart(x, y, t) {
+  if (!reel || guestLeft > 0) return false;
+  const S = reelStripAt(x, y); if (!S) return false;
+  const pos = S.def.vertical ? y : x;
+  S.drag = { s0: S.s, p0: pos, last: pos, t, v: 0 }; S.v = 0;
+  return true;
+}
+function reelDragMove(x, y, t) {
+  if (!reel) return false;
+  let any = false;
+  for (const S of reel.strips) {
+    const d = S.drag; if (!d) continue;
+    const pos = S.def.vertical ? y : x, dt = Math.max(1e-3, (t - d.t) / 1000);
+    S.s = d.s0 + (d.p0 - pos) / S.def.tPx;
+    const v = (d.last - pos) / dt;                       // the hand's speed, smoothed over the last 50 ms
+    d.v += (v - d.v) * Math.min(1, dt / 0.05);
+    d.last = pos; d.t = t; reel.moved = true; any = true;
+  }
+  return any;
+}
+function reelDragEnd(t) {
+  if (!reel) return false;
+  let any = false;
+  for (const S of reel.strips) {
+    const d = S.drag; if (!d) continue;
+    S.v = t - d.t > 120 ? 0 : reelClampV(d.v);           // a hand that had stopped lets go still
+    S.drag = null; any = true;
+  }
+  return any;
 }
 // every scroll step: the window of slots the region needs, the cards' slots
 // clipped by it, the thin ones parked; the page's rest diagram authored
@@ -4699,6 +4762,7 @@ function tick(nowMs) {
   frame++;
 
   guestLeft = changeEnds(root) - simTime;
+  reelFlow(dt);
   reelStep();
 
   // 1-5. the page, and every hive inside it
@@ -4826,8 +4890,12 @@ canvas.addEventListener('pointerup', (e) => {
   portalClick(x, y);
 });
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && portalFocus) { reelDrop(); portalHome(); } });
-// REEL: the wheel browses the open page's gallery
-canvas.addEventListener('wheel', (e) => { if (!reel) return; e.preventDefault(); reelScroll(e.deltaY); }, { passive: false });
+// REEL: the wheel pushes the open page's gallery along its flow; a drag takes it in hand
+canvas.addEventListener('wheel', (e) => { if (!reel) return; e.preventDefault(); reelScroll(e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1)); }, { passive: false });
+canvas.addEventListener('pointerdown', (e) => { const [x, y] = pointerPos(e); if (reelDragStart(x, y, performance.now())) { try { canvas.setPointerCapture(e.pointerId); } catch (_) {} } });
+canvas.addEventListener('pointermove', (e) => { const [x, y] = pointerPos(e); reelDragMove(x, y, performance.now()); });
+canvas.addEventListener('pointerup', () => { reelDragEnd(performance.now()); });
+canvas.addEventListener('pointercancel', () => { reelDragEnd(-1e9); });
 
 document.querySelectorAll('.scene-btn').forEach(b => b.addEventListener('click', () => {
   reelDrop();
