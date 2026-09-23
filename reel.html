@@ -1065,43 +1065,24 @@ function reelStrip(g, k, W, H, C, R) {
 }
 // the reel: the open page's strips, their cards and their scroll
 let reel = null;
-const REEL_SPECK = 0.02;   // lattice units: the least depth of the sliver the parked cards wait in
-// The sliver the parked cards wait in: at the parking edge, under the hosts
-// (the edge band's cards away from any void beside the strip), one speck per
-// card across it. Every speck holds at least the claim floor with room, so
-// its claim is its area, and a speck at the page's edge is wide and deep
-// enough that its seed is not clamped off the page's seed margin: a seed
-// moved from its rectangle's centre would break the whitespace's ties.
-function reelSliver(S, hosts, n) {
-  const d = S.def, uPx = d.vertical ? root.PW : root.PH, m = 2 * (SEED_MARGIN + 1);
-  let u0 = Infinity, u1 = -Infinity;
-  for (const c of hosts) { u0 = Math.min(u0, c.sl.u0); u1 = Math.max(u1, c.sl.u1); }
-  const w = u1 - u0, at0 = S.pageU0 && u0 < 1e-9, at1 = S.pageU1 && u1 > d.U - 1e-9;
-  const widths = new Array(n).fill(w / n);
-  if (w / n * uPx < m && n > 1) {
-    const wide = Math.min(w, m / uPx), ends = (at0 ? 1 : 0) + (at1 ? 1 : 0), rest = Math.max(0, w - wide * ends) / Math.max(1, n - ends);
-    if (ends && rest > 0) { widths.fill(rest); if (at0) widths[0] = wide; if (at1) widths[n - 1] = wide; }
-  }
-  let least = Infinity; for (const x of widths) least = Math.min(least, x);
-  const h = Math.max(REEL_SPECK, S.pageT ? m / d.tPx : 0, CLAIM_MIN * 1.1 / Math.max(1e-6, least));
-  const bounds = [u0]; for (const x of widths) bounds.push(bounds[bounds.length - 1] + x); bounds[n] = u1;
-  return { u0, u1, h, bounds };
-}
-// the hosts: the cards at the parking edge, less any beside a void; all of
-// them when the strip is one card across with a void beside it
-function reelHosts(S, vis) {
-  const d = S.def, len = d.L, edge = S.parkEdge;
-  const at = vis.filter(c => edge > 0 ? c.t1 >= len - 1e-9 : c.t0 <= 1e-9);
-  const away = at.filter(c => !(S.voidU0 && c.sl.u0 < 1e-9) && !(S.voidU1 && c.sl.u1 > d.U - 1e-9));
-  return away.length ? away : at;
-}
 function reelPlace(b, r, claim) {
   r.mfRest = true; if (r.mfArea === undefined) r.mfArea = claim;
   b.rect = r; b.formRect = r;
   const [ex, ey] = root.rectCenter(r);
   b.path = { sx: ex, sy: ey, ex, ey, cx: ex, cy: ey };
-  b.journey = null; b.progress = 1; b.pin = 1; b.leaving = false; b.table = null; b.reelPinned = true;   // pinned: its seed holds its rectangle's centre; never a wall (see computeWalls)
+  b.journey = null; b.progress = 1; b.pin = 1; b.leaving = false; b.table = null; b.reelPinned = true; b.reelParked = false;   // pinned: its seed holds its rectangle's centre; never a wall (see computeWalls)
   b.claimTarget = Math.max(CLAIM_MIN, claim);
+}
+// A parked card leaves the page: a wall at a rectangle off the page's top
+// left, which cuts nothing from the ground, bids nothing and draws nothing.
+// The page keeps its count and the page's tiling owes it no sliver.
+function reelPark(b, i) {
+  const r = [-2 - 1.5 * i, -2, -1 - 1.5 * i, -1];
+  r.mfRest = true; r.mfArea = 1;
+  b.rect = r; b.formRect = r;
+  b.path = { sx: b.x, sy: b.y, ex: b.x, ey: b.y, cx: b.x, cy: b.y };
+  b.journey = null; b.progress = 1; b.pin = 1; b.leaving = false; b.table = null; b.reelPinned = true; b.reelParked = true;
+  b.claimTarget = CLAIM_MIN;
 }
 function reelEnter() {
   reel = null;
@@ -1114,25 +1095,16 @@ function reelEnter() {
     const cards = [];
     for (let p = 0; p < st.k; p++) { const r = spec.content[offset + p]; const b = root.bodies.find(q => !q.isVoid && !q.isSelf && !q.leaving && rectsEqual(q.rect, r)); if (b) cards.push({ b, p, parked: false }); }
     offset += st.k;
-    const g = st.g, S = { def: st, cards, s: 0, v: reelDrift, drag: null, M: st.k, parkEdge: 1, voidU0: false, voidU1: false, pageU0: false, pageU1: false, pageT: false };
-    // where the specks wait: the strip's end no void touches, under the
-    // edge band's cards away from any void beside the strip
-    const over = (a0, a1, b0, b1) => Math.min(a1, b1) - Math.max(a0, b0) > 1e-6;
-    for (const v of spec.voids) {
-      if (st.vertical) {
-        if (Math.abs(v[2] - g[0]) < 1e-6 && over(v[1], v[3], g[1], g[3])) S.voidU0 = true; if (Math.abs(v[0] - g[2]) < 1e-6 && over(v[1], v[3], g[1], g[3])) S.voidU1 = true;
-        if (Math.abs(v[1] - g[3]) < 1e-6 && over(v[0], v[2], g[0], g[2])) S.parkEdge = -1;
-      } else {
-        if (Math.abs(v[3] - g[1]) < 1e-6 && over(v[0], v[2], g[0], g[2])) S.voidU0 = true; if (Math.abs(v[1] - g[3]) < 1e-6 && over(v[0], v[2], g[0], g[2])) S.voidU1 = true;
-        if (Math.abs(v[0] - g[2]) < 1e-6 && over(v[1], v[3], g[1], g[3])) S.parkEdge = -1;
-      }
-    }
-    if (st.vertical) { S.pageU0 = g[0] < 1e-6; S.pageU1 = Math.abs(g[2] - root.COLS) < 1e-6; S.pageT = S.parkEdge > 0 ? Math.abs(g[3] - root.ROWS) < 1e-6 : g[1] < 1e-6; }
-    else { S.pageU0 = g[1] < 1e-6; S.pageU1 = Math.abs(g[3] - root.ROWS) < 1e-6; S.pageT = S.parkEdge > 0 ? Math.abs(g[2] - root.COLS) < 1e-6 : g[0] < 1e-6; }
+    // which ends of the strip are the page's edges: there a card keeps its
+    // whole slot and runs off the page; at a divider it is clipped
+    const g = st.g, C = root.COLS, R = root.ROWS;
+    const S = { def: st, cards, s: 0, v: reelDrift, drag: null, M: st.k,
+      pageT0: st.vertical ? g[1] < 1e-6 : g[0] < 1e-6, pageT1: st.vertical ? Math.abs(g[3] - R) < 1e-6 : Math.abs(g[2] - C) < 1e-6 };
     // the cards made up for the page: as many as the widest window the
     // region can lie across needs beyond the page's own, parked out of sight
     const extra = Math.max(st.maxAcross + 1, st.need - st.k);
     for (let i = 0; i < extra; i++) { const b = root.newBody(); b.fresh = false; b.reelSlack = true; b.kindRoll = 1; root.bodies.push(b); S.cards.push({ b, p: S.M + i, parked: true }); }
+    S.cards.forEach((c, i) => { c.slot = i; });   // each card's off-page parking place
     S.M += extra;
     strips.push(S);
   }
@@ -1214,15 +1186,10 @@ function reelStep() {
   if (!reel) return;
   if (root.serial !== reel.serial || !portalFocus || config.scene !== reel.scene) { reelDrop(null, true); return; }
   if (reel.fresh) {
-    // the made-up cards are parked as specks beyond the far edge at once,
-    // before the page's first auction with them in it
+    // the made-up cards are parked off the page at once, before the page's
+    // first auction with them in it
     reel.fresh = false;
-    for (const S of reel.strips) {
-      const d = S.def, parked = S.cards.filter(c => c.b.reelSlack), own = S.cards.filter(c => !c.b.reelSlack);
-      for (const c of own) { c.sl = d.slot(c.p); c.t0 = c.sl.t0; c.t1 = c.sl.t1; }
-      const sv = reelSliver(S, reelHosts(S, own), parked.length), t = S.parkEdge > 0 ? d.L : 0;
-      parked.forEach((c, i) => { c.parked = true; reelPlace(c.b, d.rect({ u0: sv.bounds[i], u1: sv.bounds[i + 1], t0: S.parkEdge > 0 ? t - sv.h : t, t1: S.parkEdge > 0 ? t : t + sv.h }, 0), CLAIM_MIN); });
-    }
+    for (const S of reel.strips) for (const c of S.cards) if (c.b.reelSlack) { c.parked = true; reelPark(c.b, c.slot); }
   }
   if (guestLeft > 0) return;
   // once the page has settled, and at every scroll step after, the page's
@@ -1231,7 +1198,7 @@ function reelStep() {
   reel.moved = false; reel.settled = true;
   const rects = [portalFocus.rect.slice()], bodies = [portalFocus];
   for (const S of reel.strips) {
-    const d = S.def, s = S.s, len = d.L, edge = S.parkEdge, wait = [];
+    const d = S.def, s = S.s, len = d.L;
     // THE WINDOW. The strip's cards hold M consecutive slots; the region
     // needs the slots of every band under it, from the first whose end is
     // past the region's start to the last whose start is before its end,
@@ -1248,40 +1215,35 @@ function reelStep() {
       c.sl = sl; c.t0 = Math.max(0, sl.t0 - s); c.t1 = Math.min(len, sl.t1 - s); c.parked = false;
     }
     // THE TILING UNDER THE REGION. A band with less than twice the claim
-    // floor under the region is parked (the auction would draw its cards
-    // larger than authored); the bands nearest each end reach the end, so
-    // the region is tiled whatever is parked and no strip of it is left to
-    // the whitespace to take; the parked cards wait as specks in a sliver
-    // at the parking edge under its hosts (reelSliver), so no speck touches
-    // a void; a host its sliver would leave under the floor is parked with
-    // its band in turn.
-    let sv = null;
+    // floor under the region is parked, its band with it (the auction would
+    // draw its cards larger than authored), and the bands nearest each end
+    // reach the end, so the region is tiled whatever is parked. At an end
+    // that is the page's edge a card OVERFLOWS: its rectangle is still cut
+    // at the page, but its seed is its whole slot's centre, off the page if
+    // need be, so it slides in and out as itself, its seams with its
+    // neighbours unchanged, instead of squeezing in as a sliver. At an end
+    // that is a divider (whitespace or the image) it is clipped, seed and
+    // all: nothing overflows into the whitespace.
     for (let guard = 0; guard < 64; guard++) {
       const vis = S.cards.filter(c => !c.parked);
       let thin = false;
-      for (const c of vis) if ((c.t1 - c.t0) * (c.sl.u1 - c.sl.u0) < CLAIM_MIN * 2) { c.parked = true; wait.push(c); thin = true; }
+      for (const c of vis) if ((c.t1 - c.t0) * (c.sl.u1 - c.sl.u0) < CLAIM_MIN * 2) { c.parked = true; thin = true; }
       if (thin) continue;
       if (!vis.length) break;
       let tMin = Infinity, tMax = -Infinity;
       for (const c of vis) { tMin = Math.min(tMin, c.t0); tMax = Math.max(tMax, c.t1); }
       for (const c of vis) { if (c.t0 - tMin < 1e-9) c.t0 = 0; if (tMax - c.t1 < 1e-9) c.t1 = len; }
-      if (!wait.length) break;
-      const hosts = reelHosts(S, vis);
-      sv = reelSliver(S, hosts, wait.length);
-      if (hosts.some(c => (c.t1 - c.t0 - sv.h) * (c.sl.u1 - c.sl.u0) < CLAIM_MIN * 2)) {
-        const band = hosts[0].sl;
-        for (const c of vis) if (Math.abs(c.sl.t0 - band.t0) < 1e-9 && Math.abs(c.sl.t1 - band.t1) < 1e-9) { c.parked = true; wait.push(c); }
-        sv = null; continue;
-      }
-      for (const c of hosts) { if (edge > 0) c.t1 -= sv.h; else c.t0 += sv.h; }
       break;
     }
-    if (wait.length) {
-      if (!sv) { const own = S.cards.map(c => ({ sl: d.slot(c.p < 0 || c.p >= d.k ? 0 : c.p), t0: 0, t1: len })); sv = reelSliver(S, reelHosts(S, own.length ? own : [{ sl: d.slot(0), t0: 0, t1: len }]), wait.length); }
-      const t = edge > 0 ? len : 0;
-      wait.forEach((c, i) => { rects.push(d.rect({ u0: sv.bounds[i], u1: sv.bounds[i + 1], t0: s + (edge > 0 ? t - sv.h : t), t1: s + (edge > 0 ? t : t + sv.h) }, s)); bodies.push(c.b); });
+    for (const c of S.cards) {
+      if (c.parked) { reelPark(c.b, c.slot); continue; }
+      const r = d.rect({ u0: c.sl.u0, u1: c.sl.u1, t0: c.t0 + s, t1: c.t1 + s }, s);
+      // the seed: the slot's centre along the strip, clipped only at a divider
+      const a = S.pageT0 ? c.sl.t0 - s : Math.max(0, c.sl.t0 - s), z = S.pageT1 ? c.sl.t1 - s : Math.min(len, c.sl.t1 - s);
+      const tm = (a + z) / 2, um = (c.sl.u0 + c.sl.u1) / 2;
+      r.reelSeed = d.vertical ? [d.g[0] + um, d.g[1] + tm] : [d.g[0] + tm, d.g[1] + um];
+      rects.push(r); bodies.push(c.b);
     }
-    for (const c of S.cards) if (!c.parked) { rects.push(d.rect({ u0: c.sl.u0, u1: c.sl.u1, t0: c.t0 + s, t1: c.t1 + s }, s)); bodies.push(c.b); }
   }
   const voids = reel.spec.voids.map(v => { const q = v.slice(); q.portalText = v.portalText; q.portalRules = v.portalRules; return q; });
   const dec = portalDecorate(rects, voids, W, H, root.COLS, root.ROWS);
@@ -1296,7 +1258,7 @@ function reelStep() {
 function reelDrop(keep, relayout) {
   if (!reel) return;
   const r = reel; reel = null;
-  for (const v of root.bodies) { if (v.rect && v.rect.reelLive) v.rect.reelLive = false; if (v.reelPinned) { v.reelPinned = false; v.pin = 0; } }   // unpinned: the next change finds them as Portal's page leaves them
+  for (const v of root.bodies) { if (v.rect && v.rect.reelLive) v.rect.reelLive = false; if (v.reelPinned) { v.reelPinned = false; v.reelParked = false; v.pin = 0; } }   // unpinned: the next change finds them as Portal's page leaves them
   let owed = 0;
   for (const S of r.strips) for (const c of S.cards) {
     if (c.b === keep) { if (c.b.reelSlack) { c.b.reelSlack = false; owed++; } continue; }
@@ -1347,7 +1309,7 @@ function portalOutline(rects) {
 function portalDecorate(content, voids, W, H, C, R) {
   const PW = W / C, PH = H / R, E = 1e-6, px = r => [r[0] * PW, r[1] * PH, r[2] * PW, r[3] * PH];
   const rects = content.map(px), vr = voids.map(px), n = rects.length;
-  const seeds = rects.map(r => [(r[0] + r[2]) / 2, (r[1] + r[3]) / 2]), weights = new Array(n).fill(0);
+  const seeds = content.map((c, i) => c.reelSeed ? [c.reelSeed[0] * PW, c.reelSeed[1] * PH] : [(rects[i][0] + rects[i][2]) / 2, (rects[i][1] + rects[i][3]) / 2]), weights = new Array(n).fill(0);   // REEL: a card at the page's edge seeds from its whole slot
   // the pockets: cells grouped by the edges they share
   const parent = rects.map((_, i) => i), find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));
   const touch = (p, q) => ((Math.abs(p[2] - q[0]) < E || Math.abs(p[0] - q[2]) < E) && Math.min(p[3], q[3]) - Math.max(p[1], q[1]) > E) || ((Math.abs(p[3] - q[1]) < E || Math.abs(p[1] - q[3]) < E) && Math.min(p[2], q[2]) - Math.max(p[0], q[0]) > E);
@@ -2775,7 +2737,7 @@ class Hive {
     let cx = W / 2, cy = H / 2;
     if (poly) { cx = 0; cy = 0; for (const p of poly) { cx += p[0]; cy += p[1]; } cx /= poly.length; cy /= poly.length; }
     for (const b of bodies) {
-      {
+      if (!b.reelPinned) {   // REEL: a reel's seed may stand off the page
         const box = this.plBox();
         b.x = Math.min(box[2] - SEED_MARGIN, Math.max(box[0] + SEED_MARGIN, b.x));
         b.y = Math.min(box[3] - SEED_MARGIN, Math.max(box[1] + SEED_MARGIN, b.y));
@@ -2806,7 +2768,7 @@ class Hive {
             if (bp) { b.x += bp.ax * (best + 0.5); b.y += bp.ay * (best + 0.5); b.vx *= damp; b.vy *= damp; }
           }
         }
-        {
+        if (!b.reelPinned) {   // REEL: a reel's seed may stand off the page
           const box = this.plBox();
           b.x = Math.min(box[2] - SEED_MARGIN, Math.max(box[0] + SEED_MARGIN, b.x));
           b.y = Math.min(box[3] - SEED_MARGIN, Math.max(box[1] + SEED_MARGIN, b.y));
@@ -2932,7 +2894,7 @@ class Hive {
       const r = b.formRect;
       if (b.isSelf || !r) { b.holeCore = null; continue; }
       const rect = [r[0] * this.PW, r[1] * this.PH, r[2] * this.PW, r[3] * this.PH];
-      if (!b.leaving && !b.reelPinned && (b.crystal >= 1 || (b.pin > 0 && this.cellIsRect(b, r)))) {   // REEL: a reel's body bids
+      if (!b.leaving && (b.reelParked || (!b.reelPinned && (b.crystal >= 1 || (b.pin > 0 && this.cellIsRect(b, r)))))) {   // REEL: a reel's body bids; a parked one is a wall off the page
         b.wall = rect; this.walls.push(b); b.holeCore = null;
         continue;
       }

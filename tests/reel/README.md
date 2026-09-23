@@ -27,9 +27,14 @@ across it. A slot index runs on without end in both directions.
 
 **A card is its slot clipped by the region.** Every card is still one root
 cell with one site, a rectangle as its destination and its claim. Under a
-scroll its rectangle is the part of its slot inside the region, so a card
-leaves as a sliver and arrives as one, and the region is tiled at every
-position: the band nearest each end reaches the end, whatever is parked.
+scroll its rectangle is the part of its slot inside the region, so the
+region is tiled at every position: the band nearest each end reaches the
+end, whatever is parked. At an end that is the page's edge a card
+**overflows**: its rectangle is still cut at the page, but its seed is its
+whole slot's centre, off the page if need be, so it slides in and out as
+itself, its seams with its neighbours unchanged, instead of squeezing in
+as a sliver. At an end that is a divider (whitespace or the image) it is
+clipped, seed and all; nothing overflows into the whitespace.
 
 **The page is authored again at every scroll step.** The page's rest
 diagram (Portal's construction: the cells' weights solved per pocket with
@@ -72,13 +77,9 @@ holding still, it starts again from rest. A speed is capped at 2400 px/s.
 
 **Parking.** A card with less than twice the claim floor under the region
 is parked, its band with it: the auction would draw it larger than
-authored. Parked cards wait as specks in a sliver at the strip's end no
-whitespace touches, under the edge band's cards away from any whitespace
-beside the strip, so no speck touches whitespace; a speck at the page's
-edge is wide and deep enough that its seed is not clamped off the page's
-seed margin, since a seed moved from its rectangle's centre would break the
-whitespace's ties. A host its sliver would leave under the floor is parked
-with its band in turn.
+authored. A parked card leaves the page: it is a wall at a rectangle off
+the page's top left, which cuts nothing from the ground, bids nothing and
+draws nothing. The page keeps its count and its tiling owes it no sliver.
 
 ## The engine changes
 
@@ -87,7 +88,9 @@ with its band in turn.
 - The whitespace's seam sites follow a reel at once (no slew), are exactly
   the authored mirrors, and take the solved weights.
 - A reel's body is pinned (its seed holds its rectangle's centre) but never
-  a wall.
+  a wall while it shows; parked, it is a wall off the page. A reel's seed is
+  not clamped to the page's seed margin, so it can stand off the page.
+- The authored diagram takes a card's seed where the reel puts it.
 - A made-up card's going is no change: the reaper does not re-lay the page
   for it.
 - The flow carries the strips in the tick before the reel step lays them.
@@ -109,9 +112,9 @@ with its band in turn.
 - Without a click, Reel and Portal produce exactly equal state and exactly
   equal drawing commands over the same four layouts as Portal's validator:
   14,226 frames, 12,887,553 drawing commands.
-- With a click and no scroll, every card of the page stands in Portal's
-  rectangle for it (the hosts of the parked specks give up a sliver at the
-  strip's end, under 40% of theirs); no body on the page is a wall.
+- With a click and no scroll, every card of the page stands exactly in
+  Portal's rectangle for it, the made-up cards are walls off the page, and
+  nothing that shows is a wall.
 - Portal's whole click suite: every kind opens from its cell with no
   fractured cell on any frame, the whitespace exact, one site per cell, the
   text set in the reading void; mirroring, crossers, home, Escape, hover,
@@ -119,8 +122,11 @@ with its band in turn.
 - The reel, for five kinds with the flow held: with the specks parked the
   page is exact and every cell one site; a scroll of 720 px at 8 px a
   frame moves the cards,
-  brings new ones in, re-lays nothing and fractures nothing, and no cell is
-  ever more than 1 px into the whitespace while moving; settled,
+  brings new ones in, re-lays nothing and fractures nothing, no cell is
+  ever more than 1 px into the whitespace while moving, a card's seed
+  stands off the page only at a page-edge end and never past a divider,
+  every parked card is a wall off the page, and at a page edge some card
+  overflows; settled,
   the whitespace is exact again; 3000 px on, cards have come round the
   strip; the same way back, every first card is back in its slot and the
   whitespace exact; home returns twelve root cells and no reel. A made-up

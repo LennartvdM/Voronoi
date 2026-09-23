@@ -1,7 +1,7 @@
 // Reel adds a scrolling gallery. Without a click, the real tick must produce
 // exactly the same state and the same drawing commands as Portal; with a
-// click, the page's cards stand where Portal put them, less a sliver the
-// parked made-up cards wait in; with a scroll, the gallery slides under its
+// click, the page's cards stand exactly where Portal put them and the made-up
+// cards are parked off the page; with a scroll, the gallery slides under its
 // region, the whitespace stays exact, the strip is endless, and the next
 // change returns the page's count. Portal's own click suite runs unchanged.
 // Portal adds a click and page layouts. Without a click, the real tick must
@@ -68,11 +68,12 @@ for(const cfg of matrix){
  e.drift(0);assert(e.click(b.caption.x,b.caption.y));step(420);   // the flow held before the reel is made: the page as it opens
  const R=e.reel();assert(R,'no reel after the click');
  const spec=e.page('folio',12);
- // every card of the page stands in Portal's rectangle for it; the hosts of the parked specks give up a sliver of theirs at the strip's end
- const within=(a,b)=>a[0]>=b[0]-1e-6&&a[1]>=b[1]-1e-6&&a[2]<=b[2]+1e-6&&a[3]<=b[3]+1e-6;
- let matched=0,trimmed=0;for(const S of R.strips)for(const c of S.cards)if(!c.parked){const r=spec.content.find(r=>within(c.b.rect,r));assert(r,c.b.name+' is not where Portal put it');if(!rectsEqual(r,c.b.rect)){trimmed++;const keep=(c.b.rect[2]-c.b.rect[0])*(c.b.rect[3]-c.b.rect[1])/((r[2]-r[0])*(r[3]-r[1]));assert(keep>0.6,c.b.name+' lost '+((1-keep)*100).toFixed(0)+'% of its rectangle to the specks');}matched++;}
- assert.equal(matched,spec.content.length-1,'a card of the page is missing');
- for(const q of e.root.bodies)assert(!q.wall,(q.name||'a cell')+' is a wall on the page');
+ // every card of the page stands exactly in Portal's rectangle for it; the made-up cards are parked as walls off the page
+ const C=e.root.COLS,RW=e.root.ROWS,offPage=r=>r[2]<=0||r[3]<=0||r[0]>=C||r[1]>=RW;
+ let matched=0,parkedWalls=0;for(const S of R.strips)for(const c of S.cards){if(c.parked){assert(c.b.wall&&offPage(c.b.rect),c.b.name+' is parked but not a wall off the page');parkedWalls++;continue;}
+  assert(spec.content.some(r=>rectsEqual(r,c.b.rect)),c.b.name+' is not where Portal put it');assert(!c.b.wall,c.b.name+' is a wall on the page');matched++;}
+ assert.equal(matched,spec.content.length-1,'a card of the page is missing');assert(!e.focus().wall,'the image is a wall');
+ const trimmed=0;
  const parked=R.strips.reduce((n,S)=>n+S.cards.filter(c=>c.parked).length,0);
  for(const S of R.strips)for(const c of S.cards)if(c.parked)assert(c.b.reelSlack,c.b.name+' of the page is parked');
  report.clickIdentity={cards:matched,trimmed,parked};
@@ -260,8 +261,16 @@ for(const kind of ['spread','folio','band','essay','caption']){
  const visible=()=>R.strips.flatMap(S=>S.cards.filter(c=>!c.parked).map(c=>c.b.name));
  const before=visible(),serial=e.root.serial;
  // a scroll of 720 px at 8 px a frame: the cards move, the whitespace holds to within a few px, nothing fractures
- let worst=0,frac=0;
+ let worst=0,frac=0,offSeed=0;const W=e.root.W,H=e.root.H;
  for(let f=0;f<90;f++){assert(e.scroll(8),kind+': the scroll was refused');s.step(1);const sh=shapes(s);frac+=sh.fractured;
+  // overflow: a visible card's seed may stand off the page at a page-edge end, never past a divider; a parked card is a wall off the page
+  for(const S of R.strips)for(const c of S.cards){const b=c.b,g=S.def.g,PWx=e.root.PW,PHx=e.root.PH;
+   if(c.parked){assert(b.wall&&(b.rect[2]<=0||b.rect[3]<=0),kind+': '+b.name+' parked on the page');continue;}
+   assert(!b.wall,kind+': '+b.name+' is a wall');
+   const v=S.def.vertical,t=v?b.y:b.x,t0=v?g[1]*PHx:g[0]*PWx,t1=v?g[3]*PHx:g[2]*PWx,u=v?b.x:b.y,u0=v?g[0]*PWx:g[1]*PHx,u1=v?g[2]*PWx:g[3]*PHx;
+   assert(u>=u0-1e-6&&u<=u1+1e-6,kind+': '+b.name+' seeds beside the strip');
+   if(t<t0-1e-6){assert(S.pageT0,kind+': '+b.name+' seeds past the divider');offSeed++;}
+   if(t>t1+1e-6){assert(S.pageT1,kind+': '+b.name+' seeds past the divider');offSeed++;}}
   const PW=e.root.PW,PH=e.root.PH,boxes=e.root.bodies.filter(v=>v.isVoid&&!v.leaving&&v.rect).map(v=>[v.rect[0]*PW,v.rect[1]*PH,v.rect[2]*PW,v.rect[3]*PH]);
   for(const l of s.pic.leaves){if(l.path.length!==1||l.isVoid)continue;for(const lp of l.loops)for(const p of lp)for(const bx of boxes){const d=Math.min(p[0]-bx[0],bx[2]-p[0],p[1]-bx[1],bx[3]-p[1]);if(d>worst)worst=d;}}}
  assert.equal(frac,0,kind+': a fractured cell while scrolling');
@@ -279,7 +288,8 @@ for(const kind of ['spread','folio','band','essay','caption']){
  {const v=voidsExact(s,0.5);assert(v.ok,kind+': not exact back at the start: '+v.why);}
  // home: the made-up cards go, the count returns
  e.click(e.focus().x,e.focus().y);s.step(120);assert.equal(e.config.scene,'bento');assert.equal(roots(),N,kind+': '+roots()+' cells at home');assert(!e.reel(),kind+': the reel stayed');
- report.reel.push({kind,strips:R.strips.length,extras:R.strips.reduce((n,S)=>n+S.cards.filter(c=>c.b.reelSlack).length,0),worstScrollingPx:+worst.toFixed(1),farVisible:far.length});
+ if(R.strips.some(S=>S.pageT0||S.pageT1))assert(offSeed>0,kind+': no card overflowed a page edge');
+ report.reel.push({kind,strips:R.strips.length,extras:R.strips.reduce((n,S)=>n+S.cards.filter(c=>c.b.reelSlack).length,0),worstScrollingPx:+worst.toFixed(1),farVisible:far.length,overflowFrames:offSeed});
 }
 { // a made-up card clicked becomes the next image, and the page keeps its count
  const {s}=openKind('spread',desk,0),e=s.e,R=e.reel();
