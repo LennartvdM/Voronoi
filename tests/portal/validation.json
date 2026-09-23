@@ -1,0 +1,107 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed. Without a click, state and every drawing command must exactly match Plaque; with clicks, each page behaviour is asserted.",
+  "hashes": [
+    {
+      "file": "plaque.html",
+      "sha256": "1fb47c3acf61e10ac996682bd85d340f34ed9f0d3503b798f656db4bcf1458ef"
+    },
+    {
+      "file": "portal.html",
+      "sha256": "6ffe1758468f4219980f24a70e72a3617dad6f4e7f5bbd6edbe02747fe617978"
+    }
+  ],
+  "matrix": [
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 16.666666666666668,
+      "inner": "flock",
+      "frames": 3470
+    },
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 24,
+      "fields": 1,
+      "dt": 30,
+      "inner": "bento",
+      "frames": 1939
+    },
+    {
+      "width": 390,
+      "height": 720,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 8.333333333333334,
+      "inner": "flock",
+      "frames": 6940
+    },
+    {
+      "width": 1363,
+      "height": 846,
+      "count": 30,
+      "fields": 0,
+      "dt": 50,
+      "inner": "flock",
+      "frames": 1157
+    }
+  ],
+  "totalFrames": 13506,
+  "drawingCommands": 12887553,
+  "clicks": {
+    "pages": [
+      {
+        "cell": "Drift",
+        "scene": "story",
+        "focusArea": 1025999,
+        "nextArea": 51300,
+        "rect": "39.1%"
+      },
+      {
+        "cell": "Ember",
+        "scene": "hall",
+        "focusArea": 769499,
+        "nextArea": 76950,
+        "rect": "35.3%"
+      },
+      {
+        "cell": "Tide",
+        "scene": "reader",
+        "focusArea": 769499,
+        "nextArea": 51299,
+        "rect": "36.3%"
+      }
+    ],
+    "home": {
+      "roots": 7,
+      "numbers": 7
+    },
+    "field": {
+      "field": "Drift",
+      "scene": "story"
+    },
+    "void": {
+      "scene": "reader",
+      "marginClick": false
+    },
+    "interrupted": {
+      "first": "Ember",
+      "second": "Tide",
+      "scene": "reader"
+    },
+    "escape": {
+      "numbers": 7
+    },
+    "hover": {
+      "focusHoverMix": 0,
+      "cardHovered": "Tide"
+    },
+    "phone": {
+      "cell": "Ember",
+      "scene": "hall",
+      "rect": "31.4%"
+    }
+  }
+}
