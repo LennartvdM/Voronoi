@@ -1,12 +1,12 @@
-// Tell adds a scroll-tell: the cells stay while a story of blurbs scrolls
-// through a reading column, and the cluster volunteers a cell for each
-// slide's image. Without the Tell button, the real tick must produce exactly
+// Tell adds a scroll-tell: the cluster is laid once beside a reading column
+// and stays while a story of blurbs scrolls through the column, each slide's
+// hero swelling where it stands. Without the Tell button, the real tick must produce exactly
 // the same state and the same drawing commands as Reel, a click, a scroll and
-// home included; with the story, every slide is a page as exact as Portal's,
-// the image is the cell that volunteered, the text comes only once the
-// change has ended and the rules a beat later, the wheel, a drag and a flick
-// move the story, a slow story snaps to its slide, the story stops at its
-// ends, and home returns the count.
+// home included; with the story, the cluster never moves, every hero is the
+// card nearest its slide's place swollen in place with the column exact, the
+// text comes once the entry has ended and the rules a beat later and stays,
+// the wheel, a drag and a flick move the story, a slow story snaps to its
+// slide, the story stops at its ends, and home returns the count.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {loadEngine}=require('./probe.cjs');
 const rectsEqual=(a,b)=>a&&b&&a.length>=4&&b.length>=4&&a.slice(0,4).every((v,i)=>Math.abs(v-b[i])<1e-6);
@@ -127,118 +127,143 @@ function shapes(st){
 const desk={width:1900,height:810,fields:.55},phone={width:390,height:720,fields:.55};
 const N=12;
 const roots=e=>e.root.bodies.filter(q=>!q.isVoid&&!q.isSelf&&!q.leaving);
-// the cell nearest a slide's image place, not one of the last two images: the one that volunteers
-function volunteer(e,k,recent){const hr=e.tellPage(k,roots(e).length).content[0],cx=(hr[0]+hr[2])/2*e.root.PW,cy=(hr[1]+hr[3])/2*e.root.PH;let best=null,bd=Infinity;for(const b of roots(e)){if(recent.includes(b))continue;const d=Math.hypot(b.x-cx,b.y-cy);if(d<bd){bd=d;best=b;}}return best;}
 const column=e=>e.root.bodies.find(v=>v.isVoid&&!v.leaving&&v.rect&&v.rect.portalText);
-// A SLIDE, SETTLED: the image is the cell that volunteered, pinned to the
-// slide's image place; the column is exactly its rectangle; every cell one
-// site, none a wall, none fractured, the count kept; the blurb titled with
-// the image's name inside the column, its lines set, the rules drawn; the
-// image carries no label.
+const rectKey=r=>r.slice(0,4).map(v=>v.toFixed(6)).join(',');
+// THE HEROES ARE CHOSEN FROM THE CLUSTER AS LAID: for each slide the card whose
+// rectangle's centre is nearest the slide's place, not one of the last two
+function expectedHeroes(e,layout){const g=e.tellPage(N).region,out=[];for(const sd of e.slides()){const px=g[0]+sd.at[0]*(g[2]-g[0]),py=g[1]+sd.at[1]*(g[3]-g[1]),recent=out.slice(-2);let best=null,bd=Infinity;for(const [b,r] of layout){if(recent.includes(b))continue;const d=Math.hypot((r[0]+r[2])/2-px,(r[1]+r[3])/2-py);if(d<bd){bd=d;best=b;}}out.push(best);}return out;}
+// A SLIDE, SETTLED: the cluster is where it was laid at the start (every card's
+// rectangle the same, no re-lay, nothing travelling); the hero is the slide's,
+// swollen to a fifth of the cluster where it stands, the page's image; the
+// column is exactly its rectangle; every cell one site, none a wall, none a
+// field, none fractured, the count kept; the blurb titled with the hero's name
+// inside the column and nowhere else, its lines set, the rules drawn; the
+// hero without its label; no other card swollen.
 function settled(st,k,label){
  const e=st.e,T=e.tell();assert(T&&T.k===k,label+': the story is on slide '+(T&&T.k)+', not '+k);
- const b=e.focus();assert(b&&T.heroes[k]===b,label+': the image is not the slide\'s');
- const spec=e.tellPage(k,roots(e).length);
- assert(rectsEqual(b.rect,spec.content[0]),label+': the image is not at the slide\'s place '+JSON.stringify([b.rect,spec.content[0]]));
+ const b=e.focus();assert(b&&T.heroes[k]===b,label+': the image is not the slide\'s hero');
+ assert.equal(e.root.serial,st.serial,label+': the cluster was laid again');
+ for(const q of roots(e)){assert.equal(rectKey(q.rect),rectKey(st.layout.get(q)),label+': '+q.name+' moved from where the cluster was laid');assert(!q.journey||q.progress>=1,label+': '+q.name+' is travelling');}
  assert.equal(roots(e).length,N,label+': '+roots(e).length+' cells');
  for(const q of roots(e))assert.equal(q.subs.length,1,label+': '+q.name+' has '+q.subs.length+' sites');
- assert(!e.root.bodies.some(q=>q.wall),label+': a wall on the slide');
- assert(!st.pic.leaves.some(l=>l.path.length>1),label+': a field on the slide');
+ assert(!e.root.bodies.some(q=>q.wall&&!q.isVoid),label+': a card is a wall');
+ assert(!st.pic.leaves.some(l=>l.path.length>1),label+': a field on the story');
  const vx=voidsExact(st);assert(vx.ok,label+': '+vx.why);
  const sh=shapes(st);assert.equal(sh.fractured,0,label+': a fractured cell '+JSON.stringify(sh.worst));
  const px=parseFloat(e.meters().mGap[0])+parseFloat(e.meters().mOver[0]);
  assert(px<=0.003*e.root.W*e.root.H,label+': seam residual '+e.meters().mGap[0]+' gap, '+e.meters().mOver[0]+' overlap');
+ // the swell: the hero holds a fifth of the cluster, to a hairline; every other card its mix at zero
+ const g=e.tellPage(N).region,cluster=(g[2]-g[0])*(g[3]-g[1])*e.root.PW*e.root.PH,lf=rootsOf(st.pic).find(l=>l.body===b);
+ assert(lf,label+': the hero has no cell');const share=area(lf)/cluster;
+ assert(Math.abs(share-0.2)<0.01,label+': the hero holds '+(share*100).toFixed(1)+'% of the cluster, not 20%');
+ assert(Math.abs(b.tellMix-1)<1e-3,label+': the hero\'s mix is '+b.tellMix);   // the snap leaves the story a hair off its slide
+ for(const q of roots(e))if(q!==b)assert(!(q.tellMix>1e-3),label+': '+q.name+' is swollen too ('+q.tellMix+')');
  const v=column(e);assert(v&&v.crystal>=.99,label+': no seated column');const r=v.rect,PW=e.root.PW,PH=e.root.PH;
- assert(rectsEqual(r,spec.voids[0]),label+': the column is not the slide\'s');
+ assert(rectsEqual(r,e.tellPage(N).voids[0]),label+': the column is not the story\'s');
  const inVoid=q=>q[2]>=r[0]*PW&&q[2]<=r[2]*PW&&q[3]>=r[1]*PH&&q[3]<=r[3]*PH;
- const texts=e.commands.filter(c=>c[0]==='fillText'&&c[1]===b.name);   // the image's name: the blurb's title, and nowhere else (the cards keep their numbers)
+ const texts=e.commands.filter(c=>c[0]==='fillText'&&c[1]===b.name);   // the hero's name: the blurb's title, and nowhere else (the cards keep their numbers)
  assert(T.alpha>.99&&T.rule>.95,label+': the text or the rules are not full: '+T.alpha.toFixed(2)+' '+T.rule.toFixed(2));
  assert(texts.some(inVoid),label+': no title in the column');
- assert(!texts.some(c=>!inVoid(c)),label+': the image\'s name outside the column');
+ assert(!texts.some(c=>!inVoid(c)),label+': the hero\'s name outside the column');
  assert(e.commands.filter(c=>c[0]==='fill').length>=2,label+': no lines in the column');
- assert(b.caption.alpha<.05,label+': the image still carries its label');
- return{k,hero:b.name,col:e.slides()[k].col,side:e.slides()[k].side,imageShare:+(area(rootsOf(st.pic).find(l=>l.body===b))/(e.root.W*e.root.H)).toFixed(3),rest:{rectangle:sh.rectangle,voronoi:sh.voronoi,cut:sh.cut,shortEdged:sh.shortEdged}};
+ assert(b.caption.alpha<.05,label+': the hero still carries its label');
+ return{k,hero:b.name,share:+share.toFixed(3),rest:{rectangle:sh.rectangle,voronoi:sh.voronoi,cut:sh.cut,shortEdged:sh.shortEdged}};
 }
-// THE CHANGE: no fractured cell on any frame; the text begins only once the
-// change has ended, the rules only a beat after the text is full
+// THE ENTRY: no fractured cell on any frame; the text begins only once the
+// change has ended, the rules only a beat after the text is full; no hero
+// swells before the entry has ended
 function through(st,label,frames=420){
- const e=st.e;let endAt=-1,textAt=-1,textFull=-1,ruleAt=-1,ruleFull=-1,frac=0;
- for(let f=0;f<frames;f++){st.step(1);const T=e.tell(),sh=shapes(st);frac+=sh.fractured;assert.equal(sh.fractured,0,label+': a fractured cell '+JSON.stringify(sh.worst)+' at frame '+f);
+ const e=st.e;let endAt=-1,textAt=-1,textFull=-1,ruleAt=-1,ruleFull=-1,swellAt=-1;
+ for(let f=0;f<frames;f++){st.step(1);const T=e.tell(),sh=shapes(st);assert.equal(sh.fractured,0,label+': a fractured cell '+JSON.stringify(sh.worst)+' at frame '+f);
   if(endAt<0&&e.changeLeft()<=0)endAt=f;
   if(endAt<0)assert(T.alpha<1e-6,label+': the text began at frame '+f+' before the change ended');
+  if(endAt<0)assert(!(T.enter>0),label+': a hero swelled at frame '+f+' before the change ended');
+  if(swellAt<0&&T.enter>0.02)swellAt=f;
   if(textAt<0&&T.alpha>0.02)textAt=f;if(textFull<0&&T.alpha>0.97)textFull=f;
   if(textFull<0)assert(T.rule<1e-6,label+': a rule was drawn at frame '+f+' before the text had fully appeared');
   if(ruleAt<0&&T.rule>0.02)ruleAt=f;if(ruleFull<0&&T.rule>0.95)ruleFull=f;}
  assert(endAt>=0&&textAt>=endAt,label+': the text came at '+textAt+', the change ended at '+endAt);
+ assert(swellAt>=endAt,label+': the hero swelled at '+swellAt+', the change ended at '+endAt);
  assert(textFull>=0&&ruleAt>=textFull+12&&ruleFull>ruleAt,label+': the rules did not follow the text a beat later: text full '+textFull+', rules from '+ruleAt+' full '+ruleFull);
- return{endAt,textAt,textFull,ruleAt,ruleFull};
+ return{endAt,swellAt,textAt,textFull,ruleAt,ruleFull};
 }
-{ // the story begins: slide 0 from home, the nearest cell volunteering
+// the cluster as laid: every card's rectangle after the entry, and the page's serial
+function laid(st){const e=st.e;st.layout=new Map(roots(e).map(b=>[b,b.rect.slice(0,4)]));st.serial=e.root.serial;}
+{ // the story begins: the cluster laid once beside the column, the heroes chosen from it
  const st=fresh(desk),e=st.e;assert.equal(roots(e).length,N);
- const want=volunteer(e,0,[]);e.tellStart();
+ e.tellStart();
  assert.equal(e.config.scene,'tell','the scene is not tell');assert(e.tell()&&e.tell().k===0,'not on slide 0');
- assert(e.focus()===want,'the image is '+(e.focus()&&e.focus().name)+', the nearest cell was '+want.name);
- report.text=through(st,'start');
+ assert.equal(e.tell().heroes.length,e.slides().length,'not every slide has a hero');
+ report.text=through(st,'start');laid(st);
+ const want=expectedHeroes(e,st.layout);e.tell().heroes.forEach((h,k)=>assert(h===want[k],'slide '+k+'\'s hero is '+h.name+', the nearest card not among the last two was '+want[k].name));
+ for(let k=0;k<want.length;k++)assert(want[k]!==want[k-1]&&want[k]!==want[k-2],'slide '+k+' reuses a recent hero');
  report.start=settled(st,0,'slide 0');report.slides.push(report.start);
- // a wheel notch: the story moves on one slide, the next slide's image volunteers, not the last
- const prev=e.focus();e.tellPush(100);let changed=-1,want1=null;
- for(let f=0;f<240;f++){if(changed<0)want1=volunteer(e,1,e.tell().visited.slice(-2));st.step(1);if(changed<0&&e.tell().k===1)changed=f;}
- assert(changed>=0,'the notch did not turn the slide');assert(e.focus()!==prev,'the image did not change');
- assert(e.focus()===want1,'slide 1\'s image is '+e.focus().name+', the nearest cell not among the last two was '+want1.name);
- st.step(240);report.push={changedAt:changed,...settled(st,1,'slide 1')};report.slides.push(report.push);
- // a drag and a flick: the story runs on past slides and settles on one
+ // a wheel notch: the story moves on one slide; the cluster stays, the next hero swells where it stands as the first shrinks, the text stays
+ const prev=e.focus();e.tellPush(100);let changed=-1,minAlpha=1,crossing=false;
+ for(let f=0;f<240;f++){st.step(1);const T=e.tell();minAlpha=Math.min(minAlpha,T.alpha);if(changed<0&&T.k===1)changed=f;
+  if(T.y>0.3*e.root.H&&T.y<0.7*e.root.H){crossing=true;assert(Math.abs(T.heroes[0].tellMix+T.heroes[1].tellMix-1)<1e-9,'the two heroes\' mixes do not sum to one between the slides');}
+  for(const q of roots(e))assert.equal(rectKey(q.rect),rectKey(st.layout.get(q)),'the cluster moved at frame '+f+' of the notch');}
+ assert(changed>=0,'the notch did not turn the slide');assert(e.focus()!==prev,'the hero did not change');assert(crossing,'the story never crossed between the slides');
+ assert(minAlpha>0.97,'the text was hidden by the slide change: alpha '+minAlpha.toFixed(2));
+ st.step(120);report.push={changedAt:changed,...settled(st,1,'slide 1')};report.slides.push(report.push);
+ // a drag held half way: both heroes half swollen, the cluster exact; a flick carries the story on to snap onto a slide
  let t=e.time()*1000;assert(e.tellDragStart(900,600,t),'the drag did not take the story');const y0=e.tell().y;
- for(let f=1;f<=12;f++){t=e.time()*1000;e.tellDragMove(900,600-60*f,t);st.step(1);}
- assert(Math.abs(e.tell().y-y0-720)<1e-6,'the story did not follow the hand: '+(e.tell().y-y0).toFixed(1));
+ for(let f=1;f<=6;f++){t=e.time()*1000;e.tellDragMove(900,600-e.root.H/12*f,t);st.step(1);}st.step(30);
+ assert(Math.abs(e.tell().y-y0-e.root.H/2)<1e-6,'the story did not follow the hand: '+(e.tell().y-y0).toFixed(1));
+ {const T=e.tell();assert(Math.abs(T.heroes[1].tellMix-0.5)<1e-9&&Math.abs(T.heroes[2].tellMix-0.5)<1e-9,'held half way the heroes are not half swollen');
+  const v=voidsExact(st);assert(v.ok,'held half way: '+v.why);const g=e.tellPage(N).region,cluster=(g[2]-g[0])*(g[3]-g[1])*e.root.PW*e.root.PH;
+  const s1=area(rootsOf(st.pic).find(l=>l.body===T.heroes[1]))/cluster,s2=area(rootsOf(st.pic).find(l=>l.body===T.heroes[2]))/cluster;
+  assert(s1>0.1&&s1<0.2&&s2>0.1&&s2<0.2,'held half way the heroes hold '+(s1*100).toFixed(0)+'% and '+(s2*100).toFixed(0)+'%');}
+ for(let f=1;f<=6;f++){t=e.time()*1000;e.tellDragMove(900,300-60*f,t);st.step(1);}
  e.tellDragEnd(e.time()*1000);assert(e.tell().v>600,'no flick: v '+e.tell().v.toFixed(0));
- let frac=0;for(let f=0;f<420;f++){st.step(1);frac+=shapes(st).fractured;}assert.equal(frac,0,'a fractured cell in the flick');
- const kd=e.tell().k;assert(kd>=3,'the flick carried the story only to slide '+kd);
+ let frac=0;for(let f=0;f<300;f++){st.step(1);frac+=shapes(st).fractured;}assert.equal(frac,0,'a fractured cell in the flick');
+ const kd=e.tell().k;assert(kd>=2,'the flick carried the story only to slide '+kd);
  assert(Math.abs(e.tell().y-kd*e.root.H)<0.5,'the story did not snap to its slide: y '+e.tell().y.toFixed(1));
  report.drag={slide:kd,...settled(st,kd,'slide '+kd+' after the flick')};report.slides.push(report.drag);
- // every slide on, each image a fresh volunteer
- for(let k=kd+1;k<e.slides().length;k++){e.tellMove(e.root.H);st.step(420);const r=settled(st,k,'slide '+k);report.slides.push(r);
-  const hs=e.tell().heroes;assert(hs[k]!==hs[k-1]&&hs[k]!==hs[k-2],'slide '+k+' reused a recent image');}
+ // every slide on: each hero swells in its place, the cluster never moving
+ for(let k=kd+1;k<e.slides().length;k++){e.tellGo(k);st.step(150);report.slides.push(settled(st,k,'slide '+k));}
  // the ends: a push past the last slide stays on it, and the story stays exact
  const last=(e.slides().length-1)*e.root.H;e.tellPush(1000);st.step(300);
  assert(Math.abs(e.tell().y-last)<1e-6&&e.tell().k===e.slides().length-1,'the story ran past its end: y '+e.tell().y.toFixed(0));
  {const v=voidsExact(st);assert(v.ok,'not exact at the end: '+v.why);}
- // back to the start: the first slide keeps its image if it is not one of the last two
- const first=e.tell().heroes[0],recent=e.tell().visited.slice(-2);
- e.tellMove(-1e9);st.step(420);assert.equal(e.tell().k,0,'the story did not go back to slide 0');
- if(!recent.includes(first))assert(e.focus()===first,'slide 0 lost its image on the way back');
+ // back to the start: the same heroes, the same cluster
+ e.tellGo(0);st.step(150);assert.equal(e.tell().k,0,'the story did not go back to slide 0');
  e.tellPush(-1000);st.step(300);assert(e.tell().y===0,'the story ran past its start');
- report.ends={last:e.slides().length-1};report.back={hero:e.focus().name,kept:e.focus()===first,...settled(st,0,'slide 0 again')};
- // home: the image clicked goes home, the count returns, every root cell numbered
+ report.ends={last:e.slides().length-1};report.back=settled(st,0,'slide 0 again');
+ // home: the hero clicked goes home, the count returns, every root cell numbered, nothing swollen
  const b=e.focus();e.click(b.x,b.y);assert.equal(e.config.scene,'bento');assert.equal(e.focus(),null);assert(!e.tell(),'the story stayed');
  st.step(300);const rs=rootsOf(st.pic);assert.equal(roots(e).length,N,'home lost cells');assert(rs.length>=5&&rs.every(q=>q.body.caption.alpha>.95),'home lost numbers');   // home is the bento with its fields: some cells are clusters
+ assert(!roots(e).some(q=>q.tellMix>0||q.reelPinned),'a card kept its swell or its pin at home');
  report.home={cells:roots(e).length,roots:rs.length,numbers:rs.filter(q=>q.body.caption.alpha>.95).length};
 }
 { // a notch is a slide, whatever its size: one on, a tiny one on, one back; three quick ones spin the story on by less than three
- const st=fresh(desk),e=st.e;e.tellStart();st.step(420);
+ const st=fresh(desk),e=st.e;e.tellStart();st.step(420);laid(st);
  const notch=(dy,k,label)=>{e.tellPush(dy);st.step(150);assert.equal(e.tell().k,k,label+': slide '+e.tell().k+', not '+k);assert(Math.abs(e.tell().y-k*e.root.H)<0.5,label+': not settled on its slide: y '+e.tell().y.toFixed(1));};
  notch(100,1,'a notch');notch(120,2,'a larger notch');notch(3,3,'a trackpad tick');notch(-100,2,'a notch back');
- e.tellPush(100);st.step(10);e.tellPush(100);st.step(10);e.tellPush(100);st.step(420);const spun=e.tell().k-2;assert(spun>=1&&spun<=2,'three quick notches turned '+spun+' slides');
+ e.tellPush(100);st.step(10);e.tellPush(100);st.step(10);e.tellPush(100);st.step(300);const spun=e.tell().k-2;assert(spun>=1&&spun<=2,'three quick notches turned '+spun+' slides');
  settled(st,e.tell().k,'slide '+e.tell().k+' by notches');report.notch={one:1,tiny:1,back:-1,threeQuick:spun};
 }
 { // the snap: a short move eases back to its slide, a long one on to the next
- const st=fresh(desk),e=st.e;e.tellStart();st.step(420);
+ const st=fresh(desk),e=st.e;e.tellStart();st.step(420);laid(st);
  e.tellMove(0.3*e.root.H);st.step(180);assert.equal(e.tell().k,0,'a short move turned the slide');assert(e.tell().y<0.5,'a short move did not ease back: y '+e.tell().y.toFixed(1));
- e.tellMove(0.6*e.root.H);st.step(420);assert.equal(e.tell().k,1,'a long move did not turn the slide');assert(Math.abs(e.tell().y-e.root.H)<0.5,'a long move did not settle on the slide: y '+e.tell().y.toFixed(1));
+ e.tellMove(0.6*e.root.H);st.step(180);assert.equal(e.tell().k,1,'a long move did not turn the slide');assert(Math.abs(e.tell().y-e.root.H)<0.5,'a long move did not settle on the slide: y '+e.tell().y.toFixed(1));
  settled(st,1,'slide 1 by a move');report.snap={short:0.3,long:0.6};
 }
-{ // a push mid-change: the change that wins is the slide's, and it ends exact
- const st=fresh(desk),e=st.e;e.tellStart();st.step(18);e.tellPush(300);
- let frac=0,k=-1;for(let f=0;f<480;f++){st.step(1);frac+=shapes(st).fractured;if(k<0&&e.tell().k!==0)k=f;}
- assert.equal(frac,0,'a fractured cell in the interrupted change');assert(k>=0,'the push mid-change did not turn the slide');
+{ // a notch during the entry: the story turns, the cluster still arrives as laid, and settles exact
+ const st=fresh(desk),e=st.e;e.tellStart();st.step(18);e.tellPush(100);
+ let frac=0,k=-1;for(let f=0;f<420;f++){st.step(1);frac+=shapes(st).fractured;if(k<0&&e.tell().k!==0)k=f;}
+ assert.equal(frac,0,'a fractured cell in the interrupted entry');assert(k>=0,'the notch during the entry did not turn the slide');laid(st);
  report.interrupted={turnedAt:k,...settled(st,1,'interrupted')};
 }
-{ // a phone: the column a band across the top, the image below it on the slide's side; the story turns the same way
- const st=fresh(phone),e=st.e;const want=volunteer(e,0,[]);e.tellStart();assert(e.focus()===want,'phone: the nearest cell did not volunteer');
- const tx=through(st,'phone');const r0=settled(st,0,'phone slide 0');
- const v=column(e);assert(rectsEqual(v.rect,[0,0,e.root.COLS,0.28*e.root.ROWS]),'phone: the column is not the band across the top');
- assert(e.focus().rect[1]>=0.28*e.root.ROWS-1e-6,'phone: the image is not below the band');
- e.tellPush(300);st.step(480);const r1=settled(st,1,'phone slide 1');
+{ // a phone: the column a band across the top, the cluster below; the story turns the same way
+ const st=fresh(phone),e=st.e;e.tellStart();
+ const tx=through(st,'phone');laid(st);
+ const want=expectedHeroes(e,st.layout);e.tell().heroes.forEach((h,k)=>assert(h===want[k],'phone: slide '+k+'\'s hero is '+h.name+', not '+want[k].name));
+ const r0=settled(st,0,'phone slide 0');
+ const v=column(e);assert(rectsEqual(v.rect,[0,0,e.root.COLS,Math.round(0.3*e.root.ROWS)]),'phone: the column is not the band across the top');
+ for(const q of roots(e))assert(q.rect[1]>=Math.round(0.3*e.root.ROWS)-1e-6,'phone: '+q.name+' is not below the band');
+ e.tellPush(100);st.step(240);const r1=settled(st,1,'phone slide 1');
  report.phone={text:tx,slides:[r0,r1]};
 }
-const result={scope:'Real full tick; native Canvas and browser DOM stubbed. Without the Tell button, state and every drawing command must exactly match Reel, a click, a scroll, a drag and home included; with the story, every slide is a page with its column exactly the rectangle it was given, every cell one site and never fractured, the image the cell that volunteered at the slide\'s place, the text set only once the change has ended and the rules a beat later, a wheel notch of any size turning one slide, a drag and a flick carrying the story on, a slow story snapping to its slide, the story stopping at its ends, and home returning the count.',hashes:files.map(f=>({file:path.basename(f),sha256:hash(fs.readFileSync(f))})),matrix,totalFrames:total,drawingCommands:commandsTotal,story:report};
+const result={scope:'Real full tick; native Canvas and browser DOM stubbed. Without the Tell button, state and every drawing command must exactly match Reel, a click, a scroll, a drag and home included; with the story, the cluster is laid once beside the column and never moves again, every slide\'s hero is the card nearest the slide\'s place (not one of the last two), swollen where it stands to a fifth of the cluster with the column exactly the rectangle it was given, every cell one site and never fractured, the text set once the entry has ended and the rules a beat later and kept through every slide, a wheel notch of any size turning one slide, a drag held half way leaving two heroes half swollen, a flick carrying the story on, a slow story snapping to its slide, the story stopping at its ends, and home returning the count.',hashes:files.map(f=>({file:path.basename(f),sha256:hash(fs.readFileSync(f))})),matrix,totalFrames:total,drawingCommands:commandsTotal,story:report};
 fs.writeFileSync(path.join(__dirname,'validation.json'),JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify({totalFrames:total,drawingCommands:commandsTotal,story:report}));

@@ -1,5 +1,5 @@
 {
-  "scope": "Real full tick; native Canvas and browser DOM stubbed. Without the Tell button, state and every drawing command must exactly match Reel, a click, a scroll, a drag and home included; with the story, every slide is a page with its column exactly the rectangle it was given, every cell one site and never fractured, the image the cell that volunteered at the slide's place, the text set only once the change has ended and the rules a beat later, a wheel notch of any size turning one slide, a drag and a flick carrying the story on, a slow story snapping to its slide, the story stopping at its ends, and home returning the count.",
+  "scope": "Real full tick; native Canvas and browser DOM stubbed. Without the Tell button, state and every drawing command must exactly match Reel, a click, a scroll, a drag and home included; with the story, the cluster is laid once beside the column and never moves again, every slide's hero is the card nearest the slide's place (not one of the last two), swollen where it stands to a fifth of the cluster with the column exactly the rectangle it was given, every cell one site and never fractured, the text set once the entry has ended and the rules a beat later and kept through every slide, a wheel notch of any size turning one slide, a drag held half way leaving two heroes half swollen, a flick carrying the story on, a slow story snapping to its slide, the story stopping at its ends, and home returning the count.",
   "hashes": [
     {
       "file": "reel.html",
@@ -7,7 +7,7 @@
     },
     {
       "file": "tell.html",
-      "sha256": "be1224debcc185776c3492133160d15a665adbe042341147191b52aa2cd40ebc"
+      "sha256": "0cd09badc2ed802684a9883c28474480a65265e0d123555eb9df93b663e03c93"
     }
   ],
   "matrix": [
@@ -57,13 +57,11 @@
     },
     "start": {
       "k": 0,
-      "hero": "Coal",
-      "col": "left",
-      "side": "right",
-      "imageShare": 0.209,
+      "hero": "Dune",
+      "share": 0.2,
       "rest": {
-        "rectangle": 1,
-        "voronoi": 11,
+        "rectangle": 2,
+        "voronoi": 10,
         "cut": 0,
         "shortEdged": 0
       }
@@ -71,13 +69,11 @@
     "slides": [
       {
         "k": 0,
-        "hero": "Coal",
-        "col": "left",
-        "side": "right",
-        "imageShare": 0.209,
+        "hero": "Dune",
+        "share": 0.2,
         "rest": {
-          "rectangle": 1,
-          "voronoi": 11,
+          "rectangle": 2,
+          "voronoi": 10,
           "cut": 0,
           "shortEdged": 0
         }
@@ -85,13 +81,11 @@
       {
         "changedAt": 15,
         "k": 1,
-        "hero": "Aurora",
-        "col": "centre",
-        "side": "left",
-        "imageShare": 0.213,
+        "hero": "Coral",
+        "share": 0.2,
         "rest": {
-          "rectangle": 2,
-          "voronoi": 10,
+          "rectangle": 3,
+          "voronoi": 9,
           "cut": 0,
           "shortEdged": 0
         }
@@ -99,87 +93,76 @@
       {
         "slide": 3,
         "k": 3,
-        "hero": "Haze",
-        "col": "centre",
-        "side": "right",
-        "imageShare": 0.209,
+        "hero": "Petal",
+        "share": 0.2,
         "rest": {
-          "rectangle": 2,
-          "voronoi": 10,
+          "rectangle": 3,
+          "voronoi": 8,
           "cut": 0,
-          "shortEdged": 0
+          "shortEdged": 1
         }
       },
       {
         "k": 4,
-        "hero": "Jazz",
-        "col": "left",
-        "side": "right",
-        "imageShare": 0.209,
+        "hero": "Haze",
+        "share": 0.2,
         "rest": {
-          "rectangle": 0,
-          "voronoi": 12,
+          "rectangle": 3,
+          "voronoi": 9,
           "cut": 0,
           "shortEdged": 0
         }
       },
       {
         "k": 5,
-        "hero": "Mint",
-        "col": "right",
-        "side": "left",
-        "imageShare": 0.209,
+        "hero": "Coal",
+        "share": 0.2,
         "rest": {
-          "rectangle": 1,
-          "voronoi": 11,
+          "rectangle": 3,
+          "voronoi": 9,
           "cut": 0,
           "shortEdged": 0
         }
       },
       {
         "k": 6,
-        "hero": "Petal",
-        "col": "centre",
-        "side": "left",
-        "imageShare": 0.209,
+        "hero": "Drift",
+        "share": 0.2,
         "rest": {
-          "rectangle": 2,
-          "voronoi": 10,
+          "rectangle": 3,
+          "voronoi": 7,
           "cut": 0,
-          "shortEdged": 0
+          "shortEdged": 2
         }
       },
       {
         "k": 7,
-        "hero": "Coral",
-        "col": "left",
-        "side": "right",
-        "imageShare": 0.213,
+        "hero": "Aurora",
+        "share": 0.2,
         "rest": {
-          "rectangle": 1,
-          "voronoi": 11,
+          "rectangle": 3,
+          "voronoi": 9,
           "cut": 0,
           "shortEdged": 0
         }
       }
     ],
     "text": {
-      "endAt": 170,
-      "textAt": 170,
-      "textFull": 233,
-      "ruleAt": 249,
-      "ruleFull": 329
+      "endAt": 146,
+      "swellAt": 146,
+      "textAt": 146,
+      "textFull": 209,
+      "ruleAt": 225,
+      "ruleFull": 305
     },
     "push": {
       "changedAt": 15,
       "k": 1,
-      "hero": "Aurora",
-      "col": "centre",
-      "side": "left",
-      "imageShare": 0.213,
+      "hero": "Coral",
+      "share": 0.2,
       "rest": {
-        "rectangle": 2,
-        "voronoi": 10,
+        "rectangle": 3,
+        "voronoi": 9,
         "cut": 0,
         "shortEdged": 0
       }
@@ -187,15 +170,13 @@
     "drag": {
       "slide": 3,
       "k": 3,
-      "hero": "Haze",
-      "col": "centre",
-      "side": "right",
-      "imageShare": 0.209,
+      "hero": "Petal",
+      "share": 0.2,
       "rest": {
-        "rectangle": 2,
-        "voronoi": 10,
+        "rectangle": 3,
+        "voronoi": 8,
         "cut": 0,
-        "shortEdged": 0
+        "shortEdged": 1
       }
     },
     "notch": {
@@ -212,15 +193,12 @@
       "last": 7
     },
     "back": {
-      "hero": "Coal",
-      "kept": true,
       "k": 0,
-      "col": "left",
-      "side": "right",
-      "imageShare": 0.209,
+      "hero": "Dune",
+      "share": 0.2,
       "rest": {
-        "rectangle": 1,
-        "voronoi": 11,
+        "rectangle": 2,
+        "voronoi": 10,
         "cut": 0,
         "shortEdged": 0
       }
@@ -228,13 +206,11 @@
     "interrupted": {
       "turnedAt": 15,
       "k": 1,
-      "hero": "Dune",
-      "col": "centre",
-      "side": "left",
-      "imageShare": 0.213,
+      "hero": "Coral",
+      "share": 0.2,
       "rest": {
-        "rectangle": 2,
-        "voronoi": 10,
+        "rectangle": 3,
+        "voronoi": 9,
         "cut": 0,
         "shortEdged": 0
       }
@@ -246,19 +222,18 @@
     },
     "phone": {
       "text": {
-        "endAt": 126,
-        "textAt": 126,
-        "textFull": 189,
-        "ruleAt": 205,
-        "ruleFull": 285
+        "endAt": 142,
+        "swellAt": 142,
+        "textAt": 142,
+        "textFull": 205,
+        "ruleAt": 221,
+        "ruleFull": 301
       },
       "slides": [
         {
           "k": 0,
-          "hero": "Coral",
-          "col": "left",
-          "side": "right",
-          "imageShare": 0.18,
+          "hero": "Dune",
+          "share": 0.2,
           "rest": {
             "rectangle": 2,
             "voronoi": 10,
@@ -268,15 +243,13 @@
         },
         {
           "k": 1,
-          "hero": "Dune",
-          "col": "centre",
-          "side": "left",
-          "imageShare": 0.18,
+          "hero": "Mint",
+          "share": 0.2,
           "rest": {
             "rectangle": 2,
-            "voronoi": 10,
+            "voronoi": 8,
             "cut": 0,
-            "shortEdged": 0
+            "shortEdged": 2
           }
         }
       ]
