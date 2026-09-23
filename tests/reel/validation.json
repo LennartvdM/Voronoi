@@ -1,0 +1,369 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed. Without a scroll, state and every drawing command must exactly match Portal, a click included; with a scroll, the gallery slides under its region, the whitespace holds, the strip is endless and the next change returns the count; with clicks, every page kind opens with its whitespace exactly the rectangles it was given, every cell one site and never fractured, its text in the reading void, and every click behaviour is asserted.",
+  "hashes": [
+    {
+      "file": "portal.html",
+      "sha256": "63bc171f373b706256b916dcb20fec25ba060eeeda5de1a3bc07492040eda550"
+    },
+    {
+      "file": "reel.html",
+      "sha256": "cb9ce090e110b40756fb99225812bcf9a24b71b6d3f046bced8dafe2a3dbb926"
+    }
+  ],
+  "matrix": [
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 16.666666666666668,
+      "inner": "flock",
+      "frames": 3470
+    },
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 24,
+      "fields": 1,
+      "dt": 30,
+      "inner": "bento",
+      "frames": 1939
+    },
+    {
+      "width": 390,
+      "height": 720,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 8.333333333333334,
+      "inner": "flock",
+      "frames": 6940
+    },
+    {
+      "width": 1363,
+      "height": 846,
+      "count": 30,
+      "fields": 0,
+      "dt": 50,
+      "inner": "flock",
+      "frames": 1157
+    }
+  ],
+  "totalFrames": 14226,
+  "drawingCommands": 12887553,
+  "clicks": {
+    "clickIdentity": {
+      "cards": 11,
+      "trimmed": 2,
+      "parked": 5
+    },
+    "kinds": [
+      {
+        "kind": "spread",
+        "cell": "Drift",
+        "imageShare": 0.42,
+        "smallestCard": 0.0008,
+        "rest": {
+          "rectangle": 7,
+          "voronoi": 10,
+          "cut": 0,
+          "shortEdged": 0
+        },
+        "transition": {
+          "rectangle": 1755,
+          "notched": 31,
+          "voronoi": 4761,
+          "cut": 0,
+          "shortEdged": 110,
+          "fractured": 0
+        },
+        "gap": "0px²"
+      },
+      {
+        "kind": "folio",
+        "cell": "Ember",
+        "imageShare": 0.46,
+        "smallestCard": 0.0016,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 16,
+          "cut": 0,
+          "shortEdged": 0
+        },
+        "transition": {
+          "rectangle": 283,
+          "notched": 0,
+          "voronoi": 6336,
+          "cut": 0,
+          "shortEdged": 81,
+          "fractured": 0
+        },
+        "gap": "0px²"
+      },
+      {
+        "kind": "showcase",
+        "cell": "Tide",
+        "imageShare": 0.48,
+        "smallestCard": 0.0011,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 13,
+          "cut": 0,
+          "shortEdged": 1
+        },
+        "transition": {
+          "rectangle": 483,
+          "notched": 2,
+          "voronoi": 5463,
+          "cut": 0,
+          "shortEdged": 309,
+          "fractured": 0
+        },
+        "gap": "0px²"
+      },
+      {
+        "kind": "band",
+        "cell": "Moss",
+        "imageShare": 0.372,
+        "smallestCard": 0.0007,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 16,
+          "cut": 0,
+          "shortEdged": 0
+        },
+        "transition": {
+          "rectangle": 282,
+          "notched": 20,
+          "voronoi": 6244,
+          "cut": 0,
+          "shortEdged": 89,
+          "fractured": 0
+        },
+        "gap": "0px²"
+      },
+      {
+        "kind": "lead",
+        "cell": "Petal",
+        "imageShare": 0.39,
+        "smallestCard": 0.0008,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 16,
+          "cut": 0,
+          "shortEdged": 0
+        },
+        "transition": {
+          "rectangle": 281,
+          "notched": 26,
+          "voronoi": 6156,
+          "cut": 0,
+          "shortEdged": 108,
+          "fractured": 0
+        },
+        "gap": "0px²"
+      },
+      {
+        "kind": "documentation",
+        "cell": "Aurora",
+        "imageShare": 0.38,
+        "smallestCard": 0.0007,
+        "rest": {
+          "rectangle": 7,
+          "voronoi": 7,
+          "cut": 0,
+          "shortEdged": 3
+        },
+        "transition": {
+          "rectangle": 1700,
+          "notched": 14,
+          "voronoi": 4044,
+          "cut": 0,
+          "shortEdged": 827,
+          "fractured": 0
+        },
+        "gap": "0px²"
+      },
+      {
+        "kind": "essay",
+        "cell": "Dune",
+        "imageShare": 0.319,
+        "smallestCard": 0.0008,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 19,
+          "cut": 0,
+          "shortEdged": 0
+        },
+        "transition": {
+          "rectangle": 263,
+          "notched": 4,
+          "voronoi": 7414,
+          "cut": 0,
+          "shortEdged": 267,
+          "fractured": 0
+        },
+        "gap": "0px²"
+      },
+      {
+        "kind": "caption",
+        "cell": "Jazz",
+        "imageShare": 0.84,
+        "smallestCard": 0.0011,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 12,
+          "cut": 0,
+          "shortEdged": 2
+        },
+        "transition": {
+          "rectangle": 510,
+          "notched": 1,
+          "voronoi": 5131,
+          "cut": 0,
+          "shortEdged": 545,
+          "fractured": 0
+        },
+        "gap": "0px²"
+      }
+    ],
+    "home": {
+      "roots": 7,
+      "numbers": 7
+    },
+    "field": {
+      "field": "Drift",
+      "scene": "spread"
+    },
+    "void": {
+      "scene": "spread",
+      "voidClick": false
+    },
+    "interrupted": {
+      "first": "Ember",
+      "second": "Tide",
+      "scene": "showcase"
+    },
+    "mirror": {
+      "checked": 3
+    },
+    "crossers": {
+      "count": 4,
+      "lastLanded": 149,
+      "textAt": 166
+    },
+    "escape": {
+      "numbers": 6
+    },
+    "hover": {
+      "imageHoverMix": 0,
+      "cardHovered": "Drift"
+    },
+    "phone": [
+      {
+        "kind": "spread",
+        "rest": {
+          "rectangle": 9,
+          "voronoi": 7,
+          "shortEdged": 0
+        }
+      },
+      {
+        "kind": "folio",
+        "rest": {
+          "rectangle": 9,
+          "voronoi": 7,
+          "shortEdged": 0
+        }
+      },
+      {
+        "kind": "showcase",
+        "rest": {
+          "rectangle": 9,
+          "voronoi": 7,
+          "shortEdged": 0
+        }
+      },
+      {
+        "kind": "band",
+        "rest": {
+          "rectangle": 9,
+          "voronoi": 7,
+          "shortEdged": 0
+        }
+      },
+      {
+        "kind": "lead",
+        "rest": {
+          "rectangle": 9,
+          "voronoi": 7,
+          "shortEdged": 0
+        }
+      },
+      {
+        "kind": "documentation",
+        "rest": {
+          "rectangle": 9,
+          "voronoi": 7,
+          "shortEdged": 0
+        }
+      },
+      {
+        "kind": "essay",
+        "rest": {
+          "rectangle": 9,
+          "voronoi": 7,
+          "shortEdged": 0
+        }
+      },
+      {
+        "kind": "caption",
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 14,
+          "shortEdged": 0
+        }
+      }
+    ],
+    "reel": [
+      {
+        "kind": "spread",
+        "strips": 1,
+        "extras": 5,
+        "worstScrollingPx": 1,
+        "farVisible": 14
+      },
+      {
+        "kind": "folio",
+        "strips": 1,
+        "extras": 5,
+        "worstScrollingPx": 0,
+        "farVisible": 14
+      },
+      {
+        "kind": "band",
+        "strips": 1,
+        "extras": 5,
+        "worstScrollingPx": 0,
+        "farVisible": 15
+      },
+      {
+        "kind": "essay",
+        "strips": 2,
+        "extras": 8,
+        "worstScrollingPx": 0,
+        "farVisible": 10
+      },
+      {
+        "kind": "caption",
+        "strips": 1,
+        "extras": 4,
+        "worstScrollingPx": 0,
+        "farVisible": 11
+      },
+      {
+        "promoted": "Neon",
+        "scene": "documentation"
+      }
+    ]
+  }
+}
