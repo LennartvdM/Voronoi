@@ -1,0 +1,396 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed. Without a scroll, state and every drawing command must exactly match Portal, a click included; with a scroll, the gallery slides under its region, the whitespace holds, the strip is endless and the next change returns the count; with clicks, every page kind opens with its whitespace exactly the rectangles it was given, every cell one site and never fractured, its text in the reading void, and every click behaviour is asserted.",
+  "hashes": [
+    {
+      "file": "portal.html",
+      "sha256": "63bc171f373b706256b916dcb20fec25ba060eeeda5de1a3bc07492040eda550"
+    },
+    {
+      "file": "reel.html",
+      "sha256": "c9660c9a8a68ab87cbd1687801a84b69d9ace2d3db0eb55fe93deb510b6b1c6c"
+    }
+  ],
+  "matrix": [
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 16.666666666666668,
+      "inner": "flock",
+      "frames": 3470
+    },
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 24,
+      "fields": 1,
+      "dt": 30,
+      "inner": "bento",
+      "frames": 1939
+    },
+    {
+      "width": 390,
+      "height": 720,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 8.333333333333334,
+      "inner": "flock",
+      "frames": 6940
+    },
+    {
+      "width": 1363,
+      "height": 846,
+      "count": 30,
+      "fields": 0,
+      "dt": 50,
+      "inner": "flock",
+      "frames": 1157
+    }
+  ],
+  "totalFrames": 14226,
+  "drawingCommands": 12887553,
+  "clicks": {
+    "clickIdentity": {
+      "cards": 11,
+      "trimmed": 0,
+      "parked": 5
+    },
+    "kinds": [
+      {
+        "kind": "spread",
+        "cell": "Drift",
+        "imageShare": 0.42,
+        "smallestCard": 0.0105,
+        "rest": {
+          "rectangle": 8,
+          "voronoi": 9,
+          "cut": 0,
+          "shortEdged": 0
+        },
+        "transition": {
+          "rectangle": 2916,
+          "notched": 0,
+          "voronoi": 3651,
+          "cut": 0,
+          "shortEdged": 94,
+          "fractured": 0
+        },
+        "gap": "0px²"
+      },
+      {
+        "kind": "folio",
+        "cell": "Ember",
+        "imageShare": 0.46,
+        "smallestCard": 0.0103,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 15,
+          "cut": 0,
+          "shortEdged": 0
+        },
+        "transition": {
+          "rectangle": 1528,
+          "notched": 0,
+          "voronoi": 4860,
+          "cut": 0,
+          "shortEdged": 313,
+          "fractured": 0
+        },
+        "gap": "0px²"
+      },
+      {
+        "kind": "showcase",
+        "cell": "Tide",
+        "imageShare": 0.48,
+        "smallestCard": 0.0026,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 13,
+          "cut": 0,
+          "shortEdged": 0
+        },
+        "transition": {
+          "rectangle": 1496,
+          "notched": 0,
+          "voronoi": 4652,
+          "cut": 0,
+          "shortEdged": 109,
+          "fractured": 0
+        },
+        "gap": "0px²"
+      },
+      {
+        "kind": "band",
+        "cell": "Moss",
+        "imageShare": 0.372,
+        "smallestCard": 0.0079,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 15,
+          "cut": 0,
+          "shortEdged": 0
+        },
+        "transition": {
+          "rectangle": 1386,
+          "notched": 0,
+          "voronoi": 5126,
+          "cut": 0,
+          "shortEdged": 113,
+          "fractured": 0
+        },
+        "gap": "0px²"
+      },
+      {
+        "kind": "lead",
+        "cell": "Petal",
+        "imageShare": 0.39,
+        "smallestCard": 0.0082,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 15,
+          "cut": 0,
+          "shortEdged": 0
+        },
+        "transition": {
+          "rectangle": 1377,
+          "notched": 0,
+          "voronoi": 5113,
+          "cut": 0,
+          "shortEdged": 91,
+          "fractured": 0
+        },
+        "gap": "0px²"
+      },
+      {
+        "kind": "documentation",
+        "cell": "Aurora",
+        "imageShare": 0.38,
+        "smallestCard": 0.0095,
+        "rest": {
+          "rectangle": 8,
+          "voronoi": 6,
+          "cut": 0,
+          "shortEdged": 3
+        },
+        "transition": {
+          "rectangle": 2900,
+          "notched": 0,
+          "voronoi": 2851,
+          "cut": 0,
+          "shortEdged": 837,
+          "fractured": 0
+        },
+        "gap": "0px²"
+      },
+      {
+        "kind": "essay",
+        "cell": "Dune",
+        "imageShare": 0.319,
+        "smallestCard": 0.0012,
+        "rest": {
+          "rectangle": 7,
+          "voronoi": 13,
+          "cut": 0,
+          "shortEdged": 0
+        },
+        "transition": {
+          "rectangle": 2865,
+          "notched": 0,
+          "voronoi": 4481,
+          "cut": 0,
+          "shortEdged": 604,
+          "fractured": 0
+        },
+        "gap": "0px²"
+      },
+      {
+        "kind": "caption",
+        "cell": "Jazz",
+        "imageShare": 0.84,
+        "smallestCard": 0.0021,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 12,
+          "cut": 0,
+          "shortEdged": 2
+        },
+        "transition": {
+          "rectangle": 1481,
+          "notched": 0,
+          "voronoi": 4537,
+          "cut": 0,
+          "shortEdged": 183,
+          "fractured": 0
+        },
+        "gap": "0px²"
+      }
+    ],
+    "home": {
+      "roots": 7,
+      "numbers": 7
+    },
+    "field": {
+      "field": "Drift",
+      "scene": "spread"
+    },
+    "void": {
+      "scene": "spread",
+      "voidClick": false
+    },
+    "interrupted": {
+      "first": "Ember",
+      "second": "Tide",
+      "scene": "showcase"
+    },
+    "mirror": {
+      "checked": 3
+    },
+    "crossers": {
+      "count": 4,
+      "lastLanded": 149,
+      "textAt": 166
+    },
+    "escape": {
+      "numbers": 6
+    },
+    "hover": {
+      "imageHoverMix": 0,
+      "cardHovered": "Drift"
+    },
+    "phone": [
+      {
+        "kind": "spread",
+        "rest": {
+          "rectangle": 13,
+          "voronoi": 3,
+          "shortEdged": 0
+        }
+      },
+      {
+        "kind": "folio",
+        "rest": {
+          "rectangle": 13,
+          "voronoi": 3,
+          "shortEdged": 0
+        }
+      },
+      {
+        "kind": "showcase",
+        "rest": {
+          "rectangle": 13,
+          "voronoi": 3,
+          "shortEdged": 0
+        }
+      },
+      {
+        "kind": "band",
+        "rest": {
+          "rectangle": 13,
+          "voronoi": 3,
+          "shortEdged": 0
+        }
+      },
+      {
+        "kind": "lead",
+        "rest": {
+          "rectangle": 13,
+          "voronoi": 3,
+          "shortEdged": 0
+        }
+      },
+      {
+        "kind": "documentation",
+        "rest": {
+          "rectangle": 13,
+          "voronoi": 3,
+          "shortEdged": 0
+        }
+      },
+      {
+        "kind": "essay",
+        "rest": {
+          "rectangle": 13,
+          "voronoi": 3,
+          "shortEdged": 0
+        }
+      },
+      {
+        "kind": "caption",
+        "rest": {
+          "rectangle": 6,
+          "voronoi": 10,
+          "shortEdged": 0
+        }
+      }
+    ],
+    "reel": [
+      {
+        "kind": "spread",
+        "strips": 1,
+        "extras": 5,
+        "worstScrollingPx": 0.3,
+        "farVisible": 14,
+        "overflowFrames": 253,
+        "dividerFades": 0
+      },
+      {
+        "kind": "folio",
+        "strips": 1,
+        "extras": 5,
+        "worstScrollingPx": 0,
+        "farVisible": 14,
+        "overflowFrames": 253,
+        "dividerFades": 0
+      },
+      {
+        "kind": "band",
+        "strips": 1,
+        "extras": 5,
+        "worstScrollingPx": 0.6,
+        "farVisible": 15,
+        "overflowFrames": 139,
+        "dividerFades": 82
+      },
+      {
+        "kind": "essay",
+        "strips": 2,
+        "extras": 8,
+        "worstScrollingPx": 0,
+        "farVisible": 10,
+        "overflowFrames": 130,
+        "dividerFades": 166
+      },
+      {
+        "kind": "caption",
+        "strips": 1,
+        "extras": 4,
+        "worstScrollingPx": 0,
+        "farVisible": 11,
+        "overflowFrames": 155,
+        "dividerFades": 0
+      },
+      {
+        "promoted": "Neon",
+        "scene": "documentation"
+      }
+    ],
+    "flow": [
+      {
+        "kind": "spread",
+        "drift": 28,
+        "pushV": 27.6
+      },
+      {
+        "kind": "band",
+        "drift": 28,
+        "pushV": 27.6
+      },
+      {
+        "kind": "phone band",
+        "drift": 28,
+        "sideways": true
+      }
+    ]
+  }
+}
