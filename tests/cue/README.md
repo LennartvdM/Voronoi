@@ -58,6 +58,15 @@ cells it calls out and the cards it sends home, and a cell called out bursts
 out of the pen, quickest as it sets off: it moves within a tenth of a
 second and is out of the pen within 0.6 s, wherever the pointer is.
 
+The seventh revision answers the sixth. A card that should have been still
+on the stage while others joined it twitched now and then. It was a card
+still landing when the next slide came: planned again from where it was, on
+a clock starting over, it stopped short, sprang back and set off again, a
+second or more late to be still; and a card that had come down was held a
+pixel off its place, not yet a wall, by the whitespace of the place it had
+landed in. Now a card still on its way to the place the next slide keeps it
+on goes on as it was going, and nothing holds a card in flight off its place.
+
 ## The rules
 
 - **A card flies as a card.** A cell going out to the stage leaves the auction
@@ -131,7 +140,10 @@ second and is out of the pen within 0.6 s, wherever the pointer is.
   re-seated on its new page only once every cell (not card) passing within its
   reach has gone by or landed, so a cell never crosses the mirror that is to
   hold its own edge.
-- **The cast that stays holds still,** pinned on its place for the change.
+- **The cast that stays holds still,** pinned on its place for the change; a
+  card of it still landing goes on as it was going, on the same journey, and
+  a card in flight is not pushed off its place by the engine's least
+  separation between seeds.
 - **The bench.** When a new sequence begins, the last sequence's cast may not
   take a place, so a fresh cell comes out.
 - **The whitespace is cut once,** the page less every place and the pen (Tell
@@ -148,11 +160,12 @@ second and is out of the pen within 0.6 s, wherever the pointer is.
 | Worst fling, ordinary / fresh / entry | 7 / 39 / 12 px | 5 / 15 / 15 px | 8 / 11 / 15 px |
 | Flings over 40 px, ordinary / fresh / entry | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 |
 | Worst fling on a phone (390×720), any change | 27 px | 28 px | 28 px |
-| Peak/mean speed, ordinary / fresh / entry | 2.27–2.44 / 2.45–3.39 / 4.16 | 2.23–2.30 / 2.42–3.08 / 4.41 | 2.14–2.94 / 2.52–2.83 / 4.41 |
+| Peak/mean speed, ordinary / fresh / entry | 2.27–2.44 / 2.45–3.39 / 4.16 | 2.23–2.30 / 2.42–3.08 / 4.41 | 2.15–2.95 / 2.52–2.83 / 4.41 |
 | Area spike max, slides | 1.3–3.1 | 1.2–2.4 | 1.2–1.9 |
 | Frames a cell is drawn in two pieces (the smaller over 50 px²), desk / phone | 13 / 3 | 7 / 22 | 2 / 17 |
 | Worst overlap of two cards in flight, fresh slides, desk / phone | 8,900 / 3,300 px² | 9,500 / 2,000 px² | 4,000 / 2,800 px² |
 | A change settles, frames | 62–96 | 63–94 | 63–93 |
+| A card of the cast still landing when the next slide keeps it (1900×810, slides 0→1→2 and 5→6→7, 0.6–0.7 s apart) | – | stalls to 18 px/s and sets off again (still so in the sixth); a wall after 1.9 s, or not within 2.5 s | goes on and slows; a wall after 1.0–2.0 s |
 
 A fling is a cell's diagram centroid moving more than its own seed in one
 frame, which reads as a wall swinging it. The engine's own scenes measure worst
@@ -214,8 +227,10 @@ whitespace in the pen, drawn or bid for, and the pen's cells covering it),
 every change (the cast that stays does not move, the pen's cells that stay
 keep their slots and settle inside the pen, nothing fractures on any frame, no
 two cards in flight overlap as drawn, no two cells on their way that are not
-both cards come within half their reaches added) and a notch back through the
-slides (see `validation.json`).
+both cards come within half their reaches added), the story scrolled on before
+a change ends (a card of the cast still landing as the next slide keeps it is
+not planned again, lands, and stays still, and the cast already still stays
+so) and a notch back through the slides (see `validation.json`).
 
 ## Run
 

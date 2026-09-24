@@ -9,7 +9,8 @@
 // with the cells already on the stage never moving, a fresh slide's cell is
 // none of the last sequence's, the whitespace is exact and covers the page,
 // no cell is a field, nothing fractures on any frame of a change, a notch
-// turns one slide, Escape goes home, and the same holds on a phone.
+// turns one slide, a card of the cast still landing as the next slide comes
+// goes on as it was going, Escape goes home, and the same holds on a phone.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {loadEngine}=require('./probe.cjs');
 const rectsEqual=(a,b)=>a&&b&&a.length>=4&&b.length>=4&&a.slice(0,4).every((v,i)=>Math.abs(v-b[i])<1e-6);
@@ -31,7 +32,7 @@ const matrix=[
  {width:1363,height:846,count:30,fields:0,dt:50,inner:'flock'}
 ];
 let total=0,commandsTotal=0;
-const report={clickIdentity:null,slides:[],changes:[],back:null,phone:null,home:null};
+const report={clickIdentity:null,slides:[],changes:[],back:null,hurried:null,phone:null,home:null};
 for(const cfg of matrix){
  const es=files.map(f=>loadEngine(f,{...cfg,record:true}));es.forEach(e=>e.inner(cfg.inner));
  let now=1000,frame=0;
@@ -232,11 +233,28 @@ function change(st,k,label){
  assert(!e.cue(),'the story did not end');assert.equal(roots(e).length,N,'home lost cells');
  report.home={cells:roots(e).length,scene:e.config.scene};
 }
+{ // THE STORY SCROLLED ON BEFORE A CHANGE ENDS: a card of the cast still on
+  // its way to the place the next slide keeps it on goes on as it was going,
+  // on the same journey, and is still once it has landed; a card of the cast
+  // that is still stays still
+ const st=fresh(desk),e=st.e;e.cueStart();st.step(420);const out=[];
+ for(const [a,b,c] of [[0,1,2],[5,6,7]]){
+  e.cueGo(a);st.step(420);e.cueGo(b);st.step(36);
+  const landing=e.cue().on.filter(q=>!q.wall).map(q=>({q,j:q.journey})),still=e.cue().on.filter(q=>q.wall);
+  assert(landing.length,'slides '+a+'->'+b+'->'+c+': no card of the cast still on its way');
+  e.cueGo(c);let wallAt=new Map();
+  for(let f=0;f<240;f++){st.step(1);
+   for(const {q,j} of landing){if(!wallAt.has(q)){if(q.wall)wallAt.set(q,f);else assert(q.journey===j||!q.journey,'slides '+a+'->'+b+'->'+c+': '+q.name+', still on its way, was planned again');}else assert(q.wall,'slides '+a+'->'+b+'->'+c+': '+q.name+' landed and moved again');}
+   for(const q of still)assert(q.wall,'slides '+a+'->'+b+'->'+c+': '+q.name+', still, moved');}
+  for(const {q} of landing)assert(wallAt.has(q),'slides '+a+'->'+b+'->'+c+': '+q.name+' had not landed 4 s on');
+  out.push({slides:[a,b,c],landing:landing.map(({q})=>({name:q.name,wallAfter:wallAt.get(q)})),still:still.map(q=>q.name)});}
+ report.hurried=out;
+}
 { // a phone: the box a band across the top, the stage a row below it, the cluster at the foot
  const st=fresh(phone),e=st.e;e.cueStart();st.step(420);
  const out=[settled(st,0,'phone slide 0')],R=e.root.ROWS;
  for(let k=1;k<=5;k++){out.push(change(st,k,'phone slide '+(k-1)+'->'+k));out.push(settled(st,k,'phone slide '+k));for(const b of e.cue().on)assert(b.rect[1]>=0.36*R-1e-6&&b.rect[3]<=0.56*R+1e-6,'phone: the stage is not the row below the band');}
  report.phone=out;
 }
-const result={scope:'Real full tick; native Canvas and browser DOM stubbed. Without the Cue button, state and every drawing command must exactly match Tell II, a click, a scroll, a Tell story, a Tell II story and home included; with the story, every slide settled has its cast on its places (rectangles to 4 px, unlabelled), a sequence builds up one cell a slide with the cells already on the stage never moving, a fresh slide brings out a cell that was none of the last sequence, the whitespace is exact and covers the page, no field, one site a cell, nothing fractures on any frame of a change, no two cards in flight overlap, a notch turns one slide, and the same on a phone.',frames:total,drawingCommands:commandsTotal,matrix,report};
+const result={scope:'Real full tick; native Canvas and browser DOM stubbed. Without the Cue button, state and every drawing command must exactly match Tell II, a click, a scroll, a Tell story, a Tell II story and home included; with the story, every slide settled has its cast on its places (rectangles to 4 px, unlabelled), a sequence builds up one cell a slide with the cells already on the stage never moving, a fresh slide brings out a cell that was none of the last sequence, the whitespace is exact and covers the page, no field, one site a cell, nothing fractures on any frame of a change, no two cards in flight overlap, a notch turns one slide, a card of the cast still landing as the next slide comes goes on as it was going and is still once landed, and the same on a phone.',frames:total,drawingCommands:commandsTotal,matrix,report};
 fs.writeFileSync(path.join(__dirname,'validation.json'),JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify({totalFrames:total,drawingCommands:commandsTotal,story:report}));

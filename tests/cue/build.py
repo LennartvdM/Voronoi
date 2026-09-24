@@ -679,7 +679,20 @@ replace('''        if (!(name in PORTAL_TEMPLATES || name === 'tell' || name ===
 # and pinned on its rectangle it is a wall for the change, as Tell II's was.
 replace('''    if (b.tell2Stay && rectsEqual(rect, b.rect) && !b.leaving && !b.journey && Math.abs(b.x - ex) < 1 && Math.abs(b.y - ey) < 1) { b.claim0 = b.claim; b.claimTarget = rectArea(rect); b.pin = 1; return; }   // TELL II: a cell of the cast keeping its place''',
         '''    if (b.tell2Stay && rectsEqual(rect, b.rect) && !b.leaving && !b.journey && Math.abs(b.x - ex) < 1 && Math.abs(b.y - ey) < 1) { b.claim0 = b.claim; b.claimTarget = rectArea(rect); b.pin = 1; return; }   // TELL II: a cell of the cast keeping its place
-    if (b.cueStay && rectsEqual(rect, b.rect) && !b.leaving && !b.journey && Math.abs(b.x - ex) < 1 && Math.abs(b.y - ey) < 1) { b.claim0 = b.claim; b.claimTarget = rectArea(rect); b.pin = 1; return; }   // CUE: a cell of the cast keeping its place holds still''')
+    if (b.cueStay && rectsEqual(rect, b.rect) && !b.leaving && !b.journey && Math.abs(b.x - ex) < 1 && Math.abs(b.y - ey) < 1) { b.claim0 = b.claim; b.claimTarget = rectArea(rect); b.pin = 1; return; }   // CUE: a cell of the cast keeping its place holds still
+    if (b.cueStay && rectsEqual(rect, b.rect) && !b.leaving && b.path && Math.abs(b.path.ex - ex) < 0.01 && Math.abs(b.path.ey - ey) < 0.01) return;   // CUE: and one still on its way to it goes on as it was going''')
+
+# A CARD OF THE CAST STILL LANDING ON THE PLACE THE NEXT SLIDE KEEPS IT ON
+# GOES ON AS IT WAS GOING. Planned again, from where it was, on a clock
+# starting over (and on the wave's delay), it stopped short, sprang back,
+# and set off again, a second or more late to become still. And a card that
+# has come down on its place is not held off it: a seed nearer another than
+# the engine's least separation is pushed apart from it, and the whitespace
+# of a place a card lands in has its body at the place's heart, so the card
+# was held a pixel or so off its place, a card in flight, and not a wall,
+# until that piece had gone. A card in flight is out of the auction, where
+# the separation matters, and is not pushed.
+replace('''        if (d < SEED_MIN_SEP) {''', '''        if (d < SEED_MIN_SEP && !(A.cueFly && A.hole) && !(B.cueFly && B.hole)) {   // CUE: a card in flight is not held off its place''')
 
 # a slide's change starts at the cells it calls out of the pen (see cueCalled)
 replace('''    const sources = this.sourcesFor(origin, best);

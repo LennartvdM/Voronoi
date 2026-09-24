@@ -3375,6 +3375,7 @@ class Hive {
         && Math.abs(b.x - ex) < 0.01 && Math.abs(b.y - ey) < 0.01) { b.claim0 = b.claim; b.claimTarget = rectArea(rect); return; }
     if (b.tell2Stay && rectsEqual(rect, b.rect) && !b.leaving && !b.journey && Math.abs(b.x - ex) < 1 && Math.abs(b.y - ey) < 1) { b.claim0 = b.claim; b.claimTarget = rectArea(rect); b.pin = 1; return; }   // TELL II: a cell of the cast keeping its place
     if (b.cueStay && rectsEqual(rect, b.rect) && !b.leaving && !b.journey && Math.abs(b.x - ex) < 1 && Math.abs(b.y - ey) < 1) { b.claim0 = b.claim; b.claimTarget = rectArea(rect); b.pin = 1; return; }   // CUE: a cell of the cast keeping its place holds still
+    if (b.cueStay && rectsEqual(rect, b.rect) && !b.leaving && b.path && Math.abs(b.path.ex - ex) < 0.01 && Math.abs(b.path.ey - ey) < 0.01) return;   // CUE: and one still on its way to it goes on as it was going
     b.rect = rect;
     b.table = null;
     this.takeFormation(b);
@@ -3907,7 +3908,7 @@ class Hive {
       for (let j = i + 1; j < bodies.length; j++) {
         const A = bodies[i], B = bodies[j];
         let dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy);
-        if (d < SEED_MIN_SEP) {
+        if (d < SEED_MIN_SEP && !(A.cueFly && A.hole) && !(B.cueFly && B.hole)) {   // CUE: a card in flight is not held off its place
           if (d < 1e-6) { dx = 1; dy = 0; d = 1; }
           const push = (SEED_MIN_SEP - d) / 2 / d;
           if (!A.isSelf) { A.x -= dx * push; A.y -= dy * push; }
