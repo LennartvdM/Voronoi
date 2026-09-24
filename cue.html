@@ -1341,11 +1341,11 @@ function portalDecorate(content, voids, W, H, C, R) {
   // the pockets: cells grouped by the edges they share
   const parent = rects.map((_, i) => i), find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));
   const touch = (p, q) => ((Math.abs(p[2] - q[0]) < E || Math.abs(p[0] - q[2]) < E) && Math.min(p[3], q[3]) - Math.max(p[1], q[1]) > E) || ((Math.abs(p[3] - q[1]) < E || Math.abs(p[1] - q[3]) < E) && Math.min(p[2], q[2]) - Math.max(p[0], q[0]) > E);
-  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) if (touch(rects[i], rects[j])) parent[find(i)] = find(j);
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) if (touch(rects[i], rects[j]) || content[i].cuePen && content[j].cuePen) parent[find(i)] = find(j);   // CUE: the pen is one pocket, whichever of its slots are home
   const pockets = new Map(); for (let i = 0; i < n; i++) { const k = find(i); if (!pockets.has(k)) pockets.set(k, []); pockets.get(k).push(i); }
   const mirrors = voids.map(() => []);   // per void: [x, y, weight]
   for (const idx of pockets.values()) {
-    const poly = portalOutline(idx.map(i => rects[i]));
+    const pen = content[idx[0]].cuePen, poly = pen ? [[pen[0] * PW, pen[1] * PH], [pen[2] * PW, pen[1] * PH], [pen[2] * PW, pen[3] * PH], [pen[0] * PW, pen[3] * PH]] : portalOutline(idx.map(i => rects[i]));   // CUE: the pen's pocket is the pen
     const ref = idx.length === 1 ? null : solveWeights(idx.map(i => seeds[i]), idx.map(i => (rects[i][2] - rects[i][0]) * (rects[i][3] - rects[i][1]) * (content[i].mfSwell || 1)), voids.tell2 ? portalBox(idx.map(i => rects[i])) : poly, null, voids.tell2 ? { maxIter: 60, tol: 1e-9, tris: idx.map(i => convexPlanes([[rects[i][0], rects[i][1]], [rects[i][2], rects[i][1]], [rects[i][2], rects[i][3]], [rects[i][0], rects[i][3]]])), domainArea: idx.reduce((q, i) => q + (rects[i][2] - rects[i][0]) * (rects[i][3] - rects[i][1]) * (content[i].mfSwell || 1), 0) } : { maxIter: 60, tol: 1e-9 });   // TELL: a hero's area is its card's, times its swell   // TELL II: the pocket's ground is its rectangles
     const cells = ref ? ref.diagram.cells : [{ pts: poly }];
     idx.forEach((i, k) => weights[i] = ref ? ref.weights[k] : 0);
@@ -1917,13 +1917,11 @@ function tell2ProseStep(ctx, type, dt, t) {
 // any other, and the change from one slide to the next is the engine's. A
 // slide asks for its places around the blurb and the nearest cells take
 // them: nobody is told where to go. The cluster is a revolver in a pen. Its
-// slots are laid once for the story, a slot for every cell, and a cell that
-// goes out holds its slot open, a niche of whitespace in the pen; a cell
-// coming back takes the open niche nearest it, and every other cell of the
-// cluster keeps its slot. So a cell comes and goes through a gap, the cells
-// around it give a little as the gap opens and closes, and nothing else in
-// the pen moves. A cell on the stage that the next slide keeps holds its
-// place through the change, still. When a new sequence begins the last one's
+// slots are laid once for the story, a slot for every cell, and every cell of
+// the cluster keeps its slot; the pen is always whole: when a cell goes out,
+// the cells of the pen share its room, each where it stands, and when it
+// comes home to its own slot they give it back. A cell on the stage that the
+// next slide keeps holds its place through the change, still. When a new sequence begins the last one's
 // cast is benched, so a fresh cell comes out. The stage and the blurb are
 // Tell II's.
 const CUE_CLUSTER = [0.8, 0.14, 1, 0.86];
@@ -1946,27 +1944,19 @@ function cueSeq(k) { let s = Math.max(0, Math.min(TELL2_SLIDES.length - 1, k)); 
 function cuePlaces(k) { return TELL2_SLIDES.slice(cueSeq(k), k + 1).map(sd => sd.place); }
 // THE WHITESPACE is cut once for the story: the page less every place and
 // the pen, cut along their edges (Tell II's cut). An empty place is a piece
-// of its own, and so is an open niche, so a slide changes only the pieces a
-// cell lands in or leaves. On a phone a place shares its column with others,
-// and a column one of them fills is no piece.
+// of its own, so a slide changes only the pieces a cell lands in or leaves.
+// On a phone a place shares its column with others, and a column one of them
+// fills is no piece.
 const cueFixed = new Map();
-let cueSlotsN = 0;
 function cueWhitespace(C, R, W, H, places, n) {
-  cueSlotsN = n; const L = cueLattice(C, R), key = [C, R, W, H, n].join('|');
+  const L = cueLattice(C, R), key = [C, R, W, H, n].join('|');
   if (!cueFixed.has(key)) {
-    const pen = L(W < H ? TELL2_PHONE.cluster : CUE_CLUSTER), E = 1e-6, cut = tell2Complement(C, R, Object.keys(TELL2_PLACES).map(p => L(tell2Place(p, W, H))).concat([pen]));
-    // THE DOOR, the strip between the stage and the pen, in stretches: cut
-    // across at every edge of the pen's slots along it, so a cell crossing it
-    // cuts again only the stretch beside the slot it leaves or comes home to
-    // (see the construction), and the rest of the door holds the pen's edge
-    const slots = cueBento(pen, cueSlotsN || 1, W / C, H / R), out = [];
-    for (const r of cut) {
-      const door = W < H ? Math.abs(r[3] - pen[1]) < E && r[0] < pen[2] - E && r[2] > pen[0] + E : Math.abs(r[2] - pen[0]) < E && r[1] < pen[3] - E && r[3] > pen[1] + E;
-      if (!door) { out.push(r); continue; }
-      const ax = W < H ? 0 : 1, lines = [...new Set(slots.filter(q => Math.abs((W < H ? q[1] : q[0]) - (W < H ? pen[1] : pen[0])) < E).flatMap(q => [q[ax], q[ax + 2]]).map(v => Math.round(v * 1e6) / 1e6))].filter(v => v > r[ax] + E && v < r[ax + 2] - E).sort((a, b) => a - b);
-      let lo = r[ax];
-      for (const v of lines.concat([r[ax + 2]])) { const q = r.slice(); q[ax] = lo; q[ax + 2] = v; out.push(q); lo = v; }
-    }
+    const pen = L(W < H ? TELL2_PHONE.cluster : CUE_CLUSTER), cut = tell2Complement(C, R, Object.keys(TELL2_PLACES).map(p => L(tell2Place(p, W, H))).concat([pen]));
+    // the door, the strip between the stage and the pen, is one piece, so
+    // every cell of the pen along it is held by it: cut in stretches at the
+    // slots' edges, a stretch beside a slot whose cell was out held nothing
+    // along the pen and bit into it
+    const out = cut;
     cueFixed.set(key, out);
   }
   const voids = cueFixed.get(key).map(r => r.slice());
@@ -1976,12 +1966,12 @@ function cueWhitespace(C, R, W, H, places, n) {
   }
   return voids;
 }
-// A slide's page with the niches it names (by default the last slots): the
+// A slide's page with the slots it names out (by default the last): the
 // stage's places first, then the pen's slots held, then the whitespace
-function cuePage(k, C, R, n, W, H, niches) {
+function cuePage(k, C, R, n, W, H, out) {
   const places = cuePlaces(k).slice(0, Math.max(0, n - 1)), L = cueLattice(C, R), stage = places.map(p => L(tell2Place(p, W, H))), slots = cueSlots(C, R, n, W, H);
-  const open = niches || slots.map((r, s) => s).slice(slots.length - places.length);
-  return { content: stage.concat(slots.filter((r, s) => !open.includes(s))), voids: cueWhitespace(C, R, W, H, places, n).concat(open.map(s => slots[s])), cast: stage.length, slots, niches: open };
+  const open = out || slots.map((r, s) => s).slice(slots.length - places.length);
+  return { content: stage.concat(slots.filter((r, s) => !open.includes(s))), voids: cueWhitespace(C, R, W, H, places, n), cast: stage.length, slots, out: open };
 }
 // THE ENGINE'S MATCHING, for m cells and n slots of which the nearer are
 // taken: greedy on squared travel, then 2-opt, a cell trading with another,
@@ -2014,7 +2004,7 @@ function cueMatch(m, n, cost) {
 // bound for) a place the slide keeps keeps it, and holds still; the places
 // left take the nearest cells not benched; a cell in (or bound for) a slot
 // keeps it; and the cells left, the ones coming home, go to their own
-// niches. A cell is bound for its rectangle, so a change interrupted
+// slots. A cell is bound for its rectangle, so a change interrupted
 // is planned from where everyone was going.
 function cuePlan(h, k, cells) {
   const C = h.COLS, R = h.ROWS, n = cells.length, L = cueLattice(C, R);
@@ -2025,72 +2015,73 @@ function cuePlan(h, k, cells) {
   const open = stage.map((r, j) => j).filter(j => !place[j]), pool = cells.filter(b => !used.has(b) && !cue.bench.has(b));
   cueMatch(pool.length, open.length, (i, j) => d2(pool[i], stage[open[j]])).forEach((j, i) => { if (j >= 0) { place[open[j]] = pool[i]; used.add(pool[i]); } });
   slots.forEach((r, s) => { const b = cells.find(b => !used.has(b) && bound(b, r)); if (b) { slot[s] = b; used.add(b); } });
-  // a cell coming home goes to its own niche, held open for it since it left
-  // (at the front of the pen, where the nearest cell goes out from); a cell
-  // whose niche is gone takes the open niche nearest it
+  // a cell coming home goes to its own slot, the one it went out from (at the
+  // front of the pen, where the nearest cell goes out from); a cell that has
+  // none takes the free slot nearest it
   let home = cells.filter(b => !used.has(b));
   for (const b of home) if (b.cueHome !== undefined && b.cueHome < slots.length && !slot[b.cueHome]) slot[b.cueHome] = b;
   home = home.filter(b => !slot.includes(b));
   const free = slots.map((r, s) => s).filter(s => !slot[s]);
   cueMatch(home.length, free.length, (i, j) => d2(home[i], slots[free[j]])).forEach((j, i) => { if (j >= 0) slot[free[j]] = home[i]; });
-  slot.forEach((b, s) => { if (b) b.cueHome = s; });   // its niche, for when it goes out
+  slot.forEach((b, s) => { if (b) b.cueHome = s; });   // its slot, for when it comes home
   return { names, stage, slots, place, slot, kept };
 }
-// THE PEN IS SOLVED WHOLE, AND A NICHE IS HELD FROM ITS EDGES. The page is
-// laid as if every slot were held, so the pen is one pocket, its cells solved
-// together as a cell of the pen always is. An open slot is then whitespace
-// holding exactly the ground a cell there would, held the way Portal holds
-// whitespace: for every cell of the pen beside it, a mirror of that cell
-// close behind their shared edge, weighted so the edge stays where it was.
-// Nothing stands at the niche's heart, where its cell sits as it leaves and
-// will sit when it comes home: a site there would be a cell in the dark,
-// pushing the leaver out and standing in the way of the one coming back.
-const cueCache = new Map();
-function cueNicheSites(whole, i, open) {
-  const cell = whole.diag.cells[i], s = whole.seeds[i], w = whole.weights[i], n = whole.content.length, size = Math.sqrt(whole.diag.areas[i]), out = [];
-  for (const j of new Set(cell.labs || [])) {
-    if (!(j >= 0 && j < n) || j === i || open.has(j)) continue;   // a cell beside it, not the whitespace or another niche
-    const t = whole.seeds[j], wj = whole.weights[j], dx = t[0] - s[0], dy = t[1] - s[1], L = Math.hypot(dx, dy);
-    if (L < 1e-9) continue;
-    const nx = dx / L, ny = dy / L, c = ((t[0] * t[0] + t[1] * t[1] - wj) - (s[0] * s[0] + s[1] * s[1] - w)) / (2 * L), d = nx * t[0] + ny * t[1] - c, g = Math.max(1e-3, Math.min(d, 0.05 * size));
-    out.push([t[0] - nx * (d + g), t[1] - ny * (d + g), wj + g * g - d * d]);
+// THE PEN IS WHOLE, AND ITS CELLS RESETTLE IN IT. The cells that are home
+// hold the whole pen between them, each in the share of it its slot gives it,
+// and they settle in it: each seed goes to the heart of the ground it holds
+// there, and the pen is solved again, until they are still (a centroidal
+// power diagram, from the slots' hearts). So a cell that goes out leaves no
+// gap: the cells of the pen spread into its room, every one a little, and
+// make room again as it comes home. The pen is one pocket of the page, solved
+// on the pen itself (see portalDecorate), and the whitespace round it holds
+// the edges they come to; while a change is on, it is an auction of its own
+// (see cuePocket).
+const CUE_SETTLE = 2;   // rounds of settling: enough that every cell of the pen holds its share of the pen's edge from in front of it (with none, a cell spread over a gap held a long stretch of it from far off, and whitespace beyond reached into the pen); more moved the pen about more than it needs
+function cueSettle(frame, rects, W, H, C, R) {
+  const PW = W / C, PH = H / R, poly = [[frame[0] * PW, frame[1] * PH], [frame[2] * PW, frame[1] * PH], [frame[2] * PW, frame[3] * PH], [frame[0] * PW, frame[3] * PH]];
+  const claims = rects.map(r => (r[2] - r[0]) * (r[3] - r[1]));
+  let seeds = rects.map(r => [(r[0] + r[2]) / 2 * PW, (r[1] + r[3]) / 2 * PH]), w = null;
+  if (rects.length < 2) return seeds.map(q => [q[0] / PW, q[1] / PH]);
+  for (let it = 0; it < CUE_SETTLE; it++) {
+    const sol = solveWeights(seeds, claims, poly, w, { maxIter: 60, tol: 1e-9 });
+    w = sol.weights;
+    seeds = sol.diagram.cells.map((c, i) => {
+      let a = 0, x = 0, y = 0;
+      for (const pc of (c && (c.pieces || [c])) || []) { const P = pc.pts || []; for (let k = 0; k < P.length; k++) { const p = P[k], q = P[(k + 1) % P.length], z = p[0] * q[1] - q[0] * p[1]; a += z; x += (p[0] + q[0]) * z; y += (p[1] + q[1]) * z; } }
+      return Math.abs(a) > 1e-6 ? [x / (3 * a), y / (3 * a)] : seeds[i];
+    });
   }
-  return out;
+  return seeds.map(q => [q[0] / PW, q[1] / PH]);
 }
+const cueCache = new Map();
 function cueScene(h, n) {
   if (!cue) return null;
   const cells = h.bodies.filter(b => !b.isVoid && !b.leaving && !b.isSelf), p = cuePlan(h, cue.k, cells);
   const cast = p.place.map((b, j) => j).filter(j => p.place[j]), places = cast.map(j => p.names[j]), open = new Set(p.slots.map((r, s) => s).filter(s => !p.slot[s]).map(s => cast.length + s));
-  const key = [h.COLS, h.ROWS, h.W, h.H, n, places.join(',')].join('|');
-  let whole = cueCache.get(key);
-  if (!whole) {
-    whole = portalDecorate(cast.map(j => p.stage[j]).concat(p.slots), cueWhitespace(h.COLS, h.ROWS, h.W, h.H, places, n), h.W, h.H, h.COLS, h.ROWS);
-    whole.diag = computeDiagram(whole.seeds, whole.weights, [[0, 0], [h.W, 0], [h.W, h.H], [0, h.H]]);
-    whole.niches = new Map();
-    cueCache.set(key, whole); if (cueCache.size > 24) cueCache.delete(cueCache.keys().next().value);
-  }
-  const nkey = [...open].join(',');
-  if (!whole.niches.has(nkey)) {
-    // the niches' mirrors, and every piece's ground with them in: each share
-    // read again off the diagram as it is, niches open, so what the auction
-    // is asked for is what these sites hold, and it settles on this page
-    const PW = h.PW, PH = h.PH, nc = whole.content.length, mirrors = [...open].map(i => cueNicheSites(whole, i, open)), seeds = [], weights = [], idx = [], at = [];
-    whole.seeds.forEach((q, i) => { if (i < nc && open.has(i)) { idx.push(-1); return; } idx.push(seeds.length); seeds.push(q); weights.push(whole.weights[i]); });
-    mirrors.forEach(list => { at.push(seeds.length); for (const [x, y, w] of list) { seeds.push([x, y]); weights.push(w); } });
-    const d = computeDiagram(seeds, weights, [[0, 0], [h.W, 0], [h.W, h.H], [0, h.H]]), area = k => d.areas[k] / (PW * PH);
+  const key = [h.COLS, h.ROWS, h.W, h.H, n, places.join(','), [...open].join(',')].join('|');
+  let page = cueCache.get(key);
+  if (!page) {
+    // the pen's cells that are home, on their slots, settled in the pen
+    const frame = cueLattice(h.COLS, h.ROWS)(h.W < h.H ? TELL2_PHONE.cluster : CUE_CLUSTER), home = p.slots.filter((r, s) => !open.has(cast.length + s));
+    const at = cueSettle(frame, home, h.W, h.H, h.COLS, h.ROWS), pen = home.map((r, k) => { const q = r.slice(); q.reelSeed = at[k]; q.cuePen = frame; return q; });
+    const whole = portalDecorate(cast.map(j => p.stage[j]).concat(pen), cueWhitespace(h.COLS, h.ROWS, h.W, h.H, places, n), h.W, h.H, h.COLS, h.ROWS);
+    // every share read off the diagram as it is
+    const PW = h.PW, PH = h.PH, d = computeDiagram(whole.seeds, whole.weights, [[0, 0], [h.W, 0], [h.W, h.H], [0, h.H]]), area = k => d.areas[k] / (PW * PH), idx = whole.seeds.map((q, i) => i);
     const sites = (r, list) => { const cx = (r[0] + r[2]) / 2, cy = (r[1] + r[3]) / 2, out = []; for (const [x, y, k] of list) if (d.areas[k] > 1e-6) out.push({ x: x / PW - cx, y: y / PH - cy, q: area(k) }); return out; };
     const held = (r, q, list) => { q.mfSites = sites(r, list); q.mfArea = q.mfSites.reduce((a, m) => a + m.q, 0); q.mfKey = JSON.stringify(q.mfSites); q.mfRest = true; return q; };
-    const content = [], voids = [], niches = [];
-    whole.content.forEach((r, i) => { if (open.has(i)) return; const q = r.slice(); q.mfArea = area(idx[i]); q.mfSeed = r.mfSeed; q.mfRest = true; content.push(q); });
+    const content = [], voids = [];
+    whole.content.forEach((r, i) => { const q = r.slice(); q.mfArea = area(i); q.mfSeed = r.mfSeed; q.mfRest = true; content.push(q); });
     whole.voids.forEach((v, k) => { const q = v.slice(); if (v.portalText) { q.portalText = true; q.portalRules = v.portalRules; } const list = []; for (let i = whole.owned[k][0]; i < whole.owned[k][1]; i++) list.push([whole.seeds[i][0], whole.seeds[i][1], idx[i]]); voids.push(held(v, q, list)); });
-    [...open].forEach((i, m) => { const r = whole.content[i]; niches.push(held(r, r.slice(), mirrors[m].map(([x, y], j) => [x, y, at[m] + j]))); });
-    whole.niches.set(nkey, { content, voids: voids.concat(niches) });
+    page = { content, voids, cells: d.cells.slice(0, whole.content.length), seeds: whole.seeds, weights: whole.weights, labs: d.cells.map(c => c.labs || []), n: whole.content.length };
+    cueCache.set(key, page); if (cueCache.size > 48) cueCache.delete(cueCache.keys().next().value);
   }
-  const page = whole.niches.get(nkey);
   const owner = cast.map(j => p.place[j]).concat(p.slot.filter(Boolean));
+  cue.pagePrev = cue.page; cue.page = { ...page, owner };   // this page's diagram and who is where on it, and the last one's
   cue.prevOn = cue.on.slice();
   for (const b of cells) b.cueFrom = b.rect ? b.rect.slice(0, 4) : null;   // where it was, for the size a flight starts at
-  cue.homeCell = new Map(); p.slot.forEach((b, s) => { if (b) { const c = whole.diag.cells[cast.length + s]; if (c && c.pts && c.pts.length >= 3) cue.homeCell.set(b, c.pts); } });   // the cell of the pen a cell coming home melts into
+  cue.homeCell = new Map(); owner.forEach((b, i) => { if (i < cast.length) return; const c = page.cells[i]; if (c && c.pts && c.pts.length >= 3) cue.homeCell.set(b, c.pts); });   // the cell of the pen a cell coming home melts into
+  const fr = cueLattice(h.COLS, h.ROWS)(h.W < h.H ? TELL2_PHONE.cluster : CUE_CLUSTER);
+  cue.penPts = [[fr[0] * h.PW, fr[1] * h.PH], [fr[2] * h.PW, fr[1] * h.PH], [fr[2] * h.PW, fr[3] * h.PH], [fr[0] * h.PW, fr[3] * h.PH]];   // the pen, px
   cue.slotOf = new Map(owner.map((b, i) => [b, i])); cue.on = cast.map(j => p.place[j]); cue.slots = p.slots;
   for (const b of cells) b.cueStay = p.kept.has(b);
   return { content: page.content, voids: page.voids, cast: cast.length };
@@ -2119,9 +2110,30 @@ function cueOffPage(h, p, R) {
   for (let k = 1; k < 20; k++) { const e = k / 20, m = 1 - e; worst = Math.max(worst, off(m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey) - ends); }
   return worst;
 }
+// A CARD GOES OUT OF THE ROOM A CARD IS COMING HOME TO BEFORE THAT CARD
+// COMES. The change goes over the page as a wave, and a cell going out left
+// on the wave's clock, which could be long after a card set off for its room:
+// the engine stretched the card's journey to land after it had gone, but the
+// card was at the door while the cell sat in its room, and the cells beside
+// both wrapped round the two cards together. So a cell of the pen going out
+// sets off no later than any card coming home into its cell, as Ferry's
+// leader does: no card waits for it.
+function cueOrder(h, content) {
+  const P0 = cue.pagePrev; if (!P0) return;
+  for (const b of content) {
+    const j = b.journey, home = cue.homeCell.get(b);
+    if (!j || !b.path || j.t0 !== h.t || cue.on.includes(b) || !home || b.cueFrom && rectsEqual(b.cueFrom, b.rect)) continue;   // a cell coming home, to the cell it will have in the pen
+    for (const c of content) {
+      const k = c.journey, i = P0.owner.indexOf(c);
+      if (c === b || !k || k.t0 !== h.t || k.delay <= j.delay || !cue.on.includes(c) || !c.cueFrom || !cue.slots.some(r => rectsEqual(r, c.cueFrom)) || i < 0 || !P0.cells[i]) continue;   // a cell of the pen going out, later
+      if (cueOver(home, P0.cells[i].pts) < 0.05 * Math.abs(ringArea(home))) continue;
+      k.delay = j.delay; c.T = k.delay; c.fieldAt = k.t0 + k.delay;
+    }
+  }
+}
 const CUE_CLEAR = 0.75;
 function cueAvoid(h, content) {
-  const movers = content.filter(b => b.path && b.journey && Math.hypot(b.path.ex - b.path.sx, b.path.ey - b.path.sy) > 4);
+  const movers = content.filter(b => b.path && b.journey && Math.hypot(b.path.ex - b.path.sx, b.path.ey - b.path.sy) > 4 && !(b.cueFrom && rectsEqual(b.cueFrom, b.rect)));   // a cell settling on its own slot is no traveller: bent round a card passing, it went out to the stage and back
   cueClear(h, movers, content.filter(b => cue.on.includes(b) && !movers.includes(b) && b.rect));
   if (movers.length < 2) return;
   const PW = h.PW, PH = h.PH, reach = b => 0.5 * Math.sqrt(Math.max(b.claim0 || 0, b.claimTarget || 0) * PW * PH), out = b => cue.on.includes(b);
@@ -2160,7 +2172,7 @@ function cueReseat(h, v, r, content, T) {
   const g = [r[0] * h.PW, r[1] * h.PH, r[2] * h.PW, r[3] * h.PH];
   let wait = 0;
   for (const b of content) {
-    const p = b.path, j = b.journey; if (!p || !j || j.t0 !== h.t || Math.hypot(p.ex - p.sx, p.ey - p.sy) < 4 || b.cueFly) continue;   // a card flies over the piece, whatever its sites
+    const p = b.path, j = b.journey; if (!p || !j || j.t0 !== h.t || Math.hypot(p.ex - p.sx, p.ey - p.sy) < 4 || b.cueFly || b.cueFrom && rectsEqual(b.cueFrom, b.rect)) continue;   // a card flies over the piece, whatever its sites, and a cell settling on its own slot crosses none
     const R = 0.5 * Math.sqrt(Math.max(b.claim0 || 0, b.claimTarget || 0) * h.PW * h.PH);
     let last = -1;
     for (let k = 0; k <= 20; k++) { const e = k / 20, m = 1 - e, x = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, y = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey; if (Math.hypot(Math.max(g[0] - x, 0, x - g[2]), Math.max(g[1] - y, 0, y - g[3])) < R) last = e; }
@@ -2168,7 +2180,7 @@ function cueReseat(h, v, r, content, T) {
     const u = last < 0.5 ? Math.cbrt(last / 4) : 1 - Math.cbrt(2 * (1 - last)) / 2;   // easeInOutCubic, inverted
     wait = Math.max(wait, j.delay + (j.hold || 0) + j.dur * Math.min(1, u + 0.05));
   }
-  if (wait <= T) { v.formRect = null; h.seatBody(v, r, 0, { t0: h.t, delay: T, dur: 0.9, c0: v.crystal }); delete v.cueDefer; }
+  if (wait <= T) { v.formRect = null; h.seatBody(v, r, 0, { t0: h.t, delay: 0, dur: 0.9, c0: v.crystal }); delete v.cueDefer; }   // at once: the cells of the pen settle toward its new edges as a card leaves, and on the change's clock the door held the old ones while they came
   else v.cueDefer = { r, at: h.t + wait };   // seated when it comes (see cueFlow)
 }
 // A CARD FLIES AS A CARD. A cell has no shape of its own here: its outline
@@ -2247,6 +2259,67 @@ function cueClearOf(h, b, r) {
   for (let k = 1; k <= 40; k++) { const e = k / 40, m = 1 - e, x = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, y = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey; if (Math.hypot(Math.max(g[0] - x, 0, x - g[2]), Math.max(g[1] - y, 0, y - g[3])) >= reach) return Math.max(0.05, e); }
   return 1;
 }
+// THE PEN SETTLES AT THE PACE OF ITS CARDS. A cell of the pen takes its
+// share of the room a card leaves as the card uncovers it, and gives back
+// its share of the room a card comes home to as the card covers it: its
+// share of the pen between the pages, the cells staying in it with the pen
+// to themselves. On their own clocks the cells made room while the card was
+// far off, or had not yet when it came, and grew round a card still in the
+// pen; a share of the pen as it was, or as it will be, left what the card
+// leaving had and the card coming home would have to nobody.
+function cueTies(h, content) {
+  const cards = content.filter(b => b.cueFly && b.path), P0 = cue.pagePrev, P1 = cue.page, PA = h.PW * h.PH;
+  // the pen between the pages: the cells staying in it, with the pen to
+  // themselves, from halfway between where they were and where they go
+  const stay = [], at = [], want = [], mid = new Map();
+  if (P0 && P1 && cue.penPts) for (const [b, pts] of cue.homeCell) {
+    const i0 = P0.owner.indexOf(b), i1 = P1.owner.indexOf(b);
+    if (b.cueFly || i0 < 0 || i1 < 0 || (cue.prevOn || []).includes(b) || !P0.cells[i0] || !P0.cells[i0].pts) continue;
+    stay.push(b); at.push([(P0.seeds[i0][0] + P1.seeds[i1][0]) / 2, (P0.seeds[i0][1] + P1.seeds[i1][1]) / 2]); want.push(Math.abs(ringArea(P0.cells[i0].pts)) + Math.abs(ringArea(pts)));
+  }
+  if (stay.length >= 2) { const sol = solveWeights(at, want, cue.penPts, null, { maxIter: 60, tol: 1e-9 }); stay.forEach((b, k) => { const c = sol.diagram.cells[k]; if (c && c.pts && c.pts.length >= 3) mid.set(b, c.pts); }); }
+  for (const b of content) {
+    delete b.cueTie;
+    if (b.cueFly || cue.on.includes(b) || !b.path || !b.journey || b.journey.t0 !== h.t || !b.cueFrom || !rectsEqual(b.cueFrom, b.rect)) continue;   // a cell of the pen settling on its own slot
+    // what it gives back to each card coming home and takes from each card
+    // leaving: its share of the pen between, over that card's cell of the pen
+    // (without one, its cell as it was, or as it will be); each part goes as
+    // its card covers that cell, or uncovers it
+    const i0 = P0 ? P0.owner.indexOf(b) : -1, i1 = P1 ? P1.owner.indexOf(b) : -1, was = i0 >= 0 ? P0.cells[i0].pts : null, will = i1 >= 0 ? P1.cells[i1].pts : null;
+    const parts = [];
+    for (const c of cards) {
+      const leave = c.cueFly.toCard, k = leave && P0 ? P0.owner.indexOf(c) : -1, room = leave ? (k >= 0 && P0.cells[k] ? P0.cells[k].pts : null) : cue.homeCell.get(c);
+      if (!room || room.length < 3) continue;   // its cell of the pen, the one it leaves or comes home to
+      const mine = mid.get(b) || (leave ? will : was), part = mine && mine.length >= 3 ? planesPoly(convexPlanes(mine), room) : null, full = part ? Math.abs(ringArea(part)) : 0;   // its share of the card's cell
+      if (full > 1) parts.push({ card: c, grow: leave, room: part, full, a: full / PA });
+    }
+    if (parts.length) b.cueTie = { parts, c0: b.claim0, c1: b.claimTarget };
+  }
+}
+// how far along a part of a tied cell's change is: how much of its share of
+// the card's cell the card covers, coming home, or has uncovered, leaving
+function cueTiePart(t) {
+  const c = t.card;
+  if (c.leaving || !c.cueFly) return 1;
+  const k = c.hole && c.hole.pts ? Math.min(1, cueOver(c.hole.pts, t.room) / t.full) : 0;   // how much of its room the card covers
+  return t.grow ? 1 - k : k;
+}
+// how far a tied cell is on its journey: its parts, by how much each moves
+function cueTieProgress(b, u) {
+  const t = b.cueTie; let n = 0, d = 0;
+  for (const q of t.parts) { n += q.a * cueTiePart(q); d += q.a; }
+  return d > 0 ? n / d : easeInOutCubic(u);
+}
+// and its claim: what it gives back, as its card comes home, and what it
+// takes, as its card goes; whatever else it gains or loses, at its journey's
+// pace
+function cueTieClaim(b) {
+  const t = b.cueTie; let c = t.c0, net = 0;
+  for (const q of t.parts) { const f = cueTiePart(q); c += (q.grow ? 1 : -1) * q.a * f; net += q.grow ? q.a : -q.a; }
+  return Math.max(CLAIM_MIN, c + (t.c1 - t.c0 - net) * (b.progress || 0));
+}
+// how much of a shape another covers, px²
+function cueOver(pts, box) { const x = pts && pts.length >= 3 ? planesPoly(convexPlanes(pts), box) : null; return x ? Math.abs(ringArea(x)) : 0; }
 function cueFlyers(h, content) {
   const S = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); }, size = r => [(r[2] - r[0]) * h.PW, (r[3] - r[1]) * h.PH];
   for (const b of content) {
@@ -2279,7 +2352,14 @@ function cueFlyShape(h, b) {
   if (done) { b.cueFly = null; return null; }   // melted into the pen: a cell of the auction again
   const c0 = cueFlyC(h, b), c = f.c === undefined ? c0 : f.toCard ? Math.max(f.c, c0) : e > 0.5 ? Math.min(f.c, c0) : c0;   // one way only: toward the card going out, toward the cell coming home
   f.c = c;
-  const w = f.from[0] + (f.to[0] - f.from[0]) * e, hh = f.from[1] + (f.to[1] - f.from[1]) * e;
+  // its size: its slot's in the pen, its place's on the stage, and between
+  // them by where it is; a card coming home is its slot's size by the time
+  // it is at the pen's edge, and a card leaving is until it is out, so no
+  // card is ever bigger in the pen than its own room
+  const pen = cue.penPts, off = (x, y) => Math.hypot(Math.max(pen[0][0] - x, 0, x - pen[2][0]), Math.max(pen[0][1] - y, 0, y - pen[2][1]));
+  let g = e;
+  if (pen) { const oS = off(p.sx, p.sy), oE = off(p.ex, p.ey), o = off(b.x, b.y); if (oE < 1 && oS > 1) g = 1 - Math.min(1, o / oS); else if (oS < 1 && oE > 1) g = Math.min(1, o / oE); }
+  const w = f.from[0] + (f.to[0] - f.from[0]) * g, hh = f.from[1] + (f.to[1] - f.from[1]) * g;
   f.cur = [w, hh];
   const rect = [b.x - w / 2, b.y - hh / 2, b.x + w / 2, b.y + hh / 2];
   // the cell under the card: the one it set off as, carried with it, and the
@@ -2305,7 +2385,7 @@ function cueStart(origin) {
   cueCache.clear();
   cueGo(0, origin || { x: W / 2, y: H / 2 });
 }
-function cueDrop() { if (!cue) return; cue = null; for (const b of root.bodies) { delete b.cueStay; delete b.cueFly; delete b.cueFrom; delete b.cueHome; } }
+function cueDrop() { if (!cue) return; cue = null; for (const b of root.bodies) { delete b.cueStay; delete b.cueFly; delete b.cueFrom; delete b.cueHome; delete b.cueTie; } }
 // a slide is a scene change, from where it is largest; a new sequence
 // benches the cast on stage
 function cueGo(k, origin) {
@@ -3509,7 +3589,7 @@ class Hive {
       j.dur = Math.max(j.dur, o.journey.delay - j.delay + 0.9);
     }
     for (const b of pending) this.retireBody(b, 0.8, tOf(b));
-    if (name === 'cue' && cue) { cueAvoid(this, content); cueFlyers(this, content); for (const [v, r] of cueSeat) cueReseat(this, v, r, content, tOf(v)); }   // CUE: the change looks ahead; a staying piece takes its new sites once the cells by it have gone by
+    if (name === 'cue' && cue) { cueOrder(this, content); cueAvoid(this, content); cueFlyers(this, content); cueTies(this, content); cue.pocket = !!cue.pagePrev && !content.some(b => b.cueFly && !b.cueFly.toCard && !(cue.prevOn || []).includes(b)); for (const [v, r] of cueSeat) cueReseat(this, v, r, content, tOf(v)); }   // CUE: the change looks ahead; a staying piece takes its new sites once the cells by it have gone by
 
     // an old void closes at the pace of what lands in it; a new one opens
     // at the pace of what leaves it — each a ledger of the bodies involved,
@@ -3610,10 +3690,10 @@ class Hive {
       if (b.journey) {
         const j = b.journey;
         const u = Math.min(1, Math.max(0, (t - j.t0 - j.delay - (j.hold || 0)) / j.dur));
-        b.progress = easeInOutCubic(u);
+        b.progress = b.cueTie ? cueTieProgress(b, u) : easeInOutCubic(u);   // CUE: a cell of the pen settles at its card's pace
         this.updateCrystal(b, t);
         // a free body's journey is only its clock: once run, it drifts on
-        if (!b.leaving && !b.table && u >= 1 && b.crystal === 0) b.journey = null;
+        if (!b.leaving && !b.table && u >= 1 && b.progress >= 1 && b.crystal === 0) b.journey = null;
       }
       if (b.isSelf) { b.x = W / 2; b.y = H / 2; b.vx = 0; b.vy = 0; continue; }
       let ax = 0, ay = 0;
@@ -3715,6 +3795,7 @@ class Hive {
       for (let j = i + 1; j < bodies.length; j++) {
         const B = bodies[j];
         if (B.isSelf) continue;
+        if (A.cueFly && A.hole || B.cueFly && B.hole) continue;   // CUE: a card in flight neither pushes nor is pushed
         const R = 0.85 * (rad[i] + rad[j]);
         const dx = B.x - A.x, dy = B.y - A.y, dn = Math.hypot(dx, dy);
         // where the pair will be one short horizon from now
@@ -3771,6 +3852,10 @@ class Hive {
             let best = Infinity, bp = null;
             for (const p of h.hole.planes[k]) { const d = p.b - (p.ax * b.x + p.ay * b.y); if (d < best) { best = d; bp = p; } }
             if (bp) { b.x += bp.ax * (best + 0.5); b.y += bp.ay * (best + 0.5); b.vx *= damp; b.vy *= damp; }
+            if (bp && h.cueFly && !b.isVoid && this.depth === 0 && cue && cue.homeCell.has(b)) {   // CUE: and slips round it
+              const sp = Math.hypot(h.vx, h.vy), dt = Math.log(damp) / Math.log(0.5) / 60;
+              if (sp > 1e-6 && bp.ax * h.vx + bp.ay * h.vy > 0) { const nx = -h.vy / sp, ny = h.vx / sp, side = (b.x - h.x) * nx + (b.y - h.y) * ny >= 0 ? 1 : -1; b.x += side * nx * sp * dt; b.y += side * ny * sp * dt; }
+            }
           }
         }
         if (!b.reelPinned) {   // REEL: a reel's seed may stand off the page
@@ -4279,7 +4364,11 @@ class Hive {
         // hand that back before it moves it anywhere. A body that painted
         // nothing (one just born) has only its claim to enter on.
         const target = Math.min(this.sitePaint(s) > 1 ? this.sitePaint(s) : fair, 0.98 * domainArea);
-        s.w = entryWeight(s.x, s.y, target, inSeeds, inW, bounds, tris, scale);
+        const pen = tris && pieces && this.depth === 0 && cue ? cuePocket(this) : null;   // CUE: against the seeds on its side of the pen's edge, on that side's ground
+        if (pen) {
+          const side = q => q[0] > pen[0][0] && q[0] < pen[2][0] && q[1] > pen[0][1] && q[1] < pen[2][1], me = side([s.x, s.y]), k = inSeeds.map((q, i) => i).filter(i => side(inSeeds[i]) === me), gt = tris.filter((t, i) => !!pieces[i].cuePen === me);
+          s.w = k.length ? entryWeight(s.x, s.y, target, k.map(i => inSeeds[i]), k.map(i => inW[i]), bounds, gt.length ? gt : tris, scale) : target / Math.PI;
+        } else s.w = entryWeight(s.x, s.y, target, inSeeds, inW, bounds, tris, scale);
         inSeeds.push([s.x, s.y]); inW.push(s.w);
       }
     }
@@ -4299,7 +4388,8 @@ class Hive {
     const comp = (!domain && pieces && pieces.length > 1) ? this.components(pieces) : null;
     if (comp && comp.groups.length > 1) {
       const mine = comp.groups.map(() => []);
-      for (let i = 0; i < active.length; i++) mine[this.pocketOf(comp, pieces, seeds[i][0], seeds[i][1])].push(i);
+      for (let i = 0; i < active.length; i++) { cueWho = active[i].body; mine[this.pocketOf(comp, pieces, seeds[i][0], seeds[i][1])].push(i); }
+      cueWho = null;
       // a pocket nobody stands in joins the nearest pocket that has a bidder
       // — unless a hole is there to take it, which shows less than an island
       const live2 = comp.groups.map((_, k) => mine[k].length > 0);
@@ -4446,7 +4536,8 @@ class Hive {
     const comp = pieces.length > 1 ? this.components(pieces) : null;
     const groups = comp ? comp.groups : [[0]];
     const mine = groups.map(() => []);
-    for (const s of bidders) mine[comp ? this.pocketOf(comp, pieces, s.x, s.y) : 0].push(s);
+    for (const s of bidders) { cueWho = s.body; mine[comp ? this.pocketOf(comp, pieces, s.x, s.y) : 0].push(s); }
+    cueWho = null;
     const cellOf = new Map();
     for (let k = 0; k < groups.length; k++) {
       const idx = mine[k];
@@ -6345,15 +6436,61 @@ Hive.prototype.placeSeeds = function() {
   this.ferryW=W; this.ferryH=H;
 };
 
+// THE PEN IS A POCKET OF ITS OWN. Its cells bid in it and nowhere else,
+// the whitespace round it bids outside it, and so its edge is the pen's
+// whatever its cells do: at rest the mirrors behind it hold every edge where
+// it is, but mirrors are made for the cells they mirror, and when a cell went
+// out or a card came home the cells beside it pushed out past them or fell
+// short of them. Nothing but a card ever crosses the edge, and a card is out
+// of the auction. The ground is cut along the edge, and the two sides of it
+// are two auctions, as ground walls cut in two is (see solveMain).
+// But not on a change that brings cells into the pen from off the story's
+// pages (its entry, and any change planned while the entry's cells are still
+// on their way): none of the pen was theirs, and the few cells in it first
+// took all of it, round every card still coming, while the whitespace had
+// held what nobody yet had. Which it is, is settled as the change is planned.
+let cueWho = null;   // the bidder whose pocket is being found (see solveMain)
+function cuePocket(h) { return h.depth === 0 && cue && cue.pocket && cue.penPts && config.scene === 'cue' ? cue.penPts : null; }
+const cueGround = Hive.prototype.domainPieces;
+Hive.prototype.domainPieces = function(withHoles) {
+  const pieces = cueGround.call(this, withHoles), pen = cuePocket(this);
+  if (!pen || this.domainPolyActive()) return pieces;
+  const r = [pen[0][0], pen[0][1], pen[2][0], pen[2][1]], planes = convexPlanes(pen), out = [];
+  for (const p of pieces || [[[0, 0], [this.W, 0], [this.W, this.H], [0, this.H]]]) {
+    const q = planesPoly(planes, p); if (q) { q.cuePen = true; out.push(q); }
+    out.push(...subtractRect(p, r));
+  }
+  return out;
+};
+const cueParts = Hive.prototype.components;
+Hive.prototype.components = function(pieces) {
+  const inI = [], outI = [];
+  pieces.forEach((p, i) => (p.cuePen ? inI : outI).push(i));
+  if (!inI.length || !outI.length) return cueParts.call(this, pieces);
+  const A = cueParts.call(this, inI.map(i => pieces[i])), B = cueParts.call(this, outI.map(i => pieces[i])), box = new Array(pieces.length);
+  inI.forEach((i, k) => { box[i] = A.box[k]; }); outI.forEach((i, k) => { box[i] = B.box[k]; });
+  return { groups: A.groups.map(g => g.map(k => inI[k])).concat(B.groups.map(g => g.map(k => outI[k]))), box };
+};
+
+const cueWhere = Hive.prototype.pocketOf;
+Hive.prototype.pocketOf = function(comp, pieces, x, y) {   // on its own side of the edge: a cell of the pen in the pen, whitespace outside it, wherever its site stands
+  const pen = cuePocket(this), who = cueWho;
+  if (!pen || !comp.groups.some(g => g.length && pieces[g[0]].cuePen)) return cueWhere.call(this, comp, pieces, x, y);
+  const inside = who ? !who.isVoid && cue.homeCell.has(who) : x > pen[0][0] && x < pen[2][0] && y > pen[0][1] && y < pen[2][1], mine = comp.groups.map(g => g.length && !!pieces[g[0]].cuePen === inside ? g : []);
+  return mine.some(g => g.length) ? cueWhere.call(this, { groups: mine, box: comp.box }, pieces, x, y) : cueWhere.call(this, comp, pieces, x, y);
+};
 const cueWay = Hive.prototype.placeSeeds;
 Hive.prototype.placeSeeds = function() {   // CUE: whitespace makes way without giving ground
+  if (this.depth === 0 && cue) for (const v of this.bodies) {
+    if (v.cueTie && v.journey) v.claim = cueTieClaim(v);   // a cell of the pen, giving and taking at its cards' pace
+  }
   cueWay.call(this);
   if (this.depth !== 0 || !cue || config.scene !== 'cue') return;
   const movers = [];
   const S = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
   for (const b of this.bodies) {   // the way it asks for comes in as it sets off and goes as it lands, by where its seed is, so nothing snaps back
     const p = b.path;
-    if (b.isVoid || b.isSelf || b.leaving || !p || Math.hypot(p.ex - p.sx, p.ey - p.sy) < 4 || b.cueFly) continue;   // a card in flight carves its own way: nothing gives way for it, and whitespace under it is flown over (see enforcePreconditions)
+    if (b.isVoid || b.isSelf || b.leaving || !p || Math.hypot(p.ex - p.sx, p.ey - p.sy) < 4 || b.cueFly || b.cueFrom && rectsEqual(b.cueFrom, b.rect)) continue;   // a card in flight carves its own way: nothing gives way for it, and whitespace under it is flown over (see enforcePreconditions)
     const R = 0.5 * Math.sqrt(Math.max(b.claim0 || 0, b.claimTarget || 0) * this.PW * this.PH), on = S(Math.hypot(b.x - p.sx, b.y - p.sy) / (0.5 * R)) * S(Math.hypot(b.x - p.ex, b.y - p.ey) / (0.5 * R));
     if (on > 0) movers.push([b.x, b.y, R, on]);
   }

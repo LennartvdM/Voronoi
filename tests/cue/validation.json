@@ -53,9 +53,9 @@
         "cast": [
           "Jazz"
         ],
-        "niches": 1,
+        "penCovered": 1,
         "offRect": 0,
-        "voids": 20,
+        "voids": 14,
         "rest": {
           "rectangle": 1,
           "voronoi": 11,
@@ -68,12 +68,12 @@
           "Jazz",
           "Moss"
         ],
-        "niches": 2,
+        "penCovered": 1,
         "offRect": 0,
-        "voids": 20,
+        "voids": 13,
         "rest": {
           "rectangle": 2,
-          "voronoi": 9,
+          "voronoi": 10,
           "cut": 0
         }
       },
@@ -84,9 +84,9 @@
           "Moss",
           "Petal"
         ],
-        "niches": 3,
+        "penCovered": 1,
         "offRect": 0,
-        "voids": 20,
+        "voids": 12,
         "rest": {
           "rectangle": 3,
           "voronoi": 9,
@@ -96,11 +96,11 @@
       {
         "k": 3,
         "cast": [
-          "Dune"
+          "Tide"
         ],
-        "niches": 1,
+        "penCovered": 1,
         "offRect": 0,
-        "voids": 20,
+        "voids": 14,
         "rest": {
           "rectangle": 1,
           "voronoi": 11,
@@ -110,12 +110,12 @@
       {
         "k": 4,
         "cast": [
-          "Dune",
+          "Tide",
           "Aurora"
         ],
-        "niches": 2,
+        "penCovered": 1,
         "offRect": 0,
-        "voids": 20,
+        "voids": 13,
         "rest": {
           "rectangle": 2,
           "voronoi": 10,
@@ -127,9 +127,9 @@
         "cast": [
           "Moss"
         ],
-        "niches": 1,
+        "penCovered": 1,
         "offRect": 0,
-        "voids": 20,
+        "voids": 14,
         "rest": {
           "rectangle": 1,
           "voronoi": 11,
@@ -142,9 +142,9 @@
           "Moss",
           "Aurora"
         ],
-        "niches": 2,
+        "penCovered": 1,
         "offRect": 0,
-        "voids": 20,
+        "voids": 13,
         "rest": {
           "rectangle": 2,
           "voronoi": 10,
@@ -158,9 +158,9 @@
           "Aurora",
           "Petal"
         ],
-        "niches": 3,
+        "penCovered": 1,
         "offRect": 0,
-        "voids": 20,
+        "voids": 12,
         "rest": {
           "rectangle": 3,
           "voronoi": 9,
@@ -178,9 +178,10 @@
         ],
         "kept": 1,
         "penStayed": 10,
+        "penSettle": 85.5,
         "closest": null,
         "cardOverlap": 0,
-        "seconds": 2.3
+        "seconds": 2.2
       },
       {
         "k": 2,
@@ -192,31 +193,34 @@
         ],
         "kept": 2,
         "penStayed": 9,
+        "penSettle": 67.9,
         "closest": null,
         "cardOverlap": 0,
-        "seconds": 2.2
+        "seconds": 2.1
       },
       {
         "k": 3,
         "fresh": true,
         "cast": [
-          "Dune"
+          "Tide"
         ],
         "kept": 0,
         "penStayed": 8,
+        "penSettle": 98.3,
         "closest": null,
         "cardOverlap": 0,
-        "seconds": 3.7
+        "seconds": 2.6
       },
       {
         "k": 4,
         "fresh": false,
         "cast": [
-          "Dune",
+          "Tide",
           "Aurora"
         ],
         "kept": 1,
         "penStayed": 10,
+        "penSettle": 93.7,
         "closest": null,
         "cardOverlap": 0,
         "seconds": 2.3
@@ -229,9 +233,10 @@
         ],
         "kept": 0,
         "penStayed": 9,
+        "penSettle": 93.7,
         "closest": null,
         "cardOverlap": 0,
-        "seconds": 2.7
+        "seconds": 2.1
       },
       {
         "k": 6,
@@ -242,6 +247,7 @@
         ],
         "kept": 1,
         "penStayed": 10,
+        "penSettle": 93.7,
         "closest": null,
         "cardOverlap": 0,
         "seconds": 2.4
@@ -256,9 +262,10 @@
         ],
         "kept": 2,
         "penStayed": 9,
+        "penSettle": 52.5,
         "closest": null,
         "cardOverlap": 0,
-        "seconds": 2.3
+        "seconds": 1.5
       }
     ],
     "back": {
@@ -266,9 +273,9 @@
       "cast": [
         "Aurora"
       ],
-      "niches": 1,
+      "penCovered": 1,
       "offRect": 0,
-      "voids": 20,
+      "voids": 14,
       "rest": {
         "rectangle": 1,
         "voronoi": 11,
@@ -281,9 +288,9 @@
         "cast": [
           "Haze"
         ],
-        "niches": 1,
+        "penCovered": 1,
         "offRect": 0,
-        "voids": 14,
+        "voids": 10,
         "rest": {
           "rectangle": 1,
           "voronoi": 11,
@@ -299,9 +306,10 @@
         ],
         "kept": 1,
         "penStayed": 10,
+        "penSettle": 22.2,
         "closest": null,
         "cardOverlap": 0,
-        "seconds": 3.8
+        "seconds": 2.5
       },
       {
         "k": 1,
@@ -309,9 +317,9 @@
           "Haze",
           "Coal"
         ],
-        "niches": 2,
+        "penCovered": 1,
         "offRect": 0,
-        "voids": 14,
+        "voids": 9,
         "rest": {
           "rectangle": 2,
           "voronoi": 10,
@@ -328,9 +336,10 @@
         ],
         "kept": 2,
         "penStayed": 9,
+        "penSettle": 41.9,
         "closest": null,
         "cardOverlap": 0,
-        "seconds": 2.6
+        "seconds": 2.1
       },
       {
         "k": 2,
@@ -339,9 +348,9 @@
           "Coal",
           "Aurora"
         ],
-        "niches": 3,
+        "penCovered": 1,
         "offRect": 0,
-        "voids": 14,
+        "voids": 8,
         "rest": {
           "rectangle": 3,
           "voronoi": 9,
@@ -356,18 +365,19 @@
         ],
         "kept": 0,
         "penStayed": 8,
+        "penSettle": 43.7,
         "closest": null,
         "cardOverlap": 0,
-        "seconds": 2.6
+        "seconds": 2
       },
       {
         "k": 3,
         "cast": [
           "Dune"
         ],
-        "niches": 1,
+        "penCovered": 1,
         "offRect": 0,
-        "voids": 14,
+        "voids": 10,
         "rest": {
           "rectangle": 1,
           "voronoi": 11,
@@ -383,9 +393,10 @@
         ],
         "kept": 1,
         "penStayed": 10,
+        "penSettle": 22.2,
         "closest": null,
         "cardOverlap": 0,
-        "seconds": 4
+        "seconds": 2
       },
       {
         "k": 4,
@@ -393,9 +404,9 @@
           "Dune",
           "Coal"
         ],
-        "niches": 2,
+        "penCovered": 1,
         "offRect": 0,
-        "voids": 14,
+        "voids": 9,
         "rest": {
           "rectangle": 2,
           "voronoi": 10,
@@ -406,22 +417,23 @@
         "k": 5,
         "fresh": true,
         "cast": [
-          "Aurora"
+          "Haze"
         ],
         "kept": 0,
         "penStayed": 9,
+        "penSettle": 15,
         "closest": null,
         "cardOverlap": 0,
-        "seconds": 4.5
+        "seconds": 3
       },
       {
         "k": 5,
         "cast": [
-          "Aurora"
+          "Haze"
         ],
-        "niches": 1,
+        "penCovered": 1,
         "offRect": 0,
-        "voids": 14,
+        "voids": 10,
         "rest": {
           "rectangle": 1,
           "voronoi": 11,

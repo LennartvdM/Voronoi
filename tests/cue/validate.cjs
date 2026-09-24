@@ -87,7 +87,7 @@ function fresh(cfg){const e=loadEngine(files[1],{...cfg,record:true});let ms=100
 const ring=pts=>Math.abs(pts.reduce((q,p,i,a)=>{const m=a[(i+1)%a.length];return q+p[0]*m[1]-m[0]*p[1];},0)/2);
 // THE WHITESPACE IS EXACT: every point of every void's outline lies in the
 // union of the voids' rectangles, and no root cell's vertex lies inside one
-function voidsExact(st,eps=.05,pen=[]){   // the pen's slots and niches are its own pocket's power cells, not rectangles: the whitespace is exact outside the pen
+function voidsExact(st,eps=.05,pen=[]){   // the pen's cells are its own pocket's power cells, not rectangles: the whitespace is exact outside the pen
  const e=st.e,PW=e.root.PW,PH=e.root.PH;
  const inPen=p=>pen.some(r=>p[0]>r[0]*PW-eps&&p[0]<r[2]*PW+eps&&p[1]>r[1]*PH-eps&&p[1]<r[3]*PH+eps);
  const boxes=e.root.bodies.filter(v=>v.isVoid&&!v.leaving&&v.rect).map(v=>[v.rect[0]*PW,v.rect[1]*PH,v.rect[2]*PW,v.rect[3]*PH]);
@@ -161,26 +161,31 @@ function settled(st,k,label){
  const slots=e.cueSlots(N),held=roots(e).filter(b=>!T.on.includes(b));
  for(const b of held)assert(slots.some(r=>rectsEqual(b.rect,r)),label+': '+b.name+' is not on a slot of the pen');
  assert.equal(new Set(held.map(b=>slots.findIndex(r=>rectsEqual(b.rect,r)))).size,held.length,label+': two cells on one slot');
- const niches=slots.filter(r=>!held.some(b=>rectsEqual(b.rect,r)));assert.equal(niches.length,T.on.length,label+': '+niches.length+' niches, the cast is '+T.on.length);
- for(const r of niches)assert(e.root.bodies.some(v=>v.isVoid&&!v.leaving&&rectsEqual(v.rect,r)),label+': a niche is not held open');
+ // THE PEN IS WHOLE: no whitespace in it, drawn or bid for, and its cells,
+ // drawn, cover it
+ const frame=e.penFrame(),fpx=[frame[0]*PW,frame[1]*PH,frame[2]*PW,frame[3]*PH];
+ assert(!e.root.bodies.some(v=>v.isVoid&&!v.leaving&&v.rect&&overlap(v.rect,frame)),label+': whitespace bid for in the pen');
+ for(const l of st.pic.leaves)if(l.path.length===1&&l.isVoid)for(const lp of l.loops)for(const q of lp)assert(!(q[0]>fpx[0]+4&&q[0]<fpx[2]-4&&q[1]>fpx[1]+4&&q[1]<fpx[3]-4),label+': whitespace drawn in the pen at '+q.map(v=>+v.toFixed(1)));
+ const penDrawn=rootsOf(st.pic).filter(l=>held.includes(l.body)).reduce((q,l)=>q+l.loops.reduce((a,lp)=>a+(lp.hole?-1:1)*ring(lp),0),0),penArea=(fpx[2]-fpx[0])*(fpx[3]-fpx[1]);
+ assert(Math.abs(penDrawn/penArea-1)<0.01,label+': the pen\'s cells cover '+(100*penDrawn/penArea).toFixed(1)+'% of it');
  for(const q of roots(e))assert.equal(q.subs.length,1,label+': '+q.name+' has '+q.subs.length+' sites');
  assert(!st.pic.leaves.some(l=>l.path.length>1),label+': a field on the story');
- const vx=voidsExact(st,4,e.cueSlots(N));assert(vx.ok,label+': '+vx.why);   // to 4 px: no weights are handed, and the live auction settles a hair off the authored diagram where two pieces meet a cell's corner
+ const vx=voidsExact(st,4,[frame]);assert(vx.ok,label+': '+vx.why);   // to 4 px: no weights are handed, and the live auction settles a hair off the authored diagram where two pieces meet a cell's corner
  const sh=shapes(st);assert.equal(sh.fractured,0,label+': a fractured cell '+JSON.stringify(sh.worst));
  const px=parseFloat(e.meters().mGap[0])+parseFloat(e.meters().mOver[0]);
  assert(px<=0.003*e.root.W*e.root.H,label+': seam residual '+e.meters().mGap[0]+' gap, '+e.meters().mOver[0]+' overlap');
  const voids=e.root.bodies.filter(v=>v.isVoid&&!v.leaving&&v.rect);
  for(const v of voids)for(const q of roots(e))assert(!overlap(v.rect,q.rect),label+': whitespace over '+q.name);
- const total=voids.concat(roots(e)).reduce((s,q)=>s+(q.rect[2]-q.rect[0])*(q.rect[3]-q.rect[1]),0);
+ const total=voids.concat(T.on).reduce((s,q)=>s+(q.rect[2]-q.rect[0])*(q.rect[3]-q.rect[1]),0)+(frame[2]-frame[0])*(frame[3]-frame[1]);   // the whitespace, the cast and the pen, whose cells cover it (above)
  assert(Math.abs(total-e.root.COLS*e.root.ROWS)<1e-3,label+': the rectangles do not cover the page: '+total.toFixed(3));
  const title=T.on.map(b=>b.name).join(' · '),bx=e.root.W<e.root.H?[.04,.04,.96,.34]:[.23,.25,.59,.75];
  const inBox=q=>q[2]>=bx[0]*e.root.W&&q[2]<=bx[2]*e.root.W&&q[3]>=bx[1]*e.root.H&&q[3]<=bx[3]*e.root.H;
  const texts=e.commands.filter(c=>c[0]==='fillText'&&c[1]===title);
  assert(T.alpha>.99,label+': the text is not full');assert(texts.some(inBox),label+': no title in the box');assert(!texts.some(c=>!inBox(c)),label+': the title outside the box');
- return{k,cast:T.on.map(b=>b.name),niches:niches.length,offRect:+worst.toFixed(1),voids:voids.length,rest:{rectangle:sh.rectangle,voronoi:sh.voronoi,cut:sh.cut}};
+ return{k,cast:T.on.map(b=>b.name),penCovered:+(penDrawn/penArea).toFixed(4),offRect:+worst.toFixed(1),voids:voids.length,rest:{rectangle:sh.rectangle,voronoi:sh.voronoi,cut:sh.cut}};
 }
 // A CHANGE: the cells on the stage that the slide keeps hold still, the
-// cells of the pen that stay keep their slots and are sent nowhere, no two
+// cells of the pen that stay keep their slots and settle in the pen, no two
 // cards in flight overlap, and no two cells on their way that are not both
 // cards come within half their reaches added; going
 // on in a sequence, one cell comes out and the others keep their places; a
@@ -193,15 +198,17 @@ function clipConvex(S,C){let out=S,sg=0;const n=C.length;for(let i=0;i<n;i++){co
  return out.length>=3?out:null;}
 function polyArea(P){let a=0;for(let i=0;i<P.length;i++){const p=P[i],q=P[(i+1)%P.length];a+=p[0]*q[1]-q[0]*p[1];}return Math.abs(a/2);}
 function change(st,k,label){
- const e=st.e,T=e.cue(),from=T.k,was=T.on.slice(),before=new Map(roots(e).map(b=>[b,{x:b.x,y:b.y}])),fresh=!!e.slides2()[k].fresh&&k>from;
+ const e=st.e,T=e.cue(),from=T.k,was=T.on.slice(),before=new Map(roots(e).map(b=>[b,{x:b.x,y:b.y,rect:b.rect.slice(0,4)}])),fresh=!!e.slides2()[k].fresh&&k>from;
  e.cueGo(k);st.step(2);
  const now=T.on.slice(),kept=was.filter(b=>now.includes(b));
  if(fresh){assert.equal(kept.length,0,label+': a cell of the last sequence stayed on');assert.equal(now.length,1,label+': a fresh slide has '+now.length+' on stage');}
  else if(k===from+1){assert.deepEqual(now.slice(0,was.length).map(b=>b.name),was.map(b=>b.name),label+': the cast already on the stage did not keep its places');assert.equal(now.length,was.length+1,label+': not one cell more');}
  const penStay=roots(e).filter(b=>!now.includes(b)&&!was.includes(b));
- for(const b of penStay)assert(b.path&&Math.hypot(b.path.ex-b.path.sx,b.path.ey-b.path.sy)<1,label+': '+b.name+', in the pen, was sent on a journey');
+ const frame=e.penFrame(),PW=e.root.PW,PH=e.root.PH,inPen=(x,y)=>x>=frame[0]*PW-1&&x<=frame[2]*PW+1&&y>=frame[1]*PH-1&&y<=frame[3]*PH+1;
+ let settle=0;for(const b of penStay){assert(rectsEqual(b.rect,before.get(b).rect),label+': '+b.name+', in the pen, left its slot');const p=b.path;if(!p)continue;settle=Math.max(settle,Math.hypot(p.ex-p.sx,p.ey-p.sy));
+  for(let k=0;k<=10;k++){const t=k/10,m=1-t,x=m*m*p.sx+2*m*t*p.cx+t*t*p.ex,y=m*m*p.sy+2*m*t*p.cy+t*t*p.ey;assert(inPen(x,y),label+': '+b.name+', in the pen, was sent out of it');}}   // the cells of the pen settle where they are, in it
  let frames=0,frac=0,stayMove=0,close=Infinity,over=0;
- const movers=roots(e).filter(b=>b.path&&Math.hypot(b.path.ex-b.path.sx,b.path.ey-b.path.sy)>4),reach=b=>0.5*Math.sqrt(Math.max(b.claim0||0,b.claimTarget||0)*e.root.PW*e.root.PH),going=b=>b.journey&&b.progress>0.05&&b.progress<0.9;
+ const movers=roots(e).filter(b=>b.path&&Math.hypot(b.path.ex-b.path.sx,b.path.ey-b.path.sy)>4&&!rectsEqual(b.rect,before.get(b).rect)),reach=b=>0.5*Math.sqrt(Math.max(b.claim0||0,b.claimTarget||0)*e.root.PW*e.root.PH),going=b=>b.journey&&b.progress>0.05&&b.progress<0.9;   // travellers: a cell settling on its own slot of the pen is none
  while(e.changeLeft()>0&&frames<600){st.step(1);frames++;frac+=shapes(st).fractured;for(const b of kept){const p=before.get(b);stayMove=Math.max(stayMove,Math.hypot(b.x-p.x,b.y-p.y));}
   for(let i=0;i<movers.length;i++)for(let j=i+1;j<movers.length;j++){const a=movers[i],c=movers[j];
    if(a.cueFly&&c.cueFly&&a.hole&&c.hole){const x=clipConvex(a.hole.pts,c.hole.pts);if(x)over=Math.max(over,polyArea(x)/Math.min(polyArea(a.hole.pts),polyArea(c.hole.pts)));continue;}   // two cards in flight: their shapes
@@ -211,7 +218,7 @@ function change(st,k,label){
  assert(frames<600,label+': the change did not end');assert.equal(frac,0,label+': a fractured cell in the change');
  assert(stayMove<1,label+': a cell on the stage moved '+stayMove.toFixed(1)+' px');
  st.step(240);
- return{k,fresh,cast:now.map(b=>b.name),kept:kept.length,penStayed:penStay.length,closest:close===Infinity?null:+close.toFixed(2),cardOverlap:+over.toFixed(4),seconds:+(frames/60).toFixed(1)};
+ return{k,fresh,cast:now.map(b=>b.name),kept:kept.length,penStayed:penStay.length,penSettle:+settle.toFixed(1),closest:close===Infinity?null:+close.toFixed(2),cardOverlap:+over.toFixed(4),seconds:+(frames/60).toFixed(1)};
 }
 { // the story on a desk: slide 0, every slide in turn, back to the first a notch at a time, home
  const st=fresh(desk),e=st.e;e.cueStart();st.step(420);
