@@ -179,8 +179,9 @@ function settled(st,k,label){
  assert(T.alpha>.99,label+': the text is not full');assert(texts.some(inBox),label+': no title in the box');assert(!texts.some(c=>!inBox(c)),label+': the title outside the box');
  return{k,cast:T.on.map(b=>b.name),niches:niches.length,offRect:+worst.toFixed(1),voids:voids.length,rest:{rectangle:sh.rectangle,voronoi:sh.voronoi,cut:sh.cut}};
 }
-// A CHANGE: the cells on the stage that the slide keeps hold still, and the
-// cells of the pen that stay keep their slots and are sent nowhere; going
+// A CHANGE: the cells on the stage that the slide keeps hold still, the
+// cells of the pen that stay keep their slots and are sent nowhere, and no
+// two cells on their way come within half their reaches added; going
 // on in a sequence, one cell comes out and the others keep their places; a
 // fresh slide sends the last cast home and brings out a cell that was none
 // of it; nothing fractures on any frame, and the change ends
@@ -192,12 +193,15 @@ function change(st,k,label){
  else if(k===from+1){assert.deepEqual(now.slice(0,was.length).map(b=>b.name),was.map(b=>b.name),label+': the cast already on the stage did not keep its places');assert.equal(now.length,was.length+1,label+': not one cell more');}
  const penStay=roots(e).filter(b=>!now.includes(b)&&!was.includes(b));
  for(const b of penStay)assert(b.path&&Math.hypot(b.path.ex-b.path.sx,b.path.ey-b.path.sy)<1,label+': '+b.name+', in the pen, was sent on a journey');
- let frames=0,frac=0,stayMove=0;
- while(e.changeLeft()>0&&frames<600){st.step(1);frames++;frac+=shapes(st).fractured;for(const b of kept){const p=before.get(b);stayMove=Math.max(stayMove,Math.hypot(b.x-p.x,b.y-p.y));}}
+ let frames=0,frac=0,stayMove=0,close=Infinity;
+ const movers=roots(e).filter(b=>b.path&&Math.hypot(b.path.ex-b.path.sx,b.path.ey-b.path.sy)>4),reach=b=>0.5*Math.sqrt(Math.max(b.claim0||0,b.claimTarget||0)*e.root.PW*e.root.PH),going=b=>b.journey&&b.progress>0.05&&b.progress<0.9;
+ while(e.changeLeft()>0&&frames<600){st.step(1);frames++;frac+=shapes(st).fractured;for(const b of kept){const p=before.get(b);stayMove=Math.max(stayMove,Math.hypot(b.x-p.x,b.y-p.y));}
+  for(let i=0;i<movers.length;i++)for(let j=i+1;j<movers.length;j++){const a=movers[i],c=movers[j];if(going(a)&&going(c))close=Math.min(close,Math.hypot(a.x-c.x,a.y-c.y)/(reach(a)+reach(c)));}}
+ assert(close>=0.5,label+': two cells on their way came within '+close.toFixed(2)+' of their reaches added');   // the change looks ahead: they pass close, never through each other
  assert(frames<600,label+': the change did not end');assert.equal(frac,0,label+': a fractured cell in the change');
  assert(stayMove<1,label+': a cell on the stage moved '+stayMove.toFixed(1)+' px');
  st.step(240);
- return{k,fresh,cast:now.map(b=>b.name),kept:kept.length,penStayed:penStay.length,seconds:+(frames/60).toFixed(1)};
+ return{k,fresh,cast:now.map(b=>b.name),kept:kept.length,penStayed:penStay.length,closest:close===Infinity?null:+close.toFixed(2),seconds:+(frames/60).toFixed(1)};
 }
 { // the story on a desk: slide 0, every slide in turn, back to the first a notch at a time, home
  const st=fresh(desk),e=st.e;e.cueStart();st.step(420);

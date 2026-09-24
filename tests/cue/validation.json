@@ -69,7 +69,7 @@
           "Moss"
         ],
         "niches": 2,
-        "offRect": 0,
+        "offRect": 0.1,
         "voids": 20,
         "rest": {
           "rectangle": 1,
@@ -178,7 +178,8 @@
         ],
         "kept": 1,
         "penStayed": 10,
-        "seconds": 2.3
+        "closest": null,
+        "seconds": 2.4
       },
       {
         "k": 2,
@@ -190,7 +191,8 @@
         ],
         "kept": 2,
         "penStayed": 9,
-        "seconds": 2.5
+        "closest": null,
+        "seconds": 3
       },
       {
         "k": 3,
@@ -200,7 +202,8 @@
         ],
         "kept": 0,
         "penStayed": 8,
-        "seconds": 3.6
+        "closest": 2.33,
+        "seconds": 4.1
       },
       {
         "k": 4,
@@ -211,7 +214,8 @@
         ],
         "kept": 1,
         "penStayed": 10,
-        "seconds": 2.4
+        "closest": null,
+        "seconds": 2.6
       },
       {
         "k": 5,
@@ -221,7 +225,8 @@
         ],
         "kept": 0,
         "penStayed": 9,
-        "seconds": 3
+        "closest": 0.89,
+        "seconds": 3.5
       },
       {
         "k": 6,
@@ -232,7 +237,8 @@
         ],
         "kept": 1,
         "penStayed": 10,
-        "seconds": 2.8
+        "closest": null,
+        "seconds": 3.3
       },
       {
         "k": 7,
@@ -244,7 +250,8 @@
         ],
         "kept": 2,
         "penStayed": 9,
-        "seconds": 2
+        "closest": null,
+        "seconds": 2.3
       }
     ],
     "back": {
@@ -285,7 +292,8 @@
         ],
         "kept": 1,
         "penStayed": 10,
-        "seconds": 3.7
+        "closest": null,
+        "seconds": 3.8
       },
       {
         "k": 1,
@@ -312,6 +320,7 @@
         ],
         "kept": 2,
         "penStayed": 9,
+        "closest": null,
         "seconds": 2.6
       },
       {
@@ -338,7 +347,8 @@
         ],
         "kept": 0,
         "penStayed": 8,
-        "seconds": 3.7
+        "closest": 0.54,
+        "seconds": 4
       },
       {
         "k": 3,
@@ -363,7 +373,8 @@
         ],
         "kept": 1,
         "penStayed": 10,
-        "seconds": 2.7
+        "closest": null,
+        "seconds": 4
       },
       {
         "k": 4,
@@ -388,7 +399,8 @@
         ],
         "kept": 0,
         "penStayed": 9,
-        "seconds": 2.7
+        "closest": 1.67,
+        "seconds": 4.5
       },
       {
         "k": 5,
