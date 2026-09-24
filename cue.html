@@ -1914,19 +1914,23 @@ function tell2ProseStep(ctx, type, dt, t) {
   ctx.restore();
 }
 // CUE. Tell II's story on the engine's own rules: every slide is a scene like
-// any other. Its slots are the stage's places and the cluster's bento, its
-// whitespace what they leave, cut again for every slide, and the change from
-// one slide to the next is the engine's: nobody is told where to go. A slide
-// asks for its places and the nearest cells take them, so the cluster's
-// front cell comes out, a cell already on the stage keeps its place, and the
-// cells going back go where the cluster has room. The one rule a slide adds
-// is the bench: when a new sequence begins, the last one's cast may not take
-// a place, so a fresh cell comes out. The stage and the blurb are Tell II's.
+// any other, and the change from one slide to the next is the engine's. A
+// slide asks for its places around the blurb and the nearest cells take
+// them: nobody is told where to go. The cluster is a revolver in a pen. Its
+// slots are laid once for the story, a slot for every cell, and a cell that
+// goes out holds its slot open, a niche of whitespace in the pen; a cell
+// coming back takes the open niche nearest it, and every other cell of the
+// cluster keeps its slot. So a cell comes and goes through a gap, the cells
+// around it give a little as the gap opens and closes, and nothing else in
+// the pen moves. A cell on the stage that the next slide keeps holds its
+// place through the change, still. When a new sequence begins the last one's
+// cast is benched, so a fresh cell comes out. The stage and the blurb are
+// Tell II's.
 const CUE_CLUSTER = [0.8, 0.14, 1, 0.86];
-// the cluster's bento: its region halved and halved again, each cut across
-// the longer side near the share of the cells each side holds, a little off
-// it, so the cells have about the same room, never quite the same, and the
-// cluster is never a grid
+// the pen's slots: its region halved and halved again, each cut across the
+// longer side near the share of the cells each side holds, a little off it,
+// so the cells have about the same room, never quite the same, and the pen
+// is never a grid
 function cueBento(r, n, sx, sy, id = 1) {
   if (n <= 0) return [];
   if (n === 1) return [r];
@@ -1934,83 +1938,146 @@ function cueBento(r, n, sx, sy, id = 1) {
   if ((r[2] - r[0]) * sx >= (r[3] - r[1]) * sy) { const x = r6(r[0] + (r[2] - r[0]) * f); return cueBento([r[0], r[1], x, r[3]], a, sx, sy, 2 * id).concat(cueBento([x, r[1], r[2], r[3]], n - a, sx, sy, 2 * id + 1)); }
   const y = r6(r[1] + (r[3] - r[1]) * f); return cueBento([r[0], r[1], r[2], y], a, sx, sy, 2 * id).concat(cueBento([r[0], y, r[2], r[3]], n - a, sx, sy, 2 * id + 1));
 }
+const cueLattice = (C, R) => f => [Math.round(f[0] * C * 1e6) / 1e6, Math.round(f[1] * R * 1e6) / 1e6, Math.round(f[2] * C * 1e6) / 1e6, Math.round(f[3] * R * 1e6) / 1e6];
+function cueSlots(C, R, n, W, H) { return cueBento(cueLattice(C, R)(W < H ? TELL2_PHONE.cluster : CUE_CLUSTER), n, W / C, H / R); }
 // a slide's sequence begins at the last fresh slide; its cast is the places
 // of the sequence so far
 function cueSeq(k) { let s = Math.max(0, Math.min(TELL2_SLIDES.length - 1, k)); while (s > 0 && !TELL2_SLIDES[s].fresh) s--; return s; }
 function cuePlaces(k) { return TELL2_SLIDES.slice(cueSeq(k), k + 1).map(sd => sd.place); }
-// A slide's page, in lattice units: the stage's places first, then the
-// cluster's bento, then the whitespace. The whitespace is cut once for the
-// story, the page less every place and the cluster, cut along their edges
-// (Tell II's cut), and an empty place is a piece of its own: so a slide
-// changes only the pieces a cell lands in or leaves, and the whitespace
-// around a cell that keeps its place is the same piece before and after.
-// The cluster keeps a cell at least. On a phone a place shares its column
-// with others, and a column one of them fills is no piece.
+// THE WHITESPACE is cut once for the story: the page less every place and
+// the pen, cut along their edges (Tell II's cut). An empty place is a piece
+// of its own, and so is an open niche, so a slide changes only the pieces a
+// cell lands in or leaves. On a phone a place shares its column with others,
+// and a column one of them fills is no piece.
 const cueFixed = new Map();
-function cuePage(k, C, R, n, W, H) {
-  const r6 = v => Math.round(v * 1e6) / 1e6, L = f => [r6(f[0] * C), r6(f[1] * R), r6(f[2] * C), r6(f[3] * R)];
-  const places = cuePlaces(k).slice(0, Math.max(0, n - 1)), stage = places.map(p => L(tell2Place(p, W, H)));
-  const cl = L(W < H ? TELL2_PHONE.cluster : CUE_CLUSTER), m = n - stage.length, key = [C, R, W, H].join('|');
-  if (!cueFixed.has(key)) cueFixed.set(key, tell2Complement(C, R, Object.keys(TELL2_PLACES).map(p => L(tell2Place(p, W, H))).concat([cl])));
-  const filled = new Set(places), voids = cueFixed.get(key).map(r => r.slice());
+let cueSlotsN = 0;
+function cueWhitespace(C, R, W, H, places, n) {
+  cueSlotsN = n; const L = cueLattice(C, R), key = [C, R, W, H, n].join('|');
+  if (!cueFixed.has(key)) {
+    const pen = L(W < H ? TELL2_PHONE.cluster : CUE_CLUSTER), E = 1e-6, cut = tell2Complement(C, R, Object.keys(TELL2_PLACES).map(p => L(tell2Place(p, W, H))).concat([pen]));
+    // THE DOOR, the strip between the stage and the pen, in stretches: cut
+    // across at every edge of the pen's slots along it, so a cell crossing it
+    // cuts again only the stretch beside the slot it leaves or comes home to
+    // (see the construction), and the rest of the door holds the pen's edge
+    const slots = cueBento(pen, cueSlotsN || 1, W / C, H / R), out = [];
+    for (const r of cut) {
+      const door = W < H ? Math.abs(r[3] - pen[1]) < E && r[0] < pen[2] - E && r[2] > pen[0] + E : Math.abs(r[2] - pen[0]) < E && r[1] < pen[3] - E && r[3] > pen[1] + E;
+      if (!door) { out.push(r); continue; }
+      const ax = W < H ? 0 : 1, lines = [...new Set(slots.filter(q => Math.abs((W < H ? q[1] : q[0]) - (W < H ? pen[1] : pen[0])) < E).flatMap(q => [q[ax], q[ax + 2]]).map(v => Math.round(v * 1e6) / 1e6))].filter(v => v > r[ax] + E && v < r[ax + 2] - E).sort((a, b) => a - b);
+      let lo = r[ax];
+      for (const v of lines.concat([r[ax + 2]])) { const q = r.slice(); q[ax] = lo; q[ax + 2] = v; out.push(q); lo = v; }
+    }
+    cueFixed.set(key, out);
+  }
+  const voids = cueFixed.get(key).map(r => r.slice());
   for (const p of Object.keys(TELL2_PLACES)) {
-    if (filled.has(p) || (W < H && places.some(q => TELL2_PHONE_COL[q] === TELL2_PHONE_COL[p]))) continue;
+    if (places.includes(p) || (W < H && places.some(q => TELL2_PHONE_COL[q] === TELL2_PHONE_COL[p]))) continue;
     const r = L(tell2Place(p, W, H)); if (!voids.some(v => rectsEqual(v, r))) voids.push(r);
   }
-  if (m <= 0) voids.push(cl);
-  return { content: stage.concat(cueBento(cl, m, W / C, H / R)), voids, cast: stage.length };
+  return voids;
 }
+// A slide's page with the niches it names (by default the last slots): the
+// stage's places first, then the pen's slots held, then the whitespace
+function cuePage(k, C, R, n, W, H, niches) {
+  const places = cuePlaces(k).slice(0, Math.max(0, n - 1)), L = cueLattice(C, R), stage = places.map(p => L(tell2Place(p, W, H))), slots = cueSlots(C, R, n, W, H);
+  const open = niches || slots.map((r, s) => s).slice(slots.length - places.length);
+  return { content: stage.concat(slots.filter((r, s) => !open.includes(s))), voids: cueWhitespace(C, R, W, H, places, n).concat(open.map(s => slots[s])), cast: stage.length, slots, niches: open };
+}
+// THE ENGINE'S MATCHING, for m cells and n slots of which the nearer are
+// taken: greedy on squared travel, then 2-opt, a cell trading with another,
+// a cell left out taking a matched one's slot, or a cell moving to a slot
+// left open
+function cueMatch(m, n, cost) {
+  const pairs = [];
+  for (let i = 0; i < m; i++) for (let j = 0; j < n; j++) pairs.push([cost(i, j), i, j]);
+  pairs.sort((p, q) => p[0] - q[0]);
+  const a = new Array(m).fill(-1), b = new Array(n).fill(-1), want = Math.min(m, n);
+  let got = 0;
+  for (const [, i, j] of pairs) { if (got === want) break; if (a[i] < 0 && b[j] < 0) { a[i] = j; b[j] = i; got++; } }
+  for (let pass = 0; pass < 30; pass++) {
+    let better = false;
+    for (let i = 0; i < m; i++) {
+      for (let i2 = 0; i2 < m && a[i] >= 0; i2++) {
+        if (i2 === i) continue;
+        const j = a[i], j2 = a[i2];
+        if (j2 >= 0) { if (cost(i, j2) + cost(i2, j) + 0.5 < cost(i, j) + cost(i2, j2)) { a[i] = j2; a[i2] = j; b[j2] = i; b[j] = i2; better = true; } }
+        else if (cost(i2, j) + 0.5 < cost(i, j)) { a[i2] = j; b[j] = i2; a[i] = -1; better = true; }
+      }
+      if (a[i] < 0) continue;
+      for (let j2 = 0; j2 < n; j2++) if (b[j2] < 0 && cost(i, j2) + 0.5 < cost(i, a[i])) { b[a[i]] = -1; a[i] = j2; b[j2] = i; better = true; }
+    }
+    if (!better) break;
+  }
+  return a;
+}
+// WHO GOES WHERE, the engine's matching under the pen's rules: a cell on (or
+// bound for) a place the slide keeps keeps it, and holds still; the places
+// left take the nearest cells not benched; a cell in (or bound for) a slot
+// keeps it; and the cells left, the ones coming home, take the open niches
+// nearest them. A cell is bound for its rectangle, so a change interrupted
+// is planned from where everyone was going.
+function cuePlan(h, k, cells) {
+  const C = h.COLS, R = h.ROWS, n = cells.length, L = cueLattice(C, R);
+  const names = cuePlaces(k).slice(0, Math.max(0, n - 1)), stage = names.map(p => L(tell2Place(p, h.W, h.H))), slots = cueSlots(C, R, n, h.W, h.H);
+  const bound = (b, r) => b.rect && rectsEqual(b.rect, r), d2 = (b, r) => { const [x, y] = h.rectCenter(r); return (b.x - x) * (b.x - x) + (b.y - y) * (b.y - y); };
+  const place = stage.map(() => null), slot = slots.map(() => null), used = new Set(), kept = new Set();
+  stage.forEach((r, j) => { const b = cells.find(b => !used.has(b) && !cue.bench.has(b) && bound(b, r)); if (b) { place[j] = b; used.add(b); kept.add(b); } });
+  const open = stage.map((r, j) => j).filter(j => !place[j]), pool = cells.filter(b => !used.has(b) && !cue.bench.has(b));
+  cueMatch(pool.length, open.length, (i, j) => d2(pool[i], stage[open[j]])).forEach((j, i) => { if (j >= 0) { place[open[j]] = pool[i]; used.add(pool[i]); } });
+  slots.forEach((r, s) => { const b = cells.find(b => !used.has(b) && bound(b, r)); if (b) { slot[s] = b; used.add(b); } });
+  const home = cells.filter(b => !used.has(b)), free = slots.map((r, s) => s).filter(s => !slot[s]);
+  cueMatch(home.length, free.length, (i, j) => d2(home[i], slots[free[j]])).forEach((j, i) => { if (j >= 0) slot[free[j]] = home[i]; });
+  return { names, stage, slots, place, slot, kept };
+}
+// THE PEN IS SOLVED WHOLE. The page is laid as if every slot were held, so
+// the pen is one pocket, its cells solved together as a cell of the pen
+// always is; then an open slot is whitespace holding exactly the ground a
+// cell there would hold, one site at the slot's seed with the slot's share.
+// So the pen keeps its shape at rest whichever slots are open, a niche is the
+// gap its cell left, and a cell coming home into it finds its own ground.
 const cueCache = new Map();
 function cueScene(h, n) {
   if (!cue) return null;
-  const key = [cue.k, h.COLS, h.ROWS, n, h.W, h.H].join('|');
-  if (cueCache.has(key)) return cueCache.get(key);
-  const p = cuePage(cue.k, h.COLS, h.ROWS, n, h.W, h.H), sc = portalDecorate(p.content, p.voids, h.W, h.H, h.COLS, h.ROWS);
-  sc.cast = p.cast;
-  cueCache.set(key, sc); if (cueCache.size > 24) cueCache.delete(cueCache.keys().next().value);
-  return sc;
-}
-// THE ENGINE'S ASSIGNMENT, with its bystanders and the bench: the cells take
-// the slots nearest them, greedy then 2-opt on squared travel, as between
-// any two scenes. A cell sitting exactly on a place the new slide keeps is a
-// bystander, as a body sitting exactly where a scene puts it is: it keeps
-// the place (on squared travel the cast would rather all shift a place along
-// than have one cell come the whole way out). A benched cell does not take a
-// place. Whoever takes a place is the cast, in the order of the places.
-function cueAssign(content, centers, slots, cast, bench) {
-  const nA = content.length, nS = centers.length, BAR = 1e12, keep = new Map(), kept = new Set();
-  for (let j = 0; j < cast; j++) { const i = content.findIndex(b => !keep.has(b) && !bench.has(b) && b.rect && !b.journey && rectsEqual(b.rect, slots[j])); if (i >= 0) { keep.set(content[i], j); kept.add(j); } }
-  const d2 = (i, j) => {
-    const b = content[i];
-    if (keep.has(b)) return keep.get(b) === j ? 0 : BAR;
-    if (kept.has(j) || (j < cast && bench.has(b))) return BAR;
-    const dx = b.x - centers[j].x, dy = b.y - centers[j].y; return dx * dx + dy * dy;
-  };
-  const pairs = [];
-  for (let i = 0; i < nA; i++) for (let j = 0; j < nS; j++) pairs.push({ i, j, d: d2(i, j) });
-  pairs.sort((a, b) => a.d - b.d);
-  const gotS = new Array(nA).fill(-1), taken = new Array(nS).fill(false);
-  for (const p of pairs) if (gotS[p.i] < 0 && !taken[p.j]) { gotS[p.i] = p.j; taken[p.j] = true; }
-  for (let pass = 0; pass < 30; pass++) {
-    let improved = false;
-    for (let i = 0; i < nA; i++) for (let j = i + 1; j < nA; j++) {
-      if (d2(i, gotS[j]) + d2(j, gotS[i]) + 0.5 < d2(i, gotS[i]) + d2(j, gotS[j])) { const t = gotS[i]; gotS[i] = gotS[j]; gotS[j] = t; improved = true; }
-    }
-    if (!improved) break;
+  const cells = h.bodies.filter(b => !b.isVoid && !b.leaving && !b.isSelf), p = cuePlan(h, cue.k, cells);
+  const cast = p.place.map((b, j) => j).filter(j => p.place[j]), places = cast.map(j => p.names[j]);
+  const key = [h.COLS, h.ROWS, h.W, h.H, n, places.join(',')].join('|');
+  let whole = cueCache.get(key);
+  if (!whole) {
+    whole = portalDecorate(cast.map(j => p.stage[j]).concat(p.slots), cueWhitespace(h.COLS, h.ROWS, h.W, h.H, places, n), h.W, h.H, h.COLS, h.ROWS);
+    cueCache.set(key, whole); if (cueCache.size > 24) cueCache.delete(cueCache.keys().next().value);
   }
-  const on = []; content.forEach((b, i) => { if (gotS[i] >= 0 && gotS[i] < cast) on[gotS[i]] = b; });
-  cue.on = on.filter(Boolean);
-  return gotS;
+  const content = [], niches = [];
+  whole.content.forEach((r, i) => {
+    const s = i - cast.length;
+    if (s < 0 || p.slot[s]) { content.push(r); return; }
+    const q = r.slice(); q.mfSites = [{ x: r.mfSeed[0] - (r[0] + r[2]) / 2, y: r.mfSeed[1] - (r[1] + r[3]) / 2, q: r.mfArea }]; q.mfArea = r.mfArea; q.mfKey = JSON.stringify(q.mfSites); q.mfRest = true;
+    niches.push(q);
+  });
+  const owner = cast.map(j => p.place[j]).concat(p.slot.filter(Boolean));
+  cue.slotOf = new Map(owner.map((b, i) => [b, i])); cue.on = cast.map(j => p.place[j]);
+  for (const b of cells) b.cueStay = p.kept.has(b);
+  return { content, voids: whole.voids.concat(niches), cast: cast.length };
 }
-// a piece of whitespace a cell will cross: a point of its path, the bent
-// path seatBody gives it, well inside the piece
+// the page's slots, by the plan: the matching above, handed to the engine
+function cueAssign(content, centers) {
+  const g = content.map(b => cue.slotOf.get(b));
+  return g.some(v => v === undefined) ? assignStations(content, centers) : g;
+}
+// A PIECE OF WHITESPACE A CELL WILL BRUSH: one with a site within the
+// cell's reach of its path, the bent path seatBody gives it. Only there can
+// the wall between them swing the cell about; a piece a cell crosses far
+// from its sites holds, so the whitespace that closes for a crossing is no
+// more than the crossing needs, and the cells around it are left their frame.
 function cueCrosses(h, r, content, rectOf) {
+  const sites = (r.mfSites || []).map(q => [((r[0] + r[2]) / 2 + q.x) * h.PW, ((r[1] + r[3]) / 2 + q.y) * h.PH]);
+  if (!sites.length) return false;
   for (const b of content) {
     const q = rectOf.get(b); if (!q) continue;
     const [ex, ey] = h.rectCenter(q), dx = ex - b.x, dy = ey - b.y;
     if (Math.hypot(dx, dy) < 4) continue;
+    const reach = 0.5 * Math.sqrt((q[2] - q[0]) * h.PW * (q[3] - q[1]) * h.PH);   // half the side of the square it will fill
     const bend = config.swirl * 0.55 * h.swirlSign * (0.7 + 0.6 * hash01(b.id + h.shift, 12)), cx = (b.x + ex) / 2 - dy * bend, cy = (b.y + ey) / 2 + dx * bend;
-    for (let i = 1; i < 20; i++) { const e = i / 20, m = 1 - e, x = m * m * b.x + 2 * m * e * cx + e * e * ex, y = m * m * b.y + 2 * m * e * cy + e * e * ey; if (h.inRect(r, x, y)) return true; }
+    for (let i = 1; i <= 20; i++) { const e = i / 20, m = 1 - e, x = m * m * b.x + 2 * m * e * cx + e * e * ex, y = m * m * b.y + 2 * m * e * cy + e * e * ey; for (const s of sites) if (Math.hypot(s[0] - x, s[1] - y) < reach) return true; }
   }
   return false;
 }
@@ -2024,7 +2091,7 @@ function cueStart(origin) {
   cueCache.clear();
   cueGo(0, origin || { x: W / 2, y: H / 2 });
 }
-function cueDrop() { cue = null; }
+function cueDrop() { if (!cue) return; cue = null; for (const b of root.bodies) delete b.cueStay; }
 // a slide is a scene change, from where it is largest; a new sequence
 // benches the cast on stage
 function cueGo(k, origin) {
@@ -2981,6 +3048,7 @@ class Hive {
     if (rectsEqual(rect, b.rect) && b.formRect === b.rect && b.crystal === 1 && !b.leaving
         && Math.abs(b.x - ex) < 0.01 && Math.abs(b.y - ey) < 0.01) { b.claim0 = b.claim; b.claimTarget = rectArea(rect); return; }
     if (b.tell2Stay && rectsEqual(rect, b.rect) && !b.leaving && !b.journey && Math.abs(b.x - ex) < 1 && Math.abs(b.y - ey) < 1) { b.claim0 = b.claim; b.claimTarget = rectArea(rect); b.pin = 1; return; }   // TELL II: a cell of the cast keeping its place
+    if (b.cueStay && rectsEqual(rect, b.rect) && !b.leaving && !b.journey && Math.abs(b.x - ex) < 1 && Math.abs(b.y - ey) < 1) { b.claim0 = b.claim; b.claimTarget = rectArea(rect); b.pin = 1; return; }   // CUE: a cell of the cast keeping its place holds still
     b.rect = rect;
     b.table = null;
     this.takeFormation(b);
@@ -3158,7 +3226,7 @@ class Hive {
 
     this.swirlSign = -this.swirlSign;
     const centers = spec.content.map(r => { const [x, y] = this.rectCenter(r); return { x, y }; });
-    const gotS = name === 'cue' && cue && spec.cast !== undefined ? cueAssign(content, centers, spec.content, spec.cast, cue.bench) : assignStations(content, centers);   // CUE: the engine's assignment, with the bench
+    const gotS = name === 'cue' && cue && cue.slotOf ? cueAssign(content, centers) : assignStations(content, centers);   // CUE: the engine's matching, under the pen's rules
     portalPin(content, gotS, name);
     const rectOf = new Map();
     content.forEach((b, k) => rectOf.set(b, spec.content[gotS[k]]));

@@ -87,13 +87,15 @@ function fresh(cfg){const e=loadEngine(files[1],{...cfg,record:true});let ms=100
 const ring=pts=>Math.abs(pts.reduce((q,p,i,a)=>{const m=a[(i+1)%a.length];return q+p[0]*m[1]-m[0]*p[1];},0)/2);
 // THE WHITESPACE IS EXACT: every point of every void's outline lies in the
 // union of the voids' rectangles, and no root cell's vertex lies inside one
-function voidsExact(st,eps=.05){
+function voidsExact(st,eps=.05,pen=[]){   // the pen's slots and niches are its own pocket's power cells, not rectangles: the whitespace is exact outside the pen
  const e=st.e,PW=e.root.PW,PH=e.root.PH;
+ const inPen=p=>pen.some(r=>p[0]>r[0]*PW-eps&&p[0]<r[2]*PW+eps&&p[1]>r[1]*PH-eps&&p[1]<r[3]*PH+eps);
  const boxes=e.root.bodies.filter(v=>v.isVoid&&!v.leaving&&v.rect).map(v=>[v.rect[0]*PW,v.rect[1]*PH,v.rect[2]*PW,v.rect[3]*PH]);
  const inBox=(p,b,d)=>p[0]>b[0]+d&&p[0]<b[2]-d&&p[1]>b[1]+d&&p[1]<b[3]-d;
  for(const l of st.pic.leaves){
   if(l.path.length!==1)continue;
   for(const lp of l.loops)for(const p of lp){
+   if(inPen(p))continue;
    if(l.isVoid){if(!boxes.some(b=>inBox(p,b,-eps)))return{ok:false,why:'whitespace outside its rectangles at '+p.map(v=>+v.toFixed(1))};}
    else if(boxes.some(b=>inBox(p,b,eps)))return{ok:false,why:(l.body.name||'a cell')+' inside the whitespace at '+p.map(v=>+v.toFixed(1))};
   }
@@ -156,9 +158,14 @@ function settled(st,k,label){
  assert(worst<4,label+': a cell of the cast is '+worst.toFixed(1)+' px off its rectangle');
  for(let i=0;i<T.on.length;i++)for(let j=i+1;j<T.on.length;j++)assert(!overlap(T.on[i].rect,T.on[j].rect),label+': two of the cast overlap');
  assert.equal(roots(e).length,N,label+': '+roots(e).length+' cells');
+ const slots=e.cueSlots(N),held=roots(e).filter(b=>!T.on.includes(b));
+ for(const b of held)assert(slots.some(r=>rectsEqual(b.rect,r)),label+': '+b.name+' is not on a slot of the pen');
+ assert.equal(new Set(held.map(b=>slots.findIndex(r=>rectsEqual(b.rect,r)))).size,held.length,label+': two cells on one slot');
+ const niches=slots.filter(r=>!held.some(b=>rectsEqual(b.rect,r)));assert.equal(niches.length,T.on.length,label+': '+niches.length+' niches, the cast is '+T.on.length);
+ for(const r of niches)assert(e.root.bodies.some(v=>v.isVoid&&!v.leaving&&rectsEqual(v.rect,r)),label+': a niche is not held open');
  for(const q of roots(e))assert.equal(q.subs.length,1,label+': '+q.name+' has '+q.subs.length+' sites');
  assert(!st.pic.leaves.some(l=>l.path.length>1),label+': a field on the story');
- const vx=voidsExact(st,4);assert(vx.ok,label+': '+vx.why);   // to 4 px: no weights are handed, and the live auction settles a hair off the authored diagram where two pieces meet a cell's corner
+ const vx=voidsExact(st,4,e.cueSlots(N));assert(vx.ok,label+': '+vx.why);   // to 4 px: no weights are handed, and the live auction settles a hair off the authored diagram where two pieces meet a cell's corner
  const sh=shapes(st);assert.equal(sh.fractured,0,label+': a fractured cell '+JSON.stringify(sh.worst));
  const px=parseFloat(e.meters().mGap[0])+parseFloat(e.meters().mOver[0]);
  assert(px<=0.003*e.root.W*e.root.H,label+': seam residual '+e.meters().mGap[0]+' gap, '+e.meters().mOver[0]+' overlap');
@@ -170,10 +177,10 @@ function settled(st,k,label){
  const inBox=q=>q[2]>=bx[0]*e.root.W&&q[2]<=bx[2]*e.root.W&&q[3]>=bx[1]*e.root.H&&q[3]<=bx[3]*e.root.H;
  const texts=e.commands.filter(c=>c[0]==='fillText'&&c[1]===title);
  assert(T.alpha>.99,label+': the text is not full');assert(texts.some(inBox),label+': no title in the box');assert(!texts.some(c=>!inBox(c)),label+': the title outside the box');
- return{k,cast:T.on.map(b=>b.name),offRect:+worst.toFixed(1),voids:voids.length,rest:{rectangle:sh.rectangle,voronoi:sh.voronoi,cut:sh.cut}};
+ return{k,cast:T.on.map(b=>b.name),niches:niches.length,offRect:+worst.toFixed(1),voids:voids.length,rest:{rectangle:sh.rectangle,voronoi:sh.voronoi,cut:sh.cut}};
 }
-// A CHANGE: the cells on the stage that the slide keeps are not sent anywhere
-// and are nudged at most a few px by a cell passing them; going
+// A CHANGE: the cells on the stage that the slide keeps hold still, and the
+// cells of the pen that stay keep their slots and are sent nowhere; going
 // on in a sequence, one cell comes out and the others keep their places; a
 // fresh slide sends the last cast home and brings out a cell that was none
 // of it; nothing fractures on any frame, and the change ends
@@ -183,12 +190,14 @@ function change(st,k,label){
  const now=T.on.slice(),kept=was.filter(b=>now.includes(b));
  if(fresh){assert.equal(kept.length,0,label+': a cell of the last sequence stayed on');assert.equal(now.length,1,label+': a fresh slide has '+now.length+' on stage');}
  else if(k===from+1){assert.deepEqual(now.slice(0,was.length).map(b=>b.name),was.map(b=>b.name),label+': the cast already on the stage did not keep its places');assert.equal(now.length,was.length+1,label+': not one cell more');}
+ const penStay=roots(e).filter(b=>!now.includes(b)&&!was.includes(b));
+ for(const b of penStay)assert(b.path&&Math.hypot(b.path.ex-b.path.sx,b.path.ey-b.path.sy)<1,label+': '+b.name+', in the pen, was sent on a journey');
  let frames=0,frac=0,stayMove=0;
  while(e.changeLeft()>0&&frames<600){st.step(1);frames++;frac+=shapes(st).fractured;for(const b of kept){const p=before.get(b);stayMove=Math.max(stayMove,Math.hypot(b.x-p.x,b.y-p.y));}}
  assert(frames<600,label+': the change did not end');assert.equal(frac,0,label+': a fractured cell in the change');
- assert(stayMove<20,label+': a cell on the stage was pushed '+stayMove.toFixed(1)+' px');   // no wall at the root: a bystander is held by its spring, and a cell passing it nudges it (it settles back on its place, see settled)
+ assert(stayMove<1,label+': a cell on the stage moved '+stayMove.toFixed(1)+' px');
  st.step(240);
- return{k,fresh,cast:now.map(b=>b.name),kept:kept.length,nudge:+stayMove.toFixed(1),seconds:+(frames/60).toFixed(1)};
+ return{k,fresh,cast:now.map(b=>b.name),kept:kept.length,penStayed:penStay.length,seconds:+(frames/60).toFixed(1)};
 }
 { // the story on a desk: slide 0, every slide in turn, back to the first a notch at a time, home
  const st=fresh(desk),e=st.e;e.cueStart();st.step(420);

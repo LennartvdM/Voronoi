@@ -51,10 +51,11 @@
       {
         "k": 0,
         "cast": [
-          "Aurora"
+          "Jazz"
         ],
+        "niches": 1,
         "offRect": 0,
-        "voids": 14,
+        "voids": 20,
         "rest": {
           "rectangle": 1,
           "voronoi": 11,
@@ -64,11 +65,12 @@
       {
         "k": 1,
         "cast": [
-          "Aurora",
-          "Tide"
+          "Jazz",
+          "Moss"
         ],
+        "niches": 2,
         "offRect": 0,
-        "voids": 13,
+        "voids": 20,
         "rest": {
           "rectangle": 1,
           "voronoi": 11,
@@ -78,25 +80,27 @@
       {
         "k": 2,
         "cast": [
-          "Aurora",
-          "Tide",
-          "Jazz"
+          "Jazz",
+          "Moss",
+          "Petal"
         ],
+        "niches": 3,
         "offRect": 0,
-        "voids": 12,
+        "voids": 20,
         "rest": {
-          "rectangle": 2,
-          "voronoi": 10,
+          "rectangle": 3,
+          "voronoi": 9,
           "cut": 0
         }
       },
       {
         "k": 3,
         "cast": [
-          "Moss"
+          "Dune"
         ],
-        "offRect": 0.3,
-        "voids": 14,
+        "niches": 1,
+        "offRect": 0.1,
+        "voids": 20,
         "rest": {
           "rectangle": 1,
           "voronoi": 11,
@@ -106,24 +110,26 @@
       {
         "k": 4,
         "cast": [
-          "Moss",
+          "Dune",
           "Aurora"
         ],
-        "offRect": 0.3,
-        "voids": 13,
+        "niches": 2,
+        "offRect": 0.4,
+        "voids": 20,
         "rest": {
           "rectangle": 1,
-          "voronoi": 10,
+          "voronoi": 11,
           "cut": 0
         }
       },
       {
         "k": 5,
         "cast": [
-          "Tide"
+          "Moss"
         ],
-        "offRect": 1,
-        "voids": 14,
+        "niches": 1,
+        "offRect": 0.9,
+        "voids": 20,
         "rest": {
           "rectangle": 1,
           "voronoi": 11,
@@ -133,11 +139,12 @@
       {
         "k": 6,
         "cast": [
-          "Tide",
+          "Moss",
           "Aurora"
         ],
+        "niches": 2,
         "offRect": 0,
-        "voids": 13,
+        "voids": 20,
         "rest": {
           "rectangle": 2,
           "voronoi": 10,
@@ -147,12 +154,13 @@
       {
         "k": 7,
         "cast": [
-          "Tide",
+          "Moss",
           "Aurora",
-          "Jazz"
+          "Petal"
         ],
-        "offRect": 3.3,
-        "voids": 12,
+        "niches": 3,
+        "offRect": 0,
+        "voids": 20,
         "rest": {
           "rectangle": 2,
           "voronoi": 10,
@@ -165,78 +173,78 @@
         "k": 1,
         "fresh": false,
         "cast": [
-          "Aurora",
-          "Tide"
+          "Jazz",
+          "Moss"
         ],
         "kept": 1,
-        "nudge": 15.6,
+        "penStayed": 10,
         "seconds": 2.3
       },
       {
         "k": 2,
         "fresh": false,
         "cast": [
-          "Aurora",
-          "Tide",
-          "Jazz"
+          "Jazz",
+          "Moss",
+          "Petal"
         ],
         "kept": 2,
-        "nudge": 12.4,
-        "seconds": 2.7
+        "penStayed": 9,
+        "seconds": 2.5
       },
       {
         "k": 3,
         "fresh": true,
         "cast": [
-          "Moss"
+          "Dune"
         ],
         "kept": 0,
-        "nudge": 0,
-        "seconds": 3
+        "penStayed": 8,
+        "seconds": 3.6
       },
       {
         "k": 4,
+        "fresh": false,
+        "cast": [
+          "Dune",
+          "Aurora"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "seconds": 2.4
+      },
+      {
+        "k": 5,
+        "fresh": true,
+        "cast": [
+          "Moss"
+        ],
+        "kept": 0,
+        "penStayed": 9,
+        "seconds": 3
+      },
+      {
+        "k": 6,
         "fresh": false,
         "cast": [
           "Moss",
           "Aurora"
         ],
         "kept": 1,
-        "nudge": 13.6,
-        "seconds": 2.6
-      },
-      {
-        "k": 5,
-        "fresh": true,
-        "cast": [
-          "Tide"
-        ],
-        "kept": 0,
-        "nudge": 0,
-        "seconds": 2.8
-      },
-      {
-        "k": 6,
-        "fresh": false,
-        "cast": [
-          "Tide",
-          "Aurora"
-        ],
-        "kept": 1,
-        "nudge": 10.3,
+        "penStayed": 10,
         "seconds": 2.8
       },
       {
         "k": 7,
         "fresh": false,
         "cast": [
-          "Tide",
+          "Moss",
           "Aurora",
-          "Jazz"
+          "Petal"
         ],
         "kept": 2,
-        "nudge": 8.7,
-        "seconds": 2.7
+        "penStayed": 9,
+        "seconds": 2
       }
     ],
     "back": {
@@ -244,8 +252,9 @@
       "cast": [
         "Aurora"
       ],
-      "offRect": 0.9,
-      "voids": 14,
+      "niches": 1,
+      "offRect": 0,
+      "voids": 20,
       "rest": {
         "rectangle": 1,
         "voronoi": 11,
@@ -256,10 +265,11 @@
       {
         "k": 0,
         "cast": [
-          "Dune"
+          "Haze"
         ],
+        "niches": 1,
         "offRect": 0,
-        "voids": 10,
+        "voids": 14,
         "rest": {
           "rectangle": 1,
           "voronoi": 11,
@@ -270,21 +280,22 @@
         "k": 1,
         "fresh": false,
         "cast": [
-          "Dune",
+          "Haze",
           "Coal"
         ],
         "kept": 1,
-        "nudge": 1.4,
-        "seconds": 3.1
+        "penStayed": 10,
+        "seconds": 3.7
       },
       {
         "k": 1,
         "cast": [
-          "Dune",
+          "Haze",
           "Coal"
         ],
+        "niches": 2,
         "offRect": 0,
-        "voids": 9,
+        "voids": 14,
         "rest": {
           "rectangle": 2,
           "voronoi": 10,
@@ -295,23 +306,24 @@
         "k": 2,
         "fresh": false,
         "cast": [
-          "Dune",
+          "Haze",
           "Coal",
-          "Moss"
+          "Aurora"
         ],
         "kept": 2,
-        "nudge": 4.7,
+        "penStayed": 9,
         "seconds": 2.6
       },
       {
         "k": 2,
         "cast": [
-          "Dune",
+          "Haze",
           "Coal",
-          "Moss"
+          "Aurora"
         ],
+        "niches": 3,
         "offRect": 0,
-        "voids": 8,
+        "voids": 14,
         "rest": {
           "rectangle": 3,
           "voronoi": 9,
@@ -322,19 +334,20 @@
         "k": 3,
         "fresh": true,
         "cast": [
-          "Tide"
+          "Dune"
         ],
         "kept": 0,
-        "nudge": 0,
-        "seconds": 2.2
+        "penStayed": 8,
+        "seconds": 3.7
       },
       {
         "k": 3,
         "cast": [
-          "Tide"
+          "Dune"
         ],
+        "niches": 1,
         "offRect": 0.1,
-        "voids": 10,
+        "voids": 14,
         "rest": {
           "rectangle": 1,
           "voronoi": 11,
@@ -345,21 +358,22 @@
         "k": 4,
         "fresh": false,
         "cast": [
-          "Tide",
+          "Dune",
           "Coal"
         ],
         "kept": 1,
-        "nudge": 9.3,
-        "seconds": 2.8
+        "penStayed": 10,
+        "seconds": 2.7
       },
       {
         "k": 4,
         "cast": [
-          "Tide",
+          "Dune",
           "Coal"
         ],
+        "niches": 2,
         "offRect": 0.1,
-        "voids": 9,
+        "voids": 14,
         "rest": {
           "rectangle": 2,
           "voronoi": 10,
@@ -370,19 +384,20 @@
         "k": 5,
         "fresh": true,
         "cast": [
-          "Moss"
+          "Aurora"
         ],
         "kept": 0,
-        "nudge": 0,
-        "seconds": 2.3
+        "penStayed": 9,
+        "seconds": 2.7
       },
       {
         "k": 5,
         "cast": [
-          "Moss"
+          "Aurora"
         ],
+        "niches": 1,
         "offRect": 0,
-        "voids": 10,
+        "voids": 14,
         "rest": {
           "rectangle": 1,
           "voronoi": 11,
