@@ -49,6 +49,15 @@ the pen's whatever its cells do; each cell takes and gives its share of a
 card's room as the card uncovers and covers it; a card is its slot's size in
 the pen; and a cell a card comes over slips round it.
 
+The sixth revision answers the fifth. The cells hesitated before they made
+their way to the stage, sometimes for seconds before they were even out of
+the pen. The change went over the page as a wave from under the pointer, so a
+cell called out from the far side of the page from it waited its turn, and it
+set off as slowly as any journey starts. Now a slide's change starts at the
+cells it calls out and the cards it sends home, and a cell called out bursts
+out of the pen, quickest as it sets off: it moves within a tenth of a
+second and is out of the pen within 0.6 s, wherever the pointer is.
+
 ## The rules
 
 - **A card flies as a card.** A cell going out to the stage leaves the auction
@@ -105,7 +114,12 @@ the pen; and a cell a card comes over slips round it.
   the other on the side it is already on, just enough to pass close. The cell
   going out to the stage keeps its line; a cell going home gives way; of two
   alike, the one that sets off later. A card is bent round the cards standing
-  on the stage too.
+  on the stage too, and round a card still waiting on its place or all but
+  landed on one, to whichever side has room.
+- **A cell called out bursts out of the pen.** A slide's change starts at the
+  cells it calls out of the pen and the cards it sends home, not under the
+  pointer, and a cell called out flies on an ease-out: quickest as it sets
+  off, slowing as it lands.
 - **Whitespace makes way without giving ground.** Nothing closes for a crossing.
   The sites of a piece in a traveller's way give way, the more the nearer, and
   hand what they give up to the piece's sites clear of it, so the piece keeps
@@ -127,17 +141,18 @@ the pen; and a cell a card comes over slips round it.
 
 ## Measured (1440×900, 12 cells, 30 ms frames; scratchpad instruments)
 
-| | Fourth revision | This revision |
-|---|---|---|
-| Whitespace in the pen at rest | a slot-sized niche per cast member | none on any slide (its cells cover 100% of it) |
-| Worst fling, ordinary / fresh / entry | 7 / 39 / 12 px | 5 / 15 / 15 px |
-| Flings over 40 px, ordinary / fresh / entry | 0 / 0 / 0 | 0 / 0 / 0 |
-| Worst fling on a phone (390×720), any change | 27 px | 28 px |
-| Peak/mean speed, ordinary / fresh / entry | 2.27–2.44 / 2.45–3.39 / 4.16 | 2.23–2.30 / 2.42–3.08 / 4.41 |
-| Area spike max, slides | 1.3–3.1 | 1.2–2.4 |
-| Frames a cell is drawn in two pieces (the smaller over 50 px²), desk / phone | 13 / 3 | 7 / 22 |
-| Frames a card drives a seed of the pen before it, desk / phone | – | 2 / 1 |
-| A change settles, frames | 62–96 | 63–94 |
+| | Fourth revision | Fifth | This revision |
+|---|---|---|---|
+| Whitespace in the pen at rest | a slot-sized niche per cast member | none | none on any slide (its cells cover 100% of it) |
+| A cell called out is out of the pen, pointer on the page (1900×810 / 390×720) | – | 0.9–2.4 / 0.9–2.6 s | 0.23–0.57 / 0.38–0.55 s |
+| Worst fling, ordinary / fresh / entry | 7 / 39 / 12 px | 5 / 15 / 15 px | 8 / 11 / 15 px |
+| Flings over 40 px, ordinary / fresh / entry | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 |
+| Worst fling on a phone (390×720), any change | 27 px | 28 px | 28 px |
+| Peak/mean speed, ordinary / fresh / entry | 2.27–2.44 / 2.45–3.39 / 4.16 | 2.23–2.30 / 2.42–3.08 / 4.41 | 2.14–2.94 / 2.52–2.83 / 4.41 |
+| Area spike max, slides | 1.3–3.1 | 1.2–2.4 | 1.2–1.9 |
+| Frames a cell is drawn in two pieces (the smaller over 50 px²), desk / phone | 13 / 3 | 7 / 22 | 2 / 17 |
+| Worst overlap of two cards in flight, fresh slides, desk / phone | 8,900 / 3,300 px² | 9,500 / 2,000 px² | 4,000 / 2,800 px² |
+| A change settles, frames | 62–96 | 63–94 | 63–93 |
 
 A fling is a cell's diagram centroid moving more than its own seed in one
 frame, which reads as a wall swinging it. The engine's own scenes measure worst
@@ -178,13 +193,11 @@ What was tried on the way here:
 - **A card presses into the pen.** A card coming home dents the cells beside
   its room as it comes in, and a cell whose ground reaches round the card's
   far side shows a sliver there for a quarter of a second as the card melts
-  (up to 1,300 px² on a phone's slide and 2,700 px² on its entry, 3,800 px²
-  on a desk's fresh slide).
-- **Cards pass over each other,** as in the fourth revision: two cards on the
-  story's entry and on a fresh slide overlap in flight (at worst 34,000 px² on
-  the entry, 9,500 px² on fresh slide 3 at 1440×900, against 32,800 and 8,900
-  before), the one further from home drawn cut where they do. The validator's
-  check reads the shapes as drawn, which never overlap.
+  (up to 1,600 px² on a phone's slide and 2,700 px² on its entry).
+- **Cards pass over each other** on the story's entry (at worst 34,000 px² at
+  1440×900, as in the fourth revision's 32,800) and, less, on a fresh slide
+  (the table), the one further from home drawn cut where they do. The
+  validator's check reads the shapes as drawn, which never overlap.
 - **Exact to 4 px at rest, not 2**, outside the pen. No weights are handed
   over. The pen's cells are its pocket's power cells, not rectangles.
 - **A change takes 1.5–3 s** in the validator's stories, as the engine's

@@ -236,6 +236,24 @@ function cueOffPage(h, p, R) {
   for (let k = 1; k < 20; k++) { const e = k / 20, m = 1 - e; worst = Math.max(worst, off(m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey) - ends); }
   return worst;
 }
+// A CELL CALLED OUT OF THE PEN BURSTS OUT OF IT. A change goes over the page
+// as a wave from under the pointer, and a cell called to the stage from the
+// far side of the page from it waited its turn, up to two seconds, before it
+// set off, and set off as slowly as a journey starts: a third of a second more
+// before its seed had moved, a second before it was out of the pen. A
+// slide's change starts at the cells it calls out of the pen and the cards it
+// sends home, which clear the stage for them, and a cell called out flies
+// quickest as it sets off and slows as it lands.
+function cueCalled(h, content) {
+  const prev = cue.prevOn || [], fromPen = b => b.cueFrom && cue.slots.some(r => rectsEqual(r, b.cueFrom));
+  const called = content.filter(b => cue.on.includes(b) && !prev.includes(b) && fromPen(b) || prev.includes(b) && !cue.on.includes(b));   // and the cards going home, clearing the stage for them
+  return called.length ? called.map(b => ({ body: b, x: b.x, y: b.y })) : null;
+}
+function cueBursts(h, content) {
+  const prev = cue.prevOn || [];
+  for (const b of content) { const j = b.journey; if (j && j.t0 === h.t && cue.on.includes(b) && !prev.includes(b) && b.cueFrom && cue.slots.some(r => rectsEqual(r, b.cueFrom))) j.cueBurst = true; }
+}
+function cueEase(j, u) { return j && j.cueBurst ? 1 - (1 - u) * (1 - u) * (1 - u) : easeInOutCubic(u); }   // a cell called out: easeOutCubic
 // A CARD GOES OUT OF THE ROOM A CARD IS COMING HOME TO BEFORE THAT CARD
 // COMES. The change goes over the page as a wave, and a cell going out left
 // on the wave's clock, which could be long after a card set off for its room:
@@ -263,7 +281,7 @@ function cueAvoid(h, content) {
   cueClear(h, movers, content.filter(b => cue.on.includes(b) && !movers.includes(b) && b.rect));
   if (movers.length < 2) return;
   const PW = h.PW, PH = h.PH, reach = b => 0.5 * Math.sqrt(Math.max(b.claim0 || 0, b.claimTarget || 0) * PW * PH), out = b => cue.on.includes(b);
-  const at = (b, t) => { const j = b.journey, u = Math.max(0, Math.min(1, (h.t + t - j.t0 - j.delay - (j.hold || 0)) / j.dur)), e = easeInOutCubic(u), m = 1 - e, p = b.path; return [m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey]; };
+  const at = (b, t) => { const j = b.journey, u = Math.max(0, Math.min(1, (h.t + t - j.t0 - j.delay - (j.hold || 0)) / j.dur)), e = cueEase(j, u), m = 1 - e, p = b.path; return [m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey]; };
   let T = 0; for (const b of movers) { const j = b.journey; T = Math.max(T, j.t0 + j.delay + (j.hold || 0) + j.dur - h.t); }
   const steps = Math.ceil(T * 30);
   const moving = (b, t) => { const j = b.journey, u = (h.t + t - j.t0 - j.delay - (j.hold || 0)) / j.dur; return u > 0.05 && u < 0.9; };
@@ -339,18 +357,30 @@ function cueReseat(h, v, r, content, T) {
 // stands, by a gap; where it would, its path bends away from that card, just
 // enough, as for two cells meeting.
 const CUE_GAP = 16;
+const CUE_LAG = 0.2;   // s: how far a seed trails its journey's clock on its spring
 function cueClear(h, movers, standing) {
-  if (!standing.length) return;
   const PW = h.PW, PH = h.PH, px = r => [r[0] * PW, r[1] * PH, r[2] * PW, r[3] * PH];
   const blocks = standing.map(b => px(b.rect));
+  // and a card on the stage until it sets off, or once it has all but
+  // landed: a cell bursting out of the pen flew over a card waiting to go
+  // home, and a card going home over a cell that had burst out and landed
+  const clockOf = (k, e) => k.delay + (k.hold || 0) + k.dur * (k.cueBurst ? 1 - Math.cbrt(1 - e) : e < 0.5 ? Math.cbrt(e / 4) : 1 - Math.cbrt(2 * (1 - e)) / 2);   // its ease, inverted: when it is that far on its way
+  for (const q of movers) {
+    const k = q.journey; if (k.t0 !== h.t) continue;
+    if (q.cueFrom && (cue.prevOn || []).includes(q)) { const r = px(q.cueFrom); r.until = clockOf(k, 0.05) + CUE_LAG; r.who = q; blocks.push(r); }
+    if (cue.on.includes(q) && q.rect) { const r = px(q.rect); r.since = clockOf(k, 0.75) - CUE_LAG; r.who = q; blocks.push(r); }
+  }
+  if (!blocks.length) return;
   for (const b of movers) {
     const p = b.path, j = b.journey; if (j.t0 !== h.t || !b.cueFrom || !cue.on.includes(b) && !(cue.prevOn || []).includes(b)) continue;
     const f = px(b.cueFrom), t = px(b.rect), w0 = f[2] - f[0], h0 = f[3] - f[1], w1 = t[2] - t[0], h1 = t[3] - t[1];
+    const clock = e => clockOf(j, e);
     const cut = () => {   // how deep the card cuts into a card standing, at worst over its flight
       let worst = -Infinity, when = 0, which = null;
       for (let k = 2; k <= 40; k++) {
-        const e = k / 40, m = 1 - e, x = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, y = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey, w = w0 + (w1 - w0) * e, hh = h0 + (h1 - h0) * e;
+        const e = k / 40, m = 1 - e, x = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, y = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey, w = w0 + (w1 - w0) * e, hh = h0 + (h1 - h0) * e, te = clock(e);
         for (const q of blocks) {
+          if (q.who === b || q.until !== undefined && te > q.until || q.since !== undefined && te < q.since) continue;
           const d = Math.min(w / 2 + (q[2] - q[0]) / 2 + CUE_GAP - Math.abs(x - (q[0] + q[2]) / 2), hh / 2 + (q[3] - q[1]) / 2 + CUE_GAP - Math.abs(y - (q[1] + q[3]) / 2));
           if (d > worst) { worst = d; when = e; which = q; }
         }
@@ -363,9 +393,10 @@ function cueClear(h, movers, standing) {
     const x = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, y = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey, q = c.which;
     const side = (x - (q[0] + q[2]) / 2) * nx + (y - (q[1] + q[3]) / 2) * ny >= 0 ? 1 : -1, c0 = [p.cx, p.cy];
     let best = { worst: c.worst, cx: p.cx, cy: p.cy };
-    for (let k = 1; k <= 16 && best.worst > 0; k++) {
-      p.cx = c0[0] + side * nx * k * 0.25 * c.worst; p.cy = c0[1] + side * ny * k * 0.25 * c.worst;
-      if (cueOffPage(h, p, 0.5 * Math.max(Math.min(w0, h0), Math.min(w1, h1))) > 2) break;   // not to the wall
+    const R = 0.5 * Math.max(Math.min(w0, h0), Math.min(w1, h1)), wall = Math.max(2, cueOffPage(h, p, R));
+    for (const sd of [side, -side]) for (let k = 1; k <= 16 && best.worst > 0; k++) {   // the side it is on first, then the other: a flight bent toward the page's edge had no room
+      p.cx = c0[0] + sd * nx * k * 0.25 * c.worst; p.cy = c0[1] + sd * ny * k * 0.25 * c.worst;
+      if (cueOffPage(h, p, R) > wall) break;   // not to the wall, or no nearer it than it was
       const n = cut(); if (n.worst < best.worst) best = { worst: n.worst, cx: p.cx, cy: p.cy };
     }
     p.cx = best.cx; p.cy = best.cy;
@@ -650,13 +681,19 @@ replace('''    if (b.tell2Stay && rectsEqual(rect, b.rect) && !b.leaving && !b.j
         '''    if (b.tell2Stay && rectsEqual(rect, b.rect) && !b.leaving && !b.journey && Math.abs(b.x - ex) < 1 && Math.abs(b.y - ey) < 1) { b.claim0 = b.claim; b.claimTarget = rectArea(rect); b.pin = 1; return; }   // TELL II: a cell of the cast keeping its place
     if (b.cueStay && rectsEqual(rect, b.rect) && !b.leaving && !b.journey && Math.abs(b.x - ex) < 1 && Math.abs(b.y - ey) < 1) { b.claim0 = b.claim; b.claimTarget = rectArea(rect); b.pin = 1; return; }   // CUE: a cell of the cast keeping its place holds still''')
 
+# a slide's change starts at the cells it calls out of the pen (see cueCalled)
+replace('''    const sources = this.sourcesFor(origin, best);
+    for (const v of newVoids) sources.push({ body: v, x: v.x, y: v.y });''',
+        '''    const sources = (this.depth === 0 && name === 'cue' && cue && !origin && cueCalled(this, content)) || this.sourcesFor(origin, best);   // CUE: from the cells called out, not from under the pointer
+    for (const v of newVoids) sources.push({ body: v, x: v.x, y: v.y });''')
+
 # the change looks ahead: once every journey is planned, and before the
 # whitespace reads the paths for its ledgers, meetings are bent apart
 replace('''    for (const b of pending) this.retireBody(b, 0.8, tOf(b));
 
     // an old void closes at the pace of what lands in it; a new one opens''',
         '''    for (const b of pending) this.retireBody(b, 0.8, tOf(b));
-    if (name === 'cue' && cue) { cueOrder(this, content); cueAvoid(this, content); cueFlyers(this, content); cueTies(this, content); cue.pocket = !!cue.pagePrev && !content.some(b => b.cueFly && !b.cueFly.toCard && !(cue.prevOn || []).includes(b)); for (const [v, r] of cueSeat) cueReseat(this, v, r, content, tOf(v)); }   // CUE: the change looks ahead; a staying piece takes its new sites once the cells by it have gone by
+    if (name === 'cue' && cue) { cueBursts(this, content); cueOrder(this, content); cueAvoid(this, content); cueFlyers(this, content); cueTies(this, content); cue.pocket = !!cue.pagePrev && !content.some(b => b.cueFly && !b.cueFly.toCard && !(cue.prevOn || []).includes(b)); for (const [v, r] of cueSeat) cueReseat(this, v, r, content, tOf(v)); }   // CUE: the change looks ahead; a staying piece takes its new sites once the cells by it have gone by
 
     // an old void closes at the pace of what lands in it; a new one opens''')
 
@@ -866,7 +903,7 @@ replace('''        b.progress = easeInOutCubic(u);
         this.updateCrystal(b, t);
         // a free body's journey is only its clock: once run, it drifts on
         if (!b.leaving && !b.table && u >= 1 && b.crystal === 0) b.journey = null;''',
-        '''        b.progress = b.cueTie ? cueTieProgress(b, u) : easeInOutCubic(u);   // CUE: a cell of the pen settles at its card's pace
+        '''        b.progress = b.cueTie ? cueTieProgress(b, u) : cueEase(j, u);   // CUE: a cell of the pen settles at its card's pace, and a cell called out bursts out of it
         this.updateCrystal(b, t);
         // a free body's journey is only its clock: once run, it drifts on
         if (!b.leaving && !b.table && u >= 1 && b.progress >= 1 && b.crystal === 0) b.journey = null;''')

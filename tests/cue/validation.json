@@ -209,7 +209,7 @@
         "penSettle": 98.3,
         "closest": null,
         "cardOverlap": 0,
-        "seconds": 2.6
+        "seconds": 2.3
       },
       {
         "k": 4,
@@ -236,7 +236,7 @@
         "penSettle": 93.7,
         "closest": null,
         "cardOverlap": 0,
-        "seconds": 2.1
+        "seconds": 2
       },
       {
         "k": 6,
@@ -368,7 +368,7 @@
         "penSettle": 43.7,
         "closest": null,
         "cardOverlap": 0,
-        "seconds": 2
+        "seconds": 1.8
       },
       {
         "k": 3,
@@ -424,7 +424,7 @@
         "penSettle": 15,
         "closest": null,
         "cardOverlap": 0,
-        "seconds": 3
+        "seconds": 2.7
       },
       {
         "k": 5,
