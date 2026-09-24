@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reel — Hive</title>
+<title>Tell II — Hive</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; overflow: hidden; }
@@ -52,7 +52,7 @@
 </head>
 <body>
   <div class="stage">
-    <a class="back" href="index.html">&larr; Back · Reel</a> <span style="opacity:.55;margin-left:.6em">click a cell to open its page · its gallery flows: scroll, drag or flick it · click the image again for home</span>
+    <a class="back" href="index.html">&larr; Back · Tell II</a> <span style="opacity:.55;margin-left:.6em">click a cell to open its page · Tell: the cluster stays, its heroes swell · Tell II: the cells take the stage in turn · click a hero or Escape for home</span>
     <canvas id="c"></canvas>
     <div class="meters" id="meters">
       area err <b id="mArea">–</b> · gap <b id="mGap">–</b> · overlap <b id="mOver">–</b> · rect <b id="mRect">–</b> · cells <b id="mSeeds">–</b> · solve <b id="mIter">–</b> · fields <b id="mInner">–</b>
@@ -65,6 +65,8 @@
       <button class="scene-btn" data-scene="hero">Hero</button>
       <button class="scene-btn" data-scene="sidebar">Sidebar</button>
       <button class="scene-btn" data-scene="frame">Frame</button>
+      <button class="scene-btn" data-scene="tell">Tell</button>
+      <button class="scene-btn" data-scene="tell2">Tell II</button>
     </div>
     <div class="group"><span class="lbl">Elements</span>
       <input type="range" id="count" min="4" max="30" value="12"><span class="val" id="countVal">12</span>
@@ -1343,7 +1345,7 @@ function portalDecorate(content, voids, W, H, C, R) {
   const mirrors = voids.map(() => []);   // per void: [x, y, weight]
   for (const idx of pockets.values()) {
     const poly = portalOutline(idx.map(i => rects[i]));
-    const ref = idx.length === 1 ? null : solveWeights(idx.map(i => seeds[i]), idx.map(i => (rects[i][2] - rects[i][0]) * (rects[i][3] - rects[i][1])), poly, null, { maxIter: 60, tol: 1e-9 });
+    const ref = idx.length === 1 ? null : solveWeights(idx.map(i => seeds[i]), idx.map(i => (rects[i][2] - rects[i][0]) * (rects[i][3] - rects[i][1]) * (content[i].mfSwell || 1)), voids.tell2 ? portalBox(idx.map(i => rects[i])) : poly, null, voids.tell2 ? { maxIter: 60, tol: 1e-9, tris: idx.map(i => convexPlanes([[rects[i][0], rects[i][1]], [rects[i][2], rects[i][1]], [rects[i][2], rects[i][3]], [rects[i][0], rects[i][3]]])), domainArea: idx.reduce((q, i) => q + (rects[i][2] - rects[i][0]) * (rects[i][3] - rects[i][1]) * (content[i].mfSwell || 1), 0) } : { maxIter: 60, tol: 1e-9 });   // TELL: a hero's area is its card's, times its swell   // TELL II: the pocket's ground is its rectangles
     const cells = ref ? ref.diagram.cells : [{ pts: poly }];
     idx.forEach((i, k) => weights[i] = ref ? ref.weights[k] : 0);
     // the contacts: a cell's edge lying on a void's edge. The pocket's gauge
@@ -1354,16 +1356,27 @@ function portalDecorate(content, voids, W, H, C, R) {
     // void is at least that half-length deep and the mirrors sit close
     const contacts = [];
     idx.forEach((i, k) => {
-      const pts = cells[k].pts;
+      for (const part of (cells[k].pieces || [cells[k]])) {   // TELL II: a cell solved on pieces has a piece per rectangle; a piece of no area (a tie along a neighbour's edge) is no contact
+      if (part !== cells[k] && Math.abs(ringArea(part.pts)) < 1e-6) continue;
+      const pts = part.pts;
       for (let e = 0; e < pts.length; e++) {
         const p = pts[e], q = pts[(e + 1) % pts.length];
         if (Math.hypot(q[0] - p[0], q[1] - p[1]) < 1e-5) continue;
+        let held = false;
         vr.forEach((v, vi) => {
           const on = (c, lo, hi, ax) => Math.abs(p[ax] - c) < 1e-5 && Math.abs(q[ax] - c) < 1e-5 && Math.min(p[1 - ax], q[1 - ax]) > lo - 1e-5 && Math.max(p[1 - ax], q[1 - ax]) < hi + 1e-5;
           let side = null;
           if (on(v[0], v[1], v[3], 0)) side = 'left'; else if (on(v[2], v[1], v[3], 0)) side = 'right'; else if (on(v[1], v[0], v[2], 1)) side = 'top'; else if (on(v[3], v[0], v[2], 1)) side = 'bottom';
+          if (side) { held = true; if (!contacts.some(c => c.i === i && c.vi === vi && c.side === side)) contacts.push({ i, vi, side, mid: [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2] }); }
+        });
+        if (!held) vr.forEach((v, vi) => {   // TELL II: an edge along several voids is held by the piece the seed faces
+          const s = seeds[i];
+          const on = (c, lo, hi, ax) => Math.abs(p[ax] - c) < 1e-5 && Math.abs(q[ax] - c) < 1e-5 && Math.max(p[1 - ax], q[1 - ax]) > lo + 1e-5 && Math.min(p[1 - ax], q[1 - ax]) < hi - 1e-5 && s[1 - ax] > lo - 1e-5 && s[1 - ax] < hi + 1e-5;
+          let side = null;
+          if (on(v[0], v[1], v[3], 0)) side = 'left'; else if (on(v[2], v[1], v[3], 0)) side = 'right'; else if (on(v[1], v[0], v[2], 1)) side = 'top'; else if (on(v[3], v[0], v[2], 1)) side = 'bottom';
           if (side && !contacts.some(c => c.i === i && c.vi === vi && c.side === side)) contacts.push({ i, vi, side, mid: [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2] });
         });
+      }
       }
     });
     if (contacts.length) {
@@ -1402,6 +1415,11 @@ function portalDecorate(content, voids, W, H, C, R) {
   });
   return { content: rows, voids: vs, seeds: allSeeds, weights: allWeights, owned };
 }
+function portalBox(rects) {   // TELL II: a pocket's box, a convex bound for a ring
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const r of rects) { x0 = Math.min(x0, r[0]); y0 = Math.min(y0, r[1]); x1 = Math.max(x1, r[2]); y1 = Math.max(y1, r[3]); }
+  return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+}
 const portalCache = new Map();
 function portalScene(h, name, n) {
   const key = [name, h.COLS, h.ROWS, n, h.W, h.H, portalFlip ? 'm' : ''].join('|');
@@ -1412,7 +1430,11 @@ function portalScene(h, name, n) {
   return s;
 }
 function portalPin(content, gotS, name) {
-  if (!portalFocus || !(name in PORTAL_TEMPLATES)) return;
+  if (name === 'tell2' && tell2 && tell2.slotOf) {   // TELL II: the cast takes the stage's slots and the ring's cells their chambers, as the story plans; nothing is matched by distance
+    content.forEach((b, k) => { const slot = tell2.slotOf.get(b); if (slot !== undefined && slot < gotS.length) gotS[k] = slot; });
+    return;
+  }
+  if (!portalFocus || !(name in PORTAL_TEMPLATES || name === 'tell')) return;   // TELL: a story's hero takes the first slot when the page is laid again (an add, a remove, a resize)
   const k = content.indexOf(portalFocus);
   if (k < 0) return;
   const j = gotS.indexOf(0);
@@ -1420,6 +1442,476 @@ function portalPin(content, gotS, name) {
   gotS[j] = gotS[k]; gotS[k] = 0;          // the focus takes slot 0; its holder takes the focus's slot
 }
 
+// TELL. The inverse of a page: the cells stay, and a story of short blurbs
+// scrolls through a reading column like a slide show. The cluster is laid
+// once beside the column, the bento's own layout, and stays for the whole
+// story: nothing travels after the entry. Each slide names a place in the
+// cluster, and the card nearest it (not one of the last two slides' heroes)
+// is the slide's hero: it swells where it stands, its neighbours giving way,
+// and shrinks back as the next swells, linked to the scroll, so the cluster
+// turns like a carousel under the text. The column is a wall once seated,
+// so the whitespace stays exact under every swell.
+const TELL_SLIDES = [
+  { at: [0.12, 0.15], lines: [1, 0.86, 0.6] },
+  { at: [0.9, 0.25],  lines: [1, 0.72, 0.9, 0.5] },
+  { at: [0.5, 0.85],  lines: [0.94, 1, 0.66] },
+  { at: [0.2, 0.75],  lines: [1, 0.8] },
+  { at: [0.75, 0.6],  lines: [0.9, 1, 0.76, 0.58] },
+  { at: [0.45, 0.2],  lines: [1, 0.68, 0.84] },
+  { at: [0.95, 0.9],  lines: [0.96, 1, 0.52] },
+  { at: [0.1, 0.45],  lines: [1, 0.9, 0.7] },
+];
+const TELL_COL = 0.25;     // the column's share of the width; of the height, as a band across the top, on a phone
+const TELL_HERO = 0.2;     // a hero's share of the cluster, whatever its card's: every hero the same size
+// The story's page: the column a full-height void with its corners on the
+// page's edges, so the whitespace is exact by Portal's construction, and the
+// cluster the bento's guillotine of the rest. A phone stacks: the column a
+// band across the top, the cluster below.
+function tellPage(C, R, n, W, H) {
+  let column, region, rules;
+  if (W < H) { const r0 = Math.max(1, Math.round(R * 0.3)); column = [0, 0, C, r0]; region = [0, r0, C, R]; rules = ['bottom']; }
+  else { const c0 = Math.max(1, Math.round(C * TELL_COL)); column = [0, 0, c0, R]; region = [c0, 0, C, R]; rules = ['right']; }
+  column.portalText = true; column.portalRules = rules;
+  return { content: guillotine(region, n, 1), voids: [column], region };
+}
+const tellCache = new Map();
+function tellScene(h, n) {
+  const key = [h.COLS, h.ROWS, n, h.W, h.H].join('|');
+  if (tellCache.has(key)) return tellCache.get(key);
+  const p = tellPage(h.COLS, h.ROWS, n, h.W, h.H), sc = portalDecorate(p.content, p.voids, h.W, h.H, h.COLS, h.ROWS);
+  tellCache.set(key, sc); if (tellCache.size > 8) tellCache.delete(tellCache.keys().next().value);
+  return sc;
+}
+// the story: its scroll (px, a page's height a slide), its speed, the slide
+// it is on, the heroes chosen for its slides, and the text's clocks
+let tell = null;
+const tellPitch = () => H;
+const TELL_SNAP = 0.25;     // s: a slow story eases onto its nearest slide in about this
+const TELL_RELAX = 0.35;    // s: the story's speed eases away in this, half a reel's, so a slide arrives in about a second
+function tellStart(origin) {
+  reelDrop(); tell2Drop();
+  portalFocus = null; portalFlip = false;
+  tell = { y: 0, v: 0, k: 0, heroes: [], drag: null, enter: 0, key: '', alpha: 0, rule: 0, fullAt: -1, seen: -1 };
+  portalEnter('tell', origin || { x: W / 2, y: H / 2 });
+  // the heroes, from the cluster as laid: for each slide the card whose
+  // place is nearest the slide's, not one of the last two slides' heroes
+  const n = root.bodies.filter(b => !b.isVoid && !b.leaving && !b.isSelf).length;
+  const g = tellPage(root.COLS, root.ROWS, n, W, H).region;
+  const cards = root.bodies.filter(b => !b.isVoid && !b.isSelf && !b.leaving && b.rect);
+  for (const sd of TELL_SLIDES) {
+    const px = g[0] + sd.at[0] * (g[2] - g[0]), py = g[1] + sd.at[1] * (g[3] - g[1]), recent = tell.heroes.slice(-2);
+    let best = null, bd = Infinity;
+    for (const b of cards) { if (recent.includes(b)) continue; const d = Math.hypot((b.rect[0] + b.rect[2]) / 2 - px, (b.rect[1] + b.rect[3]) / 2 - py); if (d < bd) { bd = d; best = b; } }
+    tell.heroes.push(best);
+  }
+  portalFocus = tell.heroes[0];
+  tellSwell();
+}
+function tellDrop() {
+  if (!tell) return;
+  tell = null;
+  for (const b of root.bodies) { b.tellMix = 0; if (b.rect && b.rect.reelLive) b.rect.reelLive = false; if (b.reelPinned && !reel) { b.reelPinned = false; b.reelParked = false; b.reelFade = undefined; b.pin = 0; } }   // unpinned: the next change finds the cards as a page leaves them
+}
+// The swell, handed. Once the entry has ended the page is authored again
+// whenever a hero's share changes: Portal's construction with each hero's
+// area grown by its share, the column's mirrors solved with it, and handed
+// to every body at once, weights included, so the diagram is the authored
+// one on the frame it changes, the column stays exact under every swell,
+// and a hero grows where it stands with its neighbours giving way. A hero
+// grows to a fifth of the cluster, whatever its card, so every hero is
+// the same size. The first swell arrives over a third of a second once
+// the cluster is in.
+function tellStep(dt) {
+  if (!tell || guestLeft > 0) return;
+  tell.enter += (1 - tell.enter) * (1 - Math.exp(-dt / 0.35));
+  if (tell.enter > 0.999) tell.enter = 1;
+  const cards = root.bodies.filter(b => !b.isVoid && !b.isSelf && !b.leaving && b.rect), voids = root.bodies.filter(b => b.isVoid && !b.leaving && b.rect);
+  if (!cards.length || !voids.length) return;
+  // the targets: a hero's from its card's area to its share of the cluster by
+  // its mix, the other cards scaled to what is left, so the targets sum to the
+  // cluster and a hero at rest holds its share exactly (a card's own area is
+  // its rectangle's; rectArea would read the solved area a handoff left on it)
+  const own = r => (r[2] - r[0]) * (r[3] - r[1]), g = tellPage(root.COLS, root.ROWS, cards.length, W, H).region, cluster = own(g);
+  const m = b => (b.tellMix || 0) * tell.enter, want = b => TELL_HERO * cluster * m(b) + own(b.rect) * (1 - m(b));
+  let heroSum = 0, restSum = 0; for (const b of cards) { if (m(b) > 0) heroSum += want(b); else restSum += own(b.rect); }
+  const scale = restSum > 0 ? Math.max(0.05, (cluster - heroSum) / restSum) : 1;
+  const swell = b => m(b) > 0 ? want(b) / own(b.rect) : scale;
+  const key = cards.map(b => swell(b).toFixed(4)).join(',');
+  if (key === tell.key) return;   // nothing swelled or shrank: the auction holds what it was handed
+  tell.key = key;
+  const rects = cards.map(b => { const r = b.rect.slice(0, 4); r.mfSwell = swell(b); return r; });
+  const vr = voids.map(v => { const q = v.rect.slice(0, 4); q.portalText = v.rect.portalText; q.portalRules = v.rect.portalRules; return q; });
+  const dec = portalDecorate(rects, vr, W, H, root.COLS, root.ROWS);
+  dec.content.forEach((r, i) => { const b = cards[i]; reelPlace(b, r, r.mfArea); b.claim = b.claimTarget; const q = b.subs[0]; q.w = dec.weights[i]; q.live = true; });   // the solved weight: exact this frame, no auction lag
+  dec.voids.forEach((r, i) => { const v = voids[i]; r.reelLive = true; v.rect = r; v.formRect = r; v.claimTarget = rectArea(r); v.claim = v.claimTarget; });
+}
+// the swell, linked to the scroll: slide k's hero holds a share that peaks
+// on its slide and is gone a slide away, so one hero shrinks as the next
+// grows and the story can be read backwards the same way
+function tellSwell() {
+  for (const b of root.bodies) b.tellMix = 0;
+  const pos = tell.y / tellPitch();
+  tell.heroes.forEach((h, k) => { if (!h) return; const w = Math.max(0, 1 - Math.abs(pos - k)); if (w > 0) h.tellMix = Math.min(1, (h.tellMix || 0) + w); });
+}
+// the flow of the story: a speed eases away, a slow story snaps to its slide,
+// and the slide the story is on is the one nearest; its hero is the page's
+// image, for the label and the click home
+function tellFlow(dt) {
+  if (!tell) return;
+  const pitch = tellPitch(), last = (TELL_SLIDES.length - 1) * pitch;
+  if (!tell.drag) {
+    const snapping = Math.abs(tell.v) < 60;   // slow: the snap takes over, and what speed is left goes with it, so the story does not creep on past its slide
+    tell.v *= Math.exp(-dt / (snapping ? TELL_SNAP : TELL_RELAX));
+    if (Math.abs(tell.v) < 0.05) tell.v = 0;
+    tell.y += tell.v * dt;
+    if (tell.y < 0) { tell.y = 0; tell.v = 0; }
+    if (tell.y > last) { tell.y = last; tell.v = 0; }
+    if (snapping) { const target = Math.round(tell.y / pitch) * pitch; tell.y += (target - tell.y) * (1 - Math.exp(-dt / TELL_SNAP)); }
+  }
+  const k = Math.max(0, Math.min(TELL_SLIDES.length - 1, Math.round(tell.y / pitch)));
+  if (k !== tell.k) { tell.k = k; portalFocus = tell.heroes[k]; }
+  tellSwell();
+}
+// the wheel aims the story at the next slide: a notch, whatever its size,
+// sends it one slide on (or back) at the speed whose easing carries it there,
+// so a slide show turns a slide a notch and a long swipe passes slides one by one
+function tellScroll(dy) {
+  if (!tell) return false;
+  if (tell.drag || Math.abs(dy) < 1) return true;
+  const pitch = tellPitch(), aim = Math.max(0, Math.min(TELL_SLIDES.length - 1, Math.round(tell.y / pitch) + Math.sign(dy)));
+  tell.v = reelClampV((aim * pitch - tell.y) / TELL_RELAX);
+  return true;
+}
+function tellDragStart(x, y, t) { if (!tell) return false; tell.drag = { y0: tell.y, p0: y, last: y, t, v: 0 }; tell.v = 0; return true; }
+function tellDragMove(x, y, t) {
+  if (!tell || !tell.drag) return false;
+  const d = tell.drag, dt = Math.max(1e-3, (t - d.t) / 1000), last = (TELL_SLIDES.length - 1) * tellPitch();
+  tell.y = Math.max(0, Math.min(last, d.y0 + (d.p0 - y)));
+  const v = (d.last - y) / dt; d.v += (v - d.v) * Math.min(1, dt / 0.05); d.last = y; d.t = t;
+  return true;
+}
+function tellDragEnd(t) { if (!tell || !tell.drag) return false; const d = tell.drag; tell.v = t - d.t > 120 ? 0 : reelClampV(d.v); tell.drag = null; return true; }
+// The blurbs, in the column, each at its place on the scroll: the slide's
+// and its neighbours' as they pass, a column's height apart, a title (the
+// hero's name) over its lines, fading at the column's ends. The text is set
+// once the entry has ended and the column is seated, and stays: no slide
+// moves the cluster; the rules along the column's side come a beat after
+// the text has fully appeared.
+function tellProseStep(ctx, type, dt, t) {
+  if (!tell) return;
+  const p = tell, gap = t - p.seen, el = p.seen < 0 || gap > 0.1 ? dt : gap;
+  p.seen = t;
+  let v = null;
+  if (guestLeft <= 0) for (const b of root.bodies) if (b.isVoid && !b.leaving && b.rect && b.rect.portalText && b.crystal >= 0.99) v = b;
+  p.alpha += ((v ? 1 : 0) - p.alpha) * (1 - Math.exp(-el / (v ? 0.30 : 0.08)));
+  if (!v || p.alpha <= 0.97) p.fullAt = -1; else if (p.fullAt < 0) p.fullAt = t;
+  p.rule += ((v && p.fullAt >= 0 && t - p.fullAt > 0.25 ? 1 : 0) - p.rule) * (1 - Math.exp(-el / (v ? 0.45 : 0.08)));
+  if (!v || p.alpha < 0.01) return;
+  const q = v.rect, r = [q[0] * root.PW, q[1] * root.PH, q[2] * root.PW, q[3] * root.PH], pad = Math.max(16, Math.min(48, 0.024 * W));
+  const x0 = r[0] + pad, x1 = r[2] - pad, y0 = r[1] + pad, y1 = r[3] - pad;
+  if (x1 - x0 < 90) return;
+  const title = Math.round(type.num * 0.9), line = Math.max(4, Math.round(type.name * 0.55)), lead = Math.round(line * 2.1);
+  ctx.save();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.globalAlpha = 0.22 * p.rule; ctx.beginPath();
+  const g = Math.round(pad / 2) + 0.5;
+  for (const e of v.rect.portalRules || []) {
+    if (e === 'left') { ctx.moveTo(r[0] + g, r[1] + pad); ctx.lineTo(r[0] + g, r[3] - pad); }
+    if (e === 'right') { ctx.moveTo(r[2] - g, r[1] + pad); ctx.lineTo(r[2] - g, r[3] - pad); }
+    if (e === 'top') { ctx.moveTo(r[0] + pad, r[1] + g); ctx.lineTo(r[2] - pad, r[1] + g); }
+    if (e === 'bottom') { ctx.moveTo(r[0] + pad, r[3] - g); ctx.lineTo(r[2] - pad, r[3] - g); }
+  }
+  ctx.stroke();
+  const measure = Math.min(560, x1 - x0), pitch = tellPitch(), travel = y1 - y0;   // a slide's blurb travels the column's height, so its neighbours stand outside the column at rest
+  ctx.beginPath(); ctx.moveTo(r[0], r[1]); ctx.lineTo(r[2], r[1]); ctx.lineTo(r[2], r[3]); ctx.lineTo(r[0], r[3]); ctx.closePath(); ctx.clip();
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  for (let k = tell.k - 1; k <= tell.k + 1; k++) {
+    if (k < 0 || k >= TELL_SLIDES.length) continue;
+    const lines = TELL_SLIDES[k].lines, hb = Math.round(title * 1.8) + lines.length * lead;
+    const yk = y0 + (y1 - y0 - hb) / 2 + (k * pitch - tell.y) / pitch * travel;
+    const edge = Math.min(1, Math.max(0, (yk + hb - y0) / 40), Math.max(0, (y1 - yk) / 40));
+    const a = p.alpha * edge;
+    if (a < 0.01) continue;
+    const hero = tell.heroes[k];
+    if (hero) {
+      ctx.globalAlpha = 0.92 * a; ctx.font = `600 ${title}px system-ui, sans-serif`; ctx.fillText(hero.name, x0, yk);
+      ctx.globalAlpha = 0.5 * a; ctx.beginPath(); ctx.moveTo(x0, yk + Math.round(title * 1.3) + 0.5); ctx.lineTo(x0 + Math.round(title * 1.6), yk + Math.round(title * 1.3) + 0.5); ctx.stroke();
+    }
+    ctx.globalAlpha = 0.20 * a;
+    let y = yk + Math.round(title * 1.8);
+    for (const f of lines) { roundedPath(ctx, [[x0, y], [x0 + measure * f, y], [x0 + measure * f, y + line], [x0, y + line]], line / 2, false); ctx.fill(); y += lead; }
+  }
+  ctx.restore();
+}
+// TELL II. A scroll-tell with the cluster as its cast. The cluster is small
+// and sits to one side; the blurb stands in the open, in a box of its own.
+// A slide sends one cell out of the cluster to a place around the blurb, and
+// the cells already on the stage stay where they are, so a sequence builds
+// up; a fresh slide sends the last sequence's cells back into the cluster as
+// its own first cell comes out. The cluster is a revolver: a ring of
+// chambers around a bore, holding the cells not on stage in the order they
+// will go out; the chamber facing the stage fires, the ring turns one
+// chamber, and the cells that come back reload the chambers just behind the
+// front. The stage and the blurb are the same every slide.
+const TELL2_SLIDES = [
+  { place: 'top', fresh: true,   lines: [1, 0.86, 0.6] },
+  { place: 'br',                 lines: [1, 0.72, 0.9, 0.5] },
+  { place: 'left',               lines: [0.94, 1, 0.66] },
+  { place: 'bl', fresh: true,    lines: [1, 0.8] },
+  { place: 'tr',                 lines: [0.9, 1, 0.76, 0.58] },
+  { place: 'below', fresh: true, lines: [1, 0.68, 0.84] },
+  { place: 'tl',                 lines: [0.96, 1, 0.52] },
+  { place: 'right',              lines: [1, 0.9, 0.7] },
+];
+// The stage, in fractions of the page: three columns and three rows of
+// places around the blurb's box, the box reaching a little over the places
+// beside it, so a place on a diagonal has its corner behind the text. The
+// rows touch and the places lie on a few shared lines, so the whitespace
+// between places is never a sliver, and the cluster stands well off the
+// stage: a cluster cell's mirror nearer a corner of a cell on the stage than
+// the corner's own reach (about the cell's half-diagonal) would cut it. On a
+// phone the stage is a row of three places under the box, a place's column
+// fixed for the story, so a cell on the stage never moves for a newcomer.
+const TELL2_COLS = { A: [0.09, 0.26], B: [0.33, 0.49], C: [0.56, 0.73] };
+const TELL2_ROWS = { top: [0, 0.30], mid: [0.30, 0.70], bottom: [0.70, 1] };
+const TELL2_PLACES = { top: ['B', 'top'], below: ['B', 'bottom'], left: ['A', 'mid'], right: ['C', 'mid'], tl: ['A', 'top'], tr: ['C', 'top'], bl: ['A', 'bottom'], br: ['C', 'bottom'] };
+const TELL2_PHONE_COL = { top: 1, below: 1, left: 0, right: 2, tl: 0, tr: 2, bl: 0, br: 2 };
+const TELL2_BOX = [0.23, 0.25, 0.59, 0.75];
+const TELL2_CLUSTER = [0.83, 0.20, 1, 0.80];
+const TELL2_PHONE = { box: [0.04, 0.04, 0.96, 0.34], row: [0.36, 0.56], cluster: [0.34, 0.70, 1, 1] };
+function tell2Place(where, W, H) {
+  if (W < H) { const c = TELL2_PHONE_COL[where] || 0, [y0, y1] = TELL2_PHONE.row; return [c / 3, y0, (c + 1) / 3, y1]; }
+  const [c, r] = TELL2_PLACES[where] || TELL2_PLACES.top, x = TELL2_COLS[c], y = TELL2_ROWS[r]; return [x[0], y[0], x[1], y[1]];
+}
+// THE REVOLVER: the ring of chambers around the cluster's edge, a g by g
+// grid's rim, g chosen so the ring holds every cell; the bore is what the
+// rim leaves. The ring is ordered from the chamber facing the stage (the
+// middle of the cluster's left side, or of its top on a phone) round the
+// rim, so the chambers just behind the front come last: the spent ones,
+// where the cells coming back reload.
+function tell2Ring(n, W, H) {
+  const g = Math.max(3, Math.ceil(n / 4) + 1), P = [];
+  for (let c = 0; c < g; c++) P.push([c, 0]);
+  for (let r = 1; r < g; r++) P.push([g - 1, r]);
+  for (let c = g - 2; c >= 0; c--) P.push([c, g - 1]);
+  for (let r = g - 2; r >= 1; r--) P.push([0, r]);
+  const m = Math.floor((g - 1) / 2), front = W < H ? P.findIndex(q => q[0] === m && q[1] === 0) : P.findIndex(q => q[0] === 0 && q[1] === m);
+  return { g, ring: P.slice(front).concat(P.slice(0, front)) };
+}
+// THE WHITESPACE IS WHAT THE CELLS LEAVE: the page less the stage and the
+// cluster, as rectangles. The page is cut along every rectangle's edges into
+// a grid; the cells of the grid nothing covers are the whitespace, run
+// together down a column where they follow one another, never across a
+// grid line: so every corner of a piece is a page corner or a corner of
+// the piece or rectangle beside it, never a point on another's edge, where
+// the mirrors of two voids meeting a cell's corner would cut the corner by
+// a few px. A cell's edge along several pieces is held by the piece its
+// seed faces (see the construction).
+function tell2Complement(C, R, rects) {
+  const r6 = v => Math.round(v * 1e6) / 1e6, E = 1e-9;
+  const xs = [...new Set([0, C, ...rects.flatMap(r => [r[0], r[2]])].map(r6))].sort((a, b) => a - b);
+  const ys = [...new Set([0, R, ...rects.flatMap(r => [r[1], r[3]])].map(r6))].sort((a, b) => a - b);
+  const covered = (x, y) => rects.some(r => x > r[0] + E && x < r[2] - E && y > r[1] + E && y < r[3] - E);
+  const out = [];
+  for (let i = 0; i < xs.length - 1; i++) {
+    let open = null;
+    for (let j = 0; j < ys.length - 1; j++) {
+      const free = !covered((xs[i] + xs[i + 1]) / 2, (ys[j] + ys[j + 1]) / 2);
+      if (free && open) open[3] = ys[j + 1];
+      else if (free) { open = [xs[i], ys[j], xs[i + 1], ys[j + 1]]; out.push(open); }
+      else open = null;
+    }
+  }
+  return out;
+}
+// THE STORY IS PLANNED WHEN IT BEGINS, from the cells in id order: the ring
+// holds them all; a slide takes the front cell for its place; a fresh slide
+// first sends the cast back to the tail, in the order it went out. So the
+// cluster always holds the right poise: the next cell out is at the front.
+function tell2Plan(cells) {
+  const slides = []; let arc = cells.slice(), cast = [];
+  for (const sd of TELL2_SLIDES) {
+    if (sd.fresh) { arc = arc.concat(cast.map(c => c.b)); cast = []; }
+    if (arc.length) { const b = arc[0]; arc = arc.slice(1); cast = cast.concat([{ b, place: sd.place }]); }
+    slides.push({ cast, arc });
+  }
+  return slides;
+}
+// A slide's page, in lattice units: the stage's rectangles first, one a
+// cell of the cast, then the ring's chambers, one a cell of the arc, then
+// the whitespace: the bore, the spent chambers, the empty places, and the
+// pieces around the stage and the cluster, cut once for the whole story.
+// The bore and the spent chambers yield: they give up their ground the
+// moment the page changes and take it back once the change has ended.
+const tell2Fixed = new Map();
+function tell2Page(k, C, R, n, W, H, story) {
+  const r6 = v => Math.round(v * 1e6) / 1e6, L = f => [r6(f[0] * C), r6(f[1] * R), r6(f[2] * C), r6(f[3] * R)];
+  const sl = story[Math.min(k, story.length - 1)] || { cast: [], arc: [] };
+  const cl = L(W < H ? TELL2_PHONE.cluster : TELL2_CLUSTER), { g, ring } = tell2Ring(n, W, H);
+  const cw = (cl[2] - cl[0]) / g, ch = (cl[3] - cl[1]) / g, chamber = ([c, r]) => [r6(cl[0] + c * cw), r6(cl[1] + r * ch), r6(cl[0] + (c + 1) * cw), r6(cl[1] + (r + 1) * ch)];
+  const stage = sl.cast.map(c => L(tell2Place(c.place, W, H)));
+  const content = [...stage, ...ring.slice(0, sl.arc.length).map(chamber)];
+  const key = [C, R, W, H].join('|');
+  if (!tell2Fixed.has(key)) tell2Fixed.set(key, tell2Complement(C, R, [...Object.keys(TELL2_PLACES).map(p => L(tell2Place(p, W, H))), cl]));
+  const filled = new Set(sl.cast.map(c => c.place));
+  const voids = tell2Fixed.get(key).map(r => r.slice());
+  for (const p of Object.keys(TELL2_PLACES)) if (!filled.has(p) && !(W < H && [...filled].some(q => TELL2_PHONE_COL[q] === TELL2_PHONE_COL[p]))) { const r = L(tell2Place(p, W, H)); if (!voids.some(v => rectsEqual(v, r))) voids.push(r); }
+  const bore = [r6(cl[0] + cw), r6(cl[1] + ch), r6(cl[0] + (g - 1) * cw), r6(cl[1] + (g - 1) * ch)]; bore.tell2Yield = true; voids.push(bore);
+  for (const q of ring.slice(sl.arc.length)) { const r = chamber(q); r.tell2Yield = true; voids.push(r); }
+  voids.tell2 = true;   // solved on its rectangles (see the construction)
+  return { content, voids, box: L(W < H ? TELL2_PHONE.box : TELL2_BOX), cast: sl.cast.length, bore, chambers: ring.map(chamber) };
+}
+const tell2Cache = new Map();
+function tell2Scene(h, n) {
+  if (!tell2) return null;
+  const cells = h.bodies.filter(b => !b.isVoid && !b.isSelf && !b.leaving).sort((a, b) => a.id - b.id);
+  if (tell2.n !== cells.length) { tell2.n = cells.length; tell2.story = tell2Plan(cells); tell2Cache.clear(); }   // an add or a remove: the story is planned again from the cells there are
+  const k = Math.max(0, tell2.k), sl = tell2.story[Math.min(k, tell2.story.length - 1)];
+  tell2.slotOf = new Map(); sl.cast.forEach((c, i) => tell2.slotOf.set(c.b, i)); sl.arc.forEach((b, j) => tell2.slotOf.set(b, sl.cast.length + j));
+  const key = [k, h.COLS, h.ROWS, n, h.W, h.H].join('|');
+  if (tell2Cache.has(key)) return tell2Cache.get(key);
+  const p = tell2Page(k, h.COLS, h.ROWS, n, h.W, h.H, tell2.story), sc = portalDecorate(p.content, p.voids, h.W, h.H, h.COLS, h.ROWS);
+  sc.voids.forEach((q, i) => { if (p.voids[i].tell2Yield) q.tell2Yield = true; });
+  tell2Cache.set(key, sc); if (tell2Cache.size > 24) tell2Cache.delete(tell2Cache.keys().next().value);
+  return sc;
+}
+// the story: its scroll (px, a page's height a slide), its speed, the slide
+// it is on, its plan, the cells on stage now, and the text's clocks
+let tell2 = null;
+const tell2Pitch = () => H;
+function tell2Start(origin) {
+  reelDrop(); tellDrop();
+  const cells = root.bodies.filter(b => !b.isVoid && !b.isSelf && !b.leaving).sort((a, b) => a.id - b.id);
+  tell2 = { y: 0, v: 0, k: -1, n: cells.length, story: tell2Plan(cells), on: [], slotOf: null, drag: null, entered: false, alpha: 0, rule: 0, fullAt: -1, seen: -1, changed: -1e9 };
+  tell2Cache.clear();
+  tell2Go(0, origin || { x: W / 2, y: H / 2 });
+}
+function tell2Drop() {
+  if (!tell2) return;
+  tell2 = null;
+  for (const v of root.bodies) { if (v.rect && v.rect.reelLive) v.rect.reelLive = false; v.tell2Yield = false; }
+}
+// a slide: the front cell takes its place; on a fresh slide the last cast
+// goes back into the ring first; a page change with Portal's smoothness,
+// spreading from the front. The first of the cast is the page's image, for
+// the click home.
+function tell2Go(k, origin) {
+  if (!tell2) return;
+  tell2.k = k; const sl = tell2.story[Math.min(k, tell2.story.length - 1)];
+  const was = tell2.on.slice();
+  tell2.on = sl.cast.map(c => c.b).filter(b => !b.leaving); tell2.changed = simTime;
+  for (const b of root.bodies) b.tell2Stay = false;
+  for (const c of sl.cast) if (was.includes(c.b)) c.b.tell2Stay = true;   // on the stage already, at its place: a bystander to this change
+  const front = tell2.on[tell2.on.length - 1] || null;
+  portalFocus = tell2.on[0] || null; portalFlip = false;
+  portalEnter('tell2', origin || (front ? { x: front.x, y: front.y } : { x: W / 2, y: H / 2 }));
+}
+// the flow of the story, a Tell's: a speed eases away, a slow story snaps
+// to its slide, the slide the story is on is the one nearest, and a change
+// is made at most every quarter second, since each is a page change. The
+// bore and the spent chambers are marked to yield.
+function tell2Flow(dt) {
+  if (!tell2) return;
+  const pitch = tell2Pitch(), last = (TELL2_SLIDES.length - 1) * pitch;
+  if (!tell2.drag) {
+    const snapping = Math.abs(tell2.v) < 60;
+    tell2.v *= Math.exp(-dt / (snapping ? TELL_SNAP : TELL_RELAX));
+    if (Math.abs(tell2.v) < 0.05) tell2.v = 0;
+    tell2.y += tell2.v * dt;
+    if (tell2.y < 0) { tell2.y = 0; tell2.v = 0; }
+    if (tell2.y > last) { tell2.y = last; tell2.v = 0; }
+    if (snapping) { const target = Math.round(tell2.y / pitch) * pitch; tell2.y += (target - tell2.y) * (1 - Math.exp(-dt / TELL_SNAP)); }
+  }
+  const k = Math.max(0, Math.min(TELL2_SLIDES.length - 1, Math.round(tell2.y / pitch)));
+  if (k !== tell2.k && simTime - tell2.changed > 0.25) tell2Go(k, null);
+  if (!tell2.entered && guestLeft <= 0) tell2.entered = true;
+  for (const v of root.bodies) if (v.isVoid) v.tell2Yield = !!(v.rect && v.rect.tell2Yield);
+}
+// THE SETTLED SLIDE IS THE AUTHORED ONE. Once a slide's change has ended the
+// authored weights are handed to every body each frame, the ring's, the
+// cast's and the whitespace's mirrors alike, as a reel hands its own (the
+// bore and the spent chambers once they have taken their ground back): the
+// whitespace here is cut into pieces, and the live auction, solving the
+// same claims from wherever it was, settles a hair off the authored diagram
+// near a piece's mirrors, which sit close behind a short edge. Handed, the
+// diagram is the authored one, exact. A piece no mirror stands in (its whole
+// is held by its neighbours' mirrors) keeps its own site.
+function tell2Step() {
+  if (!tell2 || guestLeft > 0) return;
+  const n = root.bodies.filter(b => !b.isVoid && !b.isSelf && !b.leaving).length, sc = tell2Scene(root, n);
+  if (!sc) return;
+  for (const b of root.bodies) {
+    if (b.isSelf || b.leaving || !b.rect || (!b.isVoid && b.journey)) continue;   // a void keeps its journey's record; a card still travelling is not handed
+    if (b.isVoid) {
+      if (b.tell2Yield && b.claim < 0.99 * b.claimTarget) continue;   // still taking its ground back: it grows at its own pace among the handed
+      if (!b.rect.reelLive) { const j = sc.voids.findIndex(r => rectsEqual(r, b.rect)); if (j < 0) continue; if (!sc.voids[j].mfSites.length) { b.claimTarget = CLAIM_MIN; b.claim = CLAIM_MIN; continue; } const r = Object.assign([], sc.voids[j]); r.reelLive = true; b.rect = r; b.formRect = r; }   // a piece no mirror stands in holds nothing: its whole is held by its neighbours' mirrors
+      b.claimTarget = rectArea(b.rect); b.claim = b.claimTarget;
+    } else {
+      const i = sc.content.findIndex(r => rectsEqual(r, b.rect)); if (i < 0) continue;
+      b.claimTarget = sc.content[i].mfArea; b.claim = b.claimTarget;
+      const [ex, ey] = root.rectCenter(b.rect); b.x = ex; b.y = ey; b.vx = 0; b.vy = 0;
+      const q = b.subs[0]; q.w = sc.weights[i]; q.live = true;
+    }
+  }
+}
+function tell2Scroll(dy) {
+  if (!tell2) return false;
+  if (tell2.drag || Math.abs(dy) < 1) return true;
+  const pitch = tell2Pitch(), aim = Math.max(0, Math.min(TELL2_SLIDES.length - 1, Math.round(tell2.y / pitch) + Math.sign(dy)));
+  tell2.v = reelClampV((aim * pitch - tell2.y) / TELL_RELAX);
+  return true;
+}
+function tell2DragStart(x, y, t) { if (!tell2) return false; tell2.drag = { y0: tell2.y, p0: y, last: y, t, v: 0 }; tell2.v = 0; return true; }
+function tell2DragMove(x, y, t) {
+  if (!tell2 || !tell2.drag) return false;
+  const d = tell2.drag, dt = Math.max(1e-3, (t - d.t) / 1000), last = (TELL2_SLIDES.length - 1) * tell2Pitch();
+  tell2.y = Math.max(0, Math.min(last, d.y0 + (d.p0 - y)));
+  const v = (d.last - y) / dt; d.v += (v - d.v) * Math.min(1, dt / 0.05); d.last = y; d.t = t;
+  return true;
+}
+function tell2DragEnd(t) { if (!tell2 || !tell2.drag) return false; const d = tell2.drag; tell2.v = t - d.t > 120 ? 0 : reelClampV(d.v); tell2.drag = null; return true; }
+// The blurbs, in the box: each at its place on the scroll, the slide's and
+// its neighbours' as they pass, a box's height apart, titled with its cast's
+// names over its lines, fading at the box's ends. The text is set once the
+// entry has ended and stays: the cast changes under it, and a corner of a
+// cell on the stage may lie behind it. A rule along the box's left edge
+// comes a beat after the text has fully appeared.
+function tell2ProseStep(ctx, type, dt, t) {
+  if (!tell2) return;
+  const p = tell2, gap = t - p.seen, el = p.seen < 0 || gap > 0.1 ? dt : gap;
+  p.seen = t;
+  const v = p.entered;
+  p.alpha += ((v ? 1 : 0) - p.alpha) * (1 - Math.exp(-el / (v ? 0.30 : 0.08)));
+  if (!v || p.alpha <= 0.97) p.fullAt = -1; else if (p.fullAt < 0) p.fullAt = t;
+  p.rule += ((v && p.fullAt >= 0 && t - p.fullAt > 0.25 ? 1 : 0) - p.rule) * (1 - Math.exp(-el / (v ? 0.45 : 0.08)));
+  if (!v || p.alpha < 0.01) return;
+  const bx = W < H ? TELL2_PHONE.box : TELL2_BOX, r = [bx[0] * W, bx[1] * H, bx[2] * W, bx[3] * H], pad = Math.max(16, Math.min(48, 0.024 * W));
+  const x0 = r[0] + pad, x1 = r[2] - pad, y0 = r[1] + pad, y1 = r[3] - pad;
+  if (x1 - x0 < 90) return;
+  const title = Math.round(type.num * 0.9), line = Math.max(4, Math.round(type.name * 0.55)), lead = Math.round(line * 2.1);
+  ctx.save();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.globalAlpha = 0.22 * p.rule; ctx.beginPath();
+  const g = Math.round(pad / 2) + 0.5;
+  ctx.moveTo(r[0] + g, r[1] + pad); ctx.lineTo(r[0] + g, r[3] - pad);
+  ctx.stroke();
+  const measure = Math.min(560, x1 - x0), pitch = tell2Pitch(), travel = y1 - y0;
+  ctx.beginPath(); ctx.moveTo(r[0], r[1]); ctx.lineTo(r[2], r[1]); ctx.lineTo(r[2], r[3]); ctx.lineTo(r[0], r[3]); ctx.closePath(); ctx.clip();
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  for (let k = p.k - 1; k <= p.k + 1; k++) {
+    if (k < 0 || k >= TELL2_SLIDES.length) continue;
+    const lines = TELL2_SLIDES[k].lines, hb = Math.round(title * 1.8) + lines.length * lead;
+    const yk = y0 + (y1 - y0 - hb) / 2 + (k * pitch - p.y) / pitch * travel;
+    const edge = Math.min(1, Math.max(0, (yk + hb - y0) / 40), Math.max(0, (y1 - yk) / 40));
+    const a = p.alpha * edge;
+    if (a < 0.01) continue;
+    const cast = (p.story[k] ? p.story[k].cast : []).map(c => c.b.name).join(' · ');
+    ctx.globalAlpha = 0.92 * a; ctx.font = `600 ${title}px system-ui, sans-serif`; ctx.fillText(cast, x0, yk);
+    ctx.globalAlpha = 0.5 * a; ctx.beginPath(); ctx.moveTo(x0, yk + Math.round(title * 1.3) + 0.5); ctx.lineTo(x0 + Math.round(title * 1.6), yk + Math.round(title * 1.3) + 0.5); ctx.stroke();
+    ctx.globalAlpha = 0.20 * a;
+    let y = yk + Math.round(title * 1.8);
+    for (const f of lines) { roundedPath(ctx, [[x0, y], [x0 + measure * f, y], [x0 + measure * f, y + line], [x0, y + line]], line / 2, false); ctx.fill(); y += lead; }
+  }
+  ctx.restore();
+}
 const scenes = {
   flock: null,
 
@@ -2289,6 +2781,7 @@ class Hive {
     const [ex, ey] = this.rectCenter(rect);
     if (rectsEqual(rect, b.rect) && b.formRect === b.rect && b.crystal === 1 && !b.leaving
         && Math.abs(b.x - ex) < 0.01 && Math.abs(b.y - ey) < 0.01) { b.claim0 = b.claim; b.claimTarget = rectArea(rect); return; }
+    if (b.tell2Stay && rectsEqual(rect, b.rect) && !b.leaving && !b.journey && Math.abs(b.x - ex) < 1 && Math.abs(b.y - ey) < 1) { b.claim0 = b.claim; b.claimTarget = rectArea(rect); b.pin = 1; return; }   // TELL II: a cell of the cast keeping its place
     b.rect = rect;
     b.table = null;
     this.takeFormation(b);
@@ -2433,7 +2926,7 @@ class Hive {
     this.serial++;
     const salt = 40 + this.serial;
     const content = this.bodies.filter(b => !b.isVoid && !b.leaving && !b.isSelf);
-    const spec = this.depth===0 && (name==='hero'||name==='frame') ? mfScene(this,name,content.length) : this.depth===0 && (name in PORTAL_TEMPLATES) ? portalScene(this,name,content.length) : scenes[name] ? scenes[name](this.COLS, this.ROWS, content.length) : null;   // PORTAL: a page is an authored rest diagram too
+    const spec = this.depth===0 && (name==='hero'||name==='frame') ? mfScene(this,name,content.length) : this.depth===0 && name === 'tell2' ? tell2Scene(this, content.length) : this.depth===0 && name === 'tell' ? tellScene(this, content.length) : this.depth===0 && (name in PORTAL_TEMPLATES) ? portalScene(this,name,content.length) : scenes[name] ? scenes[name](this.COLS, this.ROWS, content.length) : null;   // PORTAL: a page is an authored rest diagram too
     const pending = this.bodies.filter(b => b.pendingRetire);
     for (const b of pending) b.pendingRetire = false;
 
@@ -2481,7 +2974,7 @@ class Hive {
     const stays = new Set(), newVoids = [], rectOfVoid = new Map();
     for (const r of spec.voids) {
       const same = oldVoids.find(v => rectsEqual(v.rect, r) && !stays.has(v));
-      if (same) { if(r.mfSites) { same.rect=r; same.formRect=r; } stays.add(same); continue; }
+      if (same) { if(r.mfSites) { same.rect=r; same.formRect=r; if (name === 'tell2') same.claimTarget = Math.max(CLAIM_MIN, rectArea(r)); } stays.add(same); continue; }   // TELL II: a staying piece takes the new page's claim
       const [x, y] = this.rectCenter(r);
       const v = this.makeBody(x, y, { isVoid: true, claim: CLAIM_MIN });
       this.bodies.push(v); newVoids.push(v); rectOfVoid.set(v, r);
@@ -2517,10 +3010,10 @@ class Hive {
     // PORTAL: a page's long journeys take the time they need, so no cell
     // rides the speed cap: the peak of an eased trip is one and a half
     // times its average
-    if (name in PORTAL_TEMPLATES) for (const b of content) { const j = b.journey, p = b.path; if (j && p && j.t0 === this.t) j.dur = Math.max(j.dur, Math.hypot(p.ex - p.sx, p.ey - p.sy) / 600); }
+    if (name in PORTAL_TEMPLATES || name === 'tell' || name === 'tell2') for (const b of content) { const j = b.journey, p = b.path; if (j && p && j.t0 === this.t) j.dur = Math.max(j.dur, Math.hypot(p.ex - p.sx, p.ey - p.sy) / 600); }
     // PORTAL: the image grows no faster than the page clears for it: its
     // journey, and so its claim, ends when the last card's does
-    if (name in PORTAL_TEMPLATES && portalFocus && portalFocus.journey && portalFocus.journey.t0 === this.t) {
+    if ((name in PORTAL_TEMPLATES || name === 'tell' || name === 'tell2') && portalFocus && portalFocus.journey && portalFocus.journey.t0 === this.t) {
       let last = 0; for (const b of content) if (b !== portalFocus && b.journey) last = Math.max(last, b.journey.delay + (b.journey.hold || 0) + b.journey.dur);
       const j = portalFocus.journey; j.dur = Math.max(j.dur, last - j.delay - (j.hold || 0));
     }
@@ -2555,7 +3048,7 @@ class Hive {
         // pass through it, so nothing crosses it as a sliver and its text is
         // not set under a traveller: they are on its ledger, and it does not
         // open on its own clock until the last of them is through
-        if (!(name in PORTAL_TEMPLATES) || !b.path || !b.journey || b.journey.t0 !== this.t) continue;
+        if (!(name in PORTAL_TEMPLATES || name === 'tell' || name === 'tell2') || !b.path || !b.journey || b.journey.t0 !== this.t) continue;
         const p = b.path; let last = -1;
         for (let k = 1; k < 20; k++) { const e = k / 20, m = 1 - e, x = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, y = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey; if (this.inRect(r, x, y)) last = e; }
         if (last < 0) continue;
@@ -2860,6 +3353,11 @@ class Hive {
         b.claim = be > 0 ? (rho >= 1 ? 0 : Math.max(CLAIM_MIN, be * (1 - rho))) : 1;
         continue;
       }
+      if (b.isVoid && b.tell2Yield && !b.table) {   // TELL II: whitespace that yields, at once when the page changes, back over a third of a second after
+        const want = guestLeft > 0 ? CLAIM_MIN : b.claimTarget;
+        b.claim += (want - b.claim) * (1 - Math.exp(-dt / (want < b.claim ? 0.12 : 0.35)));
+        continue;
+      }
       if (b.table) {
         // a void keeps a ledger: its claim is the claim-weighted progress of
         // the bodies leaving it (opening) or landing in it (closing), plus
@@ -2919,7 +3417,7 @@ class Hive {
       const r = b.formRect;
       if (b.isSelf || !r) { b.holeCore = null; continue; }
       const rect = [r[0] * this.PW, r[1] * this.PH, r[2] * this.PW, r[3] * this.PH];
-      if (!b.leaving && (b.reelParked || (!b.reelPinned && (b.crystal >= 1 || (b.pin > 0 && this.cellIsRect(b, r)))))) {   // REEL: a reel's body bids; a parked one is a wall off the page
+      if (!b.leaving && (b.reelParked || (!b.reelPinned && !(tell && !b.isVoid && this.depth === 0) && (b.crystal >= 1 || (b.pin > 0 && this.cellIsRect(b, r)))))) {   // TELL: the story's cards bid throughout   // REEL: a reel's body bids; a parked one is a wall off the page
         b.wall = rect; this.walls.push(b); b.holeCore = null;
         continue;
       }
@@ -4632,7 +5130,7 @@ function paintPicture(ctx, picture, hoveredPath, dt, t) {
 
     // the open page's image carries no label: its title is set in the text
     // block beside it, or, on a full-cell page, as a caption on the image
-    const pageT = b === portalFocus && PORTAL_TEMPLATES[config.scene];
+    const pageT = (b === portalFocus || (tell2 && tell2.on.includes(b))) && (PORTAL_TEMPLATES[config.scene] || (config.scene === 'tell' || config.scene === 'tell2' ? { text: true } : null));   // TELL: the slide's image carries no label; TELL II: nor does any of the cast
     const c = plaqueStep(ctx, b, bigPts, leaf.loops, leaf.labels, leaf.label, type, leaf.path.some(e => travelling(e.body)) || (pageT && !!pageT.text), dt, t, bigA, inner.absX + b.anchorX, inner.absY + b.anchorY);
     const captioned = pageT && !pageT.text;   // the image is the page: a caption, not a label
     if (c.alpha > 0.01 && captioned) {
@@ -4672,6 +5170,8 @@ function paintPicture(ctx, picture, hoveredPath, dt, t) {
     }
   }
   portalProseStep(ctx, type, dt, t);
+  tellProseStep(ctx, type, dt, t);
+  tell2ProseStep(ctx, type, dt, t);
 }
 
 
@@ -4751,6 +5251,7 @@ function tick(nowMs) {
   frame++;
 
   guestLeft = changeEnds(root) - simTime;
+  tellFlow(dt); tellStep(dt); tell2Flow(dt); tell2Step();
   reelFlow(dt);
   reelStep();
 
@@ -4774,7 +5275,7 @@ function tick(nowMs) {
   // way any acquisition ramps.
   root.walk(h => { h.hoveredId = -1; });
   const under = guestLeft > 0 ? [] : (hitLeaves(picture, mouseX, mouseY) || root.hitPath(mouseX, mouseY));
-  const path = under.length && under[0].body === portalFocus ? [] : under;   // the open page's image is not a card
+  const path = under.length && (under[0].body === portalFocus || (tell2 && tell2.on.includes(under[0].body))) ? [] : under;   // the open page's image is not a card; TELL II: nor is the cast
   for (const e of path) e.hive.hoveredId = e.body.id;
   canvas.style.cursor = 'default';
 
@@ -4857,9 +5358,9 @@ function portalClick(x, y) {
   if (!path || !path.length) return false;
   const b = path[0].body;
   if (b.isVoid || b.isSelf || b.leaving) return false;
-  if (b === portalFocus) { reelDrop(); portalHome({ x, y }); }
+  if (b === portalFocus || (tell2 && tell2.on.includes(b))) { reelDrop(); tellDrop(); tell2Drop(); portalHome({ x, y }); }   // TELL II: any of the cast clicked goes home
   else {
-    reelDrop(b);
+    reelDrop(b); tellDrop(); tell2Drop();
     // the page opens on the side the click came from: the template is
     // mirrored when its image slot is nearer the click that way
     const T = PORTAL_TEMPLATES[portalKind(b)], hx = (T.hero[0] + T.hero[2]) / 2 * W;
@@ -4878,16 +5379,18 @@ canvas.addEventListener('pointerup', (e) => {
   if (Math.hypot(x - press.x, y - press.y) > 6 || performance.now() - press.at > 500) return;
   portalClick(x, y);
 });
-window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && portalFocus) { reelDrop(); portalHome(); } });
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && (portalFocus || tell || tell2)) { reelDrop(); tellDrop(); tell2Drop(); portalHome(); } });
 // REEL: the wheel pushes the open page's gallery along its flow; a drag takes it in hand
-canvas.addEventListener('wheel', (e) => { if (!reel) return; e.preventDefault(); reelScroll(e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1)); }, { passive: false });
-canvas.addEventListener('pointerdown', (e) => { const [x, y] = pointerPos(e); if (reelDragStart(x, y, performance.now())) { try { canvas.setPointerCapture(e.pointerId); } catch (_) {} } });
-canvas.addEventListener('pointermove', (e) => { const [x, y] = pointerPos(e); reelDragMove(x, y, performance.now()); });
-canvas.addEventListener('pointerup', () => { reelDragEnd(performance.now()); });
-canvas.addEventListener('pointercancel', () => { reelDragEnd(-1e9); });
+canvas.addEventListener('wheel', (e) => { const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1); if (tell2) { e.preventDefault(); tell2Scroll(dy); return; } if (tell) { e.preventDefault(); tellScroll(dy); return; } if (!reel) return; e.preventDefault(); reelScroll(dy); }, { passive: false });
+canvas.addEventListener('pointerdown', (e) => { const [x, y] = pointerPos(e); if (tell2DragStart(x, y, performance.now()) || tellDragStart(x, y, performance.now()) || reelDragStart(x, y, performance.now())) { try { canvas.setPointerCapture(e.pointerId); } catch (_) {} } });
+canvas.addEventListener('pointermove', (e) => { const [x, y] = pointerPos(e); tell2DragMove(x, y, performance.now()); tellDragMove(x, y, performance.now()); reelDragMove(x, y, performance.now()); });
+canvas.addEventListener('pointerup', () => { tell2DragEnd(performance.now()); tellDragEnd(performance.now()); reelDragEnd(performance.now()); });
+canvas.addEventListener('pointercancel', () => { tell2DragEnd(-1e9); tellDragEnd(-1e9); reelDragEnd(-1e9); });
 
 document.querySelectorAll('.scene-btn').forEach(b => b.addEventListener('click', () => {
-  reelDrop();
+  if (b.dataset.scene === 'tell') { tellStart(); return; }   // TELL: the story begins
+  if (b.dataset.scene === 'tell2') { tell2Start(); return; }   // TELL II: the cast takes the stage
+  reelDrop(); tellDrop(); tell2Drop();
   portalFocus = null;                        // a scene button leaves any open page
   config.scene = b.dataset.scene;
   document.querySelectorAll('.scene-btn').forEach(el => el.classList.toggle('active', el.dataset.scene === config.scene));

@@ -1,0 +1,437 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed. Without the Cue button, state and every drawing command must exactly match Tell II, a click, a scroll, a Tell story, a Tell II story and home included; with the story, every slide settled has its cast on its places (rectangles to 4 px, unlabelled), a sequence builds up one cell a slide with the cells already on the stage never moving, a fresh slide brings out a cell that was none of the last sequence, the whitespace is exact and covers the page, no field, one site a cell, nothing fractures on any frame of a change, no two cards in flight overlap, a notch turns one slide, and the same on a phone.",
+  "frames": 17332,
+  "drawingCommands": 15708550,
+  "matrix": [
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 16.666666666666668,
+      "inner": "flock",
+      "frames": 3470
+    },
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 24,
+      "fields": 1,
+      "dt": 30,
+      "inner": "bento",
+      "frames": 1939
+    },
+    {
+      "width": 390,
+      "height": 720,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 8.333333333333334,
+      "inner": "flock",
+      "frames": 6940
+    },
+    {
+      "width": 1363,
+      "height": 846,
+      "count": 30,
+      "fields": 0,
+      "dt": 50,
+      "inner": "flock",
+      "frames": 1157
+    }
+  ],
+  "report": {
+    "clickIdentity": {
+      "frames": 3826,
+      "kind": "band",
+      "tell": true,
+      "tell2": true
+    },
+    "slides": [
+      {
+        "k": 0,
+        "cast": [
+          "Jazz"
+        ],
+        "niches": 1,
+        "offRect": 0,
+        "voids": 20,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 1,
+        "cast": [
+          "Jazz",
+          "Moss"
+        ],
+        "niches": 2,
+        "offRect": 0,
+        "voids": 20,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 9,
+          "cut": 0
+        }
+      },
+      {
+        "k": 2,
+        "cast": [
+          "Jazz",
+          "Moss",
+          "Petal"
+        ],
+        "niches": 3,
+        "offRect": 0,
+        "voids": 20,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0
+        }
+      },
+      {
+        "k": 3,
+        "cast": [
+          "Dune"
+        ],
+        "niches": 1,
+        "offRect": 0,
+        "voids": 20,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 4,
+        "cast": [
+          "Dune",
+          "Aurora"
+        ],
+        "niches": 2,
+        "offRect": 0,
+        "voids": 20,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 5,
+        "cast": [
+          "Moss"
+        ],
+        "niches": 1,
+        "offRect": 0,
+        "voids": 20,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 6,
+        "cast": [
+          "Moss",
+          "Aurora"
+        ],
+        "niches": 2,
+        "offRect": 0,
+        "voids": 20,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 7,
+        "cast": [
+          "Moss",
+          "Aurora",
+          "Petal"
+        ],
+        "niches": 3,
+        "offRect": 0,
+        "voids": 20,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0
+        }
+      }
+    ],
+    "changes": [
+      {
+        "k": 1,
+        "fresh": false,
+        "cast": [
+          "Jazz",
+          "Moss"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.3
+      },
+      {
+        "k": 2,
+        "fresh": false,
+        "cast": [
+          "Jazz",
+          "Moss",
+          "Petal"
+        ],
+        "kept": 2,
+        "penStayed": 9,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.2
+      },
+      {
+        "k": 3,
+        "fresh": true,
+        "cast": [
+          "Dune"
+        ],
+        "kept": 0,
+        "penStayed": 8,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 3.7
+      },
+      {
+        "k": 4,
+        "fresh": false,
+        "cast": [
+          "Dune",
+          "Aurora"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.3
+      },
+      {
+        "k": 5,
+        "fresh": true,
+        "cast": [
+          "Moss"
+        ],
+        "kept": 0,
+        "penStayed": 9,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.7
+      },
+      {
+        "k": 6,
+        "fresh": false,
+        "cast": [
+          "Moss",
+          "Aurora"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.4
+      },
+      {
+        "k": 7,
+        "fresh": false,
+        "cast": [
+          "Moss",
+          "Aurora",
+          "Petal"
+        ],
+        "kept": 2,
+        "penStayed": 9,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.3
+      }
+    ],
+    "back": {
+      "k": 0,
+      "cast": [
+        "Aurora"
+      ],
+      "niches": 1,
+      "offRect": 0,
+      "voids": 20,
+      "rest": {
+        "rectangle": 1,
+        "voronoi": 11,
+        "cut": 0
+      }
+    },
+    "phone": [
+      {
+        "k": 0,
+        "cast": [
+          "Haze"
+        ],
+        "niches": 1,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 1,
+        "fresh": false,
+        "cast": [
+          "Haze",
+          "Coal"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 3.8
+      },
+      {
+        "k": 1,
+        "cast": [
+          "Haze",
+          "Coal"
+        ],
+        "niches": 2,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 2,
+        "fresh": false,
+        "cast": [
+          "Haze",
+          "Coal",
+          "Aurora"
+        ],
+        "kept": 2,
+        "penStayed": 9,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.6
+      },
+      {
+        "k": 2,
+        "cast": [
+          "Haze",
+          "Coal",
+          "Aurora"
+        ],
+        "niches": 3,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0
+        }
+      },
+      {
+        "k": 3,
+        "fresh": true,
+        "cast": [
+          "Dune"
+        ],
+        "kept": 0,
+        "penStayed": 8,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.6
+      },
+      {
+        "k": 3,
+        "cast": [
+          "Dune"
+        ],
+        "niches": 1,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 4,
+        "fresh": false,
+        "cast": [
+          "Dune",
+          "Coal"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 4
+      },
+      {
+        "k": 4,
+        "cast": [
+          "Dune",
+          "Coal"
+        ],
+        "niches": 2,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 5,
+        "fresh": true,
+        "cast": [
+          "Aurora"
+        ],
+        "kept": 0,
+        "penStayed": 9,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 4.5
+      },
+      {
+        "k": 5,
+        "cast": [
+          "Aurora"
+        ],
+        "niches": 1,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      }
+    ],
+    "home": {
+      "cells": 12,
+      "scene": "bento"
+    }
+  }
+}

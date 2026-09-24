@@ -224,11 +224,16 @@ const desk={width:1900,height:810,fields:.55},phone={width:390,height:720,fields
  const e=s.e,v=e.root.bodies.find(q=>q.isVoid&&!q.leaving&&q.rect&&q.rect.portalText);assert(v,'no reading void');
  const r=v.rect,PW=e.root.PW,PH=e.root.PH,inR=(x,y)=>x>=r[0]*PW&&x<=r[2]*PW&&y>=r[1]*PH&&y<=r[3]*PH;
  const crossers=e.root.bodies.filter(b=>!b.isVoid&&!b.isSelf&&b.path&&b.journey&&!inR(b.x,b.y)).filter(b=>{const p=b.path;for(let k=1;k<20;k++){const t=k/20,m=1-t;if(inR(m*m*p.sx+2*m*t*p.cx+t*t*p.ex,m*m*p.sy+2*m*t*p.cy+t*t*p.ey))return true;}return false;});
- let textAt=-1,lastLanded=-1;
- for(let f=0;f<420;f++){s.step(1);if(textAt<0&&e.commands.some(c=>c[0]==='fillText'&&c[1]===w.b.name&&inR(c[2],c[3])))textAt=f;if(crossers.some(b=>b.journey&&b.progress<1))lastLanded=f;}
+ let textAt=-1,lastLanded=-1,endAt=-1,textFull=-1,ruleAt=-1,ruleFull=-1;
+ for(let f=0;f<480;f++){s.step(1);const pr=e.prose();if(endAt<0&&e.changeLeft()<=0)endAt=f;if(textAt<0&&e.commands.some(c=>c[0]==='fillText'&&c[1]===w.b.name&&inR(c[2],c[3])))textAt=f;if(crossers.some(b=>b.journey&&b.progress<1))lastLanded=f;
+  if(f<endAt||endAt<0)assert(pr.alpha<1e-6,'the text began at frame '+f+' before the change ended');
+  if(textFull<0&&pr.alpha>0.97)textFull=f;if(ruleAt<0&&pr.rule>0.02)ruleAt=f;if(ruleFull<0&&pr.rule>0.95)ruleFull=f;
+  if(textFull<0)assert(pr.rule<1e-6,'a rule was drawn at frame '+f+' before the text had fully appeared');}
  assert(textAt>=0,'the text never came');assert(crossers.length>0,'no cell crossed the reading void');
  assert(textAt>lastLanded,'the text was set at frame '+textAt+' while a crosser was still travelling at frame '+lastLanded);
- report.crossers={count:crossers.length,lastLanded,textAt};
+ assert(endAt>=0&&textAt>=endAt,'the text was set at frame '+textAt+' before the change ended at '+endAt);
+ assert(ruleAt>=textFull+12&&ruleFull>ruleAt,'the rules did not follow the text a beat later: text full '+textFull+', rules from '+ruleAt+' full '+ruleFull);
+ report.crossers={count:crossers.length,lastLanded,endAt,textAt,textFull,ruleAt,ruleFull};
 }
 { // escape goes home
  const s=fresh(desk),rs=rootsOf(s.pic),a=rs[0].body;assert(s.e.click(a.caption.x,a.caption.y));s.step(300);s.e.home();
@@ -269,8 +274,12 @@ for(const kind of ['spread','folio','band','essay','caption']){
    assert(!b.wall,kind+': '+b.name+' is a wall');
    const v=S.def.vertical,t=v?b.y:b.x,t0=v?g[1]*PHx:g[0]*PWx,t1=v?g[3]*PHx:g[2]*PWx,u=v?b.x:b.y,u0=v?g[0]*PWx:g[1]*PHx,u1=v?g[2]*PWx:g[3]*PHx;
    assert(u>=u0-1e-6&&u<=u1+1e-6,kind+': '+b.name+' seeds beside the strip');
-   if(t<t0-1e-6){assert(S.pageT0,kind+': '+b.name+' seeds past the divider');offSeed++;}
-   if(t>t1+1e-6){assert(S.pageT1,kind+': '+b.name+' seeds past the divider');offSeed++;}
+   assert(t>=t0-1e-6&&t<=t1+1e-6,kind+': '+b.name+' seeds outside the strip');
+   // overflow: at a page edge a card cut by the edge keeps its slot (no band is stretched to the edge) and is not faded
+   {const sc0=S.s,len0=S.def.L,cutT0=c.sl.t0-sc0<-1e-9,cutT1=c.sl.t1-sc0>len0+1e-9;
+    if(cutT0&&S.pageT0){assert(Math.abs(c.t0)<1e-9&&b.reelFade===1,kind+': '+b.name+' does not overflow the page');offSeed++;}
+    if(cutT1&&S.pageT1){assert(Math.abs(c.t1-len0)<1e-9&&b.reelFade===1,kind+': '+b.name+' does not overflow the page');offSeed++;}
+    if(!cutT0&&!cutT1&&S.pageT0&&S.pageT1)assert(Math.abs(c.t0-(c.sl.t0-sc0))<1e-9&&Math.abs(c.t1-(c.sl.t1-sc0))<1e-9,kind+': '+b.name+' was stretched to a page edge');}
    // the fade: a card clipped at a divider is drawn no brighter than how much of it shows over 72 px; one at a page edge does not fade
    const sc=S.s,len=S.def.L,atDiv=(!S.pageT0&&c.sl.t0-sc<-1e-9)||(!S.pageT1&&c.sl.t1-sc>len+1e-9),shown=(c.t1-c.t0)*S.def.tPx;
    if(atDiv){assert(Math.abs(b.reelFade-Math.min(1,shown/72))<1e-6,kind+': '+b.name+' fades '+b.reelFade+' for '+shown.toFixed(0)+' px shown');if(shown<72)dividerFades++;}

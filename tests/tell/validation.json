@@ -1,0 +1,258 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed. Without the Tell button, state and every drawing command must exactly match Reel, a click, a scroll, a drag and home included; with the story, the cluster is laid once beside the column and never moves again, every slide's hero is the card nearest the slide's place (not one of the last two), swollen where it stands to a fifth of the cluster with the column exactly the rectangle it was given, every cell one site and never fractured, the text set once the entry has ended and the rules a beat later and kept through every slide, a wheel notch of any size turning one slide, a drag held half way leaving two heroes half swollen, a flick carrying the story on, a slow story snapping to its slide, the story stopping at its ends, and home returning the count.",
+  "hashes": [
+    {
+      "file": "reel.html",
+      "sha256": "62ca63c8af9b3a424b628ee08fd9178275714a58db14a8736f3571b233f1fcf3"
+    },
+    {
+      "file": "tell.html",
+      "sha256": "0cd09badc2ed802684a9883c28474480a65265e0d123555eb9df93b663e03c93"
+    }
+  ],
+  "matrix": [
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 16.666666666666668,
+      "inner": "flock",
+      "frames": 3470
+    },
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 24,
+      "fields": 1,
+      "dt": 30,
+      "inner": "bento",
+      "frames": 1939
+    },
+    {
+      "width": 390,
+      "height": 720,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 8.333333333333334,
+      "inner": "flock",
+      "frames": 6940
+    },
+    {
+      "width": 1363,
+      "height": 846,
+      "count": 30,
+      "fields": 0,
+      "dt": 50,
+      "inner": "flock",
+      "frames": 1157
+    }
+  ],
+  "totalFrames": 14836,
+  "drawingCommands": 14103659,
+  "story": {
+    "clickIdentity": {
+      "frames": 1330,
+      "kind": "band"
+    },
+    "start": {
+      "k": 0,
+      "hero": "Dune",
+      "share": 0.2,
+      "rest": {
+        "rectangle": 2,
+        "voronoi": 10,
+        "cut": 0,
+        "shortEdged": 0
+      }
+    },
+    "slides": [
+      {
+        "k": 0,
+        "hero": "Dune",
+        "share": 0.2,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0,
+          "shortEdged": 0
+        }
+      },
+      {
+        "changedAt": 15,
+        "k": 1,
+        "hero": "Coral",
+        "share": 0.2,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0,
+          "shortEdged": 0
+        }
+      },
+      {
+        "slide": 3,
+        "k": 3,
+        "hero": "Petal",
+        "share": 0.2,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 8,
+          "cut": 0,
+          "shortEdged": 1
+        }
+      },
+      {
+        "k": 4,
+        "hero": "Haze",
+        "share": 0.2,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0,
+          "shortEdged": 0
+        }
+      },
+      {
+        "k": 5,
+        "hero": "Coal",
+        "share": 0.2,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0,
+          "shortEdged": 0
+        }
+      },
+      {
+        "k": 6,
+        "hero": "Drift",
+        "share": 0.2,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 7,
+          "cut": 0,
+          "shortEdged": 2
+        }
+      },
+      {
+        "k": 7,
+        "hero": "Aurora",
+        "share": 0.2,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0,
+          "shortEdged": 0
+        }
+      }
+    ],
+    "text": {
+      "endAt": 146,
+      "swellAt": 146,
+      "textAt": 146,
+      "textFull": 209,
+      "ruleAt": 225,
+      "ruleFull": 305
+    },
+    "push": {
+      "changedAt": 15,
+      "k": 1,
+      "hero": "Coral",
+      "share": 0.2,
+      "rest": {
+        "rectangle": 3,
+        "voronoi": 9,
+        "cut": 0,
+        "shortEdged": 0
+      }
+    },
+    "drag": {
+      "slide": 3,
+      "k": 3,
+      "hero": "Petal",
+      "share": 0.2,
+      "rest": {
+        "rectangle": 3,
+        "voronoi": 8,
+        "cut": 0,
+        "shortEdged": 1
+      }
+    },
+    "notch": {
+      "one": 1,
+      "tiny": 1,
+      "back": -1,
+      "threeQuick": 2
+    },
+    "snap": {
+      "short": 0.3,
+      "long": 0.6
+    },
+    "ends": {
+      "last": 7
+    },
+    "back": {
+      "k": 0,
+      "hero": "Dune",
+      "share": 0.2,
+      "rest": {
+        "rectangle": 2,
+        "voronoi": 10,
+        "cut": 0,
+        "shortEdged": 0
+      }
+    },
+    "interrupted": {
+      "turnedAt": 15,
+      "k": 1,
+      "hero": "Coral",
+      "share": 0.2,
+      "rest": {
+        "rectangle": 3,
+        "voronoi": 9,
+        "cut": 0,
+        "shortEdged": 0
+      }
+    },
+    "home": {
+      "cells": 12,
+      "roots": 6,
+      "numbers": 6
+    },
+    "phone": {
+      "text": {
+        "endAt": 142,
+        "swellAt": 142,
+        "textAt": 142,
+        "textFull": 205,
+        "ruleAt": 221,
+        "ruleFull": 301
+      },
+      "slides": [
+        {
+          "k": 0,
+          "hero": "Dune",
+          "share": 0.2,
+          "rest": {
+            "rectangle": 2,
+            "voronoi": 10,
+            "cut": 0,
+            "shortEdged": 0
+          }
+        },
+        {
+          "k": 1,
+          "hero": "Mint",
+          "share": 0.2,
+          "rest": {
+            "rectangle": 2,
+            "voronoi": 8,
+            "cut": 0,
+            "shortEdged": 2
+          }
+        }
+      ]
+    }
+  }
+}

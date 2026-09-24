@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reel — Hive</title>
+<title>Cue — Hive</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; overflow: hidden; }
@@ -52,7 +52,7 @@
 </head>
 <body>
   <div class="stage">
-    <a class="back" href="index.html">&larr; Back · Reel</a> <span style="opacity:.55;margin-left:.6em">click a cell to open its page · its gallery flows: scroll, drag or flick it · click the image again for home</span>
+    <a class="back" href="index.html">&larr; Back · Cue</a> <span style="opacity:.55;margin-left:.6em">click a cell to open its page · Tell: the cluster stays, its heroes swell · Tell II: the cells take the stage in turn · Cue: the same story, every slide a scene change of the engine's own · click a hero or Escape for home</span>
     <canvas id="c"></canvas>
     <div class="meters" id="meters">
       area err <b id="mArea">–</b> · gap <b id="mGap">–</b> · overlap <b id="mOver">–</b> · rect <b id="mRect">–</b> · cells <b id="mSeeds">–</b> · solve <b id="mIter">–</b> · fields <b id="mInner">–</b>
@@ -65,6 +65,9 @@
       <button class="scene-btn" data-scene="hero">Hero</button>
       <button class="scene-btn" data-scene="sidebar">Sidebar</button>
       <button class="scene-btn" data-scene="frame">Frame</button>
+      <button class="scene-btn" data-scene="tell">Tell</button>
+      <button class="scene-btn" data-scene="tell2">Tell II</button>
+      <button class="scene-btn" data-scene="cue">Cue</button>
     </div>
     <div class="group"><span class="lbl">Elements</span>
       <input type="range" id="count" min="4" max="30" value="12"><span class="val" id="countVal">12</span>
@@ -1343,7 +1346,7 @@ function portalDecorate(content, voids, W, H, C, R) {
   const mirrors = voids.map(() => []);   // per void: [x, y, weight]
   for (const idx of pockets.values()) {
     const poly = portalOutline(idx.map(i => rects[i]));
-    const ref = idx.length === 1 ? null : solveWeights(idx.map(i => seeds[i]), idx.map(i => (rects[i][2] - rects[i][0]) * (rects[i][3] - rects[i][1])), poly, null, { maxIter: 60, tol: 1e-9 });
+    const ref = idx.length === 1 ? null : solveWeights(idx.map(i => seeds[i]), idx.map(i => (rects[i][2] - rects[i][0]) * (rects[i][3] - rects[i][1]) * (content[i].mfSwell || 1)), voids.tell2 ? portalBox(idx.map(i => rects[i])) : poly, null, voids.tell2 ? { maxIter: 60, tol: 1e-9, tris: idx.map(i => convexPlanes([[rects[i][0], rects[i][1]], [rects[i][2], rects[i][1]], [rects[i][2], rects[i][3]], [rects[i][0], rects[i][3]]])), domainArea: idx.reduce((q, i) => q + (rects[i][2] - rects[i][0]) * (rects[i][3] - rects[i][1]) * (content[i].mfSwell || 1), 0) } : { maxIter: 60, tol: 1e-9 });   // TELL: a hero's area is its card's, times its swell   // TELL II: the pocket's ground is its rectangles
     const cells = ref ? ref.diagram.cells : [{ pts: poly }];
     idx.forEach((i, k) => weights[i] = ref ? ref.weights[k] : 0);
     // the contacts: a cell's edge lying on a void's edge. The pocket's gauge
@@ -1354,16 +1357,27 @@ function portalDecorate(content, voids, W, H, C, R) {
     // void is at least that half-length deep and the mirrors sit close
     const contacts = [];
     idx.forEach((i, k) => {
-      const pts = cells[k].pts;
+      for (const part of (cells[k].pieces || [cells[k]])) {   // TELL II: a cell solved on pieces has a piece per rectangle; a piece of no area (a tie along a neighbour's edge) is no contact
+      if (part !== cells[k] && Math.abs(ringArea(part.pts)) < 1e-6) continue;
+      const pts = part.pts;
       for (let e = 0; e < pts.length; e++) {
         const p = pts[e], q = pts[(e + 1) % pts.length];
         if (Math.hypot(q[0] - p[0], q[1] - p[1]) < 1e-5) continue;
+        let held = false;
         vr.forEach((v, vi) => {
           const on = (c, lo, hi, ax) => Math.abs(p[ax] - c) < 1e-5 && Math.abs(q[ax] - c) < 1e-5 && Math.min(p[1 - ax], q[1 - ax]) > lo - 1e-5 && Math.max(p[1 - ax], q[1 - ax]) < hi + 1e-5;
           let side = null;
           if (on(v[0], v[1], v[3], 0)) side = 'left'; else if (on(v[2], v[1], v[3], 0)) side = 'right'; else if (on(v[1], v[0], v[2], 1)) side = 'top'; else if (on(v[3], v[0], v[2], 1)) side = 'bottom';
+          if (side) { held = true; if (!contacts.some(c => c.i === i && c.vi === vi && c.side === side)) contacts.push({ i, vi, side, mid: [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2] }); }
+        });
+        if (!held) vr.forEach((v, vi) => {   // TELL II: an edge along several voids is held by the piece the seed faces
+          const s = seeds[i];
+          const on = (c, lo, hi, ax) => Math.abs(p[ax] - c) < 1e-5 && Math.abs(q[ax] - c) < 1e-5 && Math.max(p[1 - ax], q[1 - ax]) > lo + 1e-5 && Math.min(p[1 - ax], q[1 - ax]) < hi - 1e-5 && s[1 - ax] > lo - 1e-5 && s[1 - ax] < hi + 1e-5;
+          let side = null;
+          if (on(v[0], v[1], v[3], 0)) side = 'left'; else if (on(v[2], v[1], v[3], 0)) side = 'right'; else if (on(v[1], v[0], v[2], 1)) side = 'top'; else if (on(v[3], v[0], v[2], 1)) side = 'bottom';
           if (side && !contacts.some(c => c.i === i && c.vi === vi && c.side === side)) contacts.push({ i, vi, side, mid: [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2] });
         });
+      }
       }
     });
     if (contacts.length) {
@@ -1402,6 +1416,11 @@ function portalDecorate(content, voids, W, H, C, R) {
   });
   return { content: rows, voids: vs, seeds: allSeeds, weights: allWeights, owned };
 }
+function portalBox(rects) {   // TELL II: a pocket's box, a convex bound for a ring
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const r of rects) { x0 = Math.min(x0, r[0]); y0 = Math.min(y0, r[1]); x1 = Math.max(x1, r[2]); y1 = Math.max(y1, r[3]); }
+  return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+}
 const portalCache = new Map();
 function portalScene(h, name, n) {
   const key = [name, h.COLS, h.ROWS, n, h.W, h.H, portalFlip ? 'm' : ''].join('|');
@@ -1412,7 +1431,11 @@ function portalScene(h, name, n) {
   return s;
 }
 function portalPin(content, gotS, name) {
-  if (!portalFocus || !(name in PORTAL_TEMPLATES)) return;
+  if (name === 'tell2' && tell2 && tell2.slotOf) {   // TELL II: the cast takes the stage's slots and the ring's cells their chambers, as the story plans; nothing is matched by distance
+    content.forEach((b, k) => { const slot = tell2.slotOf.get(b); if (slot !== undefined && slot < gotS.length) gotS[k] = slot; });
+    return;
+  }
+  if (!portalFocus || !(name in PORTAL_TEMPLATES || name === 'tell')) return;   // TELL: a story's hero takes the first slot when the page is laid again (an add, a remove, a resize)
   const k = content.indexOf(portalFocus);
   if (k < 0) return;
   const j = gotS.indexOf(0);
@@ -1420,6 +1443,956 @@ function portalPin(content, gotS, name) {
   gotS[j] = gotS[k]; gotS[k] = 0;          // the focus takes slot 0; its holder takes the focus's slot
 }
 
+// TELL. The inverse of a page: the cells stay, and a story of short blurbs
+// scrolls through a reading column like a slide show. The cluster is laid
+// once beside the column, the bento's own layout, and stays for the whole
+// story: nothing travels after the entry. Each slide names a place in the
+// cluster, and the card nearest it (not one of the last two slides' heroes)
+// is the slide's hero: it swells where it stands, its neighbours giving way,
+// and shrinks back as the next swells, linked to the scroll, so the cluster
+// turns like a carousel under the text. The column is a wall once seated,
+// so the whitespace stays exact under every swell.
+const TELL_SLIDES = [
+  { at: [0.12, 0.15], lines: [1, 0.86, 0.6] },
+  { at: [0.9, 0.25],  lines: [1, 0.72, 0.9, 0.5] },
+  { at: [0.5, 0.85],  lines: [0.94, 1, 0.66] },
+  { at: [0.2, 0.75],  lines: [1, 0.8] },
+  { at: [0.75, 0.6],  lines: [0.9, 1, 0.76, 0.58] },
+  { at: [0.45, 0.2],  lines: [1, 0.68, 0.84] },
+  { at: [0.95, 0.9],  lines: [0.96, 1, 0.52] },
+  { at: [0.1, 0.45],  lines: [1, 0.9, 0.7] },
+];
+const TELL_COL = 0.25;     // the column's share of the width; of the height, as a band across the top, on a phone
+const TELL_HERO = 0.2;     // a hero's share of the cluster, whatever its card's: every hero the same size
+// The story's page: the column a full-height void with its corners on the
+// page's edges, so the whitespace is exact by Portal's construction, and the
+// cluster the bento's guillotine of the rest. A phone stacks: the column a
+// band across the top, the cluster below.
+function tellPage(C, R, n, W, H) {
+  let column, region, rules;
+  if (W < H) { const r0 = Math.max(1, Math.round(R * 0.3)); column = [0, 0, C, r0]; region = [0, r0, C, R]; rules = ['bottom']; }
+  else { const c0 = Math.max(1, Math.round(C * TELL_COL)); column = [0, 0, c0, R]; region = [c0, 0, C, R]; rules = ['right']; }
+  column.portalText = true; column.portalRules = rules;
+  return { content: guillotine(region, n, 1), voids: [column], region };
+}
+const tellCache = new Map();
+function tellScene(h, n) {
+  const key = [h.COLS, h.ROWS, n, h.W, h.H].join('|');
+  if (tellCache.has(key)) return tellCache.get(key);
+  const p = tellPage(h.COLS, h.ROWS, n, h.W, h.H), sc = portalDecorate(p.content, p.voids, h.W, h.H, h.COLS, h.ROWS);
+  tellCache.set(key, sc); if (tellCache.size > 8) tellCache.delete(tellCache.keys().next().value);
+  return sc;
+}
+// the story: its scroll (px, a page's height a slide), its speed, the slide
+// it is on, the heroes chosen for its slides, and the text's clocks
+let tell = null;
+const tellPitch = () => H;
+const TELL_SNAP = 0.25;     // s: a slow story eases onto its nearest slide in about this
+const TELL_RELAX = 0.35;    // s: the story's speed eases away in this, half a reel's, so a slide arrives in about a second
+function tellStart(origin) {
+  reelDrop(); tell2Drop(); cueDrop();
+  portalFocus = null; portalFlip = false;
+  tell = { y: 0, v: 0, k: 0, heroes: [], drag: null, enter: 0, key: '', alpha: 0, rule: 0, fullAt: -1, seen: -1 };
+  portalEnter('tell', origin || { x: W / 2, y: H / 2 });
+  // the heroes, from the cluster as laid: for each slide the card whose
+  // place is nearest the slide's, not one of the last two slides' heroes
+  const n = root.bodies.filter(b => !b.isVoid && !b.leaving && !b.isSelf).length;
+  const g = tellPage(root.COLS, root.ROWS, n, W, H).region;
+  const cards = root.bodies.filter(b => !b.isVoid && !b.isSelf && !b.leaving && b.rect);
+  for (const sd of TELL_SLIDES) {
+    const px = g[0] + sd.at[0] * (g[2] - g[0]), py = g[1] + sd.at[1] * (g[3] - g[1]), recent = tell.heroes.slice(-2);
+    let best = null, bd = Infinity;
+    for (const b of cards) { if (recent.includes(b)) continue; const d = Math.hypot((b.rect[0] + b.rect[2]) / 2 - px, (b.rect[1] + b.rect[3]) / 2 - py); if (d < bd) { bd = d; best = b; } }
+    tell.heroes.push(best);
+  }
+  portalFocus = tell.heroes[0];
+  tellSwell();
+}
+function tellDrop() {
+  if (!tell) return;
+  tell = null;
+  for (const b of root.bodies) { b.tellMix = 0; if (b.rect && b.rect.reelLive) b.rect.reelLive = false; if (b.reelPinned && !reel) { b.reelPinned = false; b.reelParked = false; b.reelFade = undefined; b.pin = 0; } }   // unpinned: the next change finds the cards as a page leaves them
+}
+// The swell, handed. Once the entry has ended the page is authored again
+// whenever a hero's share changes: Portal's construction with each hero's
+// area grown by its share, the column's mirrors solved with it, and handed
+// to every body at once, weights included, so the diagram is the authored
+// one on the frame it changes, the column stays exact under every swell,
+// and a hero grows where it stands with its neighbours giving way. A hero
+// grows to a fifth of the cluster, whatever its card, so every hero is
+// the same size. The first swell arrives over a third of a second once
+// the cluster is in.
+function tellStep(dt) {
+  if (!tell || guestLeft > 0) return;
+  tell.enter += (1 - tell.enter) * (1 - Math.exp(-dt / 0.35));
+  if (tell.enter > 0.999) tell.enter = 1;
+  const cards = root.bodies.filter(b => !b.isVoid && !b.isSelf && !b.leaving && b.rect), voids = root.bodies.filter(b => b.isVoid && !b.leaving && b.rect);
+  if (!cards.length || !voids.length) return;
+  // the targets: a hero's from its card's area to its share of the cluster by
+  // its mix, the other cards scaled to what is left, so the targets sum to the
+  // cluster and a hero at rest holds its share exactly (a card's own area is
+  // its rectangle's; rectArea would read the solved area a handoff left on it)
+  const own = r => (r[2] - r[0]) * (r[3] - r[1]), g = tellPage(root.COLS, root.ROWS, cards.length, W, H).region, cluster = own(g);
+  const m = b => (b.tellMix || 0) * tell.enter, want = b => TELL_HERO * cluster * m(b) + own(b.rect) * (1 - m(b));
+  let heroSum = 0, restSum = 0; for (const b of cards) { if (m(b) > 0) heroSum += want(b); else restSum += own(b.rect); }
+  const scale = restSum > 0 ? Math.max(0.05, (cluster - heroSum) / restSum) : 1;
+  const swell = b => m(b) > 0 ? want(b) / own(b.rect) : scale;
+  const key = cards.map(b => swell(b).toFixed(4)).join(',');
+  if (key === tell.key) return;   // nothing swelled or shrank: the auction holds what it was handed
+  tell.key = key;
+  const rects = cards.map(b => { const r = b.rect.slice(0, 4); r.mfSwell = swell(b); return r; });
+  const vr = voids.map(v => { const q = v.rect.slice(0, 4); q.portalText = v.rect.portalText; q.portalRules = v.rect.portalRules; return q; });
+  const dec = portalDecorate(rects, vr, W, H, root.COLS, root.ROWS);
+  dec.content.forEach((r, i) => { const b = cards[i]; reelPlace(b, r, r.mfArea); b.claim = b.claimTarget; const q = b.subs[0]; q.w = dec.weights[i]; q.live = true; });   // the solved weight: exact this frame, no auction lag
+  dec.voids.forEach((r, i) => { const v = voids[i]; r.reelLive = true; v.rect = r; v.formRect = r; v.claimTarget = rectArea(r); v.claim = v.claimTarget; });
+}
+// the swell, linked to the scroll: slide k's hero holds a share that peaks
+// on its slide and is gone a slide away, so one hero shrinks as the next
+// grows and the story can be read backwards the same way
+function tellSwell() {
+  for (const b of root.bodies) b.tellMix = 0;
+  const pos = tell.y / tellPitch();
+  tell.heroes.forEach((h, k) => { if (!h) return; const w = Math.max(0, 1 - Math.abs(pos - k)); if (w > 0) h.tellMix = Math.min(1, (h.tellMix || 0) + w); });
+}
+// the flow of the story: a speed eases away, a slow story snaps to its slide,
+// and the slide the story is on is the one nearest; its hero is the page's
+// image, for the label and the click home
+function tellFlow(dt) {
+  if (!tell) return;
+  const pitch = tellPitch(), last = (TELL_SLIDES.length - 1) * pitch;
+  if (!tell.drag) {
+    const snapping = Math.abs(tell.v) < 60;   // slow: the snap takes over, and what speed is left goes with it, so the story does not creep on past its slide
+    tell.v *= Math.exp(-dt / (snapping ? TELL_SNAP : TELL_RELAX));
+    if (Math.abs(tell.v) < 0.05) tell.v = 0;
+    tell.y += tell.v * dt;
+    if (tell.y < 0) { tell.y = 0; tell.v = 0; }
+    if (tell.y > last) { tell.y = last; tell.v = 0; }
+    if (snapping) { const target = Math.round(tell.y / pitch) * pitch; tell.y += (target - tell.y) * (1 - Math.exp(-dt / TELL_SNAP)); }
+  }
+  const k = Math.max(0, Math.min(TELL_SLIDES.length - 1, Math.round(tell.y / pitch)));
+  if (k !== tell.k) { tell.k = k; portalFocus = tell.heroes[k]; }
+  tellSwell();
+}
+// the wheel aims the story at the next slide: a notch, whatever its size,
+// sends it one slide on (or back) at the speed whose easing carries it there,
+// so a slide show turns a slide a notch and a long swipe passes slides one by one
+function tellScroll(dy) {
+  if (!tell) return false;
+  if (tell.drag || Math.abs(dy) < 1) return true;
+  const pitch = tellPitch(), aim = Math.max(0, Math.min(TELL_SLIDES.length - 1, Math.round(tell.y / pitch) + Math.sign(dy)));
+  tell.v = reelClampV((aim * pitch - tell.y) / TELL_RELAX);
+  return true;
+}
+function tellDragStart(x, y, t) { if (!tell) return false; tell.drag = { y0: tell.y, p0: y, last: y, t, v: 0 }; tell.v = 0; return true; }
+function tellDragMove(x, y, t) {
+  if (!tell || !tell.drag) return false;
+  const d = tell.drag, dt = Math.max(1e-3, (t - d.t) / 1000), last = (TELL_SLIDES.length - 1) * tellPitch();
+  tell.y = Math.max(0, Math.min(last, d.y0 + (d.p0 - y)));
+  const v = (d.last - y) / dt; d.v += (v - d.v) * Math.min(1, dt / 0.05); d.last = y; d.t = t;
+  return true;
+}
+function tellDragEnd(t) { if (!tell || !tell.drag) return false; const d = tell.drag; tell.v = t - d.t > 120 ? 0 : reelClampV(d.v); tell.drag = null; return true; }
+// The blurbs, in the column, each at its place on the scroll: the slide's
+// and its neighbours' as they pass, a column's height apart, a title (the
+// hero's name) over its lines, fading at the column's ends. The text is set
+// once the entry has ended and the column is seated, and stays: no slide
+// moves the cluster; the rules along the column's side come a beat after
+// the text has fully appeared.
+function tellProseStep(ctx, type, dt, t) {
+  if (!tell) return;
+  const p = tell, gap = t - p.seen, el = p.seen < 0 || gap > 0.1 ? dt : gap;
+  p.seen = t;
+  let v = null;
+  if (guestLeft <= 0) for (const b of root.bodies) if (b.isVoid && !b.leaving && b.rect && b.rect.portalText && b.crystal >= 0.99) v = b;
+  p.alpha += ((v ? 1 : 0) - p.alpha) * (1 - Math.exp(-el / (v ? 0.30 : 0.08)));
+  if (!v || p.alpha <= 0.97) p.fullAt = -1; else if (p.fullAt < 0) p.fullAt = t;
+  p.rule += ((v && p.fullAt >= 0 && t - p.fullAt > 0.25 ? 1 : 0) - p.rule) * (1 - Math.exp(-el / (v ? 0.45 : 0.08)));
+  if (!v || p.alpha < 0.01) return;
+  const q = v.rect, r = [q[0] * root.PW, q[1] * root.PH, q[2] * root.PW, q[3] * root.PH], pad = Math.max(16, Math.min(48, 0.024 * W));
+  const x0 = r[0] + pad, x1 = r[2] - pad, y0 = r[1] + pad, y1 = r[3] - pad;
+  if (x1 - x0 < 90) return;
+  const title = Math.round(type.num * 0.9), line = Math.max(4, Math.round(type.name * 0.55)), lead = Math.round(line * 2.1);
+  ctx.save();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.globalAlpha = 0.22 * p.rule; ctx.beginPath();
+  const g = Math.round(pad / 2) + 0.5;
+  for (const e of v.rect.portalRules || []) {
+    if (e === 'left') { ctx.moveTo(r[0] + g, r[1] + pad); ctx.lineTo(r[0] + g, r[3] - pad); }
+    if (e === 'right') { ctx.moveTo(r[2] - g, r[1] + pad); ctx.lineTo(r[2] - g, r[3] - pad); }
+    if (e === 'top') { ctx.moveTo(r[0] + pad, r[1] + g); ctx.lineTo(r[2] - pad, r[1] + g); }
+    if (e === 'bottom') { ctx.moveTo(r[0] + pad, r[3] - g); ctx.lineTo(r[2] - pad, r[3] - g); }
+  }
+  ctx.stroke();
+  const measure = Math.min(560, x1 - x0), pitch = tellPitch(), travel = y1 - y0;   // a slide's blurb travels the column's height, so its neighbours stand outside the column at rest
+  ctx.beginPath(); ctx.moveTo(r[0], r[1]); ctx.lineTo(r[2], r[1]); ctx.lineTo(r[2], r[3]); ctx.lineTo(r[0], r[3]); ctx.closePath(); ctx.clip();
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  for (let k = tell.k - 1; k <= tell.k + 1; k++) {
+    if (k < 0 || k >= TELL_SLIDES.length) continue;
+    const lines = TELL_SLIDES[k].lines, hb = Math.round(title * 1.8) + lines.length * lead;
+    const yk = y0 + (y1 - y0 - hb) / 2 + (k * pitch - tell.y) / pitch * travel;
+    const edge = Math.min(1, Math.max(0, (yk + hb - y0) / 40), Math.max(0, (y1 - yk) / 40));
+    const a = p.alpha * edge;
+    if (a < 0.01) continue;
+    const hero = tell.heroes[k];
+    if (hero) {
+      ctx.globalAlpha = 0.92 * a; ctx.font = `600 ${title}px system-ui, sans-serif`; ctx.fillText(hero.name, x0, yk);
+      ctx.globalAlpha = 0.5 * a; ctx.beginPath(); ctx.moveTo(x0, yk + Math.round(title * 1.3) + 0.5); ctx.lineTo(x0 + Math.round(title * 1.6), yk + Math.round(title * 1.3) + 0.5); ctx.stroke();
+    }
+    ctx.globalAlpha = 0.20 * a;
+    let y = yk + Math.round(title * 1.8);
+    for (const f of lines) { roundedPath(ctx, [[x0, y], [x0 + measure * f, y], [x0 + measure * f, y + line], [x0, y + line]], line / 2, false); ctx.fill(); y += lead; }
+  }
+  ctx.restore();
+}
+// TELL II. A scroll-tell with the cluster as its cast. The cluster is small
+// and sits to one side; the blurb stands in the open, in a box of its own.
+// A slide sends one cell out of the cluster to a place around the blurb, and
+// the cells already on the stage stay where they are, so a sequence builds
+// up; a fresh slide sends the last sequence's cells back into the cluster as
+// its own first cell comes out. The cluster is a revolver: a ring of
+// chambers around a bore, holding the cells not on stage in the order they
+// will go out; the chamber facing the stage fires, the ring turns one
+// chamber, and the cells that come back reload the chambers just behind the
+// front. The stage and the blurb are the same every slide.
+const TELL2_SLIDES = [
+  { place: 'top', fresh: true,   lines: [1, 0.86, 0.6] },
+  { place: 'br',                 lines: [1, 0.72, 0.9, 0.5] },
+  { place: 'left',               lines: [0.94, 1, 0.66] },
+  { place: 'bl', fresh: true,    lines: [1, 0.8] },
+  { place: 'tr',                 lines: [0.9, 1, 0.76, 0.58] },
+  { place: 'below', fresh: true, lines: [1, 0.68, 0.84] },
+  { place: 'tl',                 lines: [0.96, 1, 0.52] },
+  { place: 'right',              lines: [1, 0.9, 0.7] },
+];
+// The stage, in fractions of the page: three columns and three rows of
+// places around the blurb's box, the box reaching a little over the places
+// beside it, so a place on a diagonal has its corner behind the text. The
+// rows touch and the places lie on a few shared lines, so the whitespace
+// between places is never a sliver, and the cluster stands well off the
+// stage: a cluster cell's mirror nearer a corner of a cell on the stage than
+// the corner's own reach (about the cell's half-diagonal) would cut it. On a
+// phone the stage is a row of three places under the box, a place's column
+// fixed for the story, so a cell on the stage never moves for a newcomer.
+const TELL2_COLS = { A: [0.09, 0.26], B: [0.33, 0.49], C: [0.56, 0.73] };
+const TELL2_ROWS = { top: [0, 0.30], mid: [0.30, 0.70], bottom: [0.70, 1] };
+const TELL2_PLACES = { top: ['B', 'top'], below: ['B', 'bottom'], left: ['A', 'mid'], right: ['C', 'mid'], tl: ['A', 'top'], tr: ['C', 'top'], bl: ['A', 'bottom'], br: ['C', 'bottom'] };
+const TELL2_PHONE_COL = { top: 1, below: 1, left: 0, right: 2, tl: 0, tr: 2, bl: 0, br: 2 };
+const TELL2_BOX = [0.23, 0.25, 0.59, 0.75];
+const TELL2_CLUSTER = [0.83, 0.20, 1, 0.80];
+const TELL2_PHONE = { box: [0.04, 0.04, 0.96, 0.34], row: [0.36, 0.56], cluster: [0.34, 0.70, 1, 1] };
+function tell2Place(where, W, H) {
+  if (W < H) { const c = TELL2_PHONE_COL[where] || 0, [y0, y1] = TELL2_PHONE.row; return [c / 3, y0, (c + 1) / 3, y1]; }
+  const [c, r] = TELL2_PLACES[where] || TELL2_PLACES.top, x = TELL2_COLS[c], y = TELL2_ROWS[r]; return [x[0], y[0], x[1], y[1]];
+}
+// THE REVOLVER: the ring of chambers around the cluster's edge, a g by g
+// grid's rim, g chosen so the ring holds every cell; the bore is what the
+// rim leaves. The ring is ordered from the chamber facing the stage (the
+// middle of the cluster's left side, or of its top on a phone) round the
+// rim, so the chambers just behind the front come last: the spent ones,
+// where the cells coming back reload.
+function tell2Ring(n, W, H) {
+  const g = Math.max(3, Math.ceil(n / 4) + 1), P = [];
+  for (let c = 0; c < g; c++) P.push([c, 0]);
+  for (let r = 1; r < g; r++) P.push([g - 1, r]);
+  for (let c = g - 2; c >= 0; c--) P.push([c, g - 1]);
+  for (let r = g - 2; r >= 1; r--) P.push([0, r]);
+  const m = Math.floor((g - 1) / 2), front = W < H ? P.findIndex(q => q[0] === m && q[1] === 0) : P.findIndex(q => q[0] === 0 && q[1] === m);
+  return { g, ring: P.slice(front).concat(P.slice(0, front)) };
+}
+// THE WHITESPACE IS WHAT THE CELLS LEAVE: the page less the stage and the
+// cluster, as rectangles. The page is cut along every rectangle's edges into
+// a grid; the cells of the grid nothing covers are the whitespace, run
+// together down a column where they follow one another, never across a
+// grid line: so every corner of a piece is a page corner or a corner of
+// the piece or rectangle beside it, never a point on another's edge, where
+// the mirrors of two voids meeting a cell's corner would cut the corner by
+// a few px. A cell's edge along several pieces is held by the piece its
+// seed faces (see the construction).
+function tell2Complement(C, R, rects) {
+  const r6 = v => Math.round(v * 1e6) / 1e6, E = 1e-9;
+  const xs = [...new Set([0, C, ...rects.flatMap(r => [r[0], r[2]])].map(r6))].sort((a, b) => a - b);
+  const ys = [...new Set([0, R, ...rects.flatMap(r => [r[1], r[3]])].map(r6))].sort((a, b) => a - b);
+  const covered = (x, y) => rects.some(r => x > r[0] + E && x < r[2] - E && y > r[1] + E && y < r[3] - E);
+  const out = [];
+  for (let i = 0; i < xs.length - 1; i++) {
+    let open = null;
+    for (let j = 0; j < ys.length - 1; j++) {
+      const free = !covered((xs[i] + xs[i + 1]) / 2, (ys[j] + ys[j + 1]) / 2);
+      if (free && open) open[3] = ys[j + 1];
+      else if (free) { open = [xs[i], ys[j], xs[i + 1], ys[j + 1]]; out.push(open); }
+      else open = null;
+    }
+  }
+  return out;
+}
+// THE STORY IS PLANNED WHEN IT BEGINS, from the cells in id order: the ring
+// holds them all; a slide takes the front cell for its place; a fresh slide
+// first sends the cast back to the tail, in the order it went out. So the
+// cluster always holds the right poise: the next cell out is at the front.
+function tell2Plan(cells) {
+  const slides = []; let arc = cells.slice(), cast = [];
+  for (const sd of TELL2_SLIDES) {
+    if (sd.fresh) { arc = arc.concat(cast.map(c => c.b)); cast = []; }
+    if (arc.length) { const b = arc[0]; arc = arc.slice(1); cast = cast.concat([{ b, place: sd.place }]); }
+    slides.push({ cast, arc });
+  }
+  return slides;
+}
+// A slide's page, in lattice units: the stage's rectangles first, one a
+// cell of the cast, then the ring's chambers, one a cell of the arc, then
+// the whitespace: the bore, the spent chambers, the empty places, and the
+// pieces around the stage and the cluster, cut once for the whole story.
+// The bore and the spent chambers yield: they give up their ground the
+// moment the page changes and take it back once the change has ended.
+const tell2Fixed = new Map();
+function tell2Page(k, C, R, n, W, H, story) {
+  const r6 = v => Math.round(v * 1e6) / 1e6, L = f => [r6(f[0] * C), r6(f[1] * R), r6(f[2] * C), r6(f[3] * R)];
+  const sl = story[Math.min(k, story.length - 1)] || { cast: [], arc: [] };
+  const cl = L(W < H ? TELL2_PHONE.cluster : TELL2_CLUSTER), { g, ring } = tell2Ring(n, W, H);
+  const cw = (cl[2] - cl[0]) / g, ch = (cl[3] - cl[1]) / g, chamber = ([c, r]) => [r6(cl[0] + c * cw), r6(cl[1] + r * ch), r6(cl[0] + (c + 1) * cw), r6(cl[1] + (r + 1) * ch)];
+  const stage = sl.cast.map(c => L(tell2Place(c.place, W, H)));
+  const content = [...stage, ...ring.slice(0, sl.arc.length).map(chamber)];
+  const key = [C, R, W, H].join('|');
+  if (!tell2Fixed.has(key)) tell2Fixed.set(key, tell2Complement(C, R, [...Object.keys(TELL2_PLACES).map(p => L(tell2Place(p, W, H))), cl]));
+  const filled = new Set(sl.cast.map(c => c.place));
+  const voids = tell2Fixed.get(key).map(r => r.slice());
+  for (const p of Object.keys(TELL2_PLACES)) if (!filled.has(p) && !(W < H && [...filled].some(q => TELL2_PHONE_COL[q] === TELL2_PHONE_COL[p]))) { const r = L(tell2Place(p, W, H)); if (!voids.some(v => rectsEqual(v, r))) voids.push(r); }
+  const bore = [r6(cl[0] + cw), r6(cl[1] + ch), r6(cl[0] + (g - 1) * cw), r6(cl[1] + (g - 1) * ch)]; bore.tell2Yield = true; voids.push(bore);
+  for (const q of ring.slice(sl.arc.length)) { const r = chamber(q); r.tell2Yield = true; voids.push(r); }
+  voids.tell2 = true;   // solved on its rectangles (see the construction)
+  return { content, voids, box: L(W < H ? TELL2_PHONE.box : TELL2_BOX), cast: sl.cast.length, bore, chambers: ring.map(chamber) };
+}
+const tell2Cache = new Map();
+function tell2Scene(h, n) {
+  if (!tell2) return null;
+  const cells = h.bodies.filter(b => !b.isVoid && !b.isSelf && !b.leaving).sort((a, b) => a.id - b.id);
+  if (tell2.n !== cells.length) { tell2.n = cells.length; tell2.story = tell2Plan(cells); tell2Cache.clear(); }   // an add or a remove: the story is planned again from the cells there are
+  const k = Math.max(0, tell2.k), sl = tell2.story[Math.min(k, tell2.story.length - 1)];
+  tell2.slotOf = new Map(); sl.cast.forEach((c, i) => tell2.slotOf.set(c.b, i)); sl.arc.forEach((b, j) => tell2.slotOf.set(b, sl.cast.length + j));
+  const key = [k, h.COLS, h.ROWS, n, h.W, h.H].join('|');
+  if (tell2Cache.has(key)) return tell2Cache.get(key);
+  const p = tell2Page(k, h.COLS, h.ROWS, n, h.W, h.H, tell2.story), sc = portalDecorate(p.content, p.voids, h.W, h.H, h.COLS, h.ROWS);
+  sc.voids.forEach((q, i) => { if (p.voids[i].tell2Yield) q.tell2Yield = true; });
+  tell2Cache.set(key, sc); if (tell2Cache.size > 24) tell2Cache.delete(tell2Cache.keys().next().value);
+  return sc;
+}
+// the story: its scroll (px, a page's height a slide), its speed, the slide
+// it is on, its plan, the cells on stage now, and the text's clocks
+let tell2 = null;
+const tell2Pitch = () => H;
+function tell2Start(origin) {
+  reelDrop(); tellDrop(); cueDrop();
+  const cells = root.bodies.filter(b => !b.isVoid && !b.isSelf && !b.leaving).sort((a, b) => a.id - b.id);
+  tell2 = { y: 0, v: 0, k: -1, n: cells.length, story: tell2Plan(cells), on: [], slotOf: null, drag: null, entered: false, alpha: 0, rule: 0, fullAt: -1, seen: -1, changed: -1e9 };
+  tell2Cache.clear();
+  tell2Go(0, origin || { x: W / 2, y: H / 2 });
+}
+function tell2Drop() {
+  if (!tell2) return;
+  tell2 = null;
+  for (const v of root.bodies) { if (v.rect && v.rect.reelLive) v.rect.reelLive = false; v.tell2Yield = false; }
+}
+// a slide: the front cell takes its place; on a fresh slide the last cast
+// goes back into the ring first; a page change with Portal's smoothness,
+// spreading from the front. The first of the cast is the page's image, for
+// the click home.
+function tell2Go(k, origin) {
+  if (!tell2) return;
+  tell2.k = k; const sl = tell2.story[Math.min(k, tell2.story.length - 1)];
+  const was = tell2.on.slice();
+  tell2.on = sl.cast.map(c => c.b).filter(b => !b.leaving); tell2.changed = simTime;
+  for (const b of root.bodies) b.tell2Stay = false;
+  for (const c of sl.cast) if (was.includes(c.b)) c.b.tell2Stay = true;   // on the stage already, at its place: a bystander to this change
+  const front = tell2.on[tell2.on.length - 1] || null;
+  portalFocus = tell2.on[0] || null; portalFlip = false;
+  portalEnter('tell2', origin || (front ? { x: front.x, y: front.y } : { x: W / 2, y: H / 2 }));
+}
+// the flow of the story, a Tell's: a speed eases away, a slow story snaps
+// to its slide, the slide the story is on is the one nearest, and a change
+// is made at most every quarter second, since each is a page change. The
+// bore and the spent chambers are marked to yield.
+function tell2Flow(dt) {
+  if (!tell2) return;
+  const pitch = tell2Pitch(), last = (TELL2_SLIDES.length - 1) * pitch;
+  if (!tell2.drag) {
+    const snapping = Math.abs(tell2.v) < 60;
+    tell2.v *= Math.exp(-dt / (snapping ? TELL_SNAP : TELL_RELAX));
+    if (Math.abs(tell2.v) < 0.05) tell2.v = 0;
+    tell2.y += tell2.v * dt;
+    if (tell2.y < 0) { tell2.y = 0; tell2.v = 0; }
+    if (tell2.y > last) { tell2.y = last; tell2.v = 0; }
+    if (snapping) { const target = Math.round(tell2.y / pitch) * pitch; tell2.y += (target - tell2.y) * (1 - Math.exp(-dt / TELL_SNAP)); }
+  }
+  const k = Math.max(0, Math.min(TELL2_SLIDES.length - 1, Math.round(tell2.y / pitch)));
+  if (k !== tell2.k && simTime - tell2.changed > 0.25) tell2Go(k, null);
+  if (!tell2.entered && guestLeft <= 0) tell2.entered = true;
+  for (const v of root.bodies) if (v.isVoid) v.tell2Yield = !!(v.rect && v.rect.tell2Yield);
+}
+// THE SETTLED SLIDE IS THE AUTHORED ONE. Once a slide's change has ended the
+// authored weights are handed to every body each frame, the ring's, the
+// cast's and the whitespace's mirrors alike, as a reel hands its own (the
+// bore and the spent chambers once they have taken their ground back): the
+// whitespace here is cut into pieces, and the live auction, solving the
+// same claims from wherever it was, settles a hair off the authored diagram
+// near a piece's mirrors, which sit close behind a short edge. Handed, the
+// diagram is the authored one, exact. A piece no mirror stands in (its whole
+// is held by its neighbours' mirrors) keeps its own site.
+function tell2Step() {
+  if (!tell2 || guestLeft > 0) return;
+  const n = root.bodies.filter(b => !b.isVoid && !b.isSelf && !b.leaving).length, sc = tell2Scene(root, n);
+  if (!sc) return;
+  for (const b of root.bodies) {
+    if (b.isSelf || b.leaving || !b.rect || (!b.isVoid && b.journey)) continue;   // a void keeps its journey's record; a card still travelling is not handed
+    if (b.isVoid) {
+      if (b.tell2Yield && b.claim < 0.99 * b.claimTarget) continue;   // still taking its ground back: it grows at its own pace among the handed
+      if (!b.rect.reelLive) { const j = sc.voids.findIndex(r => rectsEqual(r, b.rect)); if (j < 0) continue; if (!sc.voids[j].mfSites.length) { b.claimTarget = CLAIM_MIN; b.claim = CLAIM_MIN; continue; } const r = Object.assign([], sc.voids[j]); r.reelLive = true; b.rect = r; b.formRect = r; }   // a piece no mirror stands in holds nothing: its whole is held by its neighbours' mirrors
+      b.claimTarget = rectArea(b.rect); b.claim = b.claimTarget;
+    } else {
+      const i = sc.content.findIndex(r => rectsEqual(r, b.rect)); if (i < 0) continue;
+      b.claimTarget = sc.content[i].mfArea; b.claim = b.claimTarget;
+      const [ex, ey] = root.rectCenter(b.rect); b.x = ex; b.y = ey; b.vx = 0; b.vy = 0;
+      const q = b.subs[0]; q.w = sc.weights[i]; q.live = true;
+    }
+  }
+}
+function tell2Scroll(dy) {
+  if (!tell2) return false;
+  if (tell2.drag || Math.abs(dy) < 1) return true;
+  const pitch = tell2Pitch(), aim = Math.max(0, Math.min(TELL2_SLIDES.length - 1, Math.round(tell2.y / pitch) + Math.sign(dy)));
+  tell2.v = reelClampV((aim * pitch - tell2.y) / TELL_RELAX);
+  return true;
+}
+function tell2DragStart(x, y, t) { if (!tell2) return false; tell2.drag = { y0: tell2.y, p0: y, last: y, t, v: 0 }; tell2.v = 0; return true; }
+function tell2DragMove(x, y, t) {
+  if (!tell2 || !tell2.drag) return false;
+  const d = tell2.drag, dt = Math.max(1e-3, (t - d.t) / 1000), last = (TELL2_SLIDES.length - 1) * tell2Pitch();
+  tell2.y = Math.max(0, Math.min(last, d.y0 + (d.p0 - y)));
+  const v = (d.last - y) / dt; d.v += (v - d.v) * Math.min(1, dt / 0.05); d.last = y; d.t = t;
+  return true;
+}
+function tell2DragEnd(t) { if (!tell2 || !tell2.drag) return false; const d = tell2.drag; tell2.v = t - d.t > 120 ? 0 : reelClampV(d.v); tell2.drag = null; return true; }
+// The blurbs, in the box: each at its place on the scroll, the slide's and
+// its neighbours' as they pass, a box's height apart, titled with its cast's
+// names over its lines, fading at the box's ends. The text is set once the
+// entry has ended and stays: the cast changes under it, and a corner of a
+// cell on the stage may lie behind it. A rule along the box's left edge
+// comes a beat after the text has fully appeared.
+function tell2ProseStep(ctx, type, dt, t) {
+  if (!tell2) return;
+  const p = tell2, gap = t - p.seen, el = p.seen < 0 || gap > 0.1 ? dt : gap;
+  p.seen = t;
+  const v = p.entered;
+  p.alpha += ((v ? 1 : 0) - p.alpha) * (1 - Math.exp(-el / (v ? 0.30 : 0.08)));
+  if (!v || p.alpha <= 0.97) p.fullAt = -1; else if (p.fullAt < 0) p.fullAt = t;
+  p.rule += ((v && p.fullAt >= 0 && t - p.fullAt > 0.25 ? 1 : 0) - p.rule) * (1 - Math.exp(-el / (v ? 0.45 : 0.08)));
+  if (!v || p.alpha < 0.01) return;
+  const bx = W < H ? TELL2_PHONE.box : TELL2_BOX, r = [bx[0] * W, bx[1] * H, bx[2] * W, bx[3] * H], pad = Math.max(16, Math.min(48, 0.024 * W));
+  const x0 = r[0] + pad, x1 = r[2] - pad, y0 = r[1] + pad, y1 = r[3] - pad;
+  if (x1 - x0 < 90) return;
+  const title = Math.round(type.num * 0.9), line = Math.max(4, Math.round(type.name * 0.55)), lead = Math.round(line * 2.1);
+  ctx.save();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.globalAlpha = 0.22 * p.rule; ctx.beginPath();
+  const g = Math.round(pad / 2) + 0.5;
+  ctx.moveTo(r[0] + g, r[1] + pad); ctx.lineTo(r[0] + g, r[3] - pad);
+  ctx.stroke();
+  const measure = Math.min(560, x1 - x0), pitch = tell2Pitch(), travel = y1 - y0;
+  ctx.beginPath(); ctx.moveTo(r[0], r[1]); ctx.lineTo(r[2], r[1]); ctx.lineTo(r[2], r[3]); ctx.lineTo(r[0], r[3]); ctx.closePath(); ctx.clip();
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  for (let k = p.k - 1; k <= p.k + 1; k++) {
+    if (k < 0 || k >= TELL2_SLIDES.length) continue;
+    const lines = TELL2_SLIDES[k].lines, hb = Math.round(title * 1.8) + lines.length * lead;
+    const yk = y0 + (y1 - y0 - hb) / 2 + (k * pitch - p.y) / pitch * travel;
+    const edge = Math.min(1, Math.max(0, (yk + hb - y0) / 40), Math.max(0, (y1 - yk) / 40));
+    const a = p.alpha * edge;
+    if (a < 0.01) continue;
+    const cast = (p.story[k] ? p.story[k].cast : []).map(c => c.b.name).join(' · ');
+    ctx.globalAlpha = 0.92 * a; ctx.font = `600 ${title}px system-ui, sans-serif`; ctx.fillText(cast, x0, yk);
+    ctx.globalAlpha = 0.5 * a; ctx.beginPath(); ctx.moveTo(x0, yk + Math.round(title * 1.3) + 0.5); ctx.lineTo(x0 + Math.round(title * 1.6), yk + Math.round(title * 1.3) + 0.5); ctx.stroke();
+    ctx.globalAlpha = 0.20 * a;
+    let y = yk + Math.round(title * 1.8);
+    for (const f of lines) { roundedPath(ctx, [[x0, y], [x0 + measure * f, y], [x0 + measure * f, y + line], [x0, y + line]], line / 2, false); ctx.fill(); y += lead; }
+  }
+  ctx.restore();
+}
+// CUE. Tell II's story on the engine's own rules: every slide is a scene like
+// any other, and the change from one slide to the next is the engine's. A
+// slide asks for its places around the blurb and the nearest cells take
+// them: nobody is told where to go. The cluster is a revolver in a pen. Its
+// slots are laid once for the story, a slot for every cell, and a cell that
+// goes out holds its slot open, a niche of whitespace in the pen; a cell
+// coming back takes the open niche nearest it, and every other cell of the
+// cluster keeps its slot. So a cell comes and goes through a gap, the cells
+// around it give a little as the gap opens and closes, and nothing else in
+// the pen moves. A cell on the stage that the next slide keeps holds its
+// place through the change, still. When a new sequence begins the last one's
+// cast is benched, so a fresh cell comes out. The stage and the blurb are
+// Tell II's.
+const CUE_CLUSTER = [0.8, 0.14, 1, 0.86];
+// the pen's slots: its region halved and halved again, each cut across the
+// longer side near the share of the cells each side holds, a little off it,
+// so the cells have about the same room, never quite the same, and the pen
+// is never a grid
+function cueBento(r, n, sx, sy, id = 1) {
+  if (n <= 0) return [];
+  if (n === 1) return [r];
+  const r6 = v => Math.round(v * 1e6) / 1e6, a = Math.max(1, Math.min(n - 1, Math.round(n * (0.38 + 0.24 * hash01(id, 61))))), f = Math.max(0.2, Math.min(0.8, a / n + 0.16 * (hash01(id, 62) - 0.5)));
+  if ((r[2] - r[0]) * sx >= (r[3] - r[1]) * sy) { const x = r6(r[0] + (r[2] - r[0]) * f); return cueBento([r[0], r[1], x, r[3]], a, sx, sy, 2 * id).concat(cueBento([x, r[1], r[2], r[3]], n - a, sx, sy, 2 * id + 1)); }
+  const y = r6(r[1] + (r[3] - r[1]) * f); return cueBento([r[0], r[1], r[2], y], a, sx, sy, 2 * id).concat(cueBento([r[0], y, r[2], r[3]], n - a, sx, sy, 2 * id + 1));
+}
+const cueLattice = (C, R) => f => [Math.round(f[0] * C * 1e6) / 1e6, Math.round(f[1] * R * 1e6) / 1e6, Math.round(f[2] * C * 1e6) / 1e6, Math.round(f[3] * R * 1e6) / 1e6];
+function cueSlots(C, R, n, W, H) { return cueBento(cueLattice(C, R)(W < H ? TELL2_PHONE.cluster : CUE_CLUSTER), n, W / C, H / R); }
+// a slide's sequence begins at the last fresh slide; its cast is the places
+// of the sequence so far
+function cueSeq(k) { let s = Math.max(0, Math.min(TELL2_SLIDES.length - 1, k)); while (s > 0 && !TELL2_SLIDES[s].fresh) s--; return s; }
+function cuePlaces(k) { return TELL2_SLIDES.slice(cueSeq(k), k + 1).map(sd => sd.place); }
+// THE WHITESPACE is cut once for the story: the page less every place and
+// the pen, cut along their edges (Tell II's cut). An empty place is a piece
+// of its own, and so is an open niche, so a slide changes only the pieces a
+// cell lands in or leaves. On a phone a place shares its column with others,
+// and a column one of them fills is no piece.
+const cueFixed = new Map();
+let cueSlotsN = 0;
+function cueWhitespace(C, R, W, H, places, n) {
+  cueSlotsN = n; const L = cueLattice(C, R), key = [C, R, W, H, n].join('|');
+  if (!cueFixed.has(key)) {
+    const pen = L(W < H ? TELL2_PHONE.cluster : CUE_CLUSTER), E = 1e-6, cut = tell2Complement(C, R, Object.keys(TELL2_PLACES).map(p => L(tell2Place(p, W, H))).concat([pen]));
+    // THE DOOR, the strip between the stage and the pen, in stretches: cut
+    // across at every edge of the pen's slots along it, so a cell crossing it
+    // cuts again only the stretch beside the slot it leaves or comes home to
+    // (see the construction), and the rest of the door holds the pen's edge
+    const slots = cueBento(pen, cueSlotsN || 1, W / C, H / R), out = [];
+    for (const r of cut) {
+      const door = W < H ? Math.abs(r[3] - pen[1]) < E && r[0] < pen[2] - E && r[2] > pen[0] + E : Math.abs(r[2] - pen[0]) < E && r[1] < pen[3] - E && r[3] > pen[1] + E;
+      if (!door) { out.push(r); continue; }
+      const ax = W < H ? 0 : 1, lines = [...new Set(slots.filter(q => Math.abs((W < H ? q[1] : q[0]) - (W < H ? pen[1] : pen[0])) < E).flatMap(q => [q[ax], q[ax + 2]]).map(v => Math.round(v * 1e6) / 1e6))].filter(v => v > r[ax] + E && v < r[ax + 2] - E).sort((a, b) => a - b);
+      let lo = r[ax];
+      for (const v of lines.concat([r[ax + 2]])) { const q = r.slice(); q[ax] = lo; q[ax + 2] = v; out.push(q); lo = v; }
+    }
+    cueFixed.set(key, out);
+  }
+  const voids = cueFixed.get(key).map(r => r.slice());
+  for (const p of Object.keys(TELL2_PLACES)) {
+    if (places.includes(p) || (W < H && places.some(q => TELL2_PHONE_COL[q] === TELL2_PHONE_COL[p]))) continue;
+    const r = L(tell2Place(p, W, H)); if (!voids.some(v => rectsEqual(v, r))) voids.push(r);
+  }
+  return voids;
+}
+// A slide's page with the niches it names (by default the last slots): the
+// stage's places first, then the pen's slots held, then the whitespace
+function cuePage(k, C, R, n, W, H, niches) {
+  const places = cuePlaces(k).slice(0, Math.max(0, n - 1)), L = cueLattice(C, R), stage = places.map(p => L(tell2Place(p, W, H))), slots = cueSlots(C, R, n, W, H);
+  const open = niches || slots.map((r, s) => s).slice(slots.length - places.length);
+  return { content: stage.concat(slots.filter((r, s) => !open.includes(s))), voids: cueWhitespace(C, R, W, H, places, n).concat(open.map(s => slots[s])), cast: stage.length, slots, niches: open };
+}
+// THE ENGINE'S MATCHING, for m cells and n slots of which the nearer are
+// taken: greedy on squared travel, then 2-opt, a cell trading with another,
+// a cell left out taking a matched one's slot, or a cell moving to a slot
+// left open
+function cueMatch(m, n, cost) {
+  const pairs = [];
+  for (let i = 0; i < m; i++) for (let j = 0; j < n; j++) pairs.push([cost(i, j), i, j]);
+  pairs.sort((p, q) => p[0] - q[0]);
+  const a = new Array(m).fill(-1), b = new Array(n).fill(-1), want = Math.min(m, n);
+  let got = 0;
+  for (const [, i, j] of pairs) { if (got === want) break; if (a[i] < 0 && b[j] < 0) { a[i] = j; b[j] = i; got++; } }
+  for (let pass = 0; pass < 30; pass++) {
+    let better = false;
+    for (let i = 0; i < m; i++) {
+      for (let i2 = 0; i2 < m && a[i] >= 0; i2++) {
+        if (i2 === i) continue;
+        const j = a[i], j2 = a[i2];
+        if (j2 >= 0) { if (cost(i, j2) + cost(i2, j) + 0.5 < cost(i, j) + cost(i2, j2)) { a[i] = j2; a[i2] = j; b[j2] = i; b[j] = i2; better = true; } }
+        else if (cost(i2, j) + 0.5 < cost(i, j)) { a[i2] = j; b[j] = i2; a[i] = -1; better = true; }
+      }
+      if (a[i] < 0) continue;
+      for (let j2 = 0; j2 < n; j2++) if (b[j2] < 0 && cost(i, j2) + 0.5 < cost(i, a[i])) { b[a[i]] = -1; a[i] = j2; b[j2] = i; better = true; }
+    }
+    if (!better) break;
+  }
+  return a;
+}
+// WHO GOES WHERE, the engine's matching under the pen's rules: a cell on (or
+// bound for) a place the slide keeps keeps it, and holds still; the places
+// left take the nearest cells not benched; a cell in (or bound for) a slot
+// keeps it; and the cells left, the ones coming home, go to their own
+// niches. A cell is bound for its rectangle, so a change interrupted
+// is planned from where everyone was going.
+function cuePlan(h, k, cells) {
+  const C = h.COLS, R = h.ROWS, n = cells.length, L = cueLattice(C, R);
+  const names = cuePlaces(k).slice(0, Math.max(0, n - 1)), stage = names.map(p => L(tell2Place(p, h.W, h.H))), slots = cueSlots(C, R, n, h.W, h.H);
+  const bound = (b, r) => b.rect && rectsEqual(b.rect, r), d2 = (b, r) => { const [x, y] = h.rectCenter(r); return (b.x - x) * (b.x - x) + (b.y - y) * (b.y - y); };
+  const place = stage.map(() => null), slot = slots.map(() => null), used = new Set(), kept = new Set();
+  stage.forEach((r, j) => { const b = cells.find(b => !used.has(b) && !cue.bench.has(b) && bound(b, r)); if (b) { place[j] = b; used.add(b); kept.add(b); } });
+  const open = stage.map((r, j) => j).filter(j => !place[j]), pool = cells.filter(b => !used.has(b) && !cue.bench.has(b));
+  cueMatch(pool.length, open.length, (i, j) => d2(pool[i], stage[open[j]])).forEach((j, i) => { if (j >= 0) { place[open[j]] = pool[i]; used.add(pool[i]); } });
+  slots.forEach((r, s) => { const b = cells.find(b => !used.has(b) && bound(b, r)); if (b) { slot[s] = b; used.add(b); } });
+  // a cell coming home goes to its own niche, held open for it since it left
+  // (at the front of the pen, where the nearest cell goes out from); a cell
+  // whose niche is gone takes the open niche nearest it
+  let home = cells.filter(b => !used.has(b));
+  for (const b of home) if (b.cueHome !== undefined && b.cueHome < slots.length && !slot[b.cueHome]) slot[b.cueHome] = b;
+  home = home.filter(b => !slot.includes(b));
+  const free = slots.map((r, s) => s).filter(s => !slot[s]);
+  cueMatch(home.length, free.length, (i, j) => d2(home[i], slots[free[j]])).forEach((j, i) => { if (j >= 0) slot[free[j]] = home[i]; });
+  slot.forEach((b, s) => { if (b) b.cueHome = s; });   // its niche, for when it goes out
+  return { names, stage, slots, place, slot, kept };
+}
+// THE PEN IS SOLVED WHOLE, AND A NICHE IS HELD FROM ITS EDGES. The page is
+// laid as if every slot were held, so the pen is one pocket, its cells solved
+// together as a cell of the pen always is. An open slot is then whitespace
+// holding exactly the ground a cell there would, held the way Portal holds
+// whitespace: for every cell of the pen beside it, a mirror of that cell
+// close behind their shared edge, weighted so the edge stays where it was.
+// Nothing stands at the niche's heart, where its cell sits as it leaves and
+// will sit when it comes home: a site there would be a cell in the dark,
+// pushing the leaver out and standing in the way of the one coming back.
+const cueCache = new Map();
+function cueNicheSites(whole, i, open) {
+  const cell = whole.diag.cells[i], s = whole.seeds[i], w = whole.weights[i], n = whole.content.length, size = Math.sqrt(whole.diag.areas[i]), out = [];
+  for (const j of new Set(cell.labs || [])) {
+    if (!(j >= 0 && j < n) || j === i || open.has(j)) continue;   // a cell beside it, not the whitespace or another niche
+    const t = whole.seeds[j], wj = whole.weights[j], dx = t[0] - s[0], dy = t[1] - s[1], L = Math.hypot(dx, dy);
+    if (L < 1e-9) continue;
+    const nx = dx / L, ny = dy / L, c = ((t[0] * t[0] + t[1] * t[1] - wj) - (s[0] * s[0] + s[1] * s[1] - w)) / (2 * L), d = nx * t[0] + ny * t[1] - c, g = Math.max(1e-3, Math.min(d, 0.05 * size));
+    out.push([t[0] - nx * (d + g), t[1] - ny * (d + g), wj + g * g - d * d]);
+  }
+  return out;
+}
+function cueScene(h, n) {
+  if (!cue) return null;
+  const cells = h.bodies.filter(b => !b.isVoid && !b.leaving && !b.isSelf), p = cuePlan(h, cue.k, cells);
+  const cast = p.place.map((b, j) => j).filter(j => p.place[j]), places = cast.map(j => p.names[j]), open = new Set(p.slots.map((r, s) => s).filter(s => !p.slot[s]).map(s => cast.length + s));
+  const key = [h.COLS, h.ROWS, h.W, h.H, n, places.join(',')].join('|');
+  let whole = cueCache.get(key);
+  if (!whole) {
+    whole = portalDecorate(cast.map(j => p.stage[j]).concat(p.slots), cueWhitespace(h.COLS, h.ROWS, h.W, h.H, places, n), h.W, h.H, h.COLS, h.ROWS);
+    whole.diag = computeDiagram(whole.seeds, whole.weights, [[0, 0], [h.W, 0], [h.W, h.H], [0, h.H]]);
+    whole.niches = new Map();
+    cueCache.set(key, whole); if (cueCache.size > 24) cueCache.delete(cueCache.keys().next().value);
+  }
+  const nkey = [...open].join(',');
+  if (!whole.niches.has(nkey)) {
+    // the niches' mirrors, and every piece's ground with them in: each share
+    // read again off the diagram as it is, niches open, so what the auction
+    // is asked for is what these sites hold, and it settles on this page
+    const PW = h.PW, PH = h.PH, nc = whole.content.length, mirrors = [...open].map(i => cueNicheSites(whole, i, open)), seeds = [], weights = [], idx = [], at = [];
+    whole.seeds.forEach((q, i) => { if (i < nc && open.has(i)) { idx.push(-1); return; } idx.push(seeds.length); seeds.push(q); weights.push(whole.weights[i]); });
+    mirrors.forEach(list => { at.push(seeds.length); for (const [x, y, w] of list) { seeds.push([x, y]); weights.push(w); } });
+    const d = computeDiagram(seeds, weights, [[0, 0], [h.W, 0], [h.W, h.H], [0, h.H]]), area = k => d.areas[k] / (PW * PH);
+    const sites = (r, list) => { const cx = (r[0] + r[2]) / 2, cy = (r[1] + r[3]) / 2, out = []; for (const [x, y, k] of list) if (d.areas[k] > 1e-6) out.push({ x: x / PW - cx, y: y / PH - cy, q: area(k) }); return out; };
+    const held = (r, q, list) => { q.mfSites = sites(r, list); q.mfArea = q.mfSites.reduce((a, m) => a + m.q, 0); q.mfKey = JSON.stringify(q.mfSites); q.mfRest = true; return q; };
+    const content = [], voids = [], niches = [];
+    whole.content.forEach((r, i) => { if (open.has(i)) return; const q = r.slice(); q.mfArea = area(idx[i]); q.mfSeed = r.mfSeed; q.mfRest = true; content.push(q); });
+    whole.voids.forEach((v, k) => { const q = v.slice(); if (v.portalText) { q.portalText = true; q.portalRules = v.portalRules; } const list = []; for (let i = whole.owned[k][0]; i < whole.owned[k][1]; i++) list.push([whole.seeds[i][0], whole.seeds[i][1], idx[i]]); voids.push(held(v, q, list)); });
+    [...open].forEach((i, m) => { const r = whole.content[i]; niches.push(held(r, r.slice(), mirrors[m].map(([x, y], j) => [x, y, at[m] + j]))); });
+    whole.niches.set(nkey, { content, voids: voids.concat(niches) });
+  }
+  const page = whole.niches.get(nkey);
+  const owner = cast.map(j => p.place[j]).concat(p.slot.filter(Boolean));
+  cue.prevOn = cue.on.slice();
+  for (const b of cells) b.cueFrom = b.rect ? b.rect.slice(0, 4) : null;   // where it was, for the size a flight starts at
+  cue.homeCell = new Map(); p.slot.forEach((b, s) => { if (b) { const c = whole.diag.cells[cast.length + s]; if (c && c.pts && c.pts.length >= 3) cue.homeCell.set(b, c.pts); } });   // the cell of the pen a cell coming home melts into
+  cue.slotOf = new Map(owner.map((b, i) => [b, i])); cue.on = cast.map(j => p.place[j]); cue.slots = p.slots;
+  for (const b of cells) b.cueStay = p.kept.has(b);
+  return { content: page.content, voids: page.voids, cast: cast.length };
+}
+// the page's slots, by the plan: the matching above, handed to the engine
+function cueAssign(content, centers) {
+  const g = content.map(b => cue.slotOf.get(b));
+  return g.some(v => v === undefined) ? assignStations(content, centers) : g;
+}
+// THE CHANGE LOOKS AHEAD. Every journey of a change is known when it is
+// planned: its path, its delay, its clock. Two cells whose journeys would
+// bring them together, their seeds nearer than three quarters of their
+// reaches added at the same moment and both still on their way, would push
+// through each other and grapple their way round; so the change is played forward before it runs,
+// and for each such meeting one of the two bends round the other, on the
+// side it is already on, just enough to pass close. The cell going out to
+// the stage keeps its line and a cell going home gives way; of two alike,
+// the one that sets off later gives way. A cell that is already travelling
+// when the change comes is on it too, where it is. No bend carries a card
+// further off the page than its own ends are.
+// how far a card of half-size R strays off the page along a path, beyond
+// what its ends already do: a bend may not carry a card to the wall
+function cueOffPage(h, p, R) {
+  const off = (x, y) => Math.max(0, R - x, R - y, x + R - h.W, y + R - h.H), ends = Math.max(off(p.sx, p.sy), off(p.ex, p.ey));
+  let worst = 0;
+  for (let k = 1; k < 20; k++) { const e = k / 20, m = 1 - e; worst = Math.max(worst, off(m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey) - ends); }
+  return worst;
+}
+const CUE_CLEAR = 0.75;
+function cueAvoid(h, content) {
+  const movers = content.filter(b => b.path && b.journey && Math.hypot(b.path.ex - b.path.sx, b.path.ey - b.path.sy) > 4);
+  cueClear(h, movers, content.filter(b => cue.on.includes(b) && !movers.includes(b) && b.rect));
+  if (movers.length < 2) return;
+  const PW = h.PW, PH = h.PH, reach = b => 0.5 * Math.sqrt(Math.max(b.claim0 || 0, b.claimTarget || 0) * PW * PH), out = b => cue.on.includes(b);
+  const at = (b, t) => { const j = b.journey, u = Math.max(0, Math.min(1, (h.t + t - j.t0 - j.delay - (j.hold || 0)) / j.dur)), e = easeInOutCubic(u), m = 1 - e, p = b.path; return [m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey]; };
+  let T = 0; for (const b of movers) { const j = b.journey; T = Math.max(T, j.t0 + j.delay + (j.hold || 0) + j.dur - h.t); }
+  const steps = Math.ceil(T * 30);
+  const moving = (b, t) => { const j = b.journey, u = (h.t + t - j.t0 - j.delay - (j.hold || 0)) / j.dur; return u > 0.05 && u < 0.9; };
+  // a meeting is on the way: both still travelling, not two cells coming to rest side by side
+  const meet = (a, b) => { let worst = Infinity, when = 0; const need = CUE_CLEAR * (reach(a) + reach(b)); for (let s = 0; s <= steps; s++) { if (!moving(a, s / 30) || !moving(b, s / 30)) continue; const p = at(a, s / 30), q = at(b, s / 30), d = Math.hypot(p[0] - q[0], p[1] - q[1]) - need; if (d < worst) { worst = d; when = s / 30; } } return { worst, when }; };
+  for (let pass = 0; pass < 4; pass++) {
+    let bent = false;
+    for (let i = 0; i < movers.length; i++) for (let k = i + 1; k < movers.length; k++) {
+      const a = movers[i], b = movers[k], m = meet(a, b);
+      if (m.worst >= 0) continue;
+      let y = out(a) !== out(b) ? (out(a) ? b : a) : ((a.journey.t0 + a.journey.delay) > (b.journey.t0 + b.journey.delay) ? a : b);
+      if (y.journey.t0 !== h.t) y = y === a ? b : a;   // a path already under way keeps its line
+      if (y.journey.t0 !== h.t) continue;
+      const o = y === a ? b : a, p = y.path, L = Math.hypot(p.ex - p.sx, p.ey - p.sy), nx = -(p.ey - p.sy) / L, ny = (p.ex - p.sx) / L;
+      const [ox, oy] = at(o, m.when), [yx, yy] = at(y, m.when), side = (yx - ox) * nx + (yy - oy) * ny >= 0 ? 1 : -1;
+      const c0 = [p.cx, p.cy], others = movers.filter(q => q !== y), score = () => Math.min(...others.map(q => meet(y, q).worst));
+      let best = { sc: score(), cx: c0[0], cy: c0[1] };
+      const step = 0.25 * CUE_CLEAR * (reach(a) + reach(b));   // the bend grows by a quarter of the clearance it needs, to three times it
+      for (let s = 1; s <= 12 && best.sc < 0; s++) {
+        p.cx = c0[0] + side * nx * s * step; p.cy = c0[1] + side * ny * s * step;
+        if (cueOffPage(h, p, reach(y)) > 2) break;   // not to the wall
+        const sc = score(); if (sc > best.sc) best = { sc, cx: p.cx, cy: p.cy };
+      }
+      p.cx = best.cx; p.cy = best.cy; bent = true;
+    }
+    if (!bent) break;
+  }
+}
+// a staying piece's new sites wait for the cells by it: until every cell
+// whose path comes within its reach of the piece has gone by or landed
+function cueReseat(h, v, r, content, T) {
+  const g = [r[0] * h.PW, r[1] * h.PH, r[2] * h.PW, r[3] * h.PH];
+  let wait = 0;
+  for (const b of content) {
+    const p = b.path, j = b.journey; if (!p || !j || j.t0 !== h.t || Math.hypot(p.ex - p.sx, p.ey - p.sy) < 4 || b.cueFly) continue;   // a card flies over the piece, whatever its sites
+    const R = 0.5 * Math.sqrt(Math.max(b.claim0 || 0, b.claimTarget || 0) * h.PW * h.PH);
+    let last = -1;
+    for (let k = 0; k <= 20; k++) { const e = k / 20, m = 1 - e, x = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, y = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey; if (Math.hypot(Math.max(g[0] - x, 0, x - g[2]), Math.max(g[1] - y, 0, y - g[3])) < R) last = e; }
+    if (last < 0) continue;
+    const u = last < 0.5 ? Math.cbrt(last / 4) : 1 - Math.cbrt(2 * (1 - last)) / 2;   // easeInOutCubic, inverted
+    wait = Math.max(wait, j.delay + (j.hold || 0) + j.dur * Math.min(1, u + 0.05));
+  }
+  if (wait <= T) { v.formRect = null; h.seatBody(v, r, 0, { t0: h.t, delay: T, dur: 0.9, c0: v.crystal }); delete v.cueDefer; }
+  else v.cueDefer = { r, at: h.t + wait };   // seated when it comes (see cueFlow)
+}
+// A CARD FLIES AS A CARD. A cell has no shape of its own here: its outline
+// is wherever its neighbours' claims stop, and a settled cell looks right
+// only because every edge of it is held by a mirror made for it. A cell
+// crossing the open stage has nothing holding it, so its outline ran to
+// whatever stopped it, the page's edge most of all: a fly on the wall,
+// finding its place only as it landed. So a cell that goes out to the stage
+// becomes its card on the way: it leaves the auction, and its shape is the
+// engine's blend of the cell it had as it set off (carried along with it)
+// and a card centred on its seed, the card growing from its slot's size to
+// its place's as its seed goes (by where it is, not by the journey's clock,
+// which its seed trails on its spring), the blend all card within a reach and
+// a half of setting off.
+// It flies and lands as a card, and lands a wall: pinned on its place, its
+// outline its card, out of the auction as the cast on the stage always is.
+// (Handed back to the auction as it landed, it sprawled for the frames the
+// whitespace round its place took to hold it; kept a hole, the page drifted
+// off its diagram, and the shadow auction handed a hole back wrong.)
+// Whitespace and pen give way round it. A
+// card going home flies as a card and melts, over its last reach and a half,
+// into the cell of the pen it is going to; so does any cell crossing the
+// stage into the pen, as the cells of a page do when the story begins. A card that is a card when a
+// change comes goes on as one. A flight is one state, from the change that
+// plans it to its seed landing: out of the auction all the way, starting
+// from exactly the cell it had at rest, the blend going only one way.
+// AND A CARD IN FLIGHT GOES ROUND THE CARDS STANDING ON THE STAGE: played
+// forward on its path and its clock, a card the size it will be at each
+// moment, from its slot's to its place's, is not to cut into a card that
+// stands, by a gap; where it would, its path bends away from that card, just
+// enough, as for two cells meeting.
+const CUE_GAP = 16;
+function cueClear(h, movers, standing) {
+  if (!standing.length) return;
+  const PW = h.PW, PH = h.PH, px = r => [r[0] * PW, r[1] * PH, r[2] * PW, r[3] * PH];
+  const blocks = standing.map(b => px(b.rect));
+  for (const b of movers) {
+    const p = b.path, j = b.journey; if (j.t0 !== h.t || !b.cueFrom || !cue.on.includes(b) && !(cue.prevOn || []).includes(b)) continue;
+    const f = px(b.cueFrom), t = px(b.rect), w0 = f[2] - f[0], h0 = f[3] - f[1], w1 = t[2] - t[0], h1 = t[3] - t[1];
+    const cut = () => {   // how deep the card cuts into a card standing, at worst over its flight
+      let worst = -Infinity, when = 0, which = null;
+      for (let k = 2; k <= 40; k++) {
+        const e = k / 40, m = 1 - e, x = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, y = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey, w = w0 + (w1 - w0) * e, hh = h0 + (h1 - h0) * e;
+        for (const q of blocks) {
+          const d = Math.min(w / 2 + (q[2] - q[0]) / 2 + CUE_GAP - Math.abs(x - (q[0] + q[2]) / 2), hh / 2 + (q[3] - q[1]) / 2 + CUE_GAP - Math.abs(y - (q[1] + q[3]) / 2));
+          if (d > worst) { worst = d; when = e; which = q; }
+        }
+      }
+      return { worst, when, which };
+    };
+    let c = cut();
+    if (c.worst <= 0) continue;
+    const L = Math.hypot(p.ex - p.sx, p.ey - p.sy), nx = -(p.ey - p.sy) / L, ny = (p.ex - p.sx) / L, e = c.when, m = 1 - e;
+    const x = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, y = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey, q = c.which;
+    const side = (x - (q[0] + q[2]) / 2) * nx + (y - (q[1] + q[3]) / 2) * ny >= 0 ? 1 : -1, c0 = [p.cx, p.cy];
+    let best = { worst: c.worst, cx: p.cx, cy: p.cy };
+    for (let k = 1; k <= 16 && best.worst > 0; k++) {
+      p.cx = c0[0] + side * nx * k * 0.25 * c.worst; p.cy = c0[1] + side * ny * k * 0.25 * c.worst;
+      if (cueOffPage(h, p, 0.5 * Math.max(Math.min(w0, h0), Math.min(w1, h1))) > 2) break;   // not to the wall
+      const n = cut(); if (n.worst < best.worst) best = { worst: n.worst, cx: p.cx, cy: p.cy };
+    }
+    p.cx = best.cx; p.cy = best.cy;
+  }
+}
+// where on its path a card comes within its reach of the rectangle it lands
+// in, and where a card leaving a rectangle is half its size clear of it
+function cueNear(h, b, r) {
+  const p = b.path; if (!p || !r) return 0;
+  const g = [r[0] * h.PW, r[1] * h.PH, r[2] * h.PW, r[3] * h.PH], reach = 0.5 * Math.sqrt((g[2] - g[0]) * (g[3] - g[1]));
+  for (let k = 0; k <= 40; k++) { const e = k / 40, m = 1 - e, x = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, y = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey; if (Math.hypot(Math.max(g[0] - x, 0, x - g[2]), Math.max(g[1] - y, 0, y - g[3])) <= reach) return Math.max(0, Math.min(0.95, e - 0.025)); }
+  return 0.95;
+}
+function cueClearOf(h, b, r) {
+  const p = b.path; if (!p) return 1;
+  const g = [r[0] * h.PW, r[1] * h.PH, r[2] * h.PW, r[3] * h.PH], reach = 0.5 * Math.sqrt((g[2] - g[0]) * (g[3] - g[1]));
+  for (let k = 1; k <= 40; k++) { const e = k / 40, m = 1 - e, x = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, y = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey; if (Math.hypot(Math.max(g[0] - x, 0, x - g[2]), Math.max(g[1] - y, 0, y - g[3])) >= reach) return Math.max(0.05, e); }
+  return 1;
+}
+function cueFlyers(h, content) {
+  const S = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); }, size = r => [(r[2] - r[0]) * h.PW, (r[3] - r[1]) * h.PH];
+  for (const b of content) {
+    const p = b.path, j = b.journey;
+    if (!p || !j || j.t0 !== h.t) continue;
+    const L = Math.hypot(p.ex - p.sx, p.ey - p.sy), out = cue.on.includes(b), was = b.cueFly ? cueFlyC(h, b) : 0;
+    const fromCard = was > 0.5 || (cue.prevOn || []).includes(b);
+    const crossing = !out && b.cueFrom && !cue.slots.some(r => rectsEqual(r, b.cueFrom));   // coming into the pen from off its slots: from the stage, or from the page the story began on
+    if (L < 4 || (!out && !fromCard && !crossing)) { if (!(was > 0)) b.cueFly = null; continue; }   // a cell of the pen staying a cell of the pen does not fly
+    const from = b.cueFly && b.cueFly.cur ? b.cueFly.cur : (b.cueFrom ? size(b.cueFrom) : size(b.rect)), to = size(b.rect);
+    b.cueFly = { fromCard, toCard: out, from, to, R: 0.5 * Math.sqrt(Math.max(from[0] * from[1], to[0] * to[1])), core: null, at: null, home: out ? null : cue.homeCell.get(b) || null, S, c: undefined };
+    if (!fromCard) {   // the cell it has at rest, as it sets off: the flight begins exactly there
+      let parts = null;
+      if (h.solved) for (let k = 0; k < h.solvedSubs.length; k++) if (h.solvedSubs[k].body === b) { const cell = h.solved.diagram.cells[k]; if (cell) parts = cell.pieces || [cell]; }
+      const r = b.cueFrom ? [b.cueFrom[0] * h.PW, b.cueFrom[1] * h.PH, b.cueFrom[2] * h.PW, b.cueFrom[3] * h.PH] : [b.x - 1, b.y - 1, b.x + 1, b.y + 1], sh = parts ? cellCoreAndArms(parts, r) : null;
+      b.cueFly.core = sh ? sh.core : [[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]]]; b.cueFly.at = [b.x, b.y];
+    }
+  }
+}
+function cueFlyC(h, b) {   // how much of a card it is: from the cell it was to the card, and back into the cell it is going to
+  const f = b.cueFly, p = b.path, S = f.S;
+  const a = f.fromCard ? 1 : S(Math.hypot(b.x - p.sx, b.y - p.sy) / (1.5 * f.R)), z = f.toCard ? 1 : S(Math.hypot(b.x - p.ex, b.y - p.ey) / (1.5 * f.R));
+  return Math.min(a, z);
+}
+function cueFlyShape(h, b) {
+  const f = b.cueFly, p = b.path;
+  if (!p) { b.cueFly = null; return null; }
+  const dS = Math.hypot(b.x - p.sx, b.y - p.sy), dE = Math.hypot(b.x - p.ex, b.y - p.ey), e = dS + dE > 1e-6 ? dS / (dS + dE) : 1, done = !b.journey && dE < 0.5;   // its size by where it is, not by its clock: a seed trails its clock
+  if (done && f.toCard) { b.pin = 1; b.cueFly = null; return null; }   // landed: pinned on its place, drawn as its card, it is a wall from this frame (see computeWalls)
+  if (done) { b.cueFly = null; return null; }   // melted into the pen: a cell of the auction again
+  const c0 = cueFlyC(h, b), c = f.c === undefined ? c0 : f.toCard ? Math.max(f.c, c0) : e > 0.5 ? Math.min(f.c, c0) : c0;   // one way only: toward the card going out, toward the cell coming home
+  f.c = c;
+  const w = f.from[0] + (f.to[0] - f.from[0]) * e, hh = f.from[1] + (f.to[1] - f.from[1]) * e;
+  f.cur = [w, hh];
+  const rect = [b.x - w / 2, b.y - hh / 2, b.x + w / 2, b.y + hh / 2];
+  // the cell under the card: the one it set off as, carried with it, and the
+  // one of the pen it is going to, and between the two a blend of them
+  const card = [[rect[0], rect[1]], [rect[2], rect[1]], [rect[2], rect[3]], [rect[0], rect[3]]], start = f.core ? f.core.map(q => [q[0] + b.x - f.at[0], q[1] + b.y - f.at[1]]) : null;
+  const home = f.home ? f.home.map(q => [q[0] + b.x - p.ex, q[1] + b.y - p.ey]) : null;   // carried with it too, so the blend is centred on its seed and is its home cell exactly as it arrives
+  let core;
+  if (f.toCard) core = start || card;
+  else if (f.fromCard) core = home || card;
+  else if (start && home) { const t = Math.max(0, Math.min(1, (e - 0.3) / 0.4)); core = blendConvex(start, home, t * t * (3 - 2 * t), h.domainPts()) || (t < 0.5 ? start : home); }
+  else core = start || home || card;
+  const pts = planesPoly(holePlanes(core, rect, c), h.domainPts());
+  if (!pts) return null;
+  return { pieces: [pts], planes: [convexPlanes(pts)], rect, pts, raw: [pts] };
+}
+// the story: its scroll (px, a page's height a slide), its speed, the slide
+// it is on, the cast on stage, the bench, and the text's clocks
+let cue = null;
+function cueStart(origin) {
+  reelDrop(); tellDrop(); tell2Drop();
+  portalFocus = null; portalFlip = false;
+  cue = { y: 0, v: 0, k: 0, on: [], prevOn: [], slots: [], homeCell: new Map(), bench: new Set(), titles: [], tf: [], drag: null, entered: false, alpha: 0, rule: 0, fullAt: -1, seen: -1, changed: -1e9 };
+  cueCache.clear();
+  cueGo(0, origin || { x: W / 2, y: H / 2 });
+}
+function cueDrop() { if (!cue) return; cue = null; for (const b of root.bodies) { delete b.cueStay; delete b.cueFly; delete b.cueFrom; delete b.cueHome; } }
+// a slide is a scene change, from where it is largest; a new sequence
+// benches the cast on stage
+function cueGo(k, origin) {
+  if (!cue) return;
+  cue.bench = new Set(cueSeq(k) !== cueSeq(cue.k) ? cue.on : []);
+  cue.k = k; cue.changed = simTime;
+  portalEnter('cue', origin);
+  cue.bench = new Set();
+  cue.titles[k] = cue.on.map(b => b.name).join(' · '); cue.tf[k] = 0;
+}
+// the flow of the story, a Tell's: a speed eases away, a slow story snaps
+// to its slide, and the slide the story is on is the one nearest; a change
+// is made at most every quarter second
+function cueFlow(dt) {
+  if (!cue) return;
+  for (const v of root.bodies) if (v.cueDefer && (v.leaving || root.t >= v.cueDefer.at)) { const d = v.cueDefer; delete v.cueDefer; if (!v.leaving && rectsEqual(v.rect, d.r)) { v.formRect = null; root.seatBody(v, d.r, 0, { t0: root.t, delay: 0, dur: 0.9, c0: v.crystal }); } }   // a staying piece takes its new sites
+  const pitch = H, last = (TELL2_SLIDES.length - 1) * pitch;
+  if (!cue.drag) {
+    const snapping = Math.abs(cue.v) < 60;
+    cue.v *= Math.exp(-dt / (snapping ? TELL_SNAP : TELL_RELAX));
+    if (Math.abs(cue.v) < 0.05) cue.v = 0;
+    cue.y += cue.v * dt;
+    if (cue.y < 0) { cue.y = 0; cue.v = 0; }
+    if (cue.y > last) { cue.y = last; cue.v = 0; }
+    if (snapping) { const target = Math.round(cue.y / pitch) * pitch; cue.y += (target - cue.y) * (1 - Math.exp(-dt / TELL_SNAP)); }
+  }
+  const k = Math.max(0, Math.min(TELL2_SLIDES.length - 1, Math.round(cue.y / pitch)));
+  if (k !== cue.k && simTime - cue.changed > 0.25) cueGo(k, null);
+  if (!cue.entered && guestLeft <= 0) cue.entered = true;
+}
+function cueScroll(dy) {
+  if (!cue) return false;
+  if (cue.drag || Math.abs(dy) < 1) return true;
+  const aim = Math.max(0, Math.min(TELL2_SLIDES.length - 1, Math.round(cue.y / H) + Math.sign(dy)));
+  cue.v = reelClampV((aim * H - cue.y) / TELL_RELAX);
+  return true;
+}
+function cueDragStart(x, y, t) { if (!cue) return false; cue.drag = { y0: cue.y, p0: y, last: y, t, v: 0 }; cue.v = 0; return true; }
+function cueDragMove(x, y, t) {
+  if (!cue || !cue.drag) return false;
+  const d = cue.drag, dt = Math.max(1e-3, (t - d.t) / 1000), last = (TELL2_SLIDES.length - 1) * H;
+  cue.y = Math.max(0, Math.min(last, d.y0 + (d.p0 - y)));
+  const v = (d.last - y) / dt; d.v += (v - d.v) * Math.min(1, dt / 0.05); d.last = y; d.t = t;
+  return true;
+}
+function cueDragEnd(t) { if (!cue || !cue.drag) return false; const d = cue.drag; cue.v = t - d.t > 120 ? 0 : reelClampV(d.v); cue.drag = null; return true; }
+// The blurbs, Tell II's: in the box, each at its place on the scroll, the
+// slide's and its neighbours' as they pass, titled with the cast's names
+// once the slide has its cast (a slide not reached yet has none), the title
+// fading in as it is given
+function cueProseStep(ctx, type, dt, t) {
+  if (!cue) return;
+  const p = cue, gap = t - p.seen, el = p.seen < 0 || gap > 0.1 ? dt : gap;
+  p.seen = t;
+  const v = p.entered;
+  p.alpha += ((v ? 1 : 0) - p.alpha) * (1 - Math.exp(-el / (v ? 0.30 : 0.08)));
+  if (!v || p.alpha <= 0.97) p.fullAt = -1; else if (p.fullAt < 0) p.fullAt = t;
+  p.rule += ((v && p.fullAt >= 0 && t - p.fullAt > 0.25 ? 1 : 0) - p.rule) * (1 - Math.exp(-el / (v ? 0.45 : 0.08)));
+  for (let k = 0; k < p.tf.length; k++) if (p.tf[k] !== undefined) p.tf[k] = Math.min(1, p.tf[k] + el / 0.35);
+  if (!v || p.alpha < 0.01) return;
+  const bx = W < H ? TELL2_PHONE.box : TELL2_BOX, r = [bx[0] * W, bx[1] * H, bx[2] * W, bx[3] * H], pad = Math.max(16, Math.min(48, 0.024 * W));
+  const x0 = r[0] + pad, x1 = r[2] - pad, y0 = r[1] + pad, y1 = r[3] - pad;
+  if (x1 - x0 < 90) return;
+  const title = Math.round(type.num * 0.9), line = Math.max(4, Math.round(type.name * 0.55)), lead = Math.round(line * 2.1);
+  ctx.save();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.globalAlpha = 0.22 * p.rule; ctx.beginPath();
+  const g = Math.round(pad / 2) + 0.5;
+  ctx.moveTo(r[0] + g, r[1] + pad); ctx.lineTo(r[0] + g, r[3] - pad);
+  ctx.stroke();
+  const measure = Math.min(560, x1 - x0), pitch = H, travel = y1 - y0;
+  ctx.beginPath(); ctx.moveTo(r[0], r[1]); ctx.lineTo(r[2], r[1]); ctx.lineTo(r[2], r[3]); ctx.lineTo(r[0], r[3]); ctx.closePath(); ctx.clip();
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  for (let k = p.k - 1; k <= p.k + 1; k++) {
+    if (k < 0 || k >= TELL2_SLIDES.length) continue;
+    const lines = TELL2_SLIDES[k].lines, hb = Math.round(title * 1.8) + lines.length * lead;
+    const yk = y0 + (y1 - y0 - hb) / 2 + (k * pitch - p.y) / pitch * travel;
+    const edge = Math.min(1, Math.max(0, (yk + hb - y0) / 40), Math.max(0, (y1 - yk) / 40));
+    const a = p.alpha * edge;
+    if (a < 0.01) continue;
+    if (p.titles[k]) { ctx.globalAlpha = 0.92 * a * (p.tf[k] || 0); ctx.font = `600 ${title}px system-ui, sans-serif`; ctx.fillText(p.titles[k], x0, yk); }
+    ctx.globalAlpha = 0.5 * a; ctx.beginPath(); ctx.moveTo(x0, yk + Math.round(title * 1.3) + 0.5); ctx.lineTo(x0 + Math.round(title * 1.6), yk + Math.round(title * 1.3) + 0.5); ctx.stroke();
+    ctx.globalAlpha = 0.20 * a;
+    let y = yk + Math.round(title * 1.8);
+    for (const f of lines) { roundedPath(ctx, [[x0, y], [x0 + measure * f, y], [x0 + measure * f, y + line], [x0, y + line]], line / 2, false); ctx.fill(); y += lead; }
+  }
+  ctx.restore();
+}
 const scenes = {
   flock: null,
 
@@ -2289,6 +3262,8 @@ class Hive {
     const [ex, ey] = this.rectCenter(rect);
     if (rectsEqual(rect, b.rect) && b.formRect === b.rect && b.crystal === 1 && !b.leaving
         && Math.abs(b.x - ex) < 0.01 && Math.abs(b.y - ey) < 0.01) { b.claim0 = b.claim; b.claimTarget = rectArea(rect); return; }
+    if (b.tell2Stay && rectsEqual(rect, b.rect) && !b.leaving && !b.journey && Math.abs(b.x - ex) < 1 && Math.abs(b.y - ey) < 1) { b.claim0 = b.claim; b.claimTarget = rectArea(rect); b.pin = 1; return; }   // TELL II: a cell of the cast keeping its place
+    if (b.cueStay && rectsEqual(rect, b.rect) && !b.leaving && !b.journey && Math.abs(b.x - ex) < 1 && Math.abs(b.y - ey) < 1) { b.claim0 = b.claim; b.claimTarget = rectArea(rect); b.pin = 1; return; }   // CUE: a cell of the cast keeping its place holds still
     b.rect = rect;
     b.table = null;
     this.takeFormation(b);
@@ -2356,7 +3331,7 @@ class Hive {
   // as a plain card, the way a page collapses a section that has no room.
   setField(b, rect, entry) {
     const slots = rectArea(rect);
-    const gallery = !portalFocus && b.kindRoll < config.fieldDensity * (this.depth === 0 ? 1 : 0.5);   // PORTAL: on a page every cell is one card
+    const gallery = !portalFocus && !cue && b.kindRoll < config.fieldDensity * (this.depth === 0 ? 1 : 0.5);   // PORTAL: on a page every cell is one card; CUE: on a story too
     const k = gallery && this.depth < MAX_DEPTH && slots >= 4 ? Math.min(MAX_MEMBERS, Math.round(slots * 0.5 + 1)) : 0;
     if (k < 3) { this.dropField(b, entry); return; }
     if (!b.hive) {
@@ -2433,7 +3408,7 @@ class Hive {
     this.serial++;
     const salt = 40 + this.serial;
     const content = this.bodies.filter(b => !b.isVoid && !b.leaving && !b.isSelf);
-    const spec = this.depth===0 && (name==='hero'||name==='frame') ? mfScene(this,name,content.length) : this.depth===0 && (name in PORTAL_TEMPLATES) ? portalScene(this,name,content.length) : scenes[name] ? scenes[name](this.COLS, this.ROWS, content.length) : null;   // PORTAL: a page is an authored rest diagram too
+    const spec = this.depth===0 && (name==='hero'||name==='frame') ? mfScene(this,name,content.length) : this.depth===0 && name === 'cue' ? cueScene(this, content.length) : this.depth===0 && name === 'tell2' ? tell2Scene(this, content.length) : this.depth===0 && name === 'tell' ? tellScene(this, content.length) : this.depth===0 && (name in PORTAL_TEMPLATES) ? portalScene(this,name,content.length) : scenes[name] ? scenes[name](this.COLS, this.ROWS, content.length) : null;   // PORTAL: a page is an authored rest diagram too
     const pending = this.bodies.filter(b => b.pendingRetire);
     for (const b of pending) b.pendingRetire = false;
 
@@ -2466,7 +3441,7 @@ class Hive {
 
     this.swirlSign = -this.swirlSign;
     const centers = spec.content.map(r => { const [x, y] = this.rectCenter(r); return { x, y }; });
-    const gotS = assignStations(content, centers);
+    const gotS = name === 'cue' && cue && cue.slotOf ? cueAssign(content, centers) : assignStations(content, centers);   // CUE: the engine's matching, under the pen's rules
     portalPin(content, gotS, name);
     const rectOf = new Map();
     content.forEach((b, k) => rectOf.set(b, spec.content[gotS[k]]));
@@ -2478,10 +3453,12 @@ class Hive {
     // will open, and a SOURCE of the change: the change is where the
     // whitespace opens, and spreads from there.
     const oldVoids = this.bodies.filter(b => b.isVoid && !b.leaving);
-    const stays = new Set(), newVoids = [], rectOfVoid = new Map();
+    const stays = new Set(), newVoids = [], rectOfVoid = new Map(), cueSeat = [];
     for (const r of spec.voids) {
       const same = oldVoids.find(v => rectsEqual(v.rect, r) && !stays.has(v));
-      if (same) { if(r.mfSites) { same.rect=r; same.formRect=r; } stays.add(same); continue; }
+      if (same && name === 'cue') delete same.cueDefer;
+      if (same && name === 'cue' && r.mfSites && same.rect.mfKey !== r.mfKey) { cueSeat.push([same, r]); stays.add(same); continue; }   // CUE: a staying piece with other mirrors is seated again
+      if (same) { if(r.mfSites) { same.rect=r; same.formRect=r; if (name === 'tell2') same.claimTarget = Math.max(CLAIM_MIN, rectArea(r)); } stays.add(same); continue; }   // TELL II: a staying piece takes the new page's claim
       const [x, y] = this.rectCenter(r);
       const v = this.makeBody(x, y, { isVoid: true, claim: CLAIM_MIN });
       this.bodies.push(v); newVoids.push(v); rectOfVoid.set(v, r);
@@ -2517,10 +3494,10 @@ class Hive {
     // PORTAL: a page's long journeys take the time they need, so no cell
     // rides the speed cap: the peak of an eased trip is one and a half
     // times its average
-    if (name in PORTAL_TEMPLATES) for (const b of content) { const j = b.journey, p = b.path; if (j && p && j.t0 === this.t) j.dur = Math.max(j.dur, Math.hypot(p.ex - p.sx, p.ey - p.sy) / 600); }
+    if (name in PORTAL_TEMPLATES || name === 'tell' || name === 'tell2') for (const b of content) { const j = b.journey, p = b.path; if (j && p && j.t0 === this.t) j.dur = Math.max(j.dur, Math.hypot(p.ex - p.sx, p.ey - p.sy) / 600); }
     // PORTAL: the image grows no faster than the page clears for it: its
     // journey, and so its claim, ends when the last card's does
-    if (name in PORTAL_TEMPLATES && portalFocus && portalFocus.journey && portalFocus.journey.t0 === this.t) {
+    if ((name in PORTAL_TEMPLATES || name === 'tell' || name === 'tell2') && portalFocus && portalFocus.journey && portalFocus.journey.t0 === this.t) {
       let last = 0; for (const b of content) if (b !== portalFocus && b.journey) last = Math.max(last, b.journey.delay + (b.journey.hold || 0) + b.journey.dur);
       const j = portalFocus.journey; j.dur = Math.max(j.dur, last - j.delay - (j.hold || 0));
     }
@@ -2532,6 +3509,7 @@ class Hive {
       j.dur = Math.max(j.dur, o.journey.delay - j.delay + 0.9);
     }
     for (const b of pending) this.retireBody(b, 0.8, tOf(b));
+    if (name === 'cue' && cue) { cueAvoid(this, content); cueFlyers(this, content); for (const [v, r] of cueSeat) cueReseat(this, v, r, content, tOf(v)); }   // CUE: the change looks ahead; a staying piece takes its new sites once the cells by it have gone by
 
     // an old void closes at the pace of what lands in it; a new one opens
     // at the pace of what leaves it — each a ledger of the bodies involved,
@@ -2543,6 +3521,7 @@ class Hive {
         const r = rectOf.get(b), [ex, ey] = this.rectCenter(r);
         if (this.inRect(v.rect, ex, ey)) { rows.push({ body: b, journey: b.journey, w: rectArea(r) }); W += rectArea(r); }
       }
+      if (name === 'cue' && rows.length) { for (const q of rows) q.from = cueNear(this, q.body, v.rect); W = Math.max(W, v.claim); }   // CUE: held until its card comes
       this.retireBody(v, 1.2, tOf(v));
       v.table = { mode: 'close', rows, wRem: Math.max(0, v.claim0 - W), f: 0 };
     }
@@ -2550,12 +3529,12 @@ class Hive {
       const r = rectOfVoid.get(v), rows = []; let W = 0, wait = 0;
       for (const b of this.bodies) {
         if (b === v || b.isSelf || rectOfVoid.has(b) || stays.has(b)) continue;
-        if (this.inRect(r, b.x, b.y)) { rows.push({ body: b, journey: b.journey, w: b.claim }); W += b.claim; continue; }
+        if (this.inRect(r, b.x, b.y)) { rows.push({ body: b, journey: b.journey, w: b.claim, until: name === 'cue' ? cueClearOf(this, b, r) : undefined }); W += b.claim; continue; }   // CUE: open as its card clears it
         // PORTAL: a page's whitespace also waits for the cells whose journeys
         // pass through it, so nothing crosses it as a sliver and its text is
         // not set under a traveller: they are on its ledger, and it does not
         // open on its own clock until the last of them is through
-        if (!(name in PORTAL_TEMPLATES) || !b.path || !b.journey || b.journey.t0 !== this.t) continue;
+        if (!(name in PORTAL_TEMPLATES || name === 'tell' || name === 'tell2' || name === 'cue') || !b.path || !b.journey || b.journey.t0 !== this.t || b.cueFly) continue;   // CUE: a slide's whitespace waits for its crossers too, but not for a card, which carves its own way
         const p = b.path; let last = -1;
         for (let k = 1; k < 20; k++) { const e = k / 20, m = 1 - e, x = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, y = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey; if (this.inRect(r, x, y)) last = e; }
         if (last < 0) continue;
@@ -2564,7 +3543,7 @@ class Hive {
         wait = Math.max(wait, b.journey.delay + (b.journey.hold || 0) + b.journey.dur * Math.min(1, u + 0.05));
       }
       this.seatBody(v, r, 0, { t0: this.t, delay: wait, dur: 0.9, c0: 0 });
-      v.table = { mode: 'open', rows, wRem: Math.max(0, rectArea(r) - W), f: 0 };
+      v.table = { mode: 'open', rows, wRem: name === 'cue' && rows.some(q => this.inRect(r, q.body.x, q.body.y)) ? 0 : Math.max(0, rectArea(r) - W), f: 0 };   // CUE: it opens as its leavers go
       if (wait > 0) v.table.wait = wait;   // a page's whitespace only: a scene's table is as it was
     }
   }
@@ -2615,6 +3594,7 @@ class Hive {
   // --- steering ---------------------------------------------------------
 
   mfFreedom(b) {
+    if (b.cueFly && b.hole) return 0;   // CUE: a card in flight is not pushed
     // The destination already has valid geometry. Ambient wobble and
     // repulsion must not permanently displace its seeds from that solution.
     // Fade these forces over the existing journey, with no extra clock,
@@ -2785,7 +3765,7 @@ class Hive {
         }
         // nor is a hole: out through its nearest side
         if (!b.hole) for (const h of this.holes) {
-          if (h === b) continue;
+          if (h === b || h.cueFly && b.isVoid) continue;   // CUE: whitespace under a card in flight is flown over
           for (let k = 0; k < h.hole.pieces.length; k++) {
             if (!pointInPolygon(b.x, b.y, h.hole.pieces[k])) continue;
             let best = Infinity, bp = null;
@@ -2860,13 +3840,18 @@ class Hive {
         b.claim = be > 0 ? (rho >= 1 ? 0 : Math.max(CLAIM_MIN, be * (1 - rho))) : 1;
         continue;
       }
+      if (b.isVoid && b.tell2Yield && !b.table) {   // TELL II: whitespace that yields, at once when the page changes, back over a third of a second after
+        const want = guestLeft > 0 ? CLAIM_MIN : b.claimTarget;
+        b.claim += (want - b.claim) * (1 - Math.exp(-dt / (want < b.claim ? 0.12 : 0.35)));
+        continue;
+      }
       if (b.table) {
         // a void keeps a ledger: its claim is the claim-weighted progress of
         // the bodies leaving it (opening) or landing in it (closing), plus
         // its own clock for whatever share nobody accounts for. Monotone, so
         // a re-seated or reaped body counts as done, never as undone.
         const tb = b.table; let num = 0, den = 0, pmin = b.progress;
-        for (const r of tb.rows) { const p = ferryLedgerProgress(this, r, t); num += r.w * p; den += r.w; pmin = Math.min(pmin, p); }
+        for (const r of tb.rows) { const p0 = ferryLedgerProgress(this, r, t), p = r.until ? Math.min(1, p0 / r.until) : r.from !== undefined ? Math.max(0, (p0 - r.from) / (1 - r.from)) : p0; num += r.w * p; den += r.w; pmin = Math.min(pmin, p); }   // CUE: paced by where the card is
         num += tb.wRem * b.progress; den += tb.wRem;
         const f0 = den > 0 ? Math.min(1, num / den) : 1;
         const f = Math.max(tb.f, tb.wait ? Math.min(f0, b.progress) : f0);   // PORTAL: a page's whitespace opens no faster than its own clock, which waits for the cells crossing it
@@ -2918,8 +3903,9 @@ class Hive {
       b.wall = null; b.hole = null; b.holeExtra = [];
       const r = b.formRect;
       if (b.isSelf || !r) { b.holeCore = null; continue; }
+      if (b.cueFly && !b.leaving && this.depth === 0) { const hole = cueFlyShape(this, b); if (hole) { b.hole = hole; b.holeCore = null; this.holes.push(b); continue; } }   // CUE: a card in flight
       const rect = [r[0] * this.PW, r[1] * this.PH, r[2] * this.PW, r[3] * this.PH];
-      if (!b.leaving && (b.reelParked || (!b.reelPinned && (b.crystal >= 1 || (b.pin > 0 && this.cellIsRect(b, r)))))) {   // REEL: a reel's body bids; a parked one is a wall off the page
+      if (!b.leaving && (b.reelParked || (!b.reelPinned && !(tell && !b.isVoid && this.depth === 0) && (b.crystal >= 1 || (b.pin > 0 && this.cellIsRect(b, r)))))) {   // TELL: the story's cards bid throughout   // REEL: a reel's body bids; a parked one is a wall off the page
         b.wall = rect; this.walls.push(b); b.holeCore = null;
         continue;
       }
@@ -4632,7 +5618,7 @@ function paintPicture(ctx, picture, hoveredPath, dt, t) {
 
     // the open page's image carries no label: its title is set in the text
     // block beside it, or, on a full-cell page, as a caption on the image
-    const pageT = b === portalFocus && PORTAL_TEMPLATES[config.scene];
+    const pageT = (b === portalFocus || (tell2 && tell2.on.includes(b)) || (cue && cue.on.includes(b))) && (PORTAL_TEMPLATES[config.scene] || (config.scene === 'tell' || config.scene === 'tell2' || config.scene === 'cue' ? { text: true } : null));   // TELL: the slide's image carries no label; TELL II: nor does any of the cast
     const c = plaqueStep(ctx, b, bigPts, leaf.loops, leaf.labels, leaf.label, type, leaf.path.some(e => travelling(e.body)) || (pageT && !!pageT.text), dt, t, bigA, inner.absX + b.anchorX, inner.absY + b.anchorY);
     const captioned = pageT && !pageT.text;   // the image is the page: a caption, not a label
     if (c.alpha > 0.01 && captioned) {
@@ -4672,6 +5658,9 @@ function paintPicture(ctx, picture, hoveredPath, dt, t) {
     }
   }
   portalProseStep(ctx, type, dt, t);
+  tellProseStep(ctx, type, dt, t);
+  tell2ProseStep(ctx, type, dt, t);
+  cueProseStep(ctx, type, dt, t);
 }
 
 
@@ -4751,6 +5740,7 @@ function tick(nowMs) {
   frame++;
 
   guestLeft = changeEnds(root) - simTime;
+  tellFlow(dt); tellStep(dt); tell2Flow(dt); tell2Step(); cueFlow(dt);
   reelFlow(dt);
   reelStep();
 
@@ -4774,7 +5764,7 @@ function tick(nowMs) {
   // way any acquisition ramps.
   root.walk(h => { h.hoveredId = -1; });
   const under = guestLeft > 0 ? [] : (hitLeaves(picture, mouseX, mouseY) || root.hitPath(mouseX, mouseY));
-  const path = under.length && under[0].body === portalFocus ? [] : under;   // the open page's image is not a card
+  const path = under.length && (under[0].body === portalFocus || (tell2 && tell2.on.includes(under[0].body)) || (cue && cue.on.includes(under[0].body))) ? [] : under;   // the open page's image is not a card; TELL II: nor is the cast
   for (const e of path) e.hive.hoveredId = e.body.id;
   canvas.style.cursor = 'default';
 
@@ -4857,9 +5847,9 @@ function portalClick(x, y) {
   if (!path || !path.length) return false;
   const b = path[0].body;
   if (b.isVoid || b.isSelf || b.leaving) return false;
-  if (b === portalFocus) { reelDrop(); portalHome({ x, y }); }
+  if (b === portalFocus || (tell2 && tell2.on.includes(b)) || (cue && cue.on.includes(b))) { reelDrop(); tellDrop(); tell2Drop(); cueDrop(); portalHome({ x, y }); }   // CUE: any of the cast clicked goes home   // TELL II: any of the cast clicked goes home
   else {
-    reelDrop(b);
+    reelDrop(b); tellDrop(); tell2Drop(); cueDrop();
     // the page opens on the side the click came from: the template is
     // mirrored when its image slot is nearer the click that way
     const T = PORTAL_TEMPLATES[portalKind(b)], hx = (T.hero[0] + T.hero[2]) / 2 * W;
@@ -4878,16 +5868,19 @@ canvas.addEventListener('pointerup', (e) => {
   if (Math.hypot(x - press.x, y - press.y) > 6 || performance.now() - press.at > 500) return;
   portalClick(x, y);
 });
-window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && portalFocus) { reelDrop(); portalHome(); } });
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && (portalFocus || tell || tell2 || cue)) { reelDrop(); tellDrop(); tell2Drop(); cueDrop(); portalHome(); } });
 // REEL: the wheel pushes the open page's gallery along its flow; a drag takes it in hand
-canvas.addEventListener('wheel', (e) => { if (!reel) return; e.preventDefault(); reelScroll(e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1)); }, { passive: false });
-canvas.addEventListener('pointerdown', (e) => { const [x, y] = pointerPos(e); if (reelDragStart(x, y, performance.now())) { try { canvas.setPointerCapture(e.pointerId); } catch (_) {} } });
-canvas.addEventListener('pointermove', (e) => { const [x, y] = pointerPos(e); reelDragMove(x, y, performance.now()); });
-canvas.addEventListener('pointerup', () => { reelDragEnd(performance.now()); });
-canvas.addEventListener('pointercancel', () => { reelDragEnd(-1e9); });
+canvas.addEventListener('wheel', (e) => { const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1); if (cue) { e.preventDefault(); cueScroll(dy); return; } if (tell2) { e.preventDefault(); tell2Scroll(dy); return; } if (tell) { e.preventDefault(); tellScroll(dy); return; } if (!reel) return; e.preventDefault(); reelScroll(dy); }, { passive: false });
+canvas.addEventListener('pointerdown', (e) => { const [x, y] = pointerPos(e); if (cueDragStart(x, y, performance.now()) || tell2DragStart(x, y, performance.now()) || tellDragStart(x, y, performance.now()) || reelDragStart(x, y, performance.now())) { try { canvas.setPointerCapture(e.pointerId); } catch (_) {} } });
+canvas.addEventListener('pointermove', (e) => { const [x, y] = pointerPos(e); cueDragMove(x, y, performance.now()); tell2DragMove(x, y, performance.now()); tellDragMove(x, y, performance.now()); reelDragMove(x, y, performance.now()); });
+canvas.addEventListener('pointerup', () => { cueDragEnd(performance.now()); tell2DragEnd(performance.now()); tellDragEnd(performance.now()); reelDragEnd(performance.now()); });
+canvas.addEventListener('pointercancel', () => { cueDragEnd(-1e9); tell2DragEnd(-1e9); tellDragEnd(-1e9); reelDragEnd(-1e9); });
 
 document.querySelectorAll('.scene-btn').forEach(b => b.addEventListener('click', () => {
-  reelDrop();
+  if (b.dataset.scene === 'tell') { tellStart(); return; }   // TELL: the story begins
+  if (b.dataset.scene === 'tell2') { tell2Start(); return; }   // TELL II: the cast takes the stage
+  if (b.dataset.scene === 'cue') { cueStart(); return; }   // CUE: the story, on the engine's rules
+  reelDrop(); tellDrop(); tell2Drop(); cueDrop();
   portalFocus = null;                        // a scene button leaves any open page
   config.scene = b.dataset.scene;
   document.querySelectorAll('.scene-btn').forEach(el => el.classList.toggle('active', el.dataset.scene === config.scene));
@@ -5350,6 +6343,35 @@ Hive.prototype.placeSeeds = function() {
     for (const sub of v.subs) sub.ferryXY=[sub.x/W,sub.y/H];
   }
   this.ferryW=W; this.ferryH=H;
+};
+
+const cueWay = Hive.prototype.placeSeeds;
+Hive.prototype.placeSeeds = function() {   // CUE: whitespace makes way without giving ground
+  cueWay.call(this);
+  if (this.depth !== 0 || !cue || config.scene !== 'cue') return;
+  const movers = [];
+  const S = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
+  for (const b of this.bodies) {   // the way it asks for comes in as it sets off and goes as it lands, by where its seed is, so nothing snaps back
+    const p = b.path;
+    if (b.isVoid || b.isSelf || b.leaving || !p || Math.hypot(p.ex - p.sx, p.ey - p.sy) < 4 || b.cueFly) continue;   // a card in flight carves its own way: nothing gives way for it, and whitespace under it is flown over (see enforcePreconditions)
+    const R = 0.5 * Math.sqrt(Math.max(b.claim0 || 0, b.claimTarget || 0) * this.PW * this.PH), on = S(Math.hypot(b.x - p.sx, b.y - p.sy) / (0.5 * R)) * S(Math.hypot(b.x - p.ex, b.y - p.ey) / (0.5 * R));
+    if (on > 0) movers.push([b.x, b.y, R, on]);
+  }
+  if (!movers.length) return;
+  for (const v of this.bodies) {
+    if (!v.isVoid || v.isSelf || v.leaving || v.table && v.table.mode === 'open' && v.progress < 1) continue;   // a piece opening keeps its ledger's clock
+    let all = 0, clear = 0, gone = 0; const f = [];
+    for (const q of v.subs) {
+      let k = 1;
+      for (const [x, y, R, on] of movers) k = Math.min(k, 1 - on * (1 - S((Math.hypot(q.x - x, q.y - y) - 0.3 * R) / (0.9 * R))));   // in its way: nearer than its reach
+      k = Math.max(0.02, k); f.push(k); all += q.claim; gone += q.claim * (1 - k); if (k > 0.98) clear += q.claim;
+    }
+    if (gone <= 0) continue;
+    // what the sites in the way give up, the sites clear of it take, if they
+    // hold enough of the piece to take it; else the piece gives way whole
+    const g = clear > 0.25 * all ? 1 + gone / clear : 1;
+    v.subs.forEach((q, i) => { q.claim *= f[i] > 0.98 ? g : f[i]; });
+  }
 };
 
 /* --------------------------------------------------------------- START */
