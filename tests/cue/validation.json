@@ -1,0 +1,398 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed. Without the Cue button, state and every drawing command must exactly match Tell II, a click, a scroll, a Tell story, a Tell II story and home included; with the story, every slide settled has its cast on its places (rectangles to 4 px, unlabelled), a sequence builds up one cell a slide with the cells already on the stage never moving, a fresh slide brings out a cell that was none of the last sequence, the whitespace is exact and covers the page, no field, one site a cell, nothing fractures on any frame of a change, a notch turns one slide, and the same on a phone.",
+  "frames": 17332,
+  "drawingCommands": 15708550,
+  "matrix": [
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 16.666666666666668,
+      "inner": "flock",
+      "frames": 3470
+    },
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 24,
+      "fields": 1,
+      "dt": 30,
+      "inner": "bento",
+      "frames": 1939
+    },
+    {
+      "width": 390,
+      "height": 720,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 8.333333333333334,
+      "inner": "flock",
+      "frames": 6940
+    },
+    {
+      "width": 1363,
+      "height": 846,
+      "count": 30,
+      "fields": 0,
+      "dt": 50,
+      "inner": "flock",
+      "frames": 1157
+    }
+  ],
+  "report": {
+    "clickIdentity": {
+      "frames": 3826,
+      "kind": "band",
+      "tell": true,
+      "tell2": true
+    },
+    "slides": [
+      {
+        "k": 0,
+        "cast": [
+          "Aurora"
+        ],
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 1,
+        "cast": [
+          "Aurora",
+          "Tide"
+        ],
+        "offRect": 0,
+        "voids": 13,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 2,
+        "cast": [
+          "Aurora",
+          "Tide",
+          "Jazz"
+        ],
+        "offRect": 0,
+        "voids": 12,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 3,
+        "cast": [
+          "Moss"
+        ],
+        "offRect": 0.3,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 4,
+        "cast": [
+          "Moss",
+          "Aurora"
+        ],
+        "offRect": 0.3,
+        "voids": 13,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 5,
+        "cast": [
+          "Tide"
+        ],
+        "offRect": 1,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 6,
+        "cast": [
+          "Tide",
+          "Aurora"
+        ],
+        "offRect": 0,
+        "voids": 13,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 7,
+        "cast": [
+          "Tide",
+          "Aurora",
+          "Jazz"
+        ],
+        "offRect": 3.3,
+        "voids": 12,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      }
+    ],
+    "changes": [
+      {
+        "k": 1,
+        "fresh": false,
+        "cast": [
+          "Aurora",
+          "Tide"
+        ],
+        "kept": 1,
+        "nudge": 15.6,
+        "seconds": 2.3
+      },
+      {
+        "k": 2,
+        "fresh": false,
+        "cast": [
+          "Aurora",
+          "Tide",
+          "Jazz"
+        ],
+        "kept": 2,
+        "nudge": 12.4,
+        "seconds": 2.7
+      },
+      {
+        "k": 3,
+        "fresh": true,
+        "cast": [
+          "Moss"
+        ],
+        "kept": 0,
+        "nudge": 0,
+        "seconds": 3
+      },
+      {
+        "k": 4,
+        "fresh": false,
+        "cast": [
+          "Moss",
+          "Aurora"
+        ],
+        "kept": 1,
+        "nudge": 13.6,
+        "seconds": 2.6
+      },
+      {
+        "k": 5,
+        "fresh": true,
+        "cast": [
+          "Tide"
+        ],
+        "kept": 0,
+        "nudge": 0,
+        "seconds": 2.8
+      },
+      {
+        "k": 6,
+        "fresh": false,
+        "cast": [
+          "Tide",
+          "Aurora"
+        ],
+        "kept": 1,
+        "nudge": 10.3,
+        "seconds": 2.8
+      },
+      {
+        "k": 7,
+        "fresh": false,
+        "cast": [
+          "Tide",
+          "Aurora",
+          "Jazz"
+        ],
+        "kept": 2,
+        "nudge": 8.7,
+        "seconds": 2.7
+      }
+    ],
+    "back": {
+      "k": 0,
+      "cast": [
+        "Aurora"
+      ],
+      "offRect": 0.9,
+      "voids": 14,
+      "rest": {
+        "rectangle": 1,
+        "voronoi": 11,
+        "cut": 0
+      }
+    },
+    "phone": [
+      {
+        "k": 0,
+        "cast": [
+          "Dune"
+        ],
+        "offRect": 0,
+        "voids": 10,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 1,
+        "fresh": false,
+        "cast": [
+          "Dune",
+          "Coal"
+        ],
+        "kept": 1,
+        "nudge": 1.4,
+        "seconds": 3.1
+      },
+      {
+        "k": 1,
+        "cast": [
+          "Dune",
+          "Coal"
+        ],
+        "offRect": 0,
+        "voids": 9,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 2,
+        "fresh": false,
+        "cast": [
+          "Dune",
+          "Coal",
+          "Moss"
+        ],
+        "kept": 2,
+        "nudge": 4.7,
+        "seconds": 2.6
+      },
+      {
+        "k": 2,
+        "cast": [
+          "Dune",
+          "Coal",
+          "Moss"
+        ],
+        "offRect": 0,
+        "voids": 8,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0
+        }
+      },
+      {
+        "k": 3,
+        "fresh": true,
+        "cast": [
+          "Tide"
+        ],
+        "kept": 0,
+        "nudge": 0,
+        "seconds": 2.2
+      },
+      {
+        "k": 3,
+        "cast": [
+          "Tide"
+        ],
+        "offRect": 0.1,
+        "voids": 10,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 4,
+        "fresh": false,
+        "cast": [
+          "Tide",
+          "Coal"
+        ],
+        "kept": 1,
+        "nudge": 9.3,
+        "seconds": 2.8
+      },
+      {
+        "k": 4,
+        "cast": [
+          "Tide",
+          "Coal"
+        ],
+        "offRect": 0.1,
+        "voids": 9,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 5,
+        "fresh": true,
+        "cast": [
+          "Moss"
+        ],
+        "kept": 0,
+        "nudge": 0,
+        "seconds": 2.3
+      },
+      {
+        "k": 5,
+        "cast": [
+          "Moss"
+        ],
+        "offRect": 0,
+        "voids": 10,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      }
+    ],
+    "home": {
+      "cells": 12,
+      "scene": "bento"
+    }
+  }
+}
