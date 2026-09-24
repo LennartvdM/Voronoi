@@ -1,5 +1,5 @@
 {
-  "scope": "Real full tick; native Canvas and browser DOM stubbed. Without the Cue button, state and every drawing command must exactly match Tell II, a click, a scroll, a Tell story, a Tell II story and home included; with the story, every slide settled has its cast on its places (rectangles to 4 px, unlabelled), a sequence builds up one cell a slide with the cells already on the stage never moving, a fresh slide brings out a cell that was none of the last sequence, the whitespace is exact and covers the page, no field, one site a cell, nothing fractures on any frame of a change, a notch turns one slide, and the same on a phone.",
+  "scope": "Real full tick; native Canvas and browser DOM stubbed. Without the Cue button, state and every drawing command must exactly match Tell II, a click, a scroll, a Tell story, a Tell II story and home included; with the story, every slide settled has its cast on its places (rectangles to 4 px, unlabelled), a sequence builds up one cell a slide with the cells already on the stage never moving, a fresh slide brings out a cell that was none of the last sequence, the whitespace is exact and covers the page, no field, one site a cell, nothing fractures on any frame of a change, no two cards in flight overlap, a notch turns one slide, and the same on a phone.",
   "frames": 17332,
   "drawingCommands": 15708550,
   "matrix": [
@@ -69,11 +69,11 @@
           "Moss"
         ],
         "niches": 2,
-        "offRect": 0.1,
+        "offRect": 0,
         "voids": 20,
         "rest": {
-          "rectangle": 1,
-          "voronoi": 11,
+          "rectangle": 2,
+          "voronoi": 9,
           "cut": 0
         }
       },
@@ -99,7 +99,7 @@
           "Dune"
         ],
         "niches": 1,
-        "offRect": 0.1,
+        "offRect": 0,
         "voids": 20,
         "rest": {
           "rectangle": 1,
@@ -114,11 +114,11 @@
           "Aurora"
         ],
         "niches": 2,
-        "offRect": 0.4,
+        "offRect": 0,
         "voids": 20,
         "rest": {
-          "rectangle": 1,
-          "voronoi": 11,
+          "rectangle": 2,
+          "voronoi": 10,
           "cut": 0
         }
       },
@@ -128,7 +128,7 @@
           "Moss"
         ],
         "niches": 1,
-        "offRect": 0.9,
+        "offRect": 0,
         "voids": 20,
         "rest": {
           "rectangle": 1,
@@ -162,8 +162,8 @@
         "offRect": 0,
         "voids": 20,
         "rest": {
-          "rectangle": 2,
-          "voronoi": 10,
+          "rectangle": 3,
+          "voronoi": 9,
           "cut": 0
         }
       }
@@ -179,7 +179,8 @@
         "kept": 1,
         "penStayed": 10,
         "closest": null,
-        "seconds": 2.4
+        "cardOverlap": 0,
+        "seconds": 2.3
       },
       {
         "k": 2,
@@ -192,7 +193,8 @@
         "kept": 2,
         "penStayed": 9,
         "closest": null,
-        "seconds": 3
+        "cardOverlap": 0,
+        "seconds": 2.2
       },
       {
         "k": 3,
@@ -202,8 +204,9 @@
         ],
         "kept": 0,
         "penStayed": 8,
-        "closest": 2.33,
-        "seconds": 4.1
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 3.7
       },
       {
         "k": 4,
@@ -215,7 +218,8 @@
         "kept": 1,
         "penStayed": 10,
         "closest": null,
-        "seconds": 2.6
+        "cardOverlap": 0,
+        "seconds": 2.3
       },
       {
         "k": 5,
@@ -225,8 +229,9 @@
         ],
         "kept": 0,
         "penStayed": 9,
-        "closest": 0.89,
-        "seconds": 3.5
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.7
       },
       {
         "k": 6,
@@ -238,7 +243,8 @@
         "kept": 1,
         "penStayed": 10,
         "closest": null,
-        "seconds": 3.3
+        "cardOverlap": 0,
+        "seconds": 2.4
       },
       {
         "k": 7,
@@ -251,6 +257,7 @@
         "kept": 2,
         "penStayed": 9,
         "closest": null,
+        "cardOverlap": 0,
         "seconds": 2.3
       }
     ],
@@ -293,6 +300,7 @@
         "kept": 1,
         "penStayed": 10,
         "closest": null,
+        "cardOverlap": 0,
         "seconds": 3.8
       },
       {
@@ -321,6 +329,7 @@
         "kept": 2,
         "penStayed": 9,
         "closest": null,
+        "cardOverlap": 0,
         "seconds": 2.6
       },
       {
@@ -347,8 +356,9 @@
         ],
         "kept": 0,
         "penStayed": 8,
-        "closest": 0.54,
-        "seconds": 4
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.6
       },
       {
         "k": 3,
@@ -356,7 +366,7 @@
           "Dune"
         ],
         "niches": 1,
-        "offRect": 0.1,
+        "offRect": 0,
         "voids": 14,
         "rest": {
           "rectangle": 1,
@@ -374,6 +384,7 @@
         "kept": 1,
         "penStayed": 10,
         "closest": null,
+        "cardOverlap": 0,
         "seconds": 4
       },
       {
@@ -383,7 +394,7 @@
           "Coal"
         ],
         "niches": 2,
-        "offRect": 0.1,
+        "offRect": 0,
         "voids": 14,
         "rest": {
           "rectangle": 2,
@@ -399,7 +410,8 @@
         ],
         "kept": 0,
         "penStayed": 9,
-        "closest": 1.67,
+        "closest": null,
+        "cardOverlap": 0,
         "seconds": 4.5
       },
       {

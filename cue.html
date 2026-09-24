@@ -2013,8 +2013,8 @@ function cueMatch(m, n, cost) {
 // WHO GOES WHERE, the engine's matching under the pen's rules: a cell on (or
 // bound for) a place the slide keeps keeps it, and holds still; the places
 // left take the nearest cells not benched; a cell in (or bound for) a slot
-// keeps it; and the cells left, the ones coming home, take the open niches
-// nearest them. A cell is bound for its rectangle, so a change interrupted
+// keeps it; and the cells left, the ones coming home, go to their own
+// niches. A cell is bound for its rectangle, so a change interrupted
 // is planned from where everyone was going.
 function cuePlan(h, k, cells) {
   const C = h.COLS, R = h.ROWS, n = cells.length, L = cueLattice(C, R);
@@ -2025,8 +2025,15 @@ function cuePlan(h, k, cells) {
   const open = stage.map((r, j) => j).filter(j => !place[j]), pool = cells.filter(b => !used.has(b) && !cue.bench.has(b));
   cueMatch(pool.length, open.length, (i, j) => d2(pool[i], stage[open[j]])).forEach((j, i) => { if (j >= 0) { place[open[j]] = pool[i]; used.add(pool[i]); } });
   slots.forEach((r, s) => { const b = cells.find(b => !used.has(b) && bound(b, r)); if (b) { slot[s] = b; used.add(b); } });
-  const home = cells.filter(b => !used.has(b)), free = slots.map((r, s) => s).filter(s => !slot[s]);
+  // a cell coming home goes to its own niche, held open for it since it left
+  // (at the front of the pen, where the nearest cell goes out from); a cell
+  // whose niche is gone takes the open niche nearest it
+  let home = cells.filter(b => !used.has(b));
+  for (const b of home) if (b.cueHome !== undefined && b.cueHome < slots.length && !slot[b.cueHome]) slot[b.cueHome] = b;
+  home = home.filter(b => !slot.includes(b));
+  const free = slots.map((r, s) => s).filter(s => !slot[s]);
   cueMatch(home.length, free.length, (i, j) => d2(home[i], slots[free[j]])).forEach((j, i) => { if (j >= 0) slot[free[j]] = home[i]; });
+  slot.forEach((b, s) => { if (b) b.cueHome = s; });   // its niche, for when it goes out
   return { names, stage, slots, place, slot, kept };
 }
 // THE PEN IS SOLVED WHOLE, AND A NICHE IS HELD FROM ITS EDGES. The page is
@@ -2081,7 +2088,10 @@ function cueScene(h, n) {
   }
   const page = whole.niches.get(nkey);
   const owner = cast.map(j => p.place[j]).concat(p.slot.filter(Boolean));
-  cue.slotOf = new Map(owner.map((b, i) => [b, i])); cue.on = cast.map(j => p.place[j]);
+  cue.prevOn = cue.on.slice();
+  for (const b of cells) b.cueFrom = b.rect ? b.rect.slice(0, 4) : null;   // where it was, for the size a flight starts at
+  cue.homeCell = new Map(); p.slot.forEach((b, s) => { if (b) { const c = whole.diag.cells[cast.length + s]; if (c && c.pts && c.pts.length >= 3) cue.homeCell.set(b, c.pts); } });   // the cell of the pen a cell coming home melts into
+  cue.slotOf = new Map(owner.map((b, i) => [b, i])); cue.on = cast.map(j => p.place[j]); cue.slots = p.slots;
   for (const b of cells) b.cueStay = p.kept.has(b);
   return { content: page.content, voids: page.voids, cast: cast.length };
 }
@@ -2099,10 +2109,20 @@ function cueAssign(content, centers) {
 // side it is already on, just enough to pass close. The cell going out to
 // the stage keeps its line and a cell going home gives way; of two alike,
 // the one that sets off later gives way. A cell that is already travelling
-// when the change comes is on it too, where it is.
+// when the change comes is on it too, where it is. No bend carries a card
+// further off the page than its own ends are.
+// how far a card of half-size R strays off the page along a path, beyond
+// what its ends already do: a bend may not carry a card to the wall
+function cueOffPage(h, p, R) {
+  const off = (x, y) => Math.max(0, R - x, R - y, x + R - h.W, y + R - h.H), ends = Math.max(off(p.sx, p.sy), off(p.ex, p.ey));
+  let worst = 0;
+  for (let k = 1; k < 20; k++) { const e = k / 20, m = 1 - e; worst = Math.max(worst, off(m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey) - ends); }
+  return worst;
+}
 const CUE_CLEAR = 0.75;
 function cueAvoid(h, content) {
   const movers = content.filter(b => b.path && b.journey && Math.hypot(b.path.ex - b.path.sx, b.path.ey - b.path.sy) > 4);
+  cueClear(h, movers, content.filter(b => cue.on.includes(b) && !movers.includes(b) && b.rect));
   if (movers.length < 2) return;
   const PW = h.PW, PH = h.PH, reach = b => 0.5 * Math.sqrt(Math.max(b.claim0 || 0, b.claimTarget || 0) * PW * PH), out = b => cue.on.includes(b);
   const at = (b, t) => { const j = b.journey, u = Math.max(0, Math.min(1, (h.t + t - j.t0 - j.delay - (j.hold || 0)) / j.dur)), e = easeInOutCubic(u), m = 1 - e, p = b.path; return [m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey]; };
@@ -2126,6 +2146,7 @@ function cueAvoid(h, content) {
       const step = 0.25 * CUE_CLEAR * (reach(a) + reach(b));   // the bend grows by a quarter of the clearance it needs, to three times it
       for (let s = 1; s <= 12 && best.sc < 0; s++) {
         p.cx = c0[0] + side * nx * s * step; p.cy = c0[1] + side * ny * s * step;
+        if (cueOffPage(h, p, reach(y)) > 2) break;   // not to the wall
         const sc = score(); if (sc > best.sc) best = { sc, cx: p.cx, cy: p.cy };
       }
       p.cx = best.cx; p.cy = best.cy; bent = true;
@@ -2139,7 +2160,7 @@ function cueReseat(h, v, r, content, T) {
   const g = [r[0] * h.PW, r[1] * h.PH, r[2] * h.PW, r[3] * h.PH];
   let wait = 0;
   for (const b of content) {
-    const p = b.path, j = b.journey; if (!p || !j || j.t0 !== h.t || Math.hypot(p.ex - p.sx, p.ey - p.sy) < 4) continue;
+    const p = b.path, j = b.journey; if (!p || !j || j.t0 !== h.t || Math.hypot(p.ex - p.sx, p.ey - p.sy) < 4 || b.cueFly) continue;   // a card flies over the piece, whatever its sites
     const R = 0.5 * Math.sqrt(Math.max(b.claim0 || 0, b.claimTarget || 0) * h.PW * h.PH);
     let last = -1;
     for (let k = 0; k <= 20; k++) { const e = k / 20, m = 1 - e, x = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, y = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey; if (Math.hypot(Math.max(g[0] - x, 0, x - g[2]), Math.max(g[1] - y, 0, y - g[3])) < R) last = e; }
@@ -2150,17 +2171,141 @@ function cueReseat(h, v, r, content, T) {
   if (wait <= T) { v.formRect = null; h.seatBody(v, r, 0, { t0: h.t, delay: T, dur: 0.9, c0: v.crystal }); delete v.cueDefer; }
   else v.cueDefer = { r, at: h.t + wait };   // seated when it comes (see cueFlow)
 }
+// A CARD FLIES AS A CARD. A cell has no shape of its own here: its outline
+// is wherever its neighbours' claims stop, and a settled cell looks right
+// only because every edge of it is held by a mirror made for it. A cell
+// crossing the open stage has nothing holding it, so its outline ran to
+// whatever stopped it, the page's edge most of all: a fly on the wall,
+// finding its place only as it landed. So a cell that goes out to the stage
+// becomes its card on the way: it leaves the auction, and its shape is the
+// engine's blend of the cell it had as it set off (carried along with it)
+// and a card centred on its seed, the card growing from its slot's size to
+// its place's as its seed goes (by where it is, not by the journey's clock,
+// which its seed trails on its spring), the blend all card within a reach and
+// a half of setting off.
+// It flies and lands as a card, and lands a wall: pinned on its place, its
+// outline its card, out of the auction as the cast on the stage always is.
+// (Handed back to the auction as it landed, it sprawled for the frames the
+// whitespace round its place took to hold it; kept a hole, the page drifted
+// off its diagram, and the shadow auction handed a hole back wrong.)
+// Whitespace and pen give way round it. A
+// card going home flies as a card and melts, over its last reach and a half,
+// into the cell of the pen it is going to; so does any cell crossing the
+// stage into the pen, as the cells of a page do when the story begins. A card that is a card when a
+// change comes goes on as one. A flight is one state, from the change that
+// plans it to its seed landing: out of the auction all the way, starting
+// from exactly the cell it had at rest, the blend going only one way.
+// AND A CARD IN FLIGHT GOES ROUND THE CARDS STANDING ON THE STAGE: played
+// forward on its path and its clock, a card the size it will be at each
+// moment, from its slot's to its place's, is not to cut into a card that
+// stands, by a gap; where it would, its path bends away from that card, just
+// enough, as for two cells meeting.
+const CUE_GAP = 16;
+function cueClear(h, movers, standing) {
+  if (!standing.length) return;
+  const PW = h.PW, PH = h.PH, px = r => [r[0] * PW, r[1] * PH, r[2] * PW, r[3] * PH];
+  const blocks = standing.map(b => px(b.rect));
+  for (const b of movers) {
+    const p = b.path, j = b.journey; if (j.t0 !== h.t || !b.cueFrom || !cue.on.includes(b) && !(cue.prevOn || []).includes(b)) continue;
+    const f = px(b.cueFrom), t = px(b.rect), w0 = f[2] - f[0], h0 = f[3] - f[1], w1 = t[2] - t[0], h1 = t[3] - t[1];
+    const cut = () => {   // how deep the card cuts into a card standing, at worst over its flight
+      let worst = -Infinity, when = 0, which = null;
+      for (let k = 2; k <= 40; k++) {
+        const e = k / 40, m = 1 - e, x = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, y = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey, w = w0 + (w1 - w0) * e, hh = h0 + (h1 - h0) * e;
+        for (const q of blocks) {
+          const d = Math.min(w / 2 + (q[2] - q[0]) / 2 + CUE_GAP - Math.abs(x - (q[0] + q[2]) / 2), hh / 2 + (q[3] - q[1]) / 2 + CUE_GAP - Math.abs(y - (q[1] + q[3]) / 2));
+          if (d > worst) { worst = d; when = e; which = q; }
+        }
+      }
+      return { worst, when, which };
+    };
+    let c = cut();
+    if (c.worst <= 0) continue;
+    const L = Math.hypot(p.ex - p.sx, p.ey - p.sy), nx = -(p.ey - p.sy) / L, ny = (p.ex - p.sx) / L, e = c.when, m = 1 - e;
+    const x = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, y = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey, q = c.which;
+    const side = (x - (q[0] + q[2]) / 2) * nx + (y - (q[1] + q[3]) / 2) * ny >= 0 ? 1 : -1, c0 = [p.cx, p.cy];
+    let best = { worst: c.worst, cx: p.cx, cy: p.cy };
+    for (let k = 1; k <= 16 && best.worst > 0; k++) {
+      p.cx = c0[0] + side * nx * k * 0.25 * c.worst; p.cy = c0[1] + side * ny * k * 0.25 * c.worst;
+      if (cueOffPage(h, p, 0.5 * Math.max(Math.min(w0, h0), Math.min(w1, h1))) > 2) break;   // not to the wall
+      const n = cut(); if (n.worst < best.worst) best = { worst: n.worst, cx: p.cx, cy: p.cy };
+    }
+    p.cx = best.cx; p.cy = best.cy;
+  }
+}
+// where on its path a card comes within its reach of the rectangle it lands
+// in, and where a card leaving a rectangle is half its size clear of it
+function cueNear(h, b, r) {
+  const p = b.path; if (!p || !r) return 0;
+  const g = [r[0] * h.PW, r[1] * h.PH, r[2] * h.PW, r[3] * h.PH], reach = 0.5 * Math.sqrt((g[2] - g[0]) * (g[3] - g[1]));
+  for (let k = 0; k <= 40; k++) { const e = k / 40, m = 1 - e, x = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, y = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey; if (Math.hypot(Math.max(g[0] - x, 0, x - g[2]), Math.max(g[1] - y, 0, y - g[3])) <= reach) return Math.max(0, Math.min(0.95, e - 0.025)); }
+  return 0.95;
+}
+function cueClearOf(h, b, r) {
+  const p = b.path; if (!p) return 1;
+  const g = [r[0] * h.PW, r[1] * h.PH, r[2] * h.PW, r[3] * h.PH], reach = 0.5 * Math.sqrt((g[2] - g[0]) * (g[3] - g[1]));
+  for (let k = 1; k <= 40; k++) { const e = k / 40, m = 1 - e, x = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, y = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey; if (Math.hypot(Math.max(g[0] - x, 0, x - g[2]), Math.max(g[1] - y, 0, y - g[3])) >= reach) return Math.max(0.05, e); }
+  return 1;
+}
+function cueFlyers(h, content) {
+  const S = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); }, size = r => [(r[2] - r[0]) * h.PW, (r[3] - r[1]) * h.PH];
+  for (const b of content) {
+    const p = b.path, j = b.journey;
+    if (!p || !j || j.t0 !== h.t) continue;
+    const L = Math.hypot(p.ex - p.sx, p.ey - p.sy), out = cue.on.includes(b), was = b.cueFly ? cueFlyC(h, b) : 0;
+    const fromCard = was > 0.5 || (cue.prevOn || []).includes(b);
+    const crossing = !out && b.cueFrom && !cue.slots.some(r => rectsEqual(r, b.cueFrom));   // coming into the pen from off its slots: from the stage, or from the page the story began on
+    if (L < 4 || (!out && !fromCard && !crossing)) { if (!(was > 0)) b.cueFly = null; continue; }   // a cell of the pen staying a cell of the pen does not fly
+    const from = b.cueFly && b.cueFly.cur ? b.cueFly.cur : (b.cueFrom ? size(b.cueFrom) : size(b.rect)), to = size(b.rect);
+    b.cueFly = { fromCard, toCard: out, from, to, R: 0.5 * Math.sqrt(Math.max(from[0] * from[1], to[0] * to[1])), core: null, at: null, home: out ? null : cue.homeCell.get(b) || null, S, c: undefined };
+    if (!fromCard) {   // the cell it has at rest, as it sets off: the flight begins exactly there
+      let parts = null;
+      if (h.solved) for (let k = 0; k < h.solvedSubs.length; k++) if (h.solvedSubs[k].body === b) { const cell = h.solved.diagram.cells[k]; if (cell) parts = cell.pieces || [cell]; }
+      const r = b.cueFrom ? [b.cueFrom[0] * h.PW, b.cueFrom[1] * h.PH, b.cueFrom[2] * h.PW, b.cueFrom[3] * h.PH] : [b.x - 1, b.y - 1, b.x + 1, b.y + 1], sh = parts ? cellCoreAndArms(parts, r) : null;
+      b.cueFly.core = sh ? sh.core : [[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]]]; b.cueFly.at = [b.x, b.y];
+    }
+  }
+}
+function cueFlyC(h, b) {   // how much of a card it is: from the cell it was to the card, and back into the cell it is going to
+  const f = b.cueFly, p = b.path, S = f.S;
+  const a = f.fromCard ? 1 : S(Math.hypot(b.x - p.sx, b.y - p.sy) / (1.5 * f.R)), z = f.toCard ? 1 : S(Math.hypot(b.x - p.ex, b.y - p.ey) / (1.5 * f.R));
+  return Math.min(a, z);
+}
+function cueFlyShape(h, b) {
+  const f = b.cueFly, p = b.path;
+  if (!p) { b.cueFly = null; return null; }
+  const dS = Math.hypot(b.x - p.sx, b.y - p.sy), dE = Math.hypot(b.x - p.ex, b.y - p.ey), e = dS + dE > 1e-6 ? dS / (dS + dE) : 1, done = !b.journey && dE < 0.5;   // its size by where it is, not by its clock: a seed trails its clock
+  if (done && f.toCard) { b.pin = 1; b.cueFly = null; return null; }   // landed: pinned on its place, drawn as its card, it is a wall from this frame (see computeWalls)
+  if (done) { b.cueFly = null; return null; }   // melted into the pen: a cell of the auction again
+  const c0 = cueFlyC(h, b), c = f.c === undefined ? c0 : f.toCard ? Math.max(f.c, c0) : e > 0.5 ? Math.min(f.c, c0) : c0;   // one way only: toward the card going out, toward the cell coming home
+  f.c = c;
+  const w = f.from[0] + (f.to[0] - f.from[0]) * e, hh = f.from[1] + (f.to[1] - f.from[1]) * e;
+  f.cur = [w, hh];
+  const rect = [b.x - w / 2, b.y - hh / 2, b.x + w / 2, b.y + hh / 2];
+  // the cell under the card: the one it set off as, carried with it, and the
+  // one of the pen it is going to, and between the two a blend of them
+  const card = [[rect[0], rect[1]], [rect[2], rect[1]], [rect[2], rect[3]], [rect[0], rect[3]]], start = f.core ? f.core.map(q => [q[0] + b.x - f.at[0], q[1] + b.y - f.at[1]]) : null;
+  const home = f.home ? f.home.map(q => [q[0] + b.x - p.ex, q[1] + b.y - p.ey]) : null;   // carried with it too, so the blend is centred on its seed and is its home cell exactly as it arrives
+  let core;
+  if (f.toCard) core = start || card;
+  else if (f.fromCard) core = home || card;
+  else if (start && home) { const t = Math.max(0, Math.min(1, (e - 0.3) / 0.4)); core = blendConvex(start, home, t * t * (3 - 2 * t), h.domainPts()) || (t < 0.5 ? start : home); }
+  else core = start || home || card;
+  const pts = planesPoly(holePlanes(core, rect, c), h.domainPts());
+  if (!pts) return null;
+  return { pieces: [pts], planes: [convexPlanes(pts)], rect, pts, raw: [pts] };
+}
 // the story: its scroll (px, a page's height a slide), its speed, the slide
 // it is on, the cast on stage, the bench, and the text's clocks
 let cue = null;
 function cueStart(origin) {
   reelDrop(); tellDrop(); tell2Drop();
   portalFocus = null; portalFlip = false;
-  cue = { y: 0, v: 0, k: 0, on: [], bench: new Set(), titles: [], tf: [], drag: null, entered: false, alpha: 0, rule: 0, fullAt: -1, seen: -1, changed: -1e9 };
+  cue = { y: 0, v: 0, k: 0, on: [], prevOn: [], slots: [], homeCell: new Map(), bench: new Set(), titles: [], tf: [], drag: null, entered: false, alpha: 0, rule: 0, fullAt: -1, seen: -1, changed: -1e9 };
   cueCache.clear();
   cueGo(0, origin || { x: W / 2, y: H / 2 });
 }
-function cueDrop() { if (!cue) return; cue = null; for (const b of root.bodies) delete b.cueStay; }
+function cueDrop() { if (!cue) return; cue = null; for (const b of root.bodies) { delete b.cueStay; delete b.cueFly; delete b.cueFrom; delete b.cueHome; } }
 // a slide is a scene change, from where it is largest; a new sequence
 // benches the cast on stage
 function cueGo(k, origin) {
@@ -3364,7 +3509,7 @@ class Hive {
       j.dur = Math.max(j.dur, o.journey.delay - j.delay + 0.9);
     }
     for (const b of pending) this.retireBody(b, 0.8, tOf(b));
-    if (name === 'cue' && cue) { cueAvoid(this, content); for (const [v, r] of cueSeat) cueReseat(this, v, r, content, tOf(v)); }   // CUE: the change looks ahead; a staying piece takes its new sites once the cells by it have gone by
+    if (name === 'cue' && cue) { cueAvoid(this, content); cueFlyers(this, content); for (const [v, r] of cueSeat) cueReseat(this, v, r, content, tOf(v)); }   // CUE: the change looks ahead; a staying piece takes its new sites once the cells by it have gone by
 
     // an old void closes at the pace of what lands in it; a new one opens
     // at the pace of what leaves it — each a ledger of the bodies involved,
@@ -3376,6 +3521,7 @@ class Hive {
         const r = rectOf.get(b), [ex, ey] = this.rectCenter(r);
         if (this.inRect(v.rect, ex, ey)) { rows.push({ body: b, journey: b.journey, w: rectArea(r) }); W += rectArea(r); }
       }
+      if (name === 'cue' && rows.length) { for (const q of rows) q.from = cueNear(this, q.body, v.rect); W = Math.max(W, v.claim); }   // CUE: held until its card comes
       this.retireBody(v, 1.2, tOf(v));
       v.table = { mode: 'close', rows, wRem: Math.max(0, v.claim0 - W), f: 0 };
     }
@@ -3383,12 +3529,12 @@ class Hive {
       const r = rectOfVoid.get(v), rows = []; let W = 0, wait = 0;
       for (const b of this.bodies) {
         if (b === v || b.isSelf || rectOfVoid.has(b) || stays.has(b)) continue;
-        if (this.inRect(r, b.x, b.y)) { rows.push({ body: b, journey: b.journey, w: b.claim }); W += b.claim; continue; }
+        if (this.inRect(r, b.x, b.y)) { rows.push({ body: b, journey: b.journey, w: b.claim, until: name === 'cue' ? cueClearOf(this, b, r) : undefined }); W += b.claim; continue; }   // CUE: open as its card clears it
         // PORTAL: a page's whitespace also waits for the cells whose journeys
         // pass through it, so nothing crosses it as a sliver and its text is
         // not set under a traveller: they are on its ledger, and it does not
         // open on its own clock until the last of them is through
-        if (!(name in PORTAL_TEMPLATES || name === 'tell' || name === 'tell2' || name === 'cue') || !b.path || !b.journey || b.journey.t0 !== this.t) continue;   // CUE: a slide's whitespace waits for its crossers too
+        if (!(name in PORTAL_TEMPLATES || name === 'tell' || name === 'tell2' || name === 'cue') || !b.path || !b.journey || b.journey.t0 !== this.t || b.cueFly) continue;   // CUE: a slide's whitespace waits for its crossers too, but not for a card, which carves its own way
         const p = b.path; let last = -1;
         for (let k = 1; k < 20; k++) { const e = k / 20, m = 1 - e, x = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex, y = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey; if (this.inRect(r, x, y)) last = e; }
         if (last < 0) continue;
@@ -3448,6 +3594,7 @@ class Hive {
   // --- steering ---------------------------------------------------------
 
   mfFreedom(b) {
+    if (b.cueFly && b.hole) return 0;   // CUE: a card in flight is not pushed
     // The destination already has valid geometry. Ambient wobble and
     // repulsion must not permanently displace its seeds from that solution.
     // Fade these forces over the existing journey, with no extra clock,
@@ -3618,7 +3765,7 @@ class Hive {
         }
         // nor is a hole: out through its nearest side
         if (!b.hole) for (const h of this.holes) {
-          if (h === b) continue;
+          if (h === b || h.cueFly && b.isVoid) continue;   // CUE: whitespace under a card in flight is flown over
           for (let k = 0; k < h.hole.pieces.length; k++) {
             if (!pointInPolygon(b.x, b.y, h.hole.pieces[k])) continue;
             let best = Infinity, bp = null;
@@ -3704,7 +3851,7 @@ class Hive {
         // its own clock for whatever share nobody accounts for. Monotone, so
         // a re-seated or reaped body counts as done, never as undone.
         const tb = b.table; let num = 0, den = 0, pmin = b.progress;
-        for (const r of tb.rows) { const p = ferryLedgerProgress(this, r, t); num += r.w * p; den += r.w; pmin = Math.min(pmin, p); }
+        for (const r of tb.rows) { const p0 = ferryLedgerProgress(this, r, t), p = r.until ? Math.min(1, p0 / r.until) : r.from !== undefined ? Math.max(0, (p0 - r.from) / (1 - r.from)) : p0; num += r.w * p; den += r.w; pmin = Math.min(pmin, p); }   // CUE: paced by where the card is
         num += tb.wRem * b.progress; den += tb.wRem;
         const f0 = den > 0 ? Math.min(1, num / den) : 1;
         const f = Math.max(tb.f, tb.wait ? Math.min(f0, b.progress) : f0);   // PORTAL: a page's whitespace opens no faster than its own clock, which waits for the cells crossing it
@@ -3756,6 +3903,7 @@ class Hive {
       b.wall = null; b.hole = null; b.holeExtra = [];
       const r = b.formRect;
       if (b.isSelf || !r) { b.holeCore = null; continue; }
+      if (b.cueFly && !b.leaving && this.depth === 0) { const hole = cueFlyShape(this, b); if (hole) { b.hole = hole; b.holeCore = null; this.holes.push(b); continue; } }   // CUE: a card in flight
       const rect = [r[0] * this.PW, r[1] * this.PH, r[2] * this.PW, r[3] * this.PH];
       if (!b.leaving && (b.reelParked || (!b.reelPinned && !(tell && !b.isVoid && this.depth === 0) && (b.crystal >= 1 || (b.pin > 0 && this.cellIsRect(b, r)))))) {   // TELL: the story's cards bid throughout   // REEL: a reel's body bids; a parked one is a wall off the page
         b.wall = rect; this.walls.push(b); b.holeCore = null;
@@ -6205,7 +6353,7 @@ Hive.prototype.placeSeeds = function() {   // CUE: whitespace makes way without 
   const S = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
   for (const b of this.bodies) {   // the way it asks for comes in as it sets off and goes as it lands, by where its seed is, so nothing snaps back
     const p = b.path;
-    if (b.isVoid || b.isSelf || b.leaving || !p || Math.hypot(p.ex - p.sx, p.ey - p.sy) < 4) continue;
+    if (b.isVoid || b.isSelf || b.leaving || !p || Math.hypot(p.ex - p.sx, p.ey - p.sy) < 4 || b.cueFly) continue;   // a card in flight carves its own way: nothing gives way for it, and whitespace under it is flown over (see enforcePreconditions)
     const R = 0.5 * Math.sqrt(Math.max(b.claim0 || 0, b.claimTarget || 0) * this.PW * this.PH), on = S(Math.hypot(b.x - p.sx, b.y - p.sy) / (0.5 * R)) * S(Math.hypot(b.x - p.ex, b.y - p.ey) / (0.5 * R));
     if (on > 0) movers.push([b.x, b.y, R, on]);
   }

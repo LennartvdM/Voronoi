@@ -180,11 +180,18 @@ function settled(st,k,label){
  return{k,cast:T.on.map(b=>b.name),niches:niches.length,offRect:+worst.toFixed(1),voids:voids.length,rest:{rectangle:sh.rectangle,voronoi:sh.voronoi,cut:sh.cut}};
 }
 // A CHANGE: the cells on the stage that the slide keeps hold still, the
-// cells of the pen that stay keep their slots and are sent nowhere, and no
-// two cells on their way come within half their reaches added; going
+// cells of the pen that stay keep their slots and are sent nowhere, no two
+// cards in flight overlap, and no two cells on their way that are not both
+// cards come within half their reaches added; going
 // on in a sequence, one cell comes out and the others keep their places; a
 // fresh slide sends the last cast home and brings out a cell that was none
 // of it; nothing fractures on any frame, and the change ends
+// a convex polygon clipped to another, and a polygon's area
+function clipConvex(S,C){let out=S,sg=0;const n=C.length;for(let i=0;i<n;i++){const p=C[i],q=C[(i+1)%n];sg+=p[0]*q[1]-q[0]*p[1];}sg=Math.sign(sg);
+ for(let i=0;i<n&&out.length;i++){const A=C[i],B=C[(i+1)%n],side=P=>sg*((B[0]-A[0])*(P[1]-A[1])-(B[1]-A[1])*(P[0]-A[0])),inp=out;out=[];
+  for(let j=0;j<inp.length;j++){const P=inp[j],Q=inp[(j+1)%inp.length],dp=side(P),dq=side(Q);if(dp>=0)out.push(P);if((dp>=0)!==(dq>=0)){const t=dp/(dp-dq);out.push([P[0]+t*(Q[0]-P[0]),P[1]+t*(Q[1]-P[1])]);}}}
+ return out.length>=3?out:null;}
+function polyArea(P){let a=0;for(let i=0;i<P.length;i++){const p=P[i],q=P[(i+1)%P.length];a+=p[0]*q[1]-q[0]*p[1];}return Math.abs(a/2);}
 function change(st,k,label){
  const e=st.e,T=e.cue(),from=T.k,was=T.on.slice(),before=new Map(roots(e).map(b=>[b,{x:b.x,y:b.y}])),fresh=!!e.slides2()[k].fresh&&k>from;
  e.cueGo(k);st.step(2);
@@ -193,15 +200,18 @@ function change(st,k,label){
  else if(k===from+1){assert.deepEqual(now.slice(0,was.length).map(b=>b.name),was.map(b=>b.name),label+': the cast already on the stage did not keep its places');assert.equal(now.length,was.length+1,label+': not one cell more');}
  const penStay=roots(e).filter(b=>!now.includes(b)&&!was.includes(b));
  for(const b of penStay)assert(b.path&&Math.hypot(b.path.ex-b.path.sx,b.path.ey-b.path.sy)<1,label+': '+b.name+', in the pen, was sent on a journey');
- let frames=0,frac=0,stayMove=0,close=Infinity;
+ let frames=0,frac=0,stayMove=0,close=Infinity,over=0;
  const movers=roots(e).filter(b=>b.path&&Math.hypot(b.path.ex-b.path.sx,b.path.ey-b.path.sy)>4),reach=b=>0.5*Math.sqrt(Math.max(b.claim0||0,b.claimTarget||0)*e.root.PW*e.root.PH),going=b=>b.journey&&b.progress>0.05&&b.progress<0.9;
  while(e.changeLeft()>0&&frames<600){st.step(1);frames++;frac+=shapes(st).fractured;for(const b of kept){const p=before.get(b);stayMove=Math.max(stayMove,Math.hypot(b.x-p.x,b.y-p.y));}
-  for(let i=0;i<movers.length;i++)for(let j=i+1;j<movers.length;j++){const a=movers[i],c=movers[j];if(going(a)&&going(c))close=Math.min(close,Math.hypot(a.x-c.x,a.y-c.y)/(reach(a)+reach(c)));}}
+  for(let i=0;i<movers.length;i++)for(let j=i+1;j<movers.length;j++){const a=movers[i],c=movers[j];
+   if(a.cueFly&&c.cueFly&&a.hole&&c.hole){const x=clipConvex(a.hole.pts,c.hole.pts);if(x)over=Math.max(over,polyArea(x)/Math.min(polyArea(a.hole.pts),polyArea(c.hole.pts)));continue;}   // two cards in flight: their shapes
+   if(going(a)&&going(c))close=Math.min(close,Math.hypot(a.x-c.x,a.y-c.y)/(reach(a)+reach(c)));}}
  assert(close>=0.5,label+': two cells on their way came within '+close.toFixed(2)+' of their reaches added');   // the change looks ahead: they pass close, never through each other
+ assert(over<0.01,label+': two cards in flight overlapped by '+(100*over).toFixed(1)+'% of the smaller');   // cards pass close, never over each other
  assert(frames<600,label+': the change did not end');assert.equal(frac,0,label+': a fractured cell in the change');
  assert(stayMove<1,label+': a cell on the stage moved '+stayMove.toFixed(1)+' px');
  st.step(240);
- return{k,fresh,cast:now.map(b=>b.name),kept:kept.length,penStayed:penStay.length,closest:close===Infinity?null:+close.toFixed(2),seconds:+(frames/60).toFixed(1)};
+ return{k,fresh,cast:now.map(b=>b.name),kept:kept.length,penStayed:penStay.length,closest:close===Infinity?null:+close.toFixed(2),cardOverlap:+over.toFixed(4),seconds:+(frames/60).toFixed(1)};
 }
 { // the story on a desk: slide 0, every slide in turn, back to the first a notch at a time, home
  const st=fresh(desk),e=st.e;e.cueStart();st.step(420);
@@ -221,5 +231,5 @@ function change(st,k,label){
  for(let k=1;k<=5;k++){out.push(change(st,k,'phone slide '+(k-1)+'->'+k));out.push(settled(st,k,'phone slide '+k));for(const b of e.cue().on)assert(b.rect[1]>=0.36*R-1e-6&&b.rect[3]<=0.56*R+1e-6,'phone: the stage is not the row below the band');}
  report.phone=out;
 }
-const result={scope:'Real full tick; native Canvas and browser DOM stubbed. Without the Cue button, state and every drawing command must exactly match Tell II, a click, a scroll, a Tell story, a Tell II story and home included; with the story, every slide settled has its cast on its places (rectangles to 4 px, unlabelled), a sequence builds up one cell a slide with the cells already on the stage never moving, a fresh slide brings out a cell that was none of the last sequence, the whitespace is exact and covers the page, no field, one site a cell, nothing fractures on any frame of a change, a notch turns one slide, and the same on a phone.',frames:total,drawingCommands:commandsTotal,matrix,report};
+const result={scope:'Real full tick; native Canvas and browser DOM stubbed. Without the Cue button, state and every drawing command must exactly match Tell II, a click, a scroll, a Tell story, a Tell II story and home included; with the story, every slide settled has its cast on its places (rectangles to 4 px, unlabelled), a sequence builds up one cell a slide with the cells already on the stage never moving, a fresh slide brings out a cell that was none of the last sequence, the whitespace is exact and covers the page, no field, one site a cell, nothing fractures on any frame of a change, no two cards in flight overlap, a notch turns one slide, and the same on a phone.',frames:total,drawingCommands:commandsTotal,matrix,report};
 fs.writeFileSync(path.join(__dirname,'validation.json'),JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify({totalFrames:total,drawingCommands:commandsTotal,story:report}));
