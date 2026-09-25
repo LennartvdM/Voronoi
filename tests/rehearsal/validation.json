@@ -1,0 +1,2832 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed; frames of 1/64 s on the tours. On a tour of changes (home scenes, home to a page of every kind and back, page to page) on a desk and a phone: a rehearsal leaves no trace (with a budget of one the tour is Shoal's, the world and every drawing command, frame by frame); on every rehearsed change the performance is the chosen rehearsal to the bit (every cell's seed, speed, claim, crystal, progress and sites, frame by frame) and scores what it rehearsed; the plan chosen rehearses no worse than Shoal's own from the same start; page to page is not rehearsed and runs on Shoal's one clock; nothing fractures on any frame; every page at rest is exact as on Shoal. Thinking spread over frames holds the page still and then plays what thinking at once plays, and a change asked for while thinking is thought afresh. A Cue story is Shoal's frame by frame; Cue's own story checks pass on a desk and a phone; a Tell and a Tell II story run to their end and home without a fractured cell.",
+  "report": {
+    "trace": {
+      "desk": {
+        "frames": 11550,
+        "identical": true
+      },
+      "phone": {
+        "frames": 11550,
+        "identical": true
+      }
+    },
+    "desk": {
+      "size": {
+        "width": 1440,
+        "height": 900,
+        "fields": 0.55
+      },
+      "rehearsed": 21,
+      "shoalPlan": 20408.4,
+      "chosen": 18324.7,
+      "shoalPlanParts": {
+        "lurch": 11748.8,
+        "sliver": 73.1,
+        "split": 0,
+        "collisions": 32,
+        "shock": 1803.4
+      },
+      "chosenParts": {
+        "lurch": 10440.3,
+        "sliver": 68.4,
+        "split": 0,
+        "collisions": 27,
+        "shock": 1762.3
+      },
+      "thinkMs": {
+        "mean": 947,
+        "max": 1875
+      },
+      "rehearsedFrames": {
+        "mean": 751,
+        "max": 1130
+      },
+      "tour": {
+        "shoal": {
+          "collisions": 34,
+          "fling": 4330,
+          "slivers": 413,
+          "fractured": 0
+        },
+        "rehearsal": {
+          "collisions": 29,
+          "fling": 4804,
+          "slivers": 411,
+          "fractured": 0
+        }
+      },
+      "changes": [
+        {
+          "act": "scene:frame",
+          "rehearsed": {
+            "base": 44.9,
+            "chosen": 29,
+            "baseParts": {
+              "lurch": 0,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 0,
+              "shock": 44.9196650104757
+            },
+            "parts": {
+              "lurch": 0.13720739164369,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 0,
+              "shock": 28.861334905342645
+            },
+            "plan": [
+              [
+                "Ember",
+                0.3
+              ],
+              [
+                "Coal",
+                0.3
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 586,
+            "thinkMs": 536,
+            "frames": 113
+          },
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "scene:sidebar",
+          "rehearsed": {
+            "base": 152.5,
+            "chosen": 151.9,
+            "baseParts": {
+              "lurch": 0,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 0,
+              "shock": 152.46373307027554
+            },
+            "parts": {
+              "lurch": 0,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 0,
+              "shock": 151.89860884928004
+            },
+            "plan": [
+              [
+                "Coral",
+                0.3
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 595,
+            "thinkMs": 594,
+            "frames": 141
+          },
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "scene:hero",
+          "rehearsed": {
+            "base": 53.2,
+            "chosen": 48.1,
+            "baseParts": {
+              "lurch": 0,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 0,
+              "shock": 53.184901704692194
+            },
+            "parts": {
+              "lurch": 0,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 0,
+              "shock": 48.053929893495905
+            },
+            "plan": [
+              [
+                "Mint",
+                0.15
+              ],
+              [
+                "Ember",
+                0.3
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 721,
+            "thinkMs": 730,
+            "frames": 141
+          },
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "scene:flock",
+          "rehearsed": null,
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "scene:bento",
+          "rehearsed": null,
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "scene:hero",
+          "rehearsed": {
+            "base": 29.2,
+            "chosen": 12.7,
+            "baseParts": {
+              "lurch": 0,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 0,
+              "shock": 29.164914075017677
+            },
+            "parts": {
+              "lurch": 0,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 0,
+              "shock": 12.748084797432782
+            },
+            "plan": [
+              [
+                "Aurora",
+                0.15
+              ],
+              [
+                "Coral",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 543,
+            "thinkMs": 334,
+            "frames": 128
+          },
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "scene:bento",
+          "rehearsed": {
+            "base": 119,
+            "chosen": 17.7,
+            "baseParts": {
+              "lurch": 0,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 19.022209793692713
+            },
+            "parts": {
+              "lurch": 0,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 0,
+              "shock": 17.66904620806518
+            },
+            "plan": [
+              [
+                "Moss",
+                0.15
+              ],
+              [
+                "Dune",
+                0.3
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 716,
+            "thinkMs": 499,
+            "frames": 140
+          },
+          "collisions": [
+            1,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Moss",
+          "rehearsed": {
+            "base": 1231.8,
+            "chosen": 821.6,
+            "baseParts": {
+              "lurch": 578.3503192281194,
+              "sliver": 2.8125,
+              "split": 0,
+              "collisions": 4,
+              "shock": 112.8573854835221
+            },
+            "parts": {
+              "lurch": 308.57978651575434,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 4,
+              "shock": 113.002686345826
+            },
+            "plan": [
+              [
+                "Aurora",
+                0.3
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 1033,
+            "thinkMs": 1621,
+            "frames": 187
+          },
+          "collisions": [
+            4,
+            4
+          ],
+          "fling": [
+            472,
+            716
+          ],
+          "slivers": [
+            47,
+            44
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9898,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "rehearsed": {
+            "base": 2540.3,
+            "chosen": 2514,
+            "baseParts": {
+              "lurch": 2320.9427133170925,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 119.37202962602213
+            },
+            "parts": {
+              "lurch": 2295.2311359860937,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 118.78162118723947
+            },
+            "plan": [
+              [
+                "Tide",
+                0.45
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 748,
+            "thinkMs": 872,
+            "frames": 141
+          },
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            785,
+            773
+          ],
+          "slivers": [
+            3,
+            4
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Aurora",
+          "rehearsed": {
+            "base": 947.8,
+            "chosen": 720.5,
+            "baseParts": {
+              "lurch": 841.0782929146329,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 6.758372360530531
+            },
+            "parts": {
+              "lurch": 713.5537450164593,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 0,
+              "shock": 6.978331435232838
+            },
+            "plan": [
+              [
+                "Mint",
+                0.3
+              ],
+              [
+                "Petal",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 1130,
+            "thinkMs": 1733,
+            "frames": 206
+          },
+          "collisions": [
+            1,
+            0
+          ],
+          "fling": [
+            100,
+            99
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "rehearsed": {
+            "base": 186.3,
+            "chosen": 186.1,
+            "baseParts": {
+              "lurch": 0,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 86.32289416664828
+            },
+            "parts": {
+              "lurch": 0,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 86.06302710319537
+            },
+            "plan": [
+              [
+                "Drift",
+                0.3
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 640,
+            "thinkMs": 834,
+            "frames": 141
+          },
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Coal",
+          "rehearsed": {
+            "base": 308.4,
+            "chosen": 206.5,
+            "baseParts": {
+              "lurch": 107.67945168766182,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 2,
+              "shock": 0.7682449652276574
+            },
+            "parts": {
+              "lurch": 105.76761889219544,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 0.7334366443826253
+            },
+            "plan": [
+              [
+                "Tide",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 1018,
+            "thinkMs": 1569,
+            "frames": 201
+          },
+          "collisions": [
+            2,
+            1
+          ],
+          "fling": [
+            81,
+            80
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "rehearsed": null,
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            145,
+            145
+          ],
+          "slivers": [
+            32,
+            32
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "rehearsed": {
+            "base": 184,
+            "chosen": 183.7,
+            "baseParts": {
+              "lurch": 0,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 83.96927456689878
+            },
+            "parts": {
+              "lurch": 0,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 83.70483599942602
+            },
+            "plan": [
+              [
+                "Petal",
+                0.3
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 643,
+            "thinkMs": 924,
+            "frames": 141
+          },
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Petal",
+          "rehearsed": {
+            "base": 1471.6,
+            "chosen": 1210.9,
+            "baseParts": {
+              "lurch": 1167.841380789581,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 3,
+              "shock": 3.718820630576405
+            },
+            "parts": {
+              "lurch": 907.9139404707585,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 3,
+              "shock": 2.9774121051908518
+            },
+            "plan": [
+              [
+                "Tide",
+                0.15
+              ],
+              [
+                "Haze",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 870,
+            "thinkMs": 1274,
+            "frames": 168
+          },
+          "collisions": [
+            3,
+            3
+          ],
+          "fling": [
+            592,
+            783
+          ],
+          "slivers": [
+            3,
+            3
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9881,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "rehearsed": {
+            "base": 2365.5,
+            "chosen": 2357,
+            "baseParts": {
+              "lurch": 896.2896325180018,
+              "sliver": 21.5625,
+              "split": 0,
+              "collisions": 2,
+              "shock": 191.1248164634208
+            },
+            "parts": {
+              "lurch": 886.6527839386322,
+              "sliver": 21.5625,
+              "split": 0,
+              "collisions": 2,
+              "shock": 192.17971679870803
+            },
+            "plan": [
+              [
+                "Haze",
+                0.45
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 886,
+            "thinkMs": 945,
+            "frames": 162
+          },
+          "collisions": [
+            2,
+            2
+          ],
+          "fling": [
+            112,
+            109
+          ],
+          "slivers": [
+            23,
+            23
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Drift",
+          "rehearsed": {
+            "base": 548.7,
+            "chosen": 518.5,
+            "baseParts": {
+              "lurch": 97.13907854414317,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 3,
+              "shock": 151.52758195217535
+            },
+            "parts": {
+              "lurch": 166.9924289049608,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 2,
+              "shock": 151.48148336290214
+            },
+            "plan": [
+              [
+                "Petal",
+                0.15
+              ],
+              [
+                "Ember",
+                0.3
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 1045,
+            "thinkMs": 1875,
+            "frames": 189
+          },
+          "collisions": [
+            3,
+            2
+          ],
+          "fling": [
+            81,
+            78
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "rehearsed": {
+            "base": 87.4,
+            "chosen": 86.9,
+            "baseParts": {
+              "lurch": 0,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 0,
+              "shock": 87.42125978475445
+            },
+            "parts": {
+              "lurch": 0,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 0,
+              "shock": 86.92669404541338
+            },
+            "plan": [
+              [
+                "Tide",
+                0.3
+              ],
+              [
+                "Petal",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 695,
+            "thinkMs": 913,
+            "frames": 166
+          },
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Ember",
+          "rehearsed": {
+            "base": 391,
+            "chosen": 293,
+            "baseParts": {
+              "lurch": 7.0467023070213815,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 3,
+              "shock": 83.95017906723989
+            },
+            "parts": {
+              "lurch": 9.13213997009525,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 2,
+              "shock": 83.85032598474746
+            },
+            "plan": [
+              [
+                "Haze",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 722,
+            "thinkMs": 692,
+            "frames": 161
+          },
+          "collisions": [
+            3,
+            2
+          ],
+          "fling": [
+            66,
+            69
+          ],
+          "slivers": [
+            65,
+            65
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9629,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Tide",
+          "rehearsed": null,
+          "collisions": [
+            2,
+            2
+          ],
+          "fling": [
+            284,
+            284
+          ],
+          "slivers": [
+            182,
+            182
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.964,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "rehearsed": {
+            "base": 2491.6,
+            "chosen": 2428.2,
+            "baseParts": {
+              "lurch": 640.6357648726066,
+              "sliver": 32.8125,
+              "split": 0,
+              "collisions": 1,
+              "shock": 110.32587953987563
+            },
+            "parts": {
+              "lurch": 624.4841862780088,
+              "sliver": 31.875,
+              "split": 0,
+              "collisions": 1,
+              "shock": 109.96264036972208
+            },
+            "plan": [
+              [
+                "Haze",
+                0.45
+              ],
+              [
+                "Moss",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 780,
+            "thinkMs": 835,
+            "frames": 141
+          },
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            110,
+            106
+          ],
+          "slivers": [
+            34,
+            34
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Dune",
+          "rehearsed": {
+            "base": 1497.3,
+            "chosen": 780.8,
+            "baseParts": {
+              "lurch": 1034.1339063999683,
+              "sliver": 1.875,
+              "split": 0,
+              "collisions": 2,
+              "shock": 169.41304968991219
+            },
+            "parts": {
+              "lurch": 364.2521627795404,
+              "sliver": 0.9375,
+              "split": 0,
+              "collisions": 2,
+              "shock": 169.6471653748514
+            },
+            "plan": [
+              [
+                "Drift",
+                0.15
+              ],
+              [
+                "Ember",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 970,
+            "thinkMs": 1388,
+            "frames": 180
+          },
+          "collisions": [
+            2,
+            2
+          ],
+          "fling": [
+            385,
+            445
+          ],
+          "slivers": [
+            1,
+            1
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9928,
+            "textCovers": 0.9672,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "rehearsed": {
+            "base": 4937.7,
+            "chosen": 4937.7,
+            "baseParts": {
+              "lurch": 4057.6515842777794,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 7,
+              "shock": 180.00762986182758
+            },
+            "parts": {
+              "lurch": 4057.6515842777794,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 7,
+              "shock": 180.00762986182758
+            },
+            "plan": [],
+            "rehearsals": 6,
+            "rehearsedFrames": 479,
+            "thinkMs": 920,
+            "frames": 153
+          },
+          "collisions": [
+            7,
+            7
+          ],
+          "fling": [
+            1101,
+            1101
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Jazz",
+          "rehearsed": {
+            "base": 0.6,
+            "chosen": 0.3,
+            "baseParts": {
+              "lurch": 0,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 0,
+              "shock": 0.6321603662351575
+            },
+            "parts": {
+              "lurch": 0,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 0,
+              "shock": 0.32868536038630847
+            },
+            "plan": [
+              [
+                "Haze",
+                0.15
+              ],
+              [
+                "Coal",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 727,
+            "thinkMs": 622,
+            "frames": 175
+          },
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            16,
+            16
+          ],
+          "slivers": [
+            8,
+            8
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9863,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "rehearsed": {
+            "base": 819.6,
+            "chosen": 819.6,
+            "baseParts": {
+              "lurch": 0,
+              "sliver": 14.0625,
+              "split": 0,
+              "collisions": 0,
+              "shock": 116.45434280983093
+            },
+            "parts": {
+              "lurch": 0,
+              "sliver": 14.0625,
+              "split": 0,
+              "collisions": 0,
+              "shock": 116.45434280983093
+            },
+            "plan": [],
+            "rehearsals": 6,
+            "rehearsedFrames": 217,
+            "thinkMs": 170,
+            "frames": 141
+          },
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            15,
+            15
+          ],
+          "rest": null
+        }
+      ]
+    },
+    "phone": {
+      "size": {
+        "width": 390,
+        "height": 720,
+        "fields": 0.55
+      },
+      "rehearsed": 21,
+      "shoalPlan": 11031.2,
+      "chosen": 9587.7,
+      "shoalPlanParts": {
+        "lurch": 2455.3,
+        "sliver": 70.3,
+        "split": 0,
+        "collisions": 37,
+        "shock": 1360.2
+      },
+      "chosenParts": {
+        "lurch": 1973.1,
+        "sliver": 51.6,
+        "split": 0,
+        "collisions": 37,
+        "shock": 1336.4
+      },
+      "thinkMs": {
+        "mean": 955,
+        "max": 1983
+      },
+      "rehearsedFrames": {
+        "mean": 615,
+        "max": 972
+      },
+      "tour": {
+        "shoal": {
+          "collisions": 40,
+          "fling": 315,
+          "slivers": 796,
+          "fractured": 0
+        },
+        "rehearsal": {
+          "collisions": 40,
+          "fling": 199,
+          "slivers": 782,
+          "fractured": 0
+        }
+      },
+      "changes": [
+        {
+          "act": "scene:frame",
+          "rehearsed": {
+            "base": 869.8,
+            "chosen": 537.4,
+            "baseParts": {
+              "lurch": 3.614001742004076,
+              "sliver": 16.875,
+              "split": 0,
+              "collisions": 0,
+              "shock": 22.391805282451365
+            },
+            "parts": {
+              "lurch": 3.993903609668738,
+              "sliver": 10.3125,
+              "split": 0,
+              "collisions": 0,
+              "shock": 17.80576169611291
+            },
+            "plan": [
+              [
+                "Aurora",
+                0.45
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 607,
+            "thinkMs": 611,
+            "frames": 101
+          },
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            31,
+            31
+          ],
+          "rest": null
+        },
+        {
+          "act": "scene:sidebar",
+          "rehearsed": {
+            "base": 563.8,
+            "chosen": 563.6,
+            "baseParts": {
+              "lurch": 6.729052319281726,
+              "sliver": 7.5,
+              "split": 0,
+              "collisions": 0,
+              "shock": 182.10122157205575
+            },
+            "parts": {
+              "lurch": 6.727796502432438,
+              "sliver": 7.5,
+              "split": 0,
+              "collisions": 0,
+              "shock": 181.91405770150686
+            },
+            "plan": [
+              [
+                "Coral",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 348,
+            "thinkMs": 452,
+            "frames": 108
+          },
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            4,
+            4
+          ],
+          "rest": null
+        },
+        {
+          "act": "scene:hero",
+          "rehearsed": {
+            "base": 1393.6,
+            "chosen": 855.6,
+            "baseParts": {
+              "lurch": 136.6344342331624,
+              "sliver": 22.5,
+              "split": 0,
+              "collisions": 1,
+              "shock": 31.96388096236453
+            },
+            "parts": {
+              "lurch": 33.23776414373385,
+              "sliver": 14.0625,
+              "split": 0,
+              "collisions": 1,
+              "shock": 19.274721205396517
+            },
+            "plan": [
+              [
+                "Ember",
+                0.45
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 715,
+            "thinkMs": 844,
+            "frames": 121
+          },
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            117,
+            16
+          ],
+          "slivers": [
+            353,
+            344
+          ],
+          "rest": null
+        },
+        {
+          "act": "scene:flock",
+          "rehearsed": null,
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            9,
+            8
+          ],
+          "rest": null
+        },
+        {
+          "act": "scene:bento",
+          "rehearsed": null,
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "scene:hero",
+          "rehearsed": {
+            "base": 680.3,
+            "chosen": 492.4,
+            "baseParts": {
+              "lurch": 0,
+              "sliver": 11.25,
+              "split": 0,
+              "collisions": 1,
+              "shock": 17.75952885648865
+            },
+            "parts": {
+              "lurch": 0,
+              "sliver": 7.5,
+              "split": 0,
+              "collisions": 1,
+              "shock": 17.408984094953233
+            },
+            "plan": [
+              [
+                "Aurora",
+                0.45
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 623,
+            "thinkMs": 536,
+            "frames": 104
+          },
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            358,
+            354
+          ],
+          "rest": null
+        },
+        {
+          "act": "scene:bento",
+          "rehearsed": {
+            "base": 721.8,
+            "chosen": 670.6,
+            "baseParts": {
+              "lurch": 0,
+              "sliver": 12.1875,
+              "split": 0,
+              "collisions": 1,
+              "shock": 12.381417765690998
+            },
+            "parts": {
+              "lurch": 0,
+              "sliver": 11.25,
+              "split": 0,
+              "collisions": 1,
+              "shock": 8.072787437648296
+            },
+            "plan": [
+              [
+                "Mint",
+                0.15
+              ],
+              [
+                "Jazz",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 477,
+            "thinkMs": 402,
+            "frames": 112
+          },
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            13,
+            12
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Moss",
+          "rehearsed": {
+            "base": 570.3,
+            "chosen": 535.1,
+            "baseParts": {
+              "lurch": 75.44072473671325,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 4,
+              "shock": 94.84474836037343
+            },
+            "parts": {
+              "lurch": 40.107655805483645,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 4,
+              "shock": 94.97004877584169
+            },
+            "plan": [
+              [
+                "Mint",
+                0.15
+              ],
+              [
+                "Dune",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 957,
+            "thinkMs": 1983,
+            "frames": 196
+          },
+          "collisions": [
+            4,
+            4
+          ],
+          "fling": [
+            6,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "rehearsed": {
+            "base": 523.6,
+            "chosen": 522.2,
+            "baseParts": {
+              "lurch": 346.2260760243268,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 77.3682425859627
+            },
+            "parts": {
+              "lurch": 344.99024807664506,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 77.22037998583546
+            },
+            "plan": [
+              [
+                "Mint",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 409,
+            "thinkMs": 622,
+            "frames": 114
+          },
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Aurora",
+          "rehearsed": {
+            "base": 671.4,
+            "chosen": 671.2,
+            "baseParts": {
+              "lurch": 30.503818681327225,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 5,
+              "shock": 140.92032480318082
+            },
+            "parts": {
+              "lurch": 30.493324567960638,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 5,
+              "shock": 140.7235128703617
+            },
+            "plan": [
+              [
+                "Drift",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 911,
+            "thinkMs": 1829,
+            "frames": 205
+          },
+          "collisions": [
+            5,
+            5
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "rehearsed": {
+            "base": 204.5,
+            "chosen": 203.8,
+            "baseParts": {
+              "lurch": 29.99534125323499,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 74.52160334537115
+            },
+            "parts": {
+              "lurch": 29.365690574518425,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 74.3845104201222
+            },
+            "plan": [
+              [
+                "Coral",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 403,
+            "thinkMs": 605,
+            "frames": 127
+          },
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Coal",
+          "rehearsed": {
+            "base": 141.4,
+            "chosen": 124,
+            "baseParts": {
+              "lurch": 38.04057757505139,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 3.3497849414331555
+            },
+            "parts": {
+              "lurch": 20.59223404694807,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 3.3719353449518508
+            },
+            "plan": [
+              [
+                "Ember",
+                0.3
+              ],
+              [
+                "Coral",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 957,
+            "thinkMs": 1420,
+            "frames": 171
+          },
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "rehearsed": null,
+          "collisions": [
+            2,
+            2
+          ],
+          "fling": [
+            26,
+            26
+          ],
+          "slivers": [
+            5,
+            5
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "rehearsed": {
+            "base": 206.3,
+            "chosen": 205.5,
+            "baseParts": {
+              "lurch": 30.299105472057974,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 76.00063437819415
+            },
+            "parts": {
+              "lurch": 29.666945188126732,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 75.87833263745367
+            },
+            "plan": [
+              [
+                "Dune",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 383,
+            "thinkMs": 572,
+            "frames": 117
+          },
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Petal",
+          "rehearsed": {
+            "base": 711.6,
+            "chosen": 683.5,
+            "baseParts": {
+              "lurch": 377.60564912718314,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 2,
+              "shock": 134.0359200737791
+            },
+            "parts": {
+              "lurch": 349.5841774372014,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 2,
+              "shock": 133.86929914905903
+            },
+            "plan": [
+              [
+                "Moss",
+                0.3
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 771,
+            "thinkMs": 1561,
+            "frames": 172
+          },
+          "collisions": [
+            2,
+            2
+          ],
+          "fling": [
+            0,
+            6
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "rehearsed": {
+            "base": 215.6,
+            "chosen": 214.8,
+            "baseParts": {
+              "lurch": 29.853814703848542,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 85.69818537614232
+            },
+            "parts": {
+              "lurch": 29.242188191205553,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 85.55100901128938
+            },
+            "plan": [
+              [
+                "Dune",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 399,
+            "thinkMs": 622,
+            "frames": 125
+          },
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Drift",
+          "rehearsed": {
+            "base": 694.6,
+            "chosen": 636,
+            "baseParts": {
+              "lurch": 290.24921497117776,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 4,
+              "shock": 4.3563488855320225
+            },
+            "parts": {
+              "lurch": 231.58469819043898,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 4,
+              "shock": 4.457299959845359
+            },
+            "plan": [
+              [
+                "Drift",
+                0.15
+              ],
+              [
+                "Mint",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 894,
+            "thinkMs": 1980,
+            "frames": 195
+          },
+          "collisions": [
+            4,
+            4
+          ],
+          "fling": [
+            108,
+            90
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "rehearsed": {
+            "base": 209.3,
+            "chosen": 208.5,
+            "baseParts": {
+              "lurch": 29.80650133481807,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 79.4528234948251
+            },
+            "parts": {
+              "lurch": 29.164379341464667,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 79.31299250441172
+            },
+            "plan": [
+              [
+                "Coral",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 405,
+            "thinkMs": 694,
+            "frames": 128
+          },
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Ember",
+          "rehearsed": {
+            "base": 827.4,
+            "chosen": 699.9,
+            "baseParts": {
+              "lurch": 426.7796342870841,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 4,
+              "shock": 0.6268761992959504
+            },
+            "parts": {
+              "lurch": 252.19953430130664,
+              "sliver": 0.9375,
+              "split": 0,
+              "collisions": 4,
+              "shock": 0.7925827572316573
+            },
+            "plan": [
+              [
+                "Drift",
+                0.45
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 972,
+            "thinkMs": 1739,
+            "frames": 189
+          },
+          "collisions": [
+            4,
+            4
+          ],
+          "fling": [
+            37,
+            40
+          ],
+          "slivers": [
+            0,
+            1
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Tide",
+          "rehearsed": null,
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            23,
+            23
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "rehearsed": {
+            "base": 205,
+            "chosen": 204.4,
+            "baseParts": {
+              "lurch": 28.420214890534538,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 76.60427972204369
+            },
+            "parts": {
+              "lurch": 27.852300189294034,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 76.50253818542342
+            },
+            "plan": [
+              [
+                "Drift",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 409,
+            "thinkMs": 634,
+            "frames": 130
+          },
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Dune",
+          "rehearsed": {
+            "base": 223.2,
+            "chosen": 163,
+            "baseParts": {
+              "lurch": 119.96938383118204,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 3.278397321132745
+            },
+            "parts": {
+              "lurch": 59.75187812642231,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 3.239712842915097
+            },
+            "plan": [
+              [
+                "Jazz",
+                0.45
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 909,
+            "thinkMs": 1380,
+            "frames": 172
+          },
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "rehearsed": {
+            "base": 212.6,
+            "chosen": 211.9,
+            "baseParts": {
+              "lurch": 29.969161730286714,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 82.67355280193946
+            },
+            "parts": {
+              "lurch": 29.348946556222206,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 1,
+              "shock": 82.51625145973603
+            },
+            "plan": [
+              [
+                "Drift",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 401,
+            "thinkMs": 629,
+            "frames": 126
+          },
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Jazz",
+          "rehearsed": {
+            "base": 4,
+            "chosen": 3.2,
+            "baseParts": {
+              "lurch": 0,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 0,
+              "shock": 3.9957700494786716
+            },
+            "parts": {
+              "lurch": 0,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 0,
+              "shock": 3.1795717123972786
+            },
+            "plan": [
+              [
+                "Coal",
+                0.15
+              ],
+              [
+                "Ember",
+                0.15
+              ],
+              [
+                "Petal",
+                0.15
+              ]
+            ],
+            "rehearsals": 6,
+            "rehearsedFrames": 586,
+            "thinkMs": 551,
+            "frames": 139
+          },
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9885,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "rehearsed": {
+            "base": 1181.1,
+            "chosen": 1181.1,
+            "baseParts": {
+              "lurch": 425.16500573100586,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 6,
+              "shock": 155.92450676963713
+            },
+            "parts": {
+              "lurch": 425.16500573100586,
+              "sliver": 0,
+              "split": 0,
+              "collisions": 6,
+              "shock": 155.92450676963713
+            },
+            "plan": [],
+            "rehearsals": 6,
+            "rehearsedFrames": 379,
+            "thinkMs": 385,
+            "frames": 118
+          },
+          "collisions": [
+            6,
+            6
+          ],
+          "fling": [
+            21,
+            21
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        }
+      ]
+    },
+    "thinking": [
+      {
+        "act": "scene:hero",
+        "held": 14,
+        "rehearsedFrames": 587,
+        "rehearsals": 6,
+        "plan": [
+          [
+            3,
+            0.15
+          ],
+          [
+            5,
+            0.15
+          ]
+        ]
+      },
+      {
+        "act": "scene:sidebar",
+        "held": 19,
+        "rehearsedFrames": 787,
+        "rehearsals": 6,
+        "plan": [
+          [
+            11,
+            0.15
+          ],
+          [
+            5,
+            0.15
+          ]
+        ]
+      },
+      {
+        "act": "hero, then frame while thinking",
+        "held": 16,
+        "plan": [
+          [
+            3,
+            0.3
+          ],
+          [
+            11,
+            0.15
+          ]
+        ]
+      }
+    ],
+    "story": {
+      "frames": 2040,
+      "identical": true
+    },
+    "slides": [
+      {
+        "k": 0,
+        "cast": [
+          "Dune"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 1,
+        "cast": [
+          "Dune",
+          "Moss"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 13,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 2,
+        "cast": [
+          "Dune",
+          "Moss",
+          "Petal"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 12,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0
+        }
+      },
+      {
+        "k": 3,
+        "cast": [
+          "Tide"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 4,
+        "cast": [
+          "Tide",
+          "Aurora"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 13,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 5,
+        "cast": [
+          "Moss"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 6,
+        "cast": [
+          "Moss",
+          "Aurora"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 13,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 7,
+        "cast": [
+          "Moss",
+          "Aurora",
+          "Petal"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 12,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0
+        }
+      }
+    ],
+    "changes": [
+      {
+        "k": 1,
+        "fresh": false,
+        "cast": [
+          "Dune",
+          "Moss"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 85.5,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.2
+      },
+      {
+        "k": 2,
+        "fresh": false,
+        "cast": [
+          "Dune",
+          "Moss",
+          "Petal"
+        ],
+        "kept": 2,
+        "penStayed": 9,
+        "penSettle": 67.9,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.2
+      },
+      {
+        "k": 3,
+        "fresh": true,
+        "cast": [
+          "Tide"
+        ],
+        "kept": 0,
+        "penStayed": 8,
+        "penSettle": 98.3,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.4
+      },
+      {
+        "k": 4,
+        "fresh": false,
+        "cast": [
+          "Tide",
+          "Aurora"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 93.7,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.3
+      },
+      {
+        "k": 5,
+        "fresh": true,
+        "cast": [
+          "Moss"
+        ],
+        "kept": 0,
+        "penStayed": 9,
+        "penSettle": 93.7,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2
+      },
+      {
+        "k": 6,
+        "fresh": false,
+        "cast": [
+          "Moss",
+          "Aurora"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 93.7,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.4
+      },
+      {
+        "k": 7,
+        "fresh": false,
+        "cast": [
+          "Moss",
+          "Aurora",
+          "Petal"
+        ],
+        "kept": 2,
+        "penStayed": 9,
+        "penSettle": 52.5,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 1.6
+      }
+    ],
+    "back": {
+      "k": 0,
+      "cast": [
+        "Aurora"
+      ],
+      "penCovered": 1,
+      "offRect": 0,
+      "voids": 14,
+      "rest": {
+        "rectangle": 1,
+        "voronoi": 11,
+        "cut": 0
+      }
+    },
+    "hurried": [
+      {
+        "slides": [
+          0,
+          1,
+          2
+        ],
+        "landing": [
+          {
+            "name": "Moss",
+            "wallAfter": 62
+          }
+        ],
+        "still": [
+          "Dune"
+        ]
+      },
+      {
+        "slides": [
+          5,
+          6,
+          7
+        ],
+        "landing": [
+          {
+            "name": "Aurora",
+            "wallAfter": 122
+          }
+        ],
+        "still": [
+          "Tide"
+        ]
+      }
+    ],
+    "phone2": [
+      {
+        "k": 0,
+        "cast": [
+          "Haze"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 10,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 1,
+        "fresh": false,
+        "cast": [
+          "Haze",
+          "Jazz"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 22.2,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.6
+      },
+      {
+        "k": 1,
+        "cast": [
+          "Haze",
+          "Jazz"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 9,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 2,
+        "fresh": false,
+        "cast": [
+          "Haze",
+          "Jazz",
+          "Aurora"
+        ],
+        "kept": 2,
+        "penStayed": 9,
+        "penSettle": 41.9,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 1.8
+      },
+      {
+        "k": 2,
+        "cast": [
+          "Haze",
+          "Jazz",
+          "Aurora"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 8,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0
+        }
+      },
+      {
+        "k": 3,
+        "fresh": true,
+        "cast": [
+          "Dune"
+        ],
+        "kept": 0,
+        "penStayed": 8,
+        "penSettle": 43.7,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 1.8
+      },
+      {
+        "k": 3,
+        "cast": [
+          "Dune"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 10,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 4,
+        "fresh": false,
+        "cast": [
+          "Dune",
+          "Jazz"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 22.2,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 1.8
+      },
+      {
+        "k": 4,
+        "cast": [
+          "Dune",
+          "Jazz"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 9,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 5,
+        "fresh": true,
+        "cast": [
+          "Haze"
+        ],
+        "kept": 0,
+        "penStayed": 9,
+        "penSettle": 15,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.6
+      },
+      {
+        "k": 5,
+        "cast": [
+          "Haze"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 10,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      }
+    ],
+    "home": {
+      "cells": 12,
+      "scene": "bento"
+    },
+    "tell": {
+      "frames": 3060,
+      "fractured": 0
+    }
+  }
+}
