@@ -1,0 +1,876 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed. Without a page opened, state and every drawing command must exactly match Cue, a Tell, a Tell II and a Cue story and home included; on a tour of pages opened from home and from one another, on a desk and on a phone, every page at rest has its image on its rectangle and covering it (as much as on Cue), its text covering its rectangle (as much as on Cue) with the title in it, the whitespace exactly its rectangles, no field and one site a cell; nothing fractures on any frame of an opening; on its way the image takes under 30% of the text's rectangle at worst on any opening, and on average no more than half what it takes on Cue; and the text's lag (px²·s of its rectangle that no one else holds and it does not yet paint) is under a quarter of Cue's over the tour and no worse than Cue's on any opening. Cue's figures are reported beside Tandem's.",
+  "frames": 18798,
+  "drawingCommands": 16405157,
+  "matrix": [
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 16.666666666666668,
+      "inner": "flock",
+      "frames": 3470
+    },
+    {
+      "width": 1900,
+      "height": 810,
+      "count": 24,
+      "fields": 1,
+      "dt": 30,
+      "inner": "bento",
+      "frames": 1939
+    },
+    {
+      "width": 390,
+      "height": 720,
+      "count": 12,
+      "fields": 0.55,
+      "dt": 8.333333333333334,
+      "inner": "flock",
+      "frames": 6940
+    },
+    {
+      "width": 1363,
+      "height": 846,
+      "count": 30,
+      "fields": 0,
+      "dt": 50,
+      "inner": "flock",
+      "frames": 1157
+    }
+  ],
+  "report": {
+    "stories": {
+      "frames": 5292,
+      "tell": true,
+      "tell2": true,
+      "cue": true
+    },
+    "desk": {
+      "size": {
+        "width": 1440,
+        "height": 900,
+        "fields": 0.55
+      },
+      "textLag": {
+        "cue": 3450383,
+        "tandem": 512926
+      },
+      "imageOutside": {
+        "cue": 4338360,
+        "tandem": 1307875
+      },
+      "imageInTextWorst": {
+        "cue": 0.6739,
+        "tandem": 0.2792
+      },
+      "imageInTextMean": {
+        "cue": 0.3948,
+        "tandem": 0.0967
+      },
+      "openings": [
+        {
+          "from": "home",
+          "to": "Drift",
+          "kind": "spread",
+          "textLag": [
+            197039,
+            13752
+          ],
+          "imageOutside": [
+            197037,
+            14894
+          ],
+          "imageInText": [
+            0.5537,
+            0.07
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "home",
+          "to": "Ember",
+          "kind": "folio",
+          "textLag": [
+            46888,
+            13301
+          ],
+          "imageOutside": [
+            182157,
+            141075
+          ],
+          "imageInText": [
+            0.2629,
+            0.0798
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9632,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "home",
+          "to": "Tide",
+          "kind": "showcase",
+          "textLag": [
+            18918,
+            2728
+          ],
+          "imageOutside": [
+            224700,
+            183218
+          ],
+          "imageInText": [
+            0.1176,
+            0.0141
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9641,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "home",
+          "to": "Moss",
+          "kind": "band",
+          "textLag": [
+            52678,
+            25762
+          ],
+          "imageOutside": [
+            76221,
+            48835
+          ],
+          "imageInText": [
+            0.1453,
+            0.1163
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9897,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "home",
+          "to": "Petal",
+          "kind": "lead",
+          "textLag": [
+            105698,
+            78415
+          ],
+          "imageOutside": [
+            132311,
+            107914
+          ],
+          "imageInText": [
+            0.2306,
+            0.2044
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9882,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "home",
+          "to": "Aurora",
+          "kind": "documentation",
+          "textLag": [
+            394859,
+            34111
+          ],
+          "imageOutside": [
+            394859,
+            34747
+          ],
+          "imageInText": [
+            0.6,
+            0.0816
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "home",
+          "to": "Dune",
+          "kind": "essay",
+          "textLag": [
+            60207,
+            46596
+          ],
+          "imageOutside": [
+            170208,
+            135049
+          ],
+          "imageInText": [
+            0.1511,
+            0.1058
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9928,
+            "textCovers": 0.9672,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "home",
+          "to": "Coal",
+          "kind": "spread",
+          "textLag": [
+            181116,
+            14151
+          ],
+          "imageOutside": [
+            181117,
+            15806
+          ],
+          "imageInText": [
+            0.5468,
+            0.0896
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "Aurora",
+          "to": "Moss",
+          "kind": "band",
+          "textLag": [
+            9684,
+            7811
+          ],
+          "imageOutside": [
+            31423,
+            36961
+          ],
+          "imageInText": [
+            0.0276,
+            0.0376
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.99,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "Moss",
+          "to": "Aurora",
+          "kind": "documentation",
+          "textLag": [
+            246914,
+            2646
+          ],
+          "imageOutside": [
+            246914,
+            2939
+          ],
+          "imageInText": [
+            0.6094,
+            0.017
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "Aurora",
+          "to": "Tide",
+          "kind": "showcase",
+          "textLag": [
+            18011,
+            451
+          ],
+          "imageOutside": [
+            314423,
+            262586
+          ],
+          "imageInText": [
+            0.1038,
+            0.0026
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9642,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "Tide",
+          "to": "Aurora",
+          "kind": "documentation",
+          "textLag": [
+            241652,
+            20000
+          ],
+          "imageOutside": [
+            241650,
+            20427
+          ],
+          "imageInText": [
+            0.5875,
+            0.1006
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "Coal",
+          "to": "Aurora",
+          "kind": "documentation",
+          "textLag": [
+            653857,
+            9520
+          ],
+          "imageOutside": [
+            653857,
+            9703
+          ],
+          "imageInText": [
+            0.6739,
+            0.0299
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "Aurora",
+          "to": "Dune",
+          "kind": "essay",
+          "textLag": [
+            215107,
+            116410
+          ],
+          "imageOutside": [
+            257595,
+            134691
+          ],
+          "imageInText": [
+            0.3391,
+            0.2792
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9929,
+            "textCovers": 0.9993,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "Dune",
+          "to": "Aurora",
+          "kind": "documentation",
+          "textLag": [
+            271903,
+            26546
+          ],
+          "imageOutside": [
+            271902,
+            29628
+          ],
+          "imageInText": [
+            0.6103,
+            0.101
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "Ember",
+          "to": "Coal",
+          "kind": "spread",
+          "textLag": [
+            207578,
+            22306
+          ],
+          "imageOutside": [
+            207576,
+            23984
+          ],
+          "imageInText": [
+            0.5492,
+            0.1192
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "Dune",
+          "to": "Petal",
+          "kind": "lead",
+          "textLag": [
+            168570,
+            50328
+          ],
+          "imageOutside": [
+            194706,
+            76943
+          ],
+          "imageInText": [
+            0.4146,
+            0.2213
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9882,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "Petal",
+          "to": "Aurora",
+          "kind": "documentation",
+          "textLag": [
+            359704,
+            28092
+          ],
+          "imageOutside": [
+            359704,
+            28475
+          ],
+          "imageInText": [
+            0.5833,
+            0.0698
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        }
+      ]
+    },
+    "phone": {
+      "size": {
+        "width": 390,
+        "height": 720,
+        "fields": 0.55
+      },
+      "textLag": {
+        "cue": 498584,
+        "tandem": 70715
+      },
+      "imageOutside": {
+        "cue": 571150,
+        "tandem": 96771
+      },
+      "imageInTextWorst": {
+        "cue": 0.841,
+        "tandem": 0.2758
+      },
+      "imageInTextMean": {
+        "cue": 0.6765,
+        "tandem": 0.1575
+      },
+      "openings": [
+        {
+          "from": "home",
+          "to": "Aurora",
+          "kind": "documentation",
+          "textLag": [
+            75003,
+            9582
+          ],
+          "imageOutside": [
+            75002,
+            9582
+          ],
+          "imageInText": [
+            0.6133,
+            0.1146
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "home",
+          "to": "Dune",
+          "kind": "essay",
+          "textLag": [
+            57696,
+            875
+          ],
+          "imageOutside": [
+            57696,
+            882
+          ],
+          "imageInText": [
+            0.6199,
+            0.0425
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "home",
+          "to": "Moss",
+          "kind": "band",
+          "textLag": [
+            54339,
+            2529
+          ],
+          "imageOutside": [
+            54338,
+            2529
+          ],
+          "imageInText": [
+            0.6099,
+            0.0462
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "Aurora",
+          "to": "Dune",
+          "kind": "essay",
+          "textLag": [
+            32780,
+            7054
+          ],
+          "imageOutside": [
+            51349,
+            16082
+          ],
+          "imageInText": [
+            0.603,
+            0.1922
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "Dune",
+          "to": "Aurora",
+          "kind": "documentation",
+          "textLag": [
+            113692,
+            17697
+          ],
+          "imageOutside": [
+            124430,
+            18217
+          ],
+          "imageInText": [
+            0.841,
+            0.2505
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "Moss",
+          "to": "Aurora",
+          "kind": "documentation",
+          "textLag": [
+            35392,
+            5522
+          ],
+          "imageOutside": [
+            46544,
+            11838
+          ],
+          "imageInText": [
+            0.6505,
+            0.1808
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "from": "Aurora",
+          "to": "Coal",
+          "kind": "spread",
+          "textLag": [
+            129682,
+            27456
+          ],
+          "imageOutside": [
+            161791,
+            37641
+          ],
+          "imageInText": [
+            0.7976,
+            0.2758
+          ],
+          "fracturedFrames": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "field": false,
+            "oneSite": true
+          }
+        }
+      ]
+    }
+  }
+}
