@@ -1,0 +1,1625 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed. On a tour of changes (home scenes, pages from home and from one another) on a desk and a phone: every change runs on one clock (every traveller sets off at nought and takes the same time), no two planned paths cross but for the image's, nothing fractures on any frame, every page at rest is exact (the image on its rectangle and covering it, the text covering its own with the title, the whitespace exact, no field, one site a cell) as much as on Tandem, and near-collisions, flings and slivers are no more than on Tandem on a desk; on a phone flings are fewer and near-collisions and slivers within 5% of Tandem's. While a story is told a change is Tandem's: Cue's own story checks pass on Shoal on a desk and a phone, and a Tell and a Tell II story run to their end and home without a fractured cell. Tandem's figures are reported beside Shoal's.",
+  "report": {
+    "desk": {
+      "size": {
+        "width": 1440,
+        "height": 900,
+        "fields": 0.55
+      },
+      "tandem": {
+        "crossing": 49,
+        "collisions": 46,
+        "fling": 15603,
+        "slivers": 601,
+        "fractured": 0
+      },
+      "shoal": {
+        "crossing": 0,
+        "collisions": 31,
+        "fling": 6937,
+        "slivers": 523,
+        "fractured": 0
+      },
+      "changes": [
+        {
+          "act": "scene:frame",
+          "travellers": 12,
+          "crossing": [
+            0,
+            0
+          ],
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "scene:sidebar",
+          "travellers": 12,
+          "crossing": [
+            2,
+            0
+          ],
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "scene:hero",
+          "travellers": 12,
+          "crossing": [
+            2,
+            0
+          ],
+          "collisions": [
+            1,
+            0
+          ],
+          "fling": [
+            158,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "scene:flock",
+          "travellers": 0,
+          "crossing": [
+            0,
+            0
+          ],
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "scene:bento",
+          "travellers": 12,
+          "crossing": [
+            0,
+            0
+          ],
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Moss",
+          "travellers": 12,
+          "crossing": [
+            2,
+            0
+          ],
+          "collisions": [
+            2,
+            2
+          ],
+          "fling": [
+            1256,
+            530
+          ],
+          "slivers": [
+            42,
+            41
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9897,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "travellers": 12,
+          "crossing": [
+            4,
+            0
+          ],
+          "collisions": [
+            2,
+            3
+          ],
+          "fling": [
+            1221,
+            1001
+          ],
+          "slivers": [
+            11,
+            2
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Coal",
+          "travellers": 12,
+          "crossing": [
+            0,
+            0
+          ],
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            625,
+            506
+          ],
+          "slivers": [
+            5,
+            6
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Moss",
+          "travellers": 12,
+          "crossing": [
+            3,
+            0
+          ],
+          "collisions": [
+            6,
+            3
+          ],
+          "fling": [
+            2252,
+            856
+          ],
+          "slivers": [
+            105,
+            48
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.99,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Petal",
+          "travellers": 12,
+          "crossing": [
+            7,
+            0
+          ],
+          "collisions": [
+            2,
+            4
+          ],
+          "fling": [
+            2107,
+            122
+          ],
+          "slivers": [
+            38,
+            5
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9885,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Moss",
+          "travellers": 12,
+          "crossing": [
+            7,
+            0
+          ],
+          "collisions": [
+            9,
+            1
+          ],
+          "fling": [
+            3125,
+            393
+          ],
+          "slivers": [
+            42,
+            41
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9899,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 18,
+          "crossing": [
+            5,
+            0
+          ],
+          "collisions": [
+            1,
+            0
+          ],
+          "fling": [
+            263,
+            685
+          ],
+          "slivers": [
+            2,
+            3
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Coal",
+          "travellers": 12,
+          "crossing": [
+            2,
+            0
+          ],
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            140,
+            62
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "travellers": 12,
+          "crossing": [
+            0,
+            0
+          ],
+          "collisions": [
+            2,
+            0
+          ],
+          "fling": [
+            586,
+            244
+          ],
+          "slivers": [
+            40,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "crossing": [
+            2,
+            0
+          ],
+          "collisions": [
+            2,
+            0
+          ],
+          "fling": [
+            1,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Drift",
+          "travellers": 12,
+          "crossing": [
+            1,
+            0
+          ],
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            99,
+            111
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Ember",
+          "travellers": 12,
+          "crossing": [
+            3,
+            0
+          ],
+          "collisions": [
+            1,
+            2
+          ],
+          "fling": [
+            72,
+            180
+          ],
+          "slivers": [
+            80,
+            72
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9635,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Tide",
+          "travellers": 12,
+          "crossing": [
+            0,
+            0
+          ],
+          "collisions": [
+            3,
+            2
+          ],
+          "fling": [
+            16,
+            266
+          ],
+          "slivers": [
+            77,
+            147
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9641,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Dune",
+          "travellers": 12,
+          "crossing": [
+            1,
+            0
+          ],
+          "collisions": [
+            3,
+            1
+          ],
+          "fling": [
+            2072,
+            1278
+          ],
+          "slivers": [
+            98,
+            78
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9928,
+            "textCovers": 0.9675,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Jazz",
+          "travellers": 12,
+          "crossing": [
+            7,
+            0
+          ],
+          "collisions": [
+            8,
+            10
+          ],
+          "fling": [
+            1601,
+            703
+          ],
+          "slivers": [
+            61,
+            80
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9864,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "crossing": [
+            1,
+            0
+          ],
+          "collisions": [
+            1,
+            0
+          ],
+          "fling": [
+            9,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        }
+      ]
+    },
+    "phone": {
+      "size": {
+        "width": 390,
+        "height": 720,
+        "fields": 0.55
+      },
+      "tandem": {
+        "crossing": 25,
+        "collisions": 39,
+        "fling": 2856,
+        "slivers": 453,
+        "fractured": 0
+      },
+      "shoal": {
+        "crossing": 0,
+        "collisions": 38,
+        "fling": 1561,
+        "slivers": 455,
+        "fractured": 0
+      },
+      "changes": [
+        {
+          "act": "scene:frame",
+          "travellers": 12,
+          "crossing": [
+            0,
+            0
+          ],
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            29
+          ],
+          "rest": null
+        },
+        {
+          "act": "scene:sidebar",
+          "travellers": 12,
+          "crossing": [
+            2,
+            0
+          ],
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            3
+          ],
+          "rest": null
+        },
+        {
+          "act": "scene:hero",
+          "travellers": 12,
+          "crossing": [
+            0,
+            0
+          ],
+          "collisions": [
+            2,
+            1
+          ],
+          "fling": [
+            0,
+            81
+          ],
+          "slivers": [
+            336,
+            330
+          ],
+          "rest": null
+        },
+        {
+          "act": "scene:flock",
+          "travellers": 0,
+          "crossing": [
+            0,
+            0
+          ],
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            9,
+            8
+          ],
+          "rest": null
+        },
+        {
+          "act": "scene:bento",
+          "travellers": 12,
+          "crossing": [
+            0,
+            0
+          ],
+          "collisions": [
+            0,
+            0
+          ],
+          "fling": [
+            0,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Moss",
+          "travellers": 12,
+          "crossing": [
+            1,
+            0
+          ],
+          "collisions": [
+            2,
+            4
+          ],
+          "fling": [
+            12,
+            4
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "travellers": 12,
+          "crossing": [
+            0,
+            0
+          ],
+          "collisions": [
+            3,
+            2
+          ],
+          "fling": [
+            213,
+            24
+          ],
+          "slivers": [
+            16,
+            11
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Coal",
+          "travellers": 12,
+          "crossing": [
+            1,
+            0
+          ],
+          "collisions": [
+            3,
+            1
+          ],
+          "fling": [
+            26,
+            40
+          ],
+          "slivers": [
+            4,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Moss",
+          "travellers": 12,
+          "crossing": [
+            0,
+            0
+          ],
+          "collisions": [
+            3,
+            2
+          ],
+          "fling": [
+            226,
+            55
+          ],
+          "slivers": [
+            5,
+            17
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Petal",
+          "travellers": 12,
+          "crossing": [
+            1,
+            0
+          ],
+          "collisions": [
+            2,
+            2
+          ],
+          "fling": [
+            195,
+            51
+          ],
+          "slivers": [
+            18,
+            13
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Moss",
+          "travellers": 12,
+          "crossing": [
+            1,
+            0
+          ],
+          "collisions": [
+            2,
+            3
+          ],
+          "fling": [
+            218,
+            88
+          ],
+          "slivers": [
+            13,
+            3
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "crossing": [
+            1,
+            0
+          ],
+          "collisions": [
+            2,
+            1
+          ],
+          "fling": [
+            62,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Coal",
+          "travellers": 12,
+          "crossing": [
+            3,
+            0
+          ],
+          "collisions": [
+            1,
+            3
+          ],
+          "fling": [
+            210,
+            146
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "travellers": 12,
+          "crossing": [
+            0,
+            0
+          ],
+          "collisions": [
+            1,
+            2
+          ],
+          "fling": [
+            100,
+            245
+          ],
+          "slivers": [
+            1,
+            6
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "crossing": [
+            3,
+            0
+          ],
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            0,
+            59
+          ],
+          "slivers": [
+            10,
+            0
+          ],
+          "rest": null
+        },
+        {
+          "act": "open:Drift",
+          "travellers": 12,
+          "crossing": [
+            3,
+            0
+          ],
+          "collisions": [
+            3,
+            3
+          ],
+          "fling": [
+            20,
+            88
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Ember",
+          "travellers": 12,
+          "crossing": [
+            2,
+            0
+          ],
+          "collisions": [
+            5,
+            1
+          ],
+          "fling": [
+            877,
+            71
+          ],
+          "slivers": [
+            28,
+            1
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Tide",
+          "travellers": 12,
+          "crossing": [
+            0,
+            0
+          ],
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            83,
+            58
+          ],
+          "slivers": [
+            0,
+            2
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Dune",
+          "travellers": 12,
+          "crossing": [
+            0,
+            0
+          ],
+          "collisions": [
+            3,
+            8
+          ],
+          "fling": [
+            1,
+            170
+          ],
+          "slivers": [
+            0,
+            10
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Jazz",
+          "travellers": 12,
+          "crossing": [
+            4,
+            0
+          ],
+          "collisions": [
+            4,
+            2
+          ],
+          "fling": [
+            498,
+            381
+          ],
+          "slivers": [
+            13,
+            22
+          ],
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9882,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "crossing": [
+            3,
+            0
+          ],
+          "collisions": [
+            1,
+            1
+          ],
+          "fling": [
+            115,
+            0
+          ],
+          "slivers": [
+            0,
+            0
+          ],
+          "rest": null
+        }
+      ]
+    },
+    "slides": [
+      {
+        "k": 0,
+        "cast": [
+          "Dune"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 1,
+        "cast": [
+          "Dune",
+          "Moss"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 13,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 2,
+        "cast": [
+          "Dune",
+          "Moss",
+          "Petal"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 12,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0
+        }
+      },
+      {
+        "k": 3,
+        "cast": [
+          "Tide"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 4,
+        "cast": [
+          "Tide",
+          "Aurora"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 13,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 5,
+        "cast": [
+          "Moss"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 6,
+        "cast": [
+          "Moss",
+          "Aurora"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 13,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 7,
+        "cast": [
+          "Moss",
+          "Aurora",
+          "Petal"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 12,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0
+        }
+      }
+    ],
+    "changes": [
+      {
+        "k": 1,
+        "fresh": false,
+        "cast": [
+          "Dune",
+          "Moss"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 85.5,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.2
+      },
+      {
+        "k": 2,
+        "fresh": false,
+        "cast": [
+          "Dune",
+          "Moss",
+          "Petal"
+        ],
+        "kept": 2,
+        "penStayed": 9,
+        "penSettle": 67.9,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.2
+      },
+      {
+        "k": 3,
+        "fresh": true,
+        "cast": [
+          "Tide"
+        ],
+        "kept": 0,
+        "penStayed": 8,
+        "penSettle": 98.3,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.4
+      },
+      {
+        "k": 4,
+        "fresh": false,
+        "cast": [
+          "Tide",
+          "Aurora"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 93.7,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.3
+      },
+      {
+        "k": 5,
+        "fresh": true,
+        "cast": [
+          "Moss"
+        ],
+        "kept": 0,
+        "penStayed": 9,
+        "penSettle": 93.7,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2
+      },
+      {
+        "k": 6,
+        "fresh": false,
+        "cast": [
+          "Moss",
+          "Aurora"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 93.7,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.4
+      },
+      {
+        "k": 7,
+        "fresh": false,
+        "cast": [
+          "Moss",
+          "Aurora",
+          "Petal"
+        ],
+        "kept": 2,
+        "penStayed": 9,
+        "penSettle": 52.5,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 1.6
+      }
+    ],
+    "back": {
+      "k": 0,
+      "cast": [
+        "Aurora"
+      ],
+      "penCovered": 1,
+      "offRect": 0,
+      "voids": 14,
+      "rest": {
+        "rectangle": 1,
+        "voronoi": 11,
+        "cut": 0
+      }
+    },
+    "hurried": [
+      {
+        "slides": [
+          0,
+          1,
+          2
+        ],
+        "landing": [
+          {
+            "name": "Moss",
+            "wallAfter": 62
+          }
+        ],
+        "still": [
+          "Dune"
+        ]
+      },
+      {
+        "slides": [
+          5,
+          6,
+          7
+        ],
+        "landing": [
+          {
+            "name": "Aurora",
+            "wallAfter": 122
+          }
+        ],
+        "still": [
+          "Tide"
+        ]
+      }
+    ],
+    "phone2": [
+      {
+        "k": 0,
+        "cast": [
+          "Haze"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 10,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 1,
+        "fresh": false,
+        "cast": [
+          "Haze",
+          "Jazz"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 22.2,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.6
+      },
+      {
+        "k": 1,
+        "cast": [
+          "Haze",
+          "Jazz"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 9,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 2,
+        "fresh": false,
+        "cast": [
+          "Haze",
+          "Jazz",
+          "Aurora"
+        ],
+        "kept": 2,
+        "penStayed": 9,
+        "penSettle": 41.9,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 1.8
+      },
+      {
+        "k": 2,
+        "cast": [
+          "Haze",
+          "Jazz",
+          "Aurora"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 8,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0
+        }
+      },
+      {
+        "k": 3,
+        "fresh": true,
+        "cast": [
+          "Dune"
+        ],
+        "kept": 0,
+        "penStayed": 8,
+        "penSettle": 43.7,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 1.8
+      },
+      {
+        "k": 3,
+        "cast": [
+          "Dune"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 10,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 4,
+        "fresh": false,
+        "cast": [
+          "Dune",
+          "Jazz"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 22.2,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 1.8
+      },
+      {
+        "k": 4,
+        "cast": [
+          "Dune",
+          "Jazz"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 9,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 5,
+        "fresh": true,
+        "cast": [
+          "Haze"
+        ],
+        "kept": 0,
+        "penStayed": 9,
+        "penSettle": 15,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.6
+      },
+      {
+        "k": 5,
+        "cast": [
+          "Haze"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 10,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      }
+    ],
+    "home": {
+      "cells": 12,
+      "scene": "bento"
+    },
+    "tell": {
+      "frames": 3060,
+      "fractured": 0
+    }
+  }
+}
