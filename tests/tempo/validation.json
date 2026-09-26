@@ -1,0 +1,2251 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed; frames of 1/64 s; the worker of Wings headless (a second copy of the page's script, messages as structured clones) thinking sixteen rehearsed frames a frame. On a tour of changes (home scenes, home to a page of every kind and back, page to page) and on every page opened from every other kind of page, on a desk and a phone: every change of the page has one pace, the measure of its planned paths, from rest to rest, never back, with the minimum-jerk share of what happens at every point of its clock; with no budget and the pace taken out the tour is Shoal's, the world and every drawing command, frame by frame; the seeds accelerate less, the plan at its worst accelerates less, a cell's peak speed is nearer its average and close pairs move less against each other than on Wings and on Shoal; nothing waits; from each round that moved a cell the performance is that round's rehearsal of the move to the bit, frame by frame, until the next move acts; the defects drawn are fewer than on Shoal; nothing fractures on any frame; every page at rest is exact as on Shoal. With no worker the hive thinks on the page and plays what it rehearsed, frame by frame. A Cue story is Shoal's frame by frame; Cue's own story checks pass on a desk and a phone; a Tell and a Tell II story run to their end and home without a fractured cell.",
+  "report": {
+    "trace": {
+      "desk": {
+        "frames": 11550,
+        "identical": true
+      },
+      "phone": {
+        "frames": 11550,
+        "identical": true
+      }
+    },
+    "pace": {
+      "desk": [
+        {
+          "act": "scene:frame",
+          "travellers": 12,
+          "peakSpeed": 1.96,
+          "happensMaxOverMin": 1.19,
+          "happensMiddleOverEnds": 0.88,
+          "happeningPeakInTime": {
+            "cubic": 2.87,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:sidebar",
+          "travellers": 12,
+          "peakSpeed": 1.95,
+          "happensMaxOverMin": 1.37,
+          "happensMiddleOverEnds": 0.89,
+          "happeningPeakInTime": {
+            "cubic": 2.88,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:hero",
+          "travellers": 12,
+          "peakSpeed": 1.95,
+          "happensMaxOverMin": 1.14,
+          "happensMiddleOverEnds": 0.9,
+          "happeningPeakInTime": {
+            "cubic": 2.88,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:flock"
+        },
+        {
+          "act": "scene:bento",
+          "travellers": 12,
+          "peakSpeed": 1.93,
+          "happensMaxOverMin": 1.09,
+          "happensMiddleOverEnds": 0.92,
+          "happeningPeakInTime": {
+            "cubic": 2.92,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:hero",
+          "travellers": 12,
+          "peakSpeed": 1.96,
+          "happensMaxOverMin": 1.17,
+          "happensMiddleOverEnds": 0.88,
+          "happeningPeakInTime": {
+            "cubic": 2.87,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:bento",
+          "travellers": 12,
+          "peakSpeed": 1.93,
+          "happensMaxOverMin": 1.15,
+          "happensMiddleOverEnds": 0.91,
+          "happeningPeakInTime": {
+            "cubic": 2.91,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Moss",
+          "travellers": 12,
+          "peakSpeed": 1.84,
+          "happensMaxOverMin": 1.26,
+          "happensMiddleOverEnds": 0.99,
+          "happeningPeakInTime": {
+            "cubic": 3.1,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 18,
+          "peakSpeed": 1.97,
+          "happensMaxOverMin": 1.23,
+          "happensMiddleOverEnds": 0.84,
+          "happeningPeakInTime": {
+            "cubic": 2.85,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "travellers": 12,
+          "peakSpeed": 1.99,
+          "happensMaxOverMin": 1.44,
+          "happensMiddleOverEnds": 0.82,
+          "happeningPeakInTime": {
+            "cubic": 2.81,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 1.99,
+          "happensMaxOverMin": 1.27,
+          "happensMiddleOverEnds": 0.82,
+          "happeningPeakInTime": {
+            "cubic": 2.82,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Coal",
+          "travellers": 12,
+          "peakSpeed": 2.04,
+          "happensMaxOverMin": 1.47,
+          "happensMiddleOverEnds": 0.84,
+          "happeningPeakInTime": {
+            "cubic": 2.75,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "travellers": 12,
+          "peakSpeed": 2,
+          "happensMaxOverMin": 1.21,
+          "happensMiddleOverEnds": 0.83,
+          "happeningPeakInTime": {
+            "cubic": 2.8,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 1.99,
+          "happensMaxOverMin": 1.27,
+          "happensMiddleOverEnds": 0.82,
+          "happeningPeakInTime": {
+            "cubic": 2.82,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Petal",
+          "travellers": 12,
+          "peakSpeed": 1.95,
+          "happensMaxOverMin": 1.37,
+          "happensMiddleOverEnds": 0.9,
+          "happeningPeakInTime": {
+            "cubic": 2.87,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 17,
+          "peakSpeed": 1.97,
+          "happensMaxOverMin": 1.26,
+          "happensMiddleOverEnds": 0.83,
+          "happeningPeakInTime": {
+            "cubic": 2.86,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Drift",
+          "travellers": 12,
+          "peakSpeed": 2.03,
+          "happensMaxOverMin": 1.37,
+          "happensMiddleOverEnds": 0.85,
+          "happeningPeakInTime": {
+            "cubic": 2.76,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 1.96,
+          "happensMaxOverMin": 1.22,
+          "happensMiddleOverEnds": 0.86,
+          "happeningPeakInTime": {
+            "cubic": 2.87,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Ember",
+          "travellers": 12,
+          "peakSpeed": 1.94,
+          "happensMaxOverMin": 1.37,
+          "happensMiddleOverEnds": 0.9,
+          "happeningPeakInTime": {
+            "cubic": 2.88,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Tide",
+          "travellers": 12,
+          "peakSpeed": 1.81,
+          "happensMaxOverMin": 1.16,
+          "happensMiddleOverEnds": 1.11,
+          "happeningPeakInTime": {
+            "cubic": 3.24,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2,
+          "happensMaxOverMin": 1.33,
+          "happensMiddleOverEnds": 0.81,
+          "happeningPeakInTime": {
+            "cubic": 2.81,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Dune",
+          "travellers": 12,
+          "peakSpeed": 1.96,
+          "happensMaxOverMin": 1.47,
+          "happensMiddleOverEnds": 0.86,
+          "happeningPeakInTime": {
+            "cubic": 2.88,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 23,
+          "peakSpeed": 2.04,
+          "happensMaxOverMin": 1.21,
+          "happensMiddleOverEnds": 0.83,
+          "happeningPeakInTime": {
+            "cubic": 2.76,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Jazz",
+          "travellers": 12,
+          "peakSpeed": 2.03,
+          "happensMaxOverMin": 1.53,
+          "happensMiddleOverEnds": 0.79,
+          "happeningPeakInTime": {
+            "cubic": 2.76,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2,
+          "happensMaxOverMin": 1.33,
+          "happensMiddleOverEnds": 0.81,
+          "happeningPeakInTime": {
+            "cubic": 2.81,
+            "tempo": 1.87
+          }
+        }
+      ],
+      "phone": [
+        {
+          "act": "scene:frame",
+          "travellers": 12,
+          "peakSpeed": 1.96,
+          "happensMaxOverMin": 1.15,
+          "happensMiddleOverEnds": 0.88,
+          "happeningPeakInTime": {
+            "cubic": 2.86,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:sidebar",
+          "travellers": 12,
+          "peakSpeed": 1.97,
+          "happensMaxOverMin": 1.22,
+          "happensMiddleOverEnds": 0.88,
+          "happeningPeakInTime": {
+            "cubic": 2.85,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:hero",
+          "travellers": 12,
+          "peakSpeed": 1.95,
+          "happensMaxOverMin": 1.13,
+          "happensMiddleOverEnds": 0.91,
+          "happeningPeakInTime": {
+            "cubic": 2.88,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:flock"
+        },
+        {
+          "act": "scene:bento",
+          "travellers": 12,
+          "peakSpeed": 1.95,
+          "happensMaxOverMin": 1.18,
+          "happensMiddleOverEnds": 0.9,
+          "happeningPeakInTime": {
+            "cubic": 2.89,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:hero",
+          "travellers": 12,
+          "peakSpeed": 1.92,
+          "happensMaxOverMin": 1.11,
+          "happensMiddleOverEnds": 0.95,
+          "happeningPeakInTime": {
+            "cubic": 2.96,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:bento",
+          "travellers": 12,
+          "peakSpeed": 1.93,
+          "happensMaxOverMin": 1.11,
+          "happensMiddleOverEnds": 0.94,
+          "happeningPeakInTime": {
+            "cubic": 2.94,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Moss",
+          "travellers": 12,
+          "peakSpeed": 1.96,
+          "happensMaxOverMin": 1.28,
+          "happensMiddleOverEnds": 0.93,
+          "happeningPeakInTime": {
+            "cubic": 2.96,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2.01,
+          "happensMaxOverMin": 1.33,
+          "happensMiddleOverEnds": 0.82,
+          "happeningPeakInTime": {
+            "cubic": 2.79,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "travellers": 12,
+          "peakSpeed": 1.89,
+          "happensMaxOverMin": 1.24,
+          "happensMiddleOverEnds": 0.98,
+          "happeningPeakInTime": {
+            "cubic": 3.09,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2,
+          "happensMaxOverMin": 1.3,
+          "happensMiddleOverEnds": 0.84,
+          "happeningPeakInTime": {
+            "cubic": 2.82,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Coal",
+          "travellers": 12,
+          "peakSpeed": 2.04,
+          "happensMaxOverMin": 1.41,
+          "happensMiddleOverEnds": 0.82,
+          "happeningPeakInTime": {
+            "cubic": 2.75,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "travellers": 12,
+          "peakSpeed": 2.07,
+          "happensMaxOverMin": 1.49,
+          "happensMiddleOverEnds": 0.74,
+          "happeningPeakInTime": {
+            "cubic": 2.73,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2,
+          "happensMaxOverMin": 1.3,
+          "happensMiddleOverEnds": 0.84,
+          "happeningPeakInTime": {
+            "cubic": 2.82,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Petal",
+          "travellers": 12,
+          "peakSpeed": 2.07,
+          "happensMaxOverMin": 1.37,
+          "happensMiddleOverEnds": 0.83,
+          "happeningPeakInTime": {
+            "cubic": 2.72,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2.01,
+          "happensMaxOverMin": 1.33,
+          "happensMiddleOverEnds": 0.82,
+          "happeningPeakInTime": {
+            "cubic": 2.79,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Drift",
+          "travellers": 12,
+          "peakSpeed": 1.93,
+          "happensMaxOverMin": 1.25,
+          "happensMiddleOverEnds": 0.99,
+          "happeningPeakInTime": {
+            "cubic": 3.19,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2,
+          "happensMaxOverMin": 1.3,
+          "happensMiddleOverEnds": 0.84,
+          "happeningPeakInTime": {
+            "cubic": 2.82,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Ember",
+          "travellers": 12,
+          "peakSpeed": 1.93,
+          "happensMaxOverMin": 1.23,
+          "happensMiddleOverEnds": 1,
+          "happeningPeakInTime": {
+            "cubic": 3.18,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Tide",
+          "travellers": 12,
+          "peakSpeed": 2.04,
+          "happensMaxOverMin": 1.49,
+          "happensMiddleOverEnds": 0.74,
+          "happeningPeakInTime": {
+            "cubic": 2.76,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2,
+          "happensMaxOverMin": 1.31,
+          "happensMiddleOverEnds": 0.84,
+          "happeningPeakInTime": {
+            "cubic": 2.81,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Dune",
+          "travellers": 12,
+          "peakSpeed": 2.04,
+          "happensMaxOverMin": 1.4,
+          "happensMiddleOverEnds": 0.82,
+          "happeningPeakInTime": {
+            "cubic": 2.75,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2.01,
+          "happensMaxOverMin": 1.33,
+          "happensMiddleOverEnds": 0.82,
+          "happeningPeakInTime": {
+            "cubic": 2.79,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Jazz",
+          "travellers": 12,
+          "peakSpeed": 2.02,
+          "happensMaxOverMin": 1.44,
+          "happensMiddleOverEnds": 0.82,
+          "happeningPeakInTime": {
+            "cubic": 2.77,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 1.98,
+          "happensMaxOverMin": 1.25,
+          "happensMiddleOverEnds": 0.86,
+          "happeningPeakInTime": {
+            "cubic": 2.84,
+            "tempo": 1.87
+          }
+        }
+      ]
+    },
+    "desk": {
+      "size": {
+        "width": 1440,
+        "height": 900,
+        "fields": 0.55
+      },
+      "budget": 16,
+      "shoal": {
+        "score": 25352.2,
+        "lurch": 9354.7,
+        "sliver": 218.5,
+        "split": 0,
+        "collisions": 34,
+        "shock": 1675.6
+      },
+      "wings": {
+        "score": 21277.4,
+        "lurch": 8080.9,
+        "sliver": 172.6,
+        "split": 0,
+        "collisions": 29,
+        "shock": 1671.7
+      },
+      "tempo": {
+        "score": 22225.8,
+        "lurch": 7627,
+        "sliver": 195.1,
+        "split": 0,
+        "collisions": 29,
+        "shock": 1949.1
+      },
+      "thinking": {
+        "changes": 23,
+        "rounds": 69,
+        "moves": 16,
+        "late": 0,
+        "framesChecked": 947
+      },
+      "changes": [
+        {
+          "act": "scene:frame",
+          "shoal": 14.8,
+          "wings": 14.8,
+          "tempo": 30,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 3,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "scene:sidebar",
+          "shoal": 102.4,
+          "wings": 102.4,
+          "tempo": 100.3,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 6,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "scene:hero",
+          "shoal": 31.5,
+          "wings": 31.5,
+          "tempo": 62.6,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 6,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "scene:flock",
+          "shoal": 23.7,
+          "wings": 23.7,
+          "tempo": 23.6,
+          "rounds": null,
+          "rest": null
+        },
+        {
+          "act": "scene:bento",
+          "shoal": 60.9,
+          "wings": 60.9,
+          "tempo": 109.5,
+          "rounds": null,
+          "rest": null
+        },
+        {
+          "act": "scene:hero",
+          "shoal": 12.7,
+          "wings": 12.7,
+          "tempo": 27.4,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "scene:bento",
+          "shoal": 111.5,
+          "wings": 11.5,
+          "tempo": 26,
+          "rounds": {
+            "moves": 1,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Moss",
+          "shoal": 1225.9,
+          "wings": 706.6,
+          "tempo": 801.4,
+          "rounds": {
+            "moves": 1,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 0
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9898,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 2185.2,
+          "wings": 2185.2,
+          "tempo": 2104.9,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Aurora",
+          "shoal": 924.2,
+          "wings": 675.2,
+          "tempo": 723.4,
+          "rounds": {
+            "moves": 1,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 0
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 183.4,
+          "wings": 183.4,
+          "tempo": 201.7,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Coal",
+          "shoal": 308.1,
+          "wings": 286,
+          "tempo": 127.9,
+          "rounds": {
+            "moves": 1,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 0
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "shoal": 2327.3,
+          "wings": 745,
+          "tempo": 1832.5,
+          "rounds": {
+            "moves": 1,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 187
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 181.2,
+          "wings": 181.2,
+          "tempo": 199.7,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Petal",
+          "shoal": 1182,
+          "wings": 740.7,
+          "tempo": 659.2,
+          "rounds": {
+            "moves": 3,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 185
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9881,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 1898.2,
+          "wings": 1898.2,
+          "tempo": 1713.9,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Drift",
+          "shoal": 415.4,
+          "wings": 277.6,
+          "tempo": 254.5,
+          "rounds": {
+            "moves": 2,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 181
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 78,
+          "wings": 78,
+          "tempo": 90.3,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Ember",
+          "shoal": 351.3,
+          "wings": 264.1,
+          "tempo": 247.5,
+          "rounds": {
+            "moves": 2,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 111
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9629,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Tide",
+          "shoal": 6496.2,
+          "wings": 5719.2,
+          "tempo": 6084.9,
+          "rounds": {
+            "moves": 2,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 145
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.964,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 2263,
+          "wings": 2263,
+          "tempo": 2150.3,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Dune",
+          "shoal": 820.9,
+          "wings": 662.1,
+          "tempo": 376.1,
+          "rounds": {
+            "moves": 2,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 138
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9928,
+            "textCovers": 0.9672,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 3335.2,
+          "wings": 3335.2,
+          "tempo": 3532.8,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Jazz",
+          "shoal": 0.3,
+          "wings": 0.3,
+          "tempo": 0.2,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 3,
+            "framesChecked": 0
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9863,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 818.9,
+          "wings": 818.9,
+          "tempo": 745.2,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        }
+      ]
+    },
+    "phone": {
+      "size": {
+        "width": 390,
+        "height": 720,
+        "fields": 0.55
+      },
+      "budget": 16,
+      "shoal": {
+        "score": 18527.6,
+        "lurch": 1385.9,
+        "sliver": 240.2,
+        "split": 0,
+        "collisions": 40,
+        "shock": 1141.7
+      },
+      "wings": {
+        "score": 17544.2,
+        "lurch": 1724,
+        "sliver": 213.8,
+        "split": 0,
+        "collisions": 40,
+        "shock": 1132.9
+      },
+      "tempo": {
+        "score": 17751.9,
+        "lurch": 839.8,
+        "sliver": 236.3,
+        "split": 0,
+        "collisions": 37,
+        "shock": 1399.4
+      },
+      "thinking": {
+        "changes": 23,
+        "rounds": 59,
+        "moves": 17,
+        "late": 0,
+        "framesChecked": 912
+      },
+      "changes": [
+        {
+          "act": "scene:frame",
+          "shoal": 1460.3,
+          "wings": 1507.2,
+          "tempo": 1470.8,
+          "rounds": {
+            "moves": 1,
+            "late": 0,
+            "rounds": 2,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "scene:sidebar",
+          "shoal": 300,
+          "wings": 300,
+          "tempo": 298.4,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 3,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "scene:hero",
+          "shoal": 1575.9,
+          "wings": 1284.2,
+          "tempo": 914.9,
+          "rounds": {
+            "moves": 1,
+            "late": 0,
+            "rounds": 2,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "scene:flock",
+          "shoal": 440.1,
+          "wings": 392.8,
+          "tempo": 392.8,
+          "rounds": null,
+          "rest": null
+        },
+        {
+          "act": "scene:bento",
+          "shoal": 41.5,
+          "wings": 33.1,
+          "tempo": 71.3,
+          "rounds": null,
+          "rest": null
+        },
+        {
+          "act": "scene:hero",
+          "shoal": 6807.6,
+          "wings": 7088.8,
+          "tempo": 8315,
+          "rounds": {
+            "moves": 1,
+            "late": 0,
+            "rounds": 2,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "scene:bento",
+          "shoal": 714.4,
+          "wings": 714.4,
+          "tempo": 627.9,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 3,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Moss",
+          "shoal": 553.2,
+          "wings": 513.1,
+          "tempo": 504.1,
+          "rounds": {
+            "moves": 1,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 158
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 187.4,
+          "wings": 187.4,
+          "tempo": 207.5,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Aurora",
+          "shoal": 543.4,
+          "wings": 551.4,
+          "tempo": 344.5,
+          "rounds": {
+            "moves": 3,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 212
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 195.1,
+          "wings": 195.1,
+          "tempo": 214.3,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Coal",
+          "shoal": 100.7,
+          "wings": 100.7,
+          "tempo": 100.1,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 0
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "shoal": 760.4,
+          "wings": 760.4,
+          "tempo": 606,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 6,
+            "framesChecked": 0
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 204,
+          "wings": 204,
+          "tempo": 225.6,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Petal",
+          "shoal": 246,
+          "wings": 548.8,
+          "tempo": 231.4,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 0
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 201.8,
+          "wings": 201.8,
+          "tempo": 225.4,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Drift",
+          "shoal": 664.2,
+          "wings": 606.7,
+          "tempo": 548.5,
+          "rounds": {
+            "moves": 3,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 183
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 184.5,
+          "wings": 184.5,
+          "tempo": 207.2,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Ember",
+          "shoal": 537.2,
+          "wings": 517.4,
+          "tempo": 442,
+          "rounds": {
+            "moves": 3,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 147
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Tide",
+          "shoal": 1256.7,
+          "wings": 180,
+          "tempo": 238.7,
+          "rounds": {
+            "moves": 4,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 212
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 191.9,
+          "wings": 191.9,
+          "tempo": 212.2,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Dune",
+          "shoal": 236.8,
+          "wings": 156,
+          "tempo": 183.3,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 0
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 199.8,
+          "wings": 199.8,
+          "tempo": 225.1,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Jazz",
+          "shoal": 0,
+          "wings": 0,
+          "tempo": 0.1,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 6,
+            "framesChecked": 0
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9885,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 924.7,
+          "wings": 924.7,
+          "tempo": 944.8,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        }
+      ]
+    },
+    "pages": {
+      "desk": {
+        "changes": 56,
+        "shoal": {
+          "score": 165165.1,
+          "lurch": 56920.8,
+          "sliver": 1734.2,
+          "split": 0,
+          "collisions": 150,
+          "shock": 6572
+        },
+        "wings": {
+          "score": 123704.4,
+          "lurch": 42591.6,
+          "sliver": 1178.9,
+          "split": 0,
+          "collisions": 155,
+          "shock": 6691.3
+        },
+        "tempo": {
+          "score": 119095.3,
+          "lurch": 39586,
+          "sliver": 1173.1,
+          "split": 0,
+          "collisions": 143,
+          "shock": 6568.6
+        },
+        "thinking": {
+          "changes": 56,
+          "rounds": 319,
+          "moves": 116,
+          "late": 0,
+          "framesChecked": 9224
+        },
+        "worst": [
+          {
+            "from": "Tide",
+            "to": "Ember",
+            "shoal": 9402.7,
+            "wings": 4768.7,
+            "tempo": 4625
+          },
+          {
+            "from": "Dune",
+            "to": "Petal",
+            "shoal": 9265.6,
+            "wings": 6759.1,
+            "tempo": 5687.7
+          },
+          {
+            "from": "Ember",
+            "to": "Jazz",
+            "shoal": 7656.3,
+            "wings": 3753.1,
+            "tempo": 3192.4
+          },
+          {
+            "from": "Tide",
+            "to": "Drift",
+            "shoal": 7071.5,
+            "wings": 4085.7,
+            "tempo": 4188.7
+          },
+          {
+            "from": "Tide",
+            "to": "Moss",
+            "shoal": 6774.4,
+            "wings": 4887.3,
+            "tempo": 5140.6
+          },
+          {
+            "from": "Tide",
+            "to": "Dune",
+            "shoal": 6679,
+            "wings": 6053.7,
+            "tempo": 5982.5
+          },
+          {
+            "from": "Ember",
+            "to": "Drift",
+            "shoal": 6154.4,
+            "wings": 3724.7,
+            "tempo": 3054.3
+          },
+          {
+            "from": "Ember",
+            "to": "Tide",
+            "shoal": 5493.2,
+            "wings": 5434.8,
+            "tempo": 5494.8
+          },
+          {
+            "from": "Ember",
+            "to": "Dune",
+            "shoal": 5438.2,
+            "wings": 4844.3,
+            "tempo": 4309
+          },
+          {
+            "from": "Dune",
+            "to": "Aurora",
+            "shoal": 5402,
+            "wings": 4233.5,
+            "tempo": 4946.1
+          }
+        ]
+      },
+      "phone": {
+        "changes": 56,
+        "shoal": {
+          "score": 62630.7,
+          "lurch": 14223.6,
+          "sliver": 664.8,
+          "split": 0,
+          "collisions": 119,
+          "shock": 3272.2
+        },
+        "wings": {
+          "score": 37520.1,
+          "lurch": 10093.4,
+          "sliver": 261.2,
+          "split": 0,
+          "collisions": 111,
+          "shock": 3248.3
+        },
+        "tempo": {
+          "score": 41518.1,
+          "lurch": 9675.2,
+          "sliver": 342.3,
+          "split": 0,
+          "collisions": 114,
+          "shock": 3333.4
+        },
+        "thinking": {
+          "changes": 56,
+          "rounds": 311,
+          "moves": 131,
+          "late": 0,
+          "framesChecked": 9384
+        },
+        "worst": [
+          {
+            "from": "Ember",
+            "to": "Jazz",
+            "shoal": 2481.9,
+            "wings": 1247.8,
+            "tempo": 2306.2
+          },
+          {
+            "from": "Aurora",
+            "to": "Jazz",
+            "shoal": 2390.1,
+            "wings": 1944.7,
+            "tempo": 1901.7
+          },
+          {
+            "from": "Aurora",
+            "to": "Dune",
+            "shoal": 2227,
+            "wings": 2170.9,
+            "tempo": 2344.5
+          },
+          {
+            "from": "Dune",
+            "to": "Drift",
+            "shoal": 1955.7,
+            "wings": 510.6,
+            "tempo": 1082.5
+          },
+          {
+            "from": "Jazz",
+            "to": "Aurora",
+            "shoal": 1718.1,
+            "wings": 576.5,
+            "tempo": 1265.3
+          },
+          {
+            "from": "Tide",
+            "to": "Petal",
+            "shoal": 1633.5,
+            "wings": 1583.2,
+            "tempo": 1821.8
+          },
+          {
+            "from": "Tide",
+            "to": "Aurora",
+            "shoal": 1484.2,
+            "wings": 1321.6,
+            "tempo": 1453.7
+          },
+          {
+            "from": "Moss",
+            "to": "Jazz",
+            "shoal": 1478.3,
+            "wings": 1073,
+            "tempo": 1208.3
+          },
+          {
+            "from": "Petal",
+            "to": "Dune",
+            "shoal": 1461.8,
+            "wings": 434.5,
+            "tempo": 445.8
+          },
+          {
+            "from": "Jazz",
+            "to": "Dune",
+            "shoal": 1434.7,
+            "wings": 744,
+            "tempo": 754.6
+          }
+        ]
+      }
+    },
+    "onPage": {
+      "budget": 16,
+      "thinking": {
+        "changes": 23,
+        "rounds": 81,
+        "moves": 21,
+        "late": 0,
+        "framesChecked": 1403
+      },
+      "drawn": {
+        "score": 21920.9,
+        "lurch": 7662.2,
+        "sliver": 192.2,
+        "split": 0,
+        "collisions": 27,
+        "shock": 1949.1
+      }
+    },
+    "story": {
+      "frames": 2040,
+      "identical": true,
+      "journeyFramesWatched": 19983,
+      "paced": 0
+    },
+    "slides": [
+      {
+        "k": 0,
+        "cast": [
+          "Dune"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 1,
+        "cast": [
+          "Dune",
+          "Moss"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 13,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 2,
+        "cast": [
+          "Dune",
+          "Moss",
+          "Petal"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 12,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0
+        }
+      },
+      {
+        "k": 3,
+        "cast": [
+          "Tide"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 4,
+        "cast": [
+          "Tide",
+          "Aurora"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 13,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 5,
+        "cast": [
+          "Moss"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 6,
+        "cast": [
+          "Moss",
+          "Aurora"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 13,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 7,
+        "cast": [
+          "Moss",
+          "Aurora",
+          "Petal"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 12,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0
+        }
+      }
+    ],
+    "changes": [
+      {
+        "k": 1,
+        "fresh": false,
+        "cast": [
+          "Dune",
+          "Moss"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 85.5,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.2
+      },
+      {
+        "k": 2,
+        "fresh": false,
+        "cast": [
+          "Dune",
+          "Moss",
+          "Petal"
+        ],
+        "kept": 2,
+        "penStayed": 9,
+        "penSettle": 67.9,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.2
+      },
+      {
+        "k": 3,
+        "fresh": true,
+        "cast": [
+          "Tide"
+        ],
+        "kept": 0,
+        "penStayed": 8,
+        "penSettle": 98.3,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.4
+      },
+      {
+        "k": 4,
+        "fresh": false,
+        "cast": [
+          "Tide",
+          "Aurora"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 93.7,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.3
+      },
+      {
+        "k": 5,
+        "fresh": true,
+        "cast": [
+          "Moss"
+        ],
+        "kept": 0,
+        "penStayed": 9,
+        "penSettle": 93.7,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2
+      },
+      {
+        "k": 6,
+        "fresh": false,
+        "cast": [
+          "Moss",
+          "Aurora"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 93.7,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.4
+      },
+      {
+        "k": 7,
+        "fresh": false,
+        "cast": [
+          "Moss",
+          "Aurora",
+          "Petal"
+        ],
+        "kept": 2,
+        "penStayed": 9,
+        "penSettle": 52.5,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 1.6
+      }
+    ],
+    "back": {
+      "k": 0,
+      "cast": [
+        "Aurora"
+      ],
+      "penCovered": 1,
+      "offRect": 0,
+      "voids": 14,
+      "rest": {
+        "rectangle": 1,
+        "voronoi": 11,
+        "cut": 0
+      }
+    },
+    "hurried": [
+      {
+        "slides": [
+          0,
+          1,
+          2
+        ],
+        "landing": [
+          {
+            "name": "Moss",
+            "wallAfter": 62
+          }
+        ],
+        "still": [
+          "Dune"
+        ]
+      },
+      {
+        "slides": [
+          5,
+          6,
+          7
+        ],
+        "landing": [
+          {
+            "name": "Aurora",
+            "wallAfter": 122
+          }
+        ],
+        "still": [
+          "Tide"
+        ]
+      }
+    ],
+    "phone2": [
+      {
+        "k": 0,
+        "cast": [
+          "Haze"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 10,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 1,
+        "fresh": false,
+        "cast": [
+          "Haze",
+          "Jazz"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 22.2,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.6
+      },
+      {
+        "k": 1,
+        "cast": [
+          "Haze",
+          "Jazz"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 9,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 2,
+        "fresh": false,
+        "cast": [
+          "Haze",
+          "Jazz",
+          "Aurora"
+        ],
+        "kept": 2,
+        "penStayed": 9,
+        "penSettle": 41.9,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 1.8
+      },
+      {
+        "k": 2,
+        "cast": [
+          "Haze",
+          "Jazz",
+          "Aurora"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 8,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0
+        }
+      },
+      {
+        "k": 3,
+        "fresh": true,
+        "cast": [
+          "Dune"
+        ],
+        "kept": 0,
+        "penStayed": 8,
+        "penSettle": 43.7,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 1.8
+      },
+      {
+        "k": 3,
+        "cast": [
+          "Dune"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 10,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 4,
+        "fresh": false,
+        "cast": [
+          "Dune",
+          "Jazz"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 22.2,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 1.8
+      },
+      {
+        "k": 4,
+        "cast": [
+          "Dune",
+          "Jazz"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 9,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 5,
+        "fresh": true,
+        "cast": [
+          "Haze"
+        ],
+        "kept": 0,
+        "penStayed": 9,
+        "penSettle": 15,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.6
+      },
+      {
+        "k": 5,
+        "cast": [
+          "Haze"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 10,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      }
+    ],
+    "home": {
+      "cells": 12,
+      "scene": "bento"
+    },
+    "tell": {
+      "frames": 3060,
+      "fractured": 0
+    },
+    "motion": {
+      "desk": {
+        "shoal": {
+          "seedAccel": {
+            "mean": 461,
+            "p99": 1766
+          },
+          "planAccel": {
+            "p99": 2274,
+            "max": 3383
+          },
+          "peakOverMean": {
+            "median": 2.34,
+            "p90": 2.48
+          },
+          "hectic": {
+            "mean": 479,
+            "p99": 1885
+          }
+        },
+        "wings": {
+          "seedAccel": {
+            "mean": 468,
+            "p99": 1855
+          },
+          "planAccel": {
+            "p99": 2384,
+            "max": 67686
+          },
+          "peakOverMean": {
+            "median": 2.34,
+            "p90": 2.49
+          },
+          "hectic": {
+            "mean": 487,
+            "p99": 1871
+          }
+        },
+        "tempo": {
+          "seedAccel": {
+            "mean": 376,
+            "p99": 1312
+          },
+          "planAccel": {
+            "p99": 1380,
+            "max": 3627
+          },
+          "peakOverMean": {
+            "median": 1.82,
+            "p90": 1.98
+          },
+          "hectic": {
+            "mean": 486,
+            "p99": 1611
+          }
+        }
+      },
+      "phone": {
+        "shoal": {
+          "seedAccel": {
+            "mean": 313,
+            "p99": 1367
+          },
+          "planAccel": {
+            "p99": 1491,
+            "max": 2028
+          },
+          "peakOverMean": {
+            "median": 2.23,
+            "p90": 2.52
+          },
+          "hectic": {
+            "mean": 184,
+            "p99": 958
+          }
+        },
+        "wings": {
+          "seedAccel": {
+            "mean": 317,
+            "p99": 1480
+          },
+          "planAccel": {
+            "p99": 1604,
+            "max": 38267
+          },
+          "peakOverMean": {
+            "median": 2.23,
+            "p90": 2.59
+          },
+          "hectic": {
+            "mean": 186,
+            "p99": 908
+          }
+        },
+        "tempo": {
+          "seedAccel": {
+            "mean": 258,
+            "p99": 1101
+          },
+          "planAccel": {
+            "p99": 857,
+            "max": 2671
+          },
+          "peakOverMean": {
+            "median": 1.81,
+            "p90": 2.16
+          },
+          "hectic": {
+            "mean": 182,
+            "p99": 814
+          }
+        }
+      }
+    }
+  }
+}
