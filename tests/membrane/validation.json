@@ -1,0 +1,2539 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed; frames of 1/64 s; the worker of Wings headless (a second copy of the page's script, messages as structured clones) thinking sixteen rehearsed frames a frame. On a tour of changes (home scenes, home to a page of every kind and back, page to page) and on every page opened from every other kind of page, on a desk and a phone: with no budget and the sea and the pace taken out the tour is Shoal's, the world and every drawing command, frame by frame; nothing is sea at rest; the sea is there while a change runs, and the travelling cells' outlines lie along the screen's edges for fewer pixel-frames than on Tempo; every change of the page has one pace; nothing waits; from each round that moved a cell the performance is that round's rehearsal of the move to the bit, frame by frame, until the next move acts, while the page and its rehearsal both have the change running; nothing fractures on any frame (a reach is one smooth side; a cell rounded all over has no corner to break); every page at rest is exact as on Shoal. The defects drawn are reported against Tempo and Shoal, not held to them. With no worker the hive thinks on the page and plays what it rehearsed, frame by frame. No sea while a Cue story is told, and with the sea and the pace taken out it is Shoal's frame by frame; Cue's own story checks pass on a desk and a phone; a Tell and a Tell II story run to their end and home without a fractured cell.",
+  "report": {
+    "trace": {
+      "desk": {
+        "frames": 11550,
+        "identical": true
+      },
+      "phone": {
+        "frames": 11550,
+        "identical": true
+      }
+    },
+    "pace": {
+      "desk": [
+        {
+          "act": "scene:frame",
+          "travellers": 12,
+          "peakSpeed": 1.96,
+          "happensMaxOverMin": 1.19,
+          "happensMiddleOverEnds": 0.88,
+          "happeningPeakInTime": {
+            "cubic": 2.87,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:sidebar",
+          "travellers": 12,
+          "peakSpeed": 1.94,
+          "happensMaxOverMin": 1.37,
+          "happensMiddleOverEnds": 0.91,
+          "happeningPeakInTime": {
+            "cubic": 2.89,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:hero",
+          "travellers": 12,
+          "peakSpeed": 1.95,
+          "happensMaxOverMin": 1.14,
+          "happensMiddleOverEnds": 0.9,
+          "happeningPeakInTime": {
+            "cubic": 2.88,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:flock"
+        },
+        {
+          "act": "scene:bento",
+          "travellers": 12,
+          "peakSpeed": 1.92,
+          "happensMaxOverMin": 1.08,
+          "happensMiddleOverEnds": 0.93,
+          "happeningPeakInTime": {
+            "cubic": 2.93,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:hero",
+          "travellers": 12,
+          "peakSpeed": 1.93,
+          "happensMaxOverMin": 1.15,
+          "happensMiddleOverEnds": 0.91,
+          "happeningPeakInTime": {
+            "cubic": 2.91,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:bento",
+          "travellers": 12,
+          "peakSpeed": 1.93,
+          "happensMaxOverMin": 1.15,
+          "happensMiddleOverEnds": 0.91,
+          "happeningPeakInTime": {
+            "cubic": 2.91,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Moss",
+          "travellers": 12,
+          "peakSpeed": 1.92,
+          "happensMaxOverMin": 1.3,
+          "happensMiddleOverEnds": 0.91,
+          "happeningPeakInTime": {
+            "cubic": 2.93,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 18,
+          "peakSpeed": 1.97,
+          "happensMaxOverMin": 1.23,
+          "happensMiddleOverEnds": 0.84,
+          "happeningPeakInTime": {
+            "cubic": 2.85,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "travellers": 12,
+          "peakSpeed": 2.05,
+          "happensMaxOverMin": 1.42,
+          "happensMiddleOverEnds": 0.83,
+          "happeningPeakInTime": {
+            "cubic": 2.73,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 1.99,
+          "happensMaxOverMin": 1.24,
+          "happensMiddleOverEnds": 0.86,
+          "happeningPeakInTime": {
+            "cubic": 2.83,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Coal",
+          "travellers": 12,
+          "peakSpeed": 2.05,
+          "happensMaxOverMin": 1.45,
+          "happensMiddleOverEnds": 0.82,
+          "happeningPeakInTime": {
+            "cubic": 2.73,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "travellers": 12,
+          "peakSpeed": 2,
+          "happensMaxOverMin": 1.2,
+          "happensMiddleOverEnds": 0.83,
+          "happeningPeakInTime": {
+            "cubic": 2.8,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 1.99,
+          "happensMaxOverMin": 1.27,
+          "happensMiddleOverEnds": 0.82,
+          "happeningPeakInTime": {
+            "cubic": 2.82,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Petal",
+          "travellers": 12,
+          "peakSpeed": 1.96,
+          "happensMaxOverMin": 1.37,
+          "happensMiddleOverEnds": 0.9,
+          "happeningPeakInTime": {
+            "cubic": 2.87,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 17,
+          "peakSpeed": 1.97,
+          "happensMaxOverMin": 1.26,
+          "happensMiddleOverEnds": 0.83,
+          "happeningPeakInTime": {
+            "cubic": 2.86,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Drift",
+          "travellers": 12,
+          "peakSpeed": 2.01,
+          "happensMaxOverMin": 1.35,
+          "happensMiddleOverEnds": 0.85,
+          "happeningPeakInTime": {
+            "cubic": 2.8,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 1.99,
+          "happensMaxOverMin": 1.25,
+          "happensMiddleOverEnds": 0.83,
+          "happeningPeakInTime": {
+            "cubic": 2.83,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Ember",
+          "travellers": 12,
+          "peakSpeed": 1.92,
+          "happensMaxOverMin": 1.34,
+          "happensMiddleOverEnds": 0.9,
+          "happeningPeakInTime": {
+            "cubic": 2.92,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Tide",
+          "travellers": 12,
+          "peakSpeed": 1.83,
+          "happensMaxOverMin": 1.21,
+          "happensMiddleOverEnds": 1,
+          "happeningPeakInTime": {
+            "cubic": 3.16,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2,
+          "happensMaxOverMin": 1.33,
+          "happensMiddleOverEnds": 0.81,
+          "happeningPeakInTime": {
+            "cubic": 2.81,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Dune",
+          "travellers": 12,
+          "peakSpeed": 2.04,
+          "happensMaxOverMin": 1.54,
+          "happensMiddleOverEnds": 0.8,
+          "happeningPeakInTime": {
+            "cubic": 2.74,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 23,
+          "peakSpeed": 2.04,
+          "happensMaxOverMin": 1.21,
+          "happensMiddleOverEnds": 0.83,
+          "happeningPeakInTime": {
+            "cubic": 2.76,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Jazz",
+          "travellers": 12,
+          "peakSpeed": 2.03,
+          "happensMaxOverMin": 1.53,
+          "happensMiddleOverEnds": 0.79,
+          "happeningPeakInTime": {
+            "cubic": 2.76,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2,
+          "happensMaxOverMin": 1.33,
+          "happensMiddleOverEnds": 0.81,
+          "happeningPeakInTime": {
+            "cubic": 2.81,
+            "tempo": 1.87
+          }
+        }
+      ],
+      "phone": [
+        {
+          "act": "scene:frame",
+          "travellers": 12,
+          "peakSpeed": 1.96,
+          "happensMaxOverMin": 1.15,
+          "happensMiddleOverEnds": 0.88,
+          "happeningPeakInTime": {
+            "cubic": 2.86,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:sidebar",
+          "travellers": 12,
+          "peakSpeed": 1.97,
+          "happensMaxOverMin": 1.22,
+          "happensMiddleOverEnds": 0.88,
+          "happeningPeakInTime": {
+            "cubic": 2.85,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:hero",
+          "travellers": 12,
+          "peakSpeed": 1.95,
+          "happensMaxOverMin": 1.13,
+          "happensMiddleOverEnds": 0.91,
+          "happeningPeakInTime": {
+            "cubic": 2.88,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:flock"
+        },
+        {
+          "act": "scene:bento",
+          "travellers": 12,
+          "peakSpeed": 1.94,
+          "happensMaxOverMin": 1.18,
+          "happensMiddleOverEnds": 0.91,
+          "happeningPeakInTime": {
+            "cubic": 2.89,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:hero",
+          "travellers": 12,
+          "peakSpeed": 1.92,
+          "happensMaxOverMin": 1.11,
+          "happensMiddleOverEnds": 0.96,
+          "happeningPeakInTime": {
+            "cubic": 2.96,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:bento",
+          "travellers": 12,
+          "peakSpeed": 1.93,
+          "happensMaxOverMin": 1.11,
+          "happensMiddleOverEnds": 0.94,
+          "happeningPeakInTime": {
+            "cubic": 2.94,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Moss",
+          "travellers": 12,
+          "peakSpeed": 1.94,
+          "happensMaxOverMin": 1.27,
+          "happensMiddleOverEnds": 0.98,
+          "happeningPeakInTime": {
+            "cubic": 3.12,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2.03,
+          "happensMaxOverMin": 1.33,
+          "happensMiddleOverEnds": 0.85,
+          "happeningPeakInTime": {
+            "cubic": 2.76,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "travellers": 12,
+          "peakSpeed": 1.89,
+          "happensMaxOverMin": 1.24,
+          "happensMiddleOverEnds": 0.98,
+          "happeningPeakInTime": {
+            "cubic": 3.1,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2,
+          "happensMaxOverMin": 1.3,
+          "happensMiddleOverEnds": 0.84,
+          "happeningPeakInTime": {
+            "cubic": 2.82,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Coal",
+          "travellers": 12,
+          "peakSpeed": 1.9,
+          "happensMaxOverMin": 1.23,
+          "happensMiddleOverEnds": 0.99,
+          "happeningPeakInTime": {
+            "cubic": 3.15,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "travellers": 12,
+          "peakSpeed": 2.07,
+          "happensMaxOverMin": 1.5,
+          "happensMiddleOverEnds": 0.74,
+          "happeningPeakInTime": {
+            "cubic": 2.73,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2.01,
+          "happensMaxOverMin": 1.32,
+          "happensMiddleOverEnds": 0.88,
+          "happeningPeakInTime": {
+            "cubic": 2.8,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Petal",
+          "travellers": 12,
+          "peakSpeed": 2.07,
+          "happensMaxOverMin": 1.38,
+          "happensMiddleOverEnds": 0.83,
+          "happeningPeakInTime": {
+            "cubic": 2.73,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2.01,
+          "happensMaxOverMin": 1.33,
+          "happensMiddleOverEnds": 0.82,
+          "happeningPeakInTime": {
+            "cubic": 2.79,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Drift",
+          "travellers": 12,
+          "peakSpeed": 1.9,
+          "happensMaxOverMin": 1.27,
+          "happensMiddleOverEnds": 1.01,
+          "happeningPeakInTime": {
+            "cubic": 3.22,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2,
+          "happensMaxOverMin": 1.3,
+          "happensMiddleOverEnds": 0.84,
+          "happeningPeakInTime": {
+            "cubic": 2.82,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Ember",
+          "travellers": 12,
+          "peakSpeed": 2.07,
+          "happensMaxOverMin": 1.37,
+          "happensMiddleOverEnds": 0.83,
+          "happeningPeakInTime": {
+            "cubic": 2.73,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Tide",
+          "travellers": 12,
+          "peakSpeed": 2.04,
+          "happensMaxOverMin": 1.49,
+          "happensMiddleOverEnds": 0.74,
+          "happeningPeakInTime": {
+            "cubic": 2.76,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2,
+          "happensMaxOverMin": 1.3,
+          "happensMiddleOverEnds": 0.84,
+          "happeningPeakInTime": {
+            "cubic": 2.82,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Dune",
+          "travellers": 12,
+          "peakSpeed": 1.9,
+          "happensMaxOverMin": 1.23,
+          "happensMiddleOverEnds": 0.99,
+          "happeningPeakInTime": {
+            "cubic": 3.16,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2.01,
+          "happensMaxOverMin": 1.33,
+          "happensMiddleOverEnds": 0.82,
+          "happeningPeakInTime": {
+            "cubic": 2.79,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Jazz",
+          "travellers": 12,
+          "peakSpeed": 2.05,
+          "happensMaxOverMin": 1.4,
+          "happensMiddleOverEnds": 0.83,
+          "happeningPeakInTime": {
+            "cubic": 2.73,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2.01,
+          "happensMaxOverMin": 1.34,
+          "happensMiddleOverEnds": 0.83,
+          "happeningPeakInTime": {
+            "cubic": 2.8,
+            "tempo": 1.87
+          }
+        }
+      ]
+    },
+    "edge": {
+      "desk": {
+        "tempo": 6038845,
+        "membrane": 2461805,
+        "changes": [
+          {
+            "act": "scene:frame",
+            "tempo": 114390,
+            "membrane": 137646,
+            "seaMax": 41.575
+          },
+          {
+            "act": "scene:sidebar",
+            "tempo": 38229,
+            "membrane": 28591,
+            "seaMax": 56.381
+          },
+          {
+            "act": "scene:hero",
+            "tempo": 30209,
+            "membrane": 26065,
+            "seaMax": 47.148
+          },
+          {
+            "act": "scene:flock",
+            "tempo": 366690,
+            "membrane": 318114,
+            "seaMax": 54.534
+          },
+          {
+            "act": "scene:bento",
+            "tempo": 25388,
+            "membrane": 24908,
+            "seaMax": 4.933
+          },
+          {
+            "act": "scene:hero",
+            "tempo": 194980,
+            "membrane": 158152,
+            "seaMax": 21.023
+          },
+          {
+            "act": "scene:bento",
+            "tempo": 35041,
+            "membrane": 32581,
+            "seaMax": 25.315
+          },
+          {
+            "act": "open:Moss",
+            "tempo": 402052,
+            "membrane": 57328,
+            "seaMax": 36.563
+          },
+          {
+            "act": "home",
+            "tempo": 37323,
+            "membrane": 39448,
+            "seaMax": 6.158
+          },
+          {
+            "act": "open:Aurora",
+            "tempo": 595746,
+            "membrane": 210515,
+            "seaMax": 40.311
+          },
+          {
+            "act": "home",
+            "tempo": 45300,
+            "membrane": 59309,
+            "seaMax": 15.577
+          },
+          {
+            "act": "open:Coal",
+            "tempo": 632847,
+            "membrane": 195681,
+            "seaMax": 36.059
+          },
+          {
+            "act": "open:Aurora",
+            "tempo": 698969,
+            "membrane": 297435,
+            "seaMax": 52.758
+          },
+          {
+            "act": "home",
+            "tempo": 40273,
+            "membrane": 33454,
+            "seaMax": 30.934
+          },
+          {
+            "act": "open:Petal",
+            "tempo": 352157,
+            "membrane": 71694,
+            "seaMax": 48.285
+          },
+          {
+            "act": "home",
+            "tempo": 53114,
+            "membrane": 65720,
+            "seaMax": 6.444
+          },
+          {
+            "act": "open:Drift",
+            "tempo": 500760,
+            "membrane": 167664,
+            "seaMax": 33.483
+          },
+          {
+            "act": "home",
+            "tempo": 59311,
+            "membrane": 17978,
+            "seaMax": 27.595
+          },
+          {
+            "act": "open:Ember",
+            "tempo": 307913,
+            "membrane": 49069,
+            "seaMax": 37.879
+          },
+          {
+            "act": "open:Tide",
+            "tempo": 417870,
+            "membrane": 143645,
+            "seaMax": 50.444
+          },
+          {
+            "act": "home",
+            "tempo": 39104,
+            "membrane": 25231,
+            "seaMax": 28.062
+          },
+          {
+            "act": "open:Dune",
+            "tempo": 414427,
+            "membrane": 115699,
+            "seaMax": 51.592
+          },
+          {
+            "act": "home",
+            "tempo": 48793,
+            "membrane": 39731,
+            "seaMax": 19.266
+          },
+          {
+            "act": "open:Jazz",
+            "tempo": 562509,
+            "membrane": 132524,
+            "seaMax": 37.183
+          },
+          {
+            "act": "home",
+            "tempo": 25450,
+            "membrane": 13623,
+            "seaMax": 12.309
+          }
+        ]
+      },
+      "phone": {
+        "tempo": 3207559,
+        "membrane": 1739302,
+        "changes": [
+          {
+            "act": "scene:frame",
+            "tempo": 66291,
+            "membrane": 106674,
+            "seaMax": 55.029
+          },
+          {
+            "act": "scene:sidebar",
+            "tempo": 20549,
+            "membrane": 16707,
+            "seaMax": 68.641
+          },
+          {
+            "act": "scene:hero",
+            "tempo": 32194,
+            "membrane": 37112,
+            "seaMax": 63.393
+          },
+          {
+            "act": "scene:flock",
+            "tempo": 156252,
+            "membrane": 140675,
+            "seaMax": 69.766
+          },
+          {
+            "act": "scene:bento",
+            "tempo": 12275,
+            "membrane": 12942,
+            "seaMax": 8.611
+          },
+          {
+            "act": "scene:hero",
+            "tempo": 209954,
+            "membrane": 117806,
+            "seaMax": 26.327
+          },
+          {
+            "act": "scene:bento",
+            "tempo": 16998,
+            "membrane": 13698,
+            "seaMax": 30.578
+          },
+          {
+            "act": "open:Moss",
+            "tempo": 191955,
+            "membrane": 115303,
+            "seaMax": 46.154
+          },
+          {
+            "act": "home",
+            "tempo": 23890,
+            "membrane": 19188,
+            "seaMax": 47.855
+          },
+          {
+            "act": "open:Aurora",
+            "tempo": 265805,
+            "membrane": 119239,
+            "seaMax": 45.05
+          },
+          {
+            "act": "home",
+            "tempo": 39699,
+            "membrane": 32719,
+            "seaMax": 42.386
+          },
+          {
+            "act": "open:Coal",
+            "tempo": 234415,
+            "membrane": 88272,
+            "seaMax": 43.328
+          },
+          {
+            "act": "open:Aurora",
+            "tempo": 330089,
+            "membrane": 138226,
+            "seaMax": 36.335
+          },
+          {
+            "act": "home",
+            "tempo": 37136,
+            "membrane": 28349,
+            "seaMax": 47.556
+          },
+          {
+            "act": "open:Petal",
+            "tempo": 279432,
+            "membrane": 104070,
+            "seaMax": 42.047
+          },
+          {
+            "act": "home",
+            "tempo": 29097,
+            "membrane": 24685,
+            "seaMax": 44.862
+          },
+          {
+            "act": "open:Drift",
+            "tempo": 255961,
+            "membrane": 113526,
+            "seaMax": 44.73
+          },
+          {
+            "act": "home",
+            "tempo": 28497,
+            "membrane": 36299,
+            "seaMax": 37.286
+          },
+          {
+            "act": "open:Ember",
+            "tempo": 233952,
+            "membrane": 123589,
+            "seaMax": 44.941
+          },
+          {
+            "act": "open:Tide",
+            "tempo": 288246,
+            "membrane": 124618,
+            "seaMax": 37.701
+          },
+          {
+            "act": "home",
+            "tempo": 32724,
+            "membrane": 30929,
+            "seaMax": 31.868
+          },
+          {
+            "act": "open:Dune",
+            "tempo": 196227,
+            "membrane": 94777,
+            "seaMax": 44.619
+          },
+          {
+            "act": "home",
+            "tempo": 29717,
+            "membrane": 28959,
+            "seaMax": 43.718
+          },
+          {
+            "act": "open:Jazz",
+            "tempo": 180142,
+            "membrane": 60490,
+            "seaMax": 49.053
+          },
+          {
+            "act": "home",
+            "tempo": 16062,
+            "membrane": 10450,
+            "seaMax": 14.624
+          }
+        ]
+      }
+    },
+    "desk": {
+      "size": {
+        "width": 1440,
+        "height": 900,
+        "fields": 0.55
+      },
+      "budget": 16,
+      "shoal": {
+        "score": 25352.2,
+        "lurch": 9354.7,
+        "sliver": 218.5,
+        "split": 0,
+        "collisions": 34,
+        "shock": 1675.6
+      },
+      "tempo": {
+        "score": 22225.8,
+        "lurch": 7627,
+        "sliver": 195.1,
+        "split": 0,
+        "collisions": 29,
+        "shock": 1949.1
+      },
+      "membrane": {
+        "score": 23629.8,
+        "lurch": 11128.2,
+        "sliver": 60,
+        "split": 0,
+        "collisions": 31,
+        "shock": 6401.4
+      },
+      "thinking": {
+        "changes": 23,
+        "rounds": 61,
+        "moves": 23,
+        "late": 0,
+        "framesChecked": 1413
+      },
+      "changes": [
+        {
+          "act": "scene:frame",
+          "shoal": 14.8,
+          "tempo": 30,
+          "membrane": 48.3,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 3,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "scene:sidebar",
+          "shoal": 102.4,
+          "tempo": 100.3,
+          "membrane": 272.6,
+          "rounds": {
+            "moves": 1,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 124
+          },
+          "rest": null
+        },
+        {
+          "act": "scene:hero",
+          "shoal": 31.5,
+          "tempo": 62.6,
+          "membrane": 23.5,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 3,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "scene:flock",
+          "shoal": 23.7,
+          "tempo": 23.6,
+          "membrane": 3509.3,
+          "rounds": null,
+          "rest": null
+        },
+        {
+          "act": "scene:bento",
+          "shoal": 60.9,
+          "tempo": 109.5,
+          "membrane": 203.3,
+          "rounds": null,
+          "rest": null
+        },
+        {
+          "act": "scene:hero",
+          "shoal": 12.7,
+          "tempo": 27.4,
+          "membrane": 153.7,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "scene:bento",
+          "shoal": 111.5,
+          "tempo": 26,
+          "membrane": 216.6,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 3,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Moss",
+          "shoal": 1225.9,
+          "tempo": 801.4,
+          "membrane": 266.5,
+          "rounds": {
+            "moves": 3,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 172
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9897,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 2185.2,
+          "tempo": 2104.9,
+          "membrane": 1816.8,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Aurora",
+          "shoal": 924.2,
+          "tempo": 723.4,
+          "membrane": 502.6,
+          "rounds": {
+            "moves": 3,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 156
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 183.4,
+          "tempo": 201.7,
+          "membrane": 733.4,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Coal",
+          "shoal": 308.1,
+          "tempo": 127.9,
+          "membrane": 193.3,
+          "rounds": {
+            "moves": 1,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 128
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "shoal": 2327.3,
+          "tempo": 1832.5,
+          "membrane": 1107.7,
+          "rounds": {
+            "moves": 4,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 238
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 181.2,
+          "tempo": 199.7,
+          "membrane": 355.2,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Petal",
+          "shoal": 1182,
+          "tempo": 659.2,
+          "membrane": 365.9,
+          "rounds": {
+            "moves": 3,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 175
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9881,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 1898.2,
+          "tempo": 1713.9,
+          "membrane": 1597.1,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Drift",
+          "shoal": 415.4,
+          "tempo": 254.5,
+          "membrane": 299.4,
+          "rounds": {
+            "moves": 2,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 0
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 78,
+          "tempo": 90.3,
+          "membrane": 668.5,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Ember",
+          "shoal": 351.3,
+          "tempo": 247.5,
+          "membrane": 166,
+          "rounds": {
+            "moves": 3,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 164
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9628,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Tide",
+          "shoal": 6496.2,
+          "tempo": 6084.9,
+          "membrane": 3052.2,
+          "rounds": {
+            "moves": 2,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 110
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.964,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 2263,
+          "tempo": 2150.3,
+          "membrane": 3099.6,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Dune",
+          "shoal": 820.9,
+          "tempo": 376.1,
+          "membrane": 350.2,
+          "rounds": {
+            "moves": 1,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 146
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9928,
+            "textCovers": 0.9671,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 3335.2,
+          "tempo": 3532.8,
+          "membrane": 3465.7,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Jazz",
+          "shoal": 0.3,
+          "tempo": 0.2,
+          "membrane": 451.5,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 0
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9864,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 818.9,
+          "tempo": 745.2,
+          "membrane": 710.9,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        }
+      ]
+    },
+    "phone": {
+      "size": {
+        "width": 390,
+        "height": 720,
+        "fields": 0.55
+      },
+      "budget": 16,
+      "shoal": {
+        "score": 18527.6,
+        "lurch": 1385.9,
+        "sliver": 240.2,
+        "split": 0,
+        "collisions": 40,
+        "shock": 1141.7
+      },
+      "tempo": {
+        "score": 17751.9,
+        "lurch": 839.8,
+        "sliver": 236.3,
+        "split": 0,
+        "collisions": 37,
+        "shock": 1399.4
+      },
+      "membrane": {
+        "score": 20569,
+        "lurch": 3956.7,
+        "sliver": 171.7,
+        "split": 0,
+        "collisions": 45,
+        "shock": 3534
+      },
+      "thinking": {
+        "changes": 23,
+        "rounds": 55,
+        "moves": 30,
+        "late": 0,
+        "framesChecked": 1311
+      },
+      "changes": [
+        {
+          "act": "scene:frame",
+          "shoal": 1460.3,
+          "tempo": 1470.8,
+          "membrane": 1045.4,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 2,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "scene:sidebar",
+          "shoal": 300,
+          "tempo": 298.4,
+          "membrane": 282.7,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 3,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "scene:hero",
+          "shoal": 1575.9,
+          "tempo": 914.9,
+          "membrane": 1269.6,
+          "rounds": {
+            "moves": 1,
+            "late": 0,
+            "rounds": 2,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "scene:flock",
+          "shoal": 440.1,
+          "tempo": 392.8,
+          "membrane": 1569.6,
+          "rounds": null,
+          "rest": null
+        },
+        {
+          "act": "scene:bento",
+          "shoal": 41.5,
+          "tempo": 71.3,
+          "membrane": 132.8,
+          "rounds": null,
+          "rest": null
+        },
+        {
+          "act": "scene:hero",
+          "shoal": 6807.6,
+          "tempo": 8315,
+          "membrane": 5294.4,
+          "rounds": {
+            "moves": 1,
+            "late": 0,
+            "rounds": 2,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "scene:bento",
+          "shoal": 714.4,
+          "tempo": 627.9,
+          "membrane": 1032.5,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 2,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Moss",
+          "shoal": 553.2,
+          "tempo": 504.1,
+          "membrane": 824.1,
+          "rounds": {
+            "moves": 4,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 0
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 187.4,
+          "tempo": 207.5,
+          "membrane": 446.4,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Aurora",
+          "shoal": 543.4,
+          "tempo": 344.5,
+          "membrane": 608.4,
+          "rounds": {
+            "moves": 3,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 151
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 195.1,
+          "tempo": 214.3,
+          "membrane": 471.3,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Coal",
+          "shoal": 100.7,
+          "tempo": 100.1,
+          "membrane": 817.5,
+          "rounds": {
+            "moves": 2,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 0
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "shoal": 760.4,
+          "tempo": 606,
+          "membrane": 750.6,
+          "rounds": {
+            "moves": 4,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 306
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 204,
+          "tempo": 225.6,
+          "membrane": 495.7,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Petal",
+          "shoal": 246,
+          "tempo": 231.4,
+          "membrane": 411,
+          "rounds": {
+            "moves": 2,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 144
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 201.8,
+          "tempo": 225.4,
+          "membrane": 371,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Drift",
+          "shoal": 664.2,
+          "tempo": 548.5,
+          "membrane": 878.7,
+          "rounds": {
+            "moves": 2,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 132
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 184.5,
+          "tempo": 207.2,
+          "membrane": 467.2,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Ember",
+          "shoal": 537.2,
+          "tempo": 442,
+          "membrane": 391.8,
+          "rounds": {
+            "moves": 2,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 0
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Tide",
+          "shoal": 1256.7,
+          "tempo": 238.7,
+          "membrane": 509.8,
+          "rounds": {
+            "moves": 3,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 235
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 191.9,
+          "tempo": 212.2,
+          "membrane": 474.5,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Dune",
+          "shoal": 236.8,
+          "tempo": 183.3,
+          "membrane": 789.5,
+          "rounds": {
+            "moves": 3,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 183
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 199.8,
+          "tempo": 225.1,
+          "membrane": 366.1,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Jazz",
+          "shoal": 0,
+          "tempo": 0.1,
+          "membrane": 220.5,
+          "rounds": {
+            "moves": 3,
+            "late": 0,
+            "rounds": 3,
+            "framesChecked": 160
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9884,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 924.7,
+          "tempo": 944.8,
+          "membrane": 647.9,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        }
+      ]
+    },
+    "pages": {
+      "desk": {
+        "changes": 56,
+        "edge": {
+          "tempo": 31541332,
+          "membrane": 9498729
+        },
+        "shoal": {
+          "score": 165165.1,
+          "lurch": 56920.8,
+          "sliver": 1734.2,
+          "split": 0,
+          "collisions": 150,
+          "shock": 6572
+        },
+        "tempo": {
+          "score": 119095.3,
+          "lurch": 39586,
+          "sliver": 1173.1,
+          "split": 0,
+          "collisions": 143,
+          "shock": 6568.6
+        },
+        "membrane": {
+          "score": 96233.5,
+          "lurch": 23994.6,
+          "sliver": 412.4,
+          "split": 0,
+          "collisions": 141,
+          "shock": 37513.5
+        },
+        "thinking": {
+          "changes": 56,
+          "rounds": 268,
+          "moves": 145,
+          "late": 0,
+          "framesChecked": 11570
+        },
+        "worst": [
+          {
+            "from": "Moss",
+            "to": "Tide",
+            "shoal": 2951.1,
+            "tempo": 2231.2,
+            "membrane": 4672.8
+          },
+          {
+            "from": "Ember",
+            "to": "Jazz",
+            "shoal": 7656.3,
+            "tempo": 3192.4,
+            "membrane": 3945.3
+          },
+          {
+            "from": "Dune",
+            "to": "Petal",
+            "shoal": 9265.6,
+            "tempo": 5687.7,
+            "membrane": 3861.5
+          },
+          {
+            "from": "Dune",
+            "to": "Tide",
+            "shoal": 3865.9,
+            "tempo": 2937.7,
+            "membrane": 3811.6
+          },
+          {
+            "from": "Dune",
+            "to": "Moss",
+            "shoal": 3953.9,
+            "tempo": 3177.6,
+            "membrane": 3357.9
+          },
+          {
+            "from": "Dune",
+            "to": "Jazz",
+            "shoal": 2943.2,
+            "tempo": 2261,
+            "membrane": 3258.9
+          },
+          {
+            "from": "Dune",
+            "to": "Aurora",
+            "shoal": 5402,
+            "tempo": 4946.1,
+            "membrane": 3177
+          },
+          {
+            "from": "Dune",
+            "to": "Drift",
+            "shoal": 3950,
+            "tempo": 3781,
+            "membrane": 3073.6
+          },
+          {
+            "from": "Moss",
+            "to": "Ember",
+            "shoal": 622,
+            "tempo": 434.4,
+            "membrane": 2882.7
+          },
+          {
+            "from": "Drift",
+            "to": "Ember",
+            "shoal": 1674.9,
+            "tempo": 752,
+            "membrane": 2570.2
+          }
+        ]
+      },
+      "phone": {
+        "changes": 56,
+        "edge": {
+          "tempo": 18935440,
+          "membrane": 7056751
+        },
+        "shoal": {
+          "score": 62630.7,
+          "lurch": 14223.6,
+          "sliver": 664.8,
+          "split": 0,
+          "collisions": 119,
+          "shock": 3272.2
+        },
+        "tempo": {
+          "score": 41518.1,
+          "lurch": 9675.2,
+          "sliver": 342.3,
+          "split": 0,
+          "collisions": 114,
+          "shock": 3333.4
+        },
+        "membrane": {
+          "score": 36973,
+          "lurch": 13034.4,
+          "sliver": 29,
+          "split": 0,
+          "collisions": 73,
+          "shock": 15185.2
+        },
+        "thinking": {
+          "changes": 56,
+          "rounds": 286,
+          "moves": 139,
+          "late": 0,
+          "framesChecked": 11507
+        },
+        "worst": [
+          {
+            "from": "Petal",
+            "to": "Aurora",
+            "shoal": 1081.4,
+            "tempo": 942.6,
+            "membrane": 1516.8
+          },
+          {
+            "from": "Moss",
+            "to": "Dune",
+            "shoal": 544.8,
+            "tempo": 542.5,
+            "membrane": 1342.8
+          },
+          {
+            "from": "Tide",
+            "to": "Dune",
+            "shoal": 1336.8,
+            "tempo": 1383.6,
+            "membrane": 1245.4
+          },
+          {
+            "from": "Ember",
+            "to": "Petal",
+            "shoal": 1253.7,
+            "tempo": 1322.9,
+            "membrane": 1192.9
+          },
+          {
+            "from": "Tide",
+            "to": "Aurora",
+            "shoal": 1484.2,
+            "tempo": 1453.7,
+            "membrane": 1177.7
+          },
+          {
+            "from": "Drift",
+            "to": "Aurora",
+            "shoal": 675.6,
+            "tempo": 650.4,
+            "membrane": 1167.7
+          },
+          {
+            "from": "Tide",
+            "to": "Moss",
+            "shoal": 712.5,
+            "tempo": 648.6,
+            "membrane": 1149.8
+          },
+          {
+            "from": "Aurora",
+            "to": "Jazz",
+            "shoal": 2390.1,
+            "tempo": 1901.7,
+            "membrane": 1144.6
+          },
+          {
+            "from": "Ember",
+            "to": "Aurora",
+            "shoal": 481.4,
+            "tempo": 486,
+            "membrane": 1133
+          },
+          {
+            "from": "Moss",
+            "to": "Petal",
+            "shoal": 965.8,
+            "tempo": 979,
+            "membrane": 1106.5
+          }
+        ]
+      }
+    },
+    "onPage": {
+      "budget": 16,
+      "thinking": {
+        "changes": 23,
+        "rounds": 68,
+        "moves": 33,
+        "late": 0,
+        "framesChecked": 2102
+      },
+      "drawn": {
+        "score": 23460.2,
+        "lurch": 11147.4,
+        "sliver": 56.3,
+        "split": 0,
+        "collisions": 31,
+        "shock": 6400.4
+      }
+    },
+    "story": {
+      "frames": 2040,
+      "identical": true,
+      "journeyFramesWatched": 19983,
+      "paced": 0,
+      "sea": 0,
+      "liquid": 0
+    },
+    "slides": [
+      {
+        "k": 0,
+        "cast": [
+          "Dune"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 1,
+        "cast": [
+          "Dune",
+          "Moss"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 13,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 2,
+        "cast": [
+          "Dune",
+          "Moss",
+          "Petal"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 12,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0
+        }
+      },
+      {
+        "k": 3,
+        "cast": [
+          "Tide"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 4,
+        "cast": [
+          "Tide",
+          "Aurora"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 13,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 5,
+        "cast": [
+          "Moss"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 6,
+        "cast": [
+          "Moss",
+          "Aurora"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 13,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 7,
+        "cast": [
+          "Moss",
+          "Aurora",
+          "Petal"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 12,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0
+        }
+      }
+    ],
+    "changes": [
+      {
+        "k": 1,
+        "fresh": false,
+        "cast": [
+          "Dune",
+          "Moss"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 85.5,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.2
+      },
+      {
+        "k": 2,
+        "fresh": false,
+        "cast": [
+          "Dune",
+          "Moss",
+          "Petal"
+        ],
+        "kept": 2,
+        "penStayed": 9,
+        "penSettle": 67.9,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.2
+      },
+      {
+        "k": 3,
+        "fresh": true,
+        "cast": [
+          "Tide"
+        ],
+        "kept": 0,
+        "penStayed": 8,
+        "penSettle": 98.3,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.4
+      },
+      {
+        "k": 4,
+        "fresh": false,
+        "cast": [
+          "Tide",
+          "Aurora"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 93.7,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.3
+      },
+      {
+        "k": 5,
+        "fresh": true,
+        "cast": [
+          "Moss"
+        ],
+        "kept": 0,
+        "penStayed": 9,
+        "penSettle": 93.7,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2
+      },
+      {
+        "k": 6,
+        "fresh": false,
+        "cast": [
+          "Moss",
+          "Aurora"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 93.7,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.4
+      },
+      {
+        "k": 7,
+        "fresh": false,
+        "cast": [
+          "Moss",
+          "Aurora",
+          "Petal"
+        ],
+        "kept": 2,
+        "penStayed": 9,
+        "penSettle": 52.5,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 1.6
+      }
+    ],
+    "back": {
+      "k": 0,
+      "cast": [
+        "Aurora"
+      ],
+      "penCovered": 1,
+      "offRect": 0,
+      "voids": 14,
+      "rest": {
+        "rectangle": 1,
+        "voronoi": 11,
+        "cut": 0
+      }
+    },
+    "hurried": [
+      {
+        "slides": [
+          0,
+          1,
+          2
+        ],
+        "landing": [
+          {
+            "name": "Moss",
+            "wallAfter": 62
+          }
+        ],
+        "still": [
+          "Dune"
+        ]
+      },
+      {
+        "slides": [
+          5,
+          6,
+          7
+        ],
+        "landing": [
+          {
+            "name": "Aurora",
+            "wallAfter": 122
+          }
+        ],
+        "still": [
+          "Tide"
+        ]
+      }
+    ],
+    "phone2": [
+      {
+        "k": 0,
+        "cast": [
+          "Haze"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 10,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 1,
+        "fresh": false,
+        "cast": [
+          "Haze",
+          "Jazz"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 22.2,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.6
+      },
+      {
+        "k": 1,
+        "cast": [
+          "Haze",
+          "Jazz"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 9,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 2,
+        "fresh": false,
+        "cast": [
+          "Haze",
+          "Jazz",
+          "Aurora"
+        ],
+        "kept": 2,
+        "penStayed": 9,
+        "penSettle": 41.9,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 1.8
+      },
+      {
+        "k": 2,
+        "cast": [
+          "Haze",
+          "Jazz",
+          "Aurora"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 8,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0
+        }
+      },
+      {
+        "k": 3,
+        "fresh": true,
+        "cast": [
+          "Dune"
+        ],
+        "kept": 0,
+        "penStayed": 8,
+        "penSettle": 43.7,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 1.8
+      },
+      {
+        "k": 3,
+        "cast": [
+          "Dune"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 10,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 4,
+        "fresh": false,
+        "cast": [
+          "Dune",
+          "Jazz"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 22.2,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 1.8
+      },
+      {
+        "k": 4,
+        "cast": [
+          "Dune",
+          "Jazz"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 9,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 5,
+        "fresh": true,
+        "cast": [
+          "Haze"
+        ],
+        "kept": 0,
+        "penStayed": 9,
+        "penSettle": 15,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.6
+      },
+      {
+        "k": 5,
+        "cast": [
+          "Haze"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 10,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      }
+    ],
+    "home": {
+      "cells": 12,
+      "scene": "bento"
+    },
+    "tell": {
+      "frames": 3060,
+      "fractured": 0
+    },
+    "motion": {
+      "desk": {
+        "tempo": {
+          "seedAccel": {
+            "mean": 376,
+            "p99": 1312
+          },
+          "planAccel": {
+            "p99": 1380,
+            "max": 3627
+          },
+          "peakOverMean": {
+            "median": 1.82,
+            "p90": 1.98
+          },
+          "hectic": {
+            "mean": 486,
+            "p99": 1611
+          }
+        },
+        "membrane": {
+          "seedAccel": {
+            "mean": 411,
+            "p99": 1477
+          },
+          "planAccel": {
+            "p99": 1560,
+            "max": 3917
+          },
+          "peakOverMean": {
+            "median": 1.84,
+            "p90": 2.1
+          },
+          "hectic": {
+            "mean": 543,
+            "p99": 1765
+          }
+        }
+      },
+      "phone": {
+        "tempo": {
+          "seedAccel": {
+            "mean": 258,
+            "p99": 1101
+          },
+          "planAccel": {
+            "p99": 857,
+            "max": 2671
+          },
+          "peakOverMean": {
+            "median": 1.81,
+            "p90": 2.16
+          },
+          "hectic": {
+            "mean": 182,
+            "p99": 814
+          }
+        },
+        "membrane": {
+          "seedAccel": {
+            "mean": 253,
+            "p99": 969
+          },
+          "planAccel": {
+            "p99": 968,
+            "max": 2319
+          },
+          "peakOverMean": {
+            "median": 1.83,
+            "p90": 2.26
+          },
+          "hectic": {
+            "mean": 214,
+            "p99": 850
+          }
+        }
+      }
+    }
+  }
+}
