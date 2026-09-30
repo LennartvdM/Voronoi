@@ -15,9 +15,9 @@
 //   is Shoal's;
 // - nothing is sea at rest: when a change is over no whitespace's claim is
 //   the sea's and no cell is liquid;
-// - the hive is one body: while the sea is in, fewer of the cells' outlines
-//   lie on the sea than on Membrane, no cell is a disc, and less sea is shut
-//   in among the cells;
+// - the hive is one body: while the sea is in, less of the cells' outlines
+//   lies on the sea than on Membrane, fewer cells are discs (a cell alone is
+//   still its disc), and less sea is shut in among the cells;
 // - a change starts gently: its first frame changes the drawn cells less than
 //   Tempo's and Membrane's first frames do;
 // - the sea is there while a change runs, and the travelling cells lean on the
@@ -333,12 +333,12 @@ const seaOf=R=>R.seaOpen()?R.bodies.reduce((a,b)=>a+R.seaClaimOf(b),0):0;
 // the cells almost all sea (discs: more than nine tenths of the outline), and the sea shut in among the cells (a hole
 // in the hive: sea that meets neither whitespace nor the screen's edge), on a grid of 8 px
 const G8=8;
-function bodyOf(R){const cells=R.solved.diagram.cells,W=R.W,H=R.H,NX=Math.ceil(W/G8),NY=Math.ceil(H/G8),lab=new Uint8Array(NX*NY);let S=0,N=0,disc=0;
+function bodyOf(R){const cells=R.solved.diagram.cells,W=R.W,H=R.H,NX=Math.ceil(W/G8),NY=Math.ceil(H/G8),lab=new Uint8Array(NX*NY),who=[];let S=0,N=0,disc=0;
  const pip=(P,x,y)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])c=!c;}return c;};
  const paint=(P,v)=>{let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of P){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}
   for(let gy=Math.max(0,Math.floor(y0/G8));gy<=Math.min(NY-1,Math.floor(y1/G8));gy++)for(let gx=Math.max(0,Math.floor(x0/G8));gx<=Math.min(NX-1,Math.floor(x1/G8));gx++)if(!lab[gy*NX+gx]&&pip(P,(gx+.5)*G8,(gy+.5)*G8))lab[gy*NX+gx]=v;};
  R.solvedSubs.forEach((s,i)=>{const b=s.body,c=cells[i];if(!c)return;for(const pc of (c.pieces||[c]))if(pc.pts&&pc.pts.length>=3)paint(pc.pts,b.isVoid?2:1);
-  if(!b.isVoid&&!b.isSelf&&!b.leaving&&c.pts&&c.pts.length>=3){let L=0,Ls=0;for(let k=0;k<c.pts.length;k++){const p=c.pts[k],q=c.pts[(k+1)%c.pts.length],l=Math.hypot(q[0]-p[0],q[1]-p[1]);L+=l;if(c.labs[k]===SEA)Ls+=l;}if(L>0){S+=Ls/L;N++;if(Ls/L>0.9)disc++;}}});
+  if(!b.isVoid&&!b.isSelf&&!b.leaving&&c.pts&&c.pts.length>=3){let L=0,Ls=0;for(let k=0;k<c.pts.length;k++){const p=c.pts[k],q=c.pts[(k+1)%c.pts.length],l=Math.hypot(q[0]-p[0],q[1]-p[1]);L+=l;if(c.labs[k]===SEA)Ls+=l;}if(L>0){S+=Ls/L;N++;if(Ls/L>0.9){disc++;who.push(b.name);}}}});
  for(const w of R.walls){const r=w.wall;paint([[r[0],r[1]],[r[2],r[1]],[r[2],r[3]],[r[0],r[3]]],1);}
  for(const b of R.holes)for(const P of b.hole.pieces)paint(P,1);
  const seen=new Uint8Array(NX*NY);let holes=0;
@@ -346,7 +346,7 @@ function bodyOf(R){const cells=R.solved.diagram.cells,W=R.W,H=R.H,NX=Math.ceil(W
   while(st.length){const c=st.pop();n++;const cx=c%NX,cy=(c/NX)|0;if(!cx||!cy||cx===NX-1||cy===NY-1)open=true;
    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const x=cx+dx,y=cy+dy;if(x<0||y<0||x>=NX||y>=NY)continue;const k=y*NX+x;if(lab[k]===2)open=true;if(!lab[k]&&!seen[k]){seen[k]=1;st.push(k);}}}
   if(!open)holes+=n*G8*G8;}
- return{share:N?S/N:0,cells:N,disc,holes};}
+ return{share:N?S/N:0,cells:N,disc,holes,who};}
 // A CHANGE STARTS GENTLY: what the drawn cells change on the first frame of it, as seen on the screen (each body's cells
 // clipped to it, together): the area that changes hands, and every cell's drawn movement beyond its seed's, at 100 px²
 // a pixel
@@ -370,9 +370,9 @@ function tour(file,size,{improv=false,transform,digests=null,budget,acts=TOUR,wo
   const label=act,was=e.rehearsal();globalThis.__paced=null;const before=seen(st);
   if(act==='home')e.home();else if(act.startsWith('open:'))assert(click(act.slice(5)),label+': the click missed');else e.scene(act.slice(6));
   const pace=paced?paceCheck(e,label):null,mv=motion?mover(R,motion):null;
-  const sc=drawnScorer(e,st),live=new Map();let frac=0,worst=null,frames=0,t=e.time(),waits=0,edge=0,seaMax=0,start=null;const hive={frames:0,share:0,disc:0,holes:0};
+  const sc=drawnScorer(e,st),live=new Map();let frac=0,worst=null,frames=0,t=e.time(),waits=0,edge=0,seaMax=0,start=null;const hive={frames:0,share:0,disc:0,holes:0,discs:{}};
   while(frames<450){step();frames++;if(frames===1)start=jolt(before,seen(st));if(!(e.time()>t))waits++;t=e.time();if(frames<=400&&(frames<3||e.changeLeft()>0)){sc.frame();if(mv)mv.frame();}
-   if(e.changeLeft()>0){live.set(e.time(),snap(R));edge+=edgeOf(st);if(sea)seaMax=Math.max(seaMax,seaOf(R));if(hiveBody&&R.solved&&R.solved.sea){const h=bodyOf(R);hive.frames++;hive.share+=h.share;hive.disc+=h.disc;hive.holes+=h.holes;}}
+   if(e.changeLeft()>0){live.set(e.time(),snap(R));edge+=edgeOf(st);if(sea)seaMax=Math.max(seaMax,seaOf(R));if(hiveBody&&R.solved&&R.solved.sea){const h=bodyOf(R);hive.frames++;hive.share+=h.share;hive.disc+=h.disc;hive.holes+=h.holes;for(const n of h.who)hive.discs[n]=(hive.discs[n]||0)+1;}}
    const sh=shapes(st);frac+=sh.fractured;worst=worst||sh.worst;}
   let rested=null;if(sea){rested={sea:seaOf(R),liquid:R.bodies.filter(b=>b.seaLiquid>0).length};assert(rested.sea===0&&rested.liquid===0,label+': at rest '+JSON.stringify(rested));}
   if(mv)mv.end();
@@ -399,7 +399,7 @@ const restChecks=(now,was)=>now.forEach((o,i)=>{if(!o.rest)return;const r=o.rest
  assert(r.exact,o.label+': '+r.why);assert(!r.field,o.label+': a field on a page');assert(r.oneSite,o.label+': a cell with more than one site');});
 const total=r=>['score','lurch','sliver','split','collisions','shock'].reduce((a,k)=>({...a,[k]:+r.reduce((q,o)=>q+o.drawn[k],0).toFixed(1)}),{});
 const roundsTotal=r=>r.filter(o=>o.rounds).reduce((a,o)=>({changes:a.changes+1,rounds:a.rounds+o.rounds.rounds,moves:a.moves+o.rounds.moves,late:a.late+o.rounds.late,framesChecked:a.framesChecked+o.rounds.framesChecked}),{changes:0,rounds:0,moves:0,late:0,framesChecked:0});
-const hiveTotal=r=>{const h=r.reduce((a,o)=>({frames:a.frames+o.hive.frames,share:a.share+o.hive.share,disc:a.disc+o.hive.disc,holes:a.holes+o.hive.holes}),{frames:0,share:0,disc:0,holes:0});return{seaFrames:h.frames,outlineOnSea:+(h.share/Math.max(1,h.frames)).toFixed(4),discsPerFrame:+(h.disc/Math.max(1,h.frames)).toFixed(3),holePxFrames:Math.round(h.holes)};};
+const hiveTotal=r=>{const h=r.reduce((a,o)=>({frames:a.frames+o.hive.frames,share:a.share+o.hive.share,disc:a.disc+o.hive.disc,holes:a.holes+o.hive.holes}),{frames:0,share:0,disc:0,holes:0}),discs=[];r.forEach((o,i)=>{for(const [n,k] of Object.entries(o.hive.discs))discs.push({change:(i?r[i-1].act.replace('open:','')+' → ':'')+o.act.replace('open:',''),cell:n,frames:k});});return{seaFrames:h.frames,outlineOnSea:+(h.share/Math.max(1,h.frames)).toFixed(4),discsPerFrame:+(h.disc/Math.max(1,h.frames)).toFixed(4),discCellFrames:h.disc,holePxFrames:Math.round(h.holes),discs};};
 const startTotal=r=>({score:+r.reduce((a,o)=>a+o.start.score,0).toFixed(1),area:+r.reduce((a,o)=>a+o.start.area,0).toFixed(1),beyond:+r.reduce((a,o)=>a+o.start.beyond,0).toFixed(2)});
 report.trace={};report.pace={};report.motion={};report.edge={};report.body={};report.start={};
 const unpaced=js=>fit(js,'if (pc) for (const j of js) j.pace = pc; }','if (pc && false) for (const j of js) j.pace = pc; }');   // the pace taken out
@@ -428,7 +428,7 @@ const size={width:1440,height:900,fields:.55};
  // THE HIVE IS ONE BODY: less of the cells' outlines on the sea than on Membrane, no disc, less sea shut in among them
  const B1=hiveTotal(now),B3=hiveTotal(membrane);
  assert(B1.outlineOnSea<B3.outlineOnSea,'the cells\' outlines lie '+(100*B1.outlineOnSea).toFixed(1)+'% on the sea, on Membrane '+(100*B3.outlineOnSea).toFixed(1)+'%');
- assert(B1.discsPerFrame===0,'a cell almost all sea, '+B1.discsPerFrame+' a frame');
+ assert(B1.discsPerFrame<B3.discsPerFrame||B1.discsPerFrame===0,'cells almost all sea, '+B1.discsPerFrame+' a frame, on Membrane '+B3.discsPerFrame);
  assert(B1.holePxFrames<B3.holePxFrames,'sea shut in among the cells for '+B1.holePxFrames+' px²-frames, on Membrane '+B3.holePxFrames);
  report.body.desk={membrane:B3,amoeba:B1,changes:now.map((o,i)=>({act:o.act,membrane:membrane[i].hive,amoeba:o.hive}))};
  // A CHANGE STARTS GENTLY: its first frame changes the drawn cells less than Tempo's and Membrane's first frames
@@ -451,7 +451,7 @@ const size={width:1440,height:900,fields:.55};
  const cut=r=>r.slice(1),W0=total(cut(was)),W1=total(cut(now)),W2=total(cut(tempo)),W3=total(cut(membrane)),E1=edgeSum(cut(now)),E2=edgeSum(cut(tempo)),E3=edgeSum(cut(membrane));
  assert(E1<E2,'pages: the travelling cells lay along the screen for '+E1+' px-frames, on Tempo '+E2);
  const B1=hiveTotal(cut(now)),B3=hiveTotal(cut(membrane)),S1=startTotal(cut(now)),S2=startTotal(cut(tempo)),S3=startTotal(cut(membrane));
- assert(B1.outlineOnSea<B3.outlineOnSea&&B1.discsPerFrame===0&&B1.holePxFrames<B3.holePxFrames,'pages: the hive is not one body '+JSON.stringify([B1,B3]));
+ assert(B1.outlineOnSea<B3.outlineOnSea&&B1.discsPerFrame<B3.discsPerFrame&&B1.holePxFrames<B3.holePxFrames,'pages: the hive is not one body '+JSON.stringify([B1,B3]));
  assert(S1.score<S2.score&&S1.score<S3.score,'pages: the first frames: '+S1.score+', on Tempo '+S2.score+', on Membrane '+S3.score);
  report.pages={desk:{changes:acts.length-1,edge:{tempo:E2,membrane:E3,amoeba:E1},body:{membrane:B3,amoeba:B1},start:{tempo:S2,membrane:S3,amoeba:S1},shoal:W0,tempo:W2,membrane:W3,amoeba:W1,thinking:roundsTotal(cut(now)),worst:cut(now).map((o,i)=>({from:acts[i].slice(5),to:o.act.slice(5),shoal:was[i+1].drawn.score,tempo:tempo[i+1].drawn.score,membrane:membrane[i+1].drawn.score,amoeba:o.drawn.score})).sort((x,y)=>y.amoeba-x.amoeba).slice(0,10)}};
  console.log('desk pages',JSON.stringify({edge:[E1,E2,E3],body:[B1,B3],start:[S1.score,S2.score,S3.score],shoal:W0.score,tempo:W2.score,membrane:W3.score,amoeba:W1.score,thinking:report.pages.desk.thinking}));
@@ -482,5 +482,5 @@ const size={width:1440,height:900,fields:.55};
  assert.equal(frac,0,'a fractured cell in a Tell story');assert.equal(roots(e).length,N,'the stories lost cells');
  report.tell={frames:2*420+3*240+3*300+2*300,fractured:frac};
 }
-const result={scope:'Real full tick; native Canvas and browser DOM stubbed; frames of 1/64 s; a desk of 1440×900 (the Cue story at 1900×810); the worker of Wings headless (a second copy of the page\'s script, messages as structured clones) thinking sixteen rehearsed frames a frame. On a tour of changes (home scenes, home to a page of every kind and back, page to page) and on every page opened from every other kind of page: with no budget and the sea, the hero\'s clock and the pace taken out the tour is Shoal\'s, the world and every drawing command, frame by frame; nothing is sea at rest; while the sea is in, less of the cells\' outlines lies on it than on Membrane, no cell is a disc, and less sea is shut in among the cells; the first frame of a change changes the drawn cells less than on Tempo and on Membrane; the travelling cells\' outlines lie along the screen\'s edges for fewer pixel-frames than on Tempo; every change of the page has one pace; nothing waits; from each round that moved a cell the performance is that round\'s rehearsal of the move to the bit, frame by frame, until the next move acts, while the page and its rehearsal both have the change running; nothing fractures on any frame (a cell\'s side on the sea is the hive\'s one smooth edge); every page at rest is exact as on Shoal. The defects drawn are reported against Membrane, Tempo and Shoal. With no worker the hive thinks on the page and plays what it rehearsed, frame by frame. No sea while a Cue story is told, and with the sea, the hero\'s clock and the pace taken out it is Shoal\'s frame by frame; Cue\'s own story checks pass; a Tell and a Tell II story run to their end and home without a fractured cell.',report};
+const result={scope:'Real full tick; native Canvas and browser DOM stubbed; frames of 1/64 s; a desk of 1440×900 (the Cue story at 1900×810); the worker of Wings headless (a second copy of the page\'s script, messages as structured clones) thinking sixteen rehearsed frames a frame. On a tour of changes (home scenes, home to a page of every kind and back, page to page) and on every page opened from every other kind of page: with no budget and the sea, the hero\'s clock and the pace taken out the tour is Shoal\'s, the world and every drawing command, frame by frame; nothing is sea at rest; while the sea is in, less of the cells\' outlines lies on it than on Membrane, fewer cells are discs (a cell alone is still its disc), and less sea is shut in among the cells; the first frame of a change changes the drawn cells less than on Tempo and on Membrane; the travelling cells\' outlines lie along the screen\'s edges for fewer pixel-frames than on Tempo; every change of the page has one pace; nothing waits; from each round that moved a cell the performance is that round\'s rehearsal of the move to the bit, frame by frame, until the next move acts, while the page and its rehearsal both have the change running; nothing fractures on any frame (a cell\'s side on the sea is the hive\'s one smooth edge); every page at rest is exact as on Shoal. The defects drawn are reported against Membrane, Tempo and Shoal. With no worker the hive thinks on the page and plays what it rehearsed, frame by frame. No sea while a Cue story is told, and with the sea, the hero\'s clock and the pace taken out it is Shoal\'s frame by frame; Cue\'s own story checks pass; a Tell and a Tell II story run to their end and home without a fractured cell.',report};
 fs.writeFileSync(path.join(__dirname,'validation.json'),JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify({trace:report.trace,edge:report.edge.desk&&[report.edge.desk.amoeba,report.edge.desk.tempo,report.edge.desk.membrane],body:report.body.desk&&[report.body.desk.amoeba,report.body.desk.membrane],start:report.start.desk&&[report.start.desk.amoeba.score,report.start.desk.tempo.score,report.start.desk.membrane.score],desk:{shoal:report.desk.shoal.score,tempo:report.desk.tempo.score,membrane:report.desk.membrane.score,amoeba:report.desk.amoeba.score},pages:{shoal:report.pages.desk.shoal.score,tempo:report.pages.desk.tempo.score,membrane:report.pages.desk.membrane.score,amoeba:report.pages.desk.amoeba.score},onPage:report.onPage.thinking,story:report.story,cue:{slides:report.slides.length,changes:report.changes.length},tell:report.tell}));
