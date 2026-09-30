@@ -1,0 +1,3225 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed; frames of 1/64 s; a desk of 1440×900 (the Cue story at 1900×810); the worker of Wings headless (a second copy of the page's script, messages as structured clones) thinking sixteen rehearsed frames a frame. On a tour of changes (home scenes, home to a page of every kind and back, page to page) and on every page opened from every other kind of page: with no budget and the sea, the hero's clock and the pace taken out the tour is Shoal's, the world and every drawing command, frame by frame; nothing is sea at rest; while the sea is in, less of the cells' outlines lies on it than on Membrane, fewer cells are discs (a cell alone is still its disc), and less sea is shut in among the cells; the first frame of a change changes the drawn cells less than on Tempo and on Membrane; the travelling cells' outlines lie along the screen's edges for fewer pixel-frames than on Tempo; every change of the page has one pace; nothing waits; from each round that moved a cell the performance is that round's rehearsal of the move to the bit, frame by frame, until the next move acts, while the page and its rehearsal both have the change running; nothing fractures on any frame (a cell's side on the sea is the hive's one smooth edge); every page at rest is exact as on Shoal. The defects drawn are reported against Membrane, Tempo and Shoal. With no worker the hive thinks on the page and plays what it rehearsed, frame by frame. No sea while a Cue story is told, and with the sea, the hero's clock and the pace taken out it is Shoal's frame by frame; Cue's own story checks pass; a Tell and a Tell II story run to their end and home without a fractured cell.",
+  "report": {
+    "trace": {
+      "desk": {
+        "frames": 11550,
+        "identical": true
+      }
+    },
+    "pace": {
+      "desk": [
+        {
+          "act": "scene:frame",
+          "travellers": 12,
+          "peakSpeed": 1.96,
+          "happensMaxOverMin": 1.19,
+          "happensMiddleOverEnds": 0.88,
+          "happeningPeakInTime": {
+            "cubic": 2.87,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:sidebar",
+          "travellers": 12,
+          "peakSpeed": 1.95,
+          "happensMaxOverMin": 1.37,
+          "happensMiddleOverEnds": 0.89,
+          "happeningPeakInTime": {
+            "cubic": 2.88,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:hero",
+          "travellers": 12,
+          "peakSpeed": 1.95,
+          "happensMaxOverMin": 1.14,
+          "happensMiddleOverEnds": 0.9,
+          "happeningPeakInTime": {
+            "cubic": 2.88,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:flock"
+        },
+        {
+          "act": "scene:bento",
+          "travellers": 12,
+          "peakSpeed": 1.93,
+          "happensMaxOverMin": 1.09,
+          "happensMiddleOverEnds": 0.92,
+          "happeningPeakInTime": {
+            "cubic": 2.92,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:hero",
+          "travellers": 12,
+          "peakSpeed": 1.96,
+          "happensMaxOverMin": 1.17,
+          "happensMiddleOverEnds": 0.88,
+          "happeningPeakInTime": {
+            "cubic": 2.87,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "scene:bento",
+          "travellers": 12,
+          "peakSpeed": 1.93,
+          "happensMaxOverMin": 1.15,
+          "happensMiddleOverEnds": 0.91,
+          "happeningPeakInTime": {
+            "cubic": 2.91,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Moss",
+          "travellers": 12,
+          "peakSpeed": 1.84,
+          "happensMaxOverMin": 1.26,
+          "happensMiddleOverEnds": 0.99,
+          "happeningPeakInTime": {
+            "cubic": 3.1,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 18,
+          "peakSpeed": 1.97,
+          "happensMaxOverMin": 1.23,
+          "happensMiddleOverEnds": 0.84,
+          "happeningPeakInTime": {
+            "cubic": 2.85,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "travellers": 12,
+          "peakSpeed": 1.99,
+          "happensMaxOverMin": 1.44,
+          "happensMiddleOverEnds": 0.82,
+          "happeningPeakInTime": {
+            "cubic": 2.81,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 1.99,
+          "happensMaxOverMin": 1.27,
+          "happensMiddleOverEnds": 0.82,
+          "happeningPeakInTime": {
+            "cubic": 2.82,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Coal",
+          "travellers": 12,
+          "peakSpeed": 2.04,
+          "happensMaxOverMin": 1.47,
+          "happensMiddleOverEnds": 0.84,
+          "happeningPeakInTime": {
+            "cubic": 2.75,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "travellers": 12,
+          "peakSpeed": 2,
+          "happensMaxOverMin": 1.21,
+          "happensMiddleOverEnds": 0.83,
+          "happeningPeakInTime": {
+            "cubic": 2.8,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 1.99,
+          "happensMaxOverMin": 1.27,
+          "happensMiddleOverEnds": 0.82,
+          "happeningPeakInTime": {
+            "cubic": 2.82,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Petal",
+          "travellers": 12,
+          "peakSpeed": 1.95,
+          "happensMaxOverMin": 1.37,
+          "happensMiddleOverEnds": 0.9,
+          "happeningPeakInTime": {
+            "cubic": 2.87,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 17,
+          "peakSpeed": 1.97,
+          "happensMaxOverMin": 1.26,
+          "happensMiddleOverEnds": 0.83,
+          "happeningPeakInTime": {
+            "cubic": 2.86,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Drift",
+          "travellers": 12,
+          "peakSpeed": 2.03,
+          "happensMaxOverMin": 1.37,
+          "happensMiddleOverEnds": 0.85,
+          "happeningPeakInTime": {
+            "cubic": 2.76,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 1.96,
+          "happensMaxOverMin": 1.22,
+          "happensMiddleOverEnds": 0.86,
+          "happeningPeakInTime": {
+            "cubic": 2.87,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Ember",
+          "travellers": 12,
+          "peakSpeed": 1.94,
+          "happensMaxOverMin": 1.37,
+          "happensMiddleOverEnds": 0.9,
+          "happeningPeakInTime": {
+            "cubic": 2.88,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Tide",
+          "travellers": 12,
+          "peakSpeed": 1.81,
+          "happensMaxOverMin": 1.16,
+          "happensMiddleOverEnds": 1.11,
+          "happeningPeakInTime": {
+            "cubic": 3.24,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2,
+          "happensMaxOverMin": 1.33,
+          "happensMiddleOverEnds": 0.81,
+          "happeningPeakInTime": {
+            "cubic": 2.81,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Dune",
+          "travellers": 12,
+          "peakSpeed": 1.96,
+          "happensMaxOverMin": 1.47,
+          "happensMiddleOverEnds": 0.86,
+          "happeningPeakInTime": {
+            "cubic": 2.88,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 23,
+          "peakSpeed": 2.04,
+          "happensMaxOverMin": 1.21,
+          "happensMiddleOverEnds": 0.83,
+          "happeningPeakInTime": {
+            "cubic": 2.76,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "open:Jazz",
+          "travellers": 12,
+          "peakSpeed": 2.03,
+          "happensMaxOverMin": 1.53,
+          "happensMiddleOverEnds": 0.79,
+          "happeningPeakInTime": {
+            "cubic": 2.76,
+            "tempo": 1.87
+          }
+        },
+        {
+          "act": "home",
+          "travellers": 16,
+          "peakSpeed": 2,
+          "happensMaxOverMin": 1.33,
+          "happensMiddleOverEnds": 0.81,
+          "happeningPeakInTime": {
+            "cubic": 2.81,
+            "tempo": 1.87
+          }
+        }
+      ]
+    },
+    "edge": {
+      "desk": {
+        "tempo": 6038845,
+        "membrane": 2461805,
+        "amoeba": 5647489,
+        "changes": [
+          {
+            "act": "scene:frame",
+            "tempo": 114390,
+            "membrane": 137646,
+            "amoeba": 189530,
+            "seaMax": 28.14
+          },
+          {
+            "act": "scene:sidebar",
+            "tempo": 38229,
+            "membrane": 28591,
+            "amoeba": 36338,
+            "seaMax": 50.828
+          },
+          {
+            "act": "scene:hero",
+            "tempo": 30209,
+            "membrane": 26065,
+            "amoeba": 29123,
+            "seaMax": 41.09
+          },
+          {
+            "act": "scene:flock",
+            "tempo": 366690,
+            "membrane": 318114,
+            "amoeba": 366850,
+            "seaMax": 0
+          },
+          {
+            "act": "scene:bento",
+            "tempo": 25388,
+            "membrane": 24908,
+            "amoeba": 26728,
+            "seaMax": 0
+          },
+          {
+            "act": "scene:hero",
+            "tempo": 194980,
+            "membrane": 158152,
+            "amoeba": 211209,
+            "seaMax": 14.53
+          },
+          {
+            "act": "scene:bento",
+            "tempo": 35041,
+            "membrane": 32581,
+            "amoeba": 34255,
+            "seaMax": 13.617
+          },
+          {
+            "act": "open:Moss",
+            "tempo": 402052,
+            "membrane": 57328,
+            "amoeba": 315819,
+            "seaMax": 21.327
+          },
+          {
+            "act": "home",
+            "tempo": 37323,
+            "membrane": 39448,
+            "amoeba": 37026,
+            "seaMax": 10.329
+          },
+          {
+            "act": "open:Aurora",
+            "tempo": 595746,
+            "membrane": 210515,
+            "amoeba": 594551,
+            "seaMax": 0.512
+          },
+          {
+            "act": "home",
+            "tempo": 45300,
+            "membrane": 59309,
+            "amoeba": 44368,
+            "seaMax": 21.889
+          },
+          {
+            "act": "open:Coal",
+            "tempo": 632847,
+            "membrane": 195681,
+            "amoeba": 630816,
+            "seaMax": 0.351
+          },
+          {
+            "act": "open:Aurora",
+            "tempo": 698969,
+            "membrane": 297435,
+            "amoeba": 639357,
+            "seaMax": 14.957
+          },
+          {
+            "act": "home",
+            "tempo": 40273,
+            "membrane": 33454,
+            "amoeba": 39166,
+            "seaMax": 21.886
+          },
+          {
+            "act": "open:Petal",
+            "tempo": 352157,
+            "membrane": 71694,
+            "amoeba": 245144,
+            "seaMax": 20.538
+          },
+          {
+            "act": "home",
+            "tempo": 53114,
+            "membrane": 65720,
+            "amoeba": 52044,
+            "seaMax": 13.884
+          },
+          {
+            "act": "open:Drift",
+            "tempo": 500760,
+            "membrane": 167664,
+            "amoeba": 512916,
+            "seaMax": 0.889
+          },
+          {
+            "act": "home",
+            "tempo": 59311,
+            "membrane": 17978,
+            "amoeba": 59303,
+            "seaMax": 18.026
+          },
+          {
+            "act": "open:Ember",
+            "tempo": 307913,
+            "membrane": 49069,
+            "amoeba": 276120,
+            "seaMax": 13.707
+          },
+          {
+            "act": "open:Tide",
+            "tempo": 417870,
+            "membrane": 143645,
+            "amoeba": 346790,
+            "seaMax": 34.576
+          },
+          {
+            "act": "home",
+            "tempo": 39104,
+            "membrane": 25231,
+            "amoeba": 38722,
+            "seaMax": 10.526
+          },
+          {
+            "act": "open:Dune",
+            "tempo": 414427,
+            "membrane": 115699,
+            "amoeba": 276393,
+            "seaMax": 24.258
+          },
+          {
+            "act": "home",
+            "tempo": 48793,
+            "membrane": 39731,
+            "amoeba": 49265,
+            "seaMax": 16.349
+          },
+          {
+            "act": "open:Jazz",
+            "tempo": 562509,
+            "membrane": 132524,
+            "amoeba": 570205,
+            "seaMax": 0
+          },
+          {
+            "act": "home",
+            "tempo": 25450,
+            "membrane": 13623,
+            "amoeba": 25451,
+            "seaMax": 0
+          }
+        ]
+      }
+    },
+    "body": {
+      "desk": {
+        "membrane": {
+          "seaFrames": 3770,
+          "outlineOnSea": 0.2477,
+          "discsPerFrame": 0.1682,
+          "discCellFrames": 634,
+          "holePxFrames": 25385344,
+          "discs": [
+            {
+              "change": "scene:frame",
+              "cell": "Ember",
+              "frames": 16
+            },
+            {
+              "change": "scene:frame",
+              "cell": "Tide",
+              "frames": 18
+            },
+            {
+              "change": "scene:frame",
+              "cell": "Moss",
+              "frames": 7
+            },
+            {
+              "change": "scene:frame",
+              "cell": "Jazz",
+              "frames": 4
+            },
+            {
+              "change": "scene:frame",
+              "cell": "Coal",
+              "frames": 6
+            },
+            {
+              "change": "scene:frame → scene:sidebar",
+              "cell": "Mint",
+              "frames": 37
+            },
+            {
+              "change": "scene:frame → scene:sidebar",
+              "cell": "Dune",
+              "frames": 24
+            },
+            {
+              "change": "scene:frame → scene:sidebar",
+              "cell": "Petal",
+              "frames": 39
+            },
+            {
+              "change": "scene:frame → scene:sidebar",
+              "cell": "Drift",
+              "frames": 8
+            },
+            {
+              "change": "scene:frame → scene:sidebar",
+              "cell": "Ember",
+              "frames": 14
+            },
+            {
+              "change": "scene:frame → scene:sidebar",
+              "cell": "Tide",
+              "frames": 13
+            },
+            {
+              "change": "scene:frame → scene:sidebar",
+              "cell": "Moss",
+              "frames": 30
+            },
+            {
+              "change": "scene:frame → scene:sidebar",
+              "cell": "Haze",
+              "frames": 24
+            },
+            {
+              "change": "scene:frame → scene:sidebar",
+              "cell": "Jazz",
+              "frames": 39
+            },
+            {
+              "change": "scene:frame → scene:sidebar",
+              "cell": "Coal",
+              "frames": 22
+            },
+            {
+              "change": "scene:frame → scene:sidebar",
+              "cell": "Aurora",
+              "frames": 28
+            },
+            {
+              "change": "scene:frame → scene:sidebar",
+              "cell": "Coral",
+              "frames": 4
+            },
+            {
+              "change": "scene:hero → scene:flock",
+              "cell": "Ember",
+              "frames": 29
+            },
+            {
+              "change": "scene:bento → Moss",
+              "cell": "Jazz",
+              "frames": 12
+            },
+            {
+              "change": "home → Aurora",
+              "cell": "Dune",
+              "frames": 50
+            },
+            {
+              "change": "home → Aurora",
+              "cell": "Aurora",
+              "frames": 7
+            },
+            {
+              "change": "Coal → Aurora",
+              "cell": "Coal",
+              "frames": 36
+            },
+            {
+              "change": "Aurora → home",
+              "cell": "Aurora",
+              "frames": 12
+            },
+            {
+              "change": "home → Drift",
+              "cell": "Drift",
+              "frames": 1
+            },
+            {
+              "change": "Drift → home",
+              "cell": "Drift",
+              "frames": 10
+            },
+            {
+              "change": "Ember → Tide",
+              "cell": "Moss",
+              "frames": 6
+            },
+            {
+              "change": "Ember → Tide",
+              "cell": "Jazz",
+              "frames": 6
+            },
+            {
+              "change": "Ember → Tide",
+              "cell": "Coal",
+              "frames": 6
+            },
+            {
+              "change": "Ember → Tide",
+              "cell": "Aurora",
+              "frames": 17
+            },
+            {
+              "change": "Ember → Tide",
+              "cell": "Haze",
+              "frames": 2
+            },
+            {
+              "change": "Tide → home",
+              "cell": "Petal",
+              "frames": 1
+            },
+            {
+              "change": "Tide → home",
+              "cell": "Aurora",
+              "frames": 1
+            },
+            {
+              "change": "Tide → home",
+              "cell": "Drift",
+              "frames": 1
+            },
+            {
+              "change": "home → Dune",
+              "cell": "Aurora",
+              "frames": 4
+            },
+            {
+              "change": "home → Dune",
+              "cell": "Dune",
+              "frames": 21
+            },
+            {
+              "change": "home → Dune",
+              "cell": "Mint",
+              "frames": 25
+            },
+            {
+              "change": "home → Jazz",
+              "cell": "Jazz",
+              "frames": 36
+            },
+            {
+              "change": "home → Jazz",
+              "cell": "Moss",
+              "frames": 12
+            },
+            {
+              "change": "home → Jazz",
+              "cell": "Dune",
+              "frames": 6
+            }
+          ]
+        },
+        "amoeba": {
+          "seaFrames": 2719,
+          "outlineOnSea": 0.0745,
+          "discsPerFrame": 0,
+          "discCellFrames": 0,
+          "holePxFrames": 345664,
+          "discs": []
+        },
+        "changes": [
+          {
+            "act": "scene:frame",
+            "membrane": {
+              "frames": 113,
+              "share": 45.21261481545217,
+              "disc": 51,
+              "holes": 3546240,
+              "discs": {
+                "Ember": 16,
+                "Tide": 18,
+                "Moss": 7,
+                "Jazz": 4,
+                "Coal": 6
+              }
+            },
+            "amoeba": {
+              "frames": 100,
+              "share": 22.326646408996464,
+              "disc": 0,
+              "holes": 2176,
+              "discs": {}
+            }
+          },
+          {
+            "act": "scene:sidebar",
+            "membrane": {
+              "frames": 141,
+              "share": 77.58994960986306,
+              "disc": 282,
+              "holes": 125760,
+              "discs": {
+                "Mint": 37,
+                "Dune": 24,
+                "Petal": 39,
+                "Drift": 8,
+                "Ember": 14,
+                "Tide": 13,
+                "Moss": 30,
+                "Haze": 24,
+                "Jazz": 39,
+                "Coal": 22,
+                "Aurora": 28,
+                "Coral": 4
+              }
+            },
+            "amoeba": {
+              "frames": 136,
+              "share": 41.66303531717142,
+              "disc": 0,
+              "holes": 343104,
+              "discs": {}
+            }
+          },
+          {
+            "act": "scene:hero",
+            "membrane": {
+              "frames": 141,
+              "share": 24.659684317723215,
+              "disc": 0,
+              "holes": 174656,
+              "discs": {}
+            },
+            "amoeba": {
+              "frames": 135,
+              "share": 16.38742756960059,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          },
+          {
+            "act": "scene:flock",
+            "membrane": {
+              "frames": 105,
+              "share": 20.234245888419483,
+              "disc": 29,
+              "holes": 16832,
+              "discs": {
+                "Ember": 29
+              }
+            },
+            "amoeba": {
+              "frames": 0,
+              "share": 0,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          },
+          {
+            "act": "scene:bento",
+            "membrane": {
+              "frames": 89,
+              "share": 4.1082273733663,
+              "disc": 0,
+              "holes": 35776,
+              "discs": {}
+            },
+            "amoeba": {
+              "frames": 0,
+              "share": 0,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          },
+          {
+            "act": "scene:hero",
+            "membrane": {
+              "frames": 140,
+              "share": 27.22087632574004,
+              "disc": 0,
+              "holes": 967936,
+              "discs": {}
+            },
+            "amoeba": {
+              "frames": 111,
+              "share": 11.89813929007741,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          },
+          {
+            "act": "scene:bento",
+            "membrane": {
+              "frames": 140,
+              "share": 10.220034505686614,
+              "disc": 0,
+              "holes": 99200,
+              "discs": {}
+            },
+            "amoeba": {
+              "frames": 120,
+              "share": 5.179000189699829,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          },
+          {
+            "act": "open:Moss",
+            "membrane": {
+              "frames": 166,
+              "share": 64.6531029691727,
+              "disc": 12,
+              "holes": 2146560,
+              "discs": {
+                "Jazz": 12
+              }
+            },
+            "amoeba": {
+              "frames": 165,
+              "share": 10.322609010010117,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          },
+          {
+            "act": "home",
+            "membrane": {
+              "frames": 141,
+              "share": 4.057823615256164,
+              "disc": 0,
+              "holes": 46400,
+              "discs": {}
+            },
+            "amoeba": {
+              "frames": 120,
+              "share": 3.6021518282403315,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          },
+          {
+            "act": "open:Aurora",
+            "membrane": {
+              "frames": 188,
+              "share": 76.04525843718496,
+              "disc": 57,
+              "holes": 2215232,
+              "discs": {
+                "Dune": 50,
+                "Aurora": 7
+              }
+            },
+            "amoeba": {
+              "frames": 115,
+              "share": 0.5742455505720278,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          },
+          {
+            "act": "home",
+            "membrane": {
+              "frames": 152,
+              "share": 5.823319327700132,
+              "disc": 0,
+              "holes": 69760,
+              "discs": {}
+            },
+            "amoeba": {
+              "frames": 124,
+              "share": 7.65663062100602,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          },
+          {
+            "act": "open:Coal",
+            "membrane": {
+              "frames": 183,
+              "share": 69.26299634986255,
+              "disc": 0,
+              "holes": 2362240,
+              "discs": {}
+            },
+            "amoeba": {
+              "frames": 110,
+              "share": 0.3280086581123596,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          },
+          {
+            "act": "open:Aurora",
+            "membrane": {
+              "frames": 192,
+              "share": 49.212025109925094,
+              "disc": 36,
+              "holes": 183744,
+              "discs": {
+                "Coal": 36
+              }
+            },
+            "amoeba": {
+              "frames": 167,
+              "share": 8.201654960184083,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          },
+          {
+            "act": "home",
+            "membrane": {
+              "frames": 141,
+              "share": 9.74487626517336,
+              "disc": 12,
+              "holes": 66432,
+              "discs": {
+                "Aurora": 12
+              }
+            },
+            "amoeba": {
+              "frames": 124,
+              "share": 7.650704851962535,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          },
+          {
+            "act": "open:Petal",
+            "membrane": {
+              "frames": 169,
+              "share": 71.61653689081047,
+              "disc": 0,
+              "holes": 2675456,
+              "discs": {}
+            },
+            "amoeba": {
+              "frames": 149,
+              "share": 13.880653085996117,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          },
+          {
+            "act": "home",
+            "membrane": {
+              "frames": 171,
+              "share": 7.401439315032409,
+              "disc": 0,
+              "holes": 97216,
+              "discs": {}
+            },
+            "amoeba": {
+              "frames": 128,
+              "share": 7.473399314407644,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          },
+          {
+            "act": "open:Drift",
+            "membrane": {
+              "frames": 176,
+              "share": 66.14755174527585,
+              "disc": 1,
+              "holes": 1732992,
+              "discs": {
+                "Drift": 1
+              }
+            },
+            "amoeba": {
+              "frames": 118,
+              "share": 0.5503667675020825,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          },
+          {
+            "act": "home",
+            "membrane": {
+              "frames": 141,
+              "share": 9.576000551827489,
+              "disc": 10,
+              "holes": 61312,
+              "discs": {
+                "Drift": 10
+              }
+            },
+            "amoeba": {
+              "frames": 123,
+              "share": 6.454491128981151,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          },
+          {
+            "act": "open:Ember",
+            "membrane": {
+              "frames": 158,
+              "share": 66.94988524375792,
+              "disc": 0,
+              "holes": 3428992,
+              "discs": {}
+            },
+            "amoeba": {
+              "frames": 141,
+              "share": 5.271770067951004,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          },
+          {
+            "act": "open:Tide",
+            "membrane": {
+              "frames": 150,
+              "share": 30.338428494416245,
+              "disc": 37,
+              "holes": 13696,
+              "discs": {
+                "Moss": 6,
+                "Jazz": 6,
+                "Coal": 6,
+                "Aurora": 17,
+                "Haze": 2
+              }
+            },
+            "amoeba": {
+              "frames": 148,
+              "share": 5.466976965920094,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          },
+          {
+            "act": "home",
+            "membrane": {
+              "frames": 141,
+              "share": 9.007736797157055,
+              "disc": 3,
+              "holes": 42240,
+              "discs": {
+                "Petal": 1,
+                "Aurora": 1,
+                "Drift": 1
+              }
+            },
+            "amoeba": {
+              "frames": 121,
+              "share": 4.039233995724516,
+              "disc": 0,
+              "holes": 128,
+              "discs": {}
+            }
+          },
+          {
+            "act": "open:Dune",
+            "membrane": {
+              "frames": 171,
+              "share": 78.62571422276505,
+              "disc": 50,
+              "holes": 1781568,
+              "discs": {
+                "Aurora": 4,
+                "Dune": 21,
+                "Mint": 25
+              }
+            },
+            "amoeba": {
+              "frames": 141,
+              "share": 17.69481997985528,
+              "disc": 0,
+              "holes": 256,
+              "discs": {}
+            }
+          },
+          {
+            "act": "home",
+            "membrane": {
+              "frames": 152,
+              "share": 8.463211905003249,
+              "disc": 0,
+              "holes": 140672,
+              "discs": {}
+            },
+            "amoeba": {
+              "frames": 123,
+              "share": 5.843411371766315,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          },
+          {
+            "act": "open:Jazz",
+            "membrane": {
+              "frames": 168,
+              "share": 88.9102588748255,
+              "disc": 54,
+              "holes": 3262592,
+              "discs": {
+                "Jazz": 36,
+                "Moss": 12,
+                "Dune": 6
+              }
+            },
+            "amoeba": {
+              "frames": 0,
+              "share": 0,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          },
+          {
+            "act": "home",
+            "membrane": {
+              "frames": 141,
+              "share": 8.836435417254005,
+              "disc": 0,
+              "holes": 91840,
+              "discs": {}
+            },
+            "amoeba": {
+              "frames": 0,
+              "share": 0,
+              "disc": 0,
+              "holes": 0,
+              "discs": {}
+            }
+          }
+        ]
+      }
+    },
+    "start": {
+      "desk": {
+        "tempo": {
+          "score": 171749.8,
+          "area": 124376.5,
+          "beyond": 473.73
+        },
+        "membrane": {
+          "score": 582170.9,
+          "area": 458341.6,
+          "beyond": 1238.27
+        },
+        "amoeba": {
+          "score": 30092.6,
+          "area": 17083.6,
+          "beyond": 130.08
+        },
+        "changes": [
+          {
+            "act": "scene:frame",
+            "tempo": {
+              "area": 262.4,
+              "beyond": 0.65,
+              "score": 327.4
+            },
+            "membrane": {
+              "area": 188.6,
+              "beyond": 0.02,
+              "score": 190.9
+            },
+            "amoeba": {
+              "area": 262.4,
+              "beyond": 0.65,
+              "score": 327.4
+            }
+          },
+          {
+            "act": "scene:sidebar",
+            "tempo": {
+              "area": 135.1,
+              "beyond": 0.99,
+              "score": 234.2
+            },
+            "membrane": {
+              "area": 46.4,
+              "beyond": 0.02,
+              "score": 48.2
+            },
+            "amoeba": {
+              "area": 135,
+              "beyond": 0.99,
+              "score": 234.1
+            }
+          },
+          {
+            "act": "scene:hero",
+            "tempo": {
+              "area": 108.2,
+              "beyond": 2.64,
+              "score": 372.3
+            },
+            "membrane": {
+              "area": 124,
+              "beyond": 0.01,
+              "score": 125.3
+            },
+            "amoeba": {
+              "area": 108.2,
+              "beyond": 2.64,
+              "score": 372.3
+            }
+          },
+          {
+            "act": "scene:flock",
+            "tempo": {
+              "area": 10,
+              "beyond": 0.05,
+              "score": 15.4
+            },
+            "membrane": {
+              "area": 12.2,
+              "beyond": 0.09,
+              "score": 21.6
+            },
+            "amoeba": {
+              "area": 9.7,
+              "beyond": 0.06,
+              "score": 16
+            }
+          },
+          {
+            "act": "scene:bento",
+            "tempo": {
+              "area": 16.1,
+              "beyond": 0.06,
+              "score": 22
+            },
+            "membrane": {
+              "area": 486.3,
+              "beyond": 0,
+              "score": 486.3
+            },
+            "amoeba": {
+              "area": 16.4,
+              "beyond": 0.49,
+              "score": 65
+            }
+          },
+          {
+            "act": "scene:hero",
+            "tempo": {
+              "area": 267.6,
+              "beyond": 1.28,
+              "score": 395.7
+            },
+            "membrane": {
+              "area": 174,
+              "beyond": 0.01,
+              "score": 175.5
+            },
+            "amoeba": {
+              "area": 267.6,
+              "beyond": 1.28,
+              "score": 395.7
+            }
+          },
+          {
+            "act": "scene:bento",
+            "tempo": {
+              "area": 7.4,
+              "beyond": 0.03,
+              "score": 9.9
+            },
+            "membrane": {
+              "area": 52.5,
+              "beyond": 0.06,
+              "score": 58.6
+            },
+            "amoeba": {
+              "area": 7.3,
+              "beyond": 0.03,
+              "score": 9.9
+            }
+          },
+          {
+            "act": "open:Moss",
+            "tempo": {
+              "area": 80471.9,
+              "beyond": 178.68,
+              "score": 98339.7
+            },
+            "membrane": {
+              "area": 150464.9,
+              "beyond": 341.65,
+              "score": 184629.5
+            },
+            "amoeba": {
+              "area": 265.2,
+              "beyond": 1.14,
+              "score": 379.3
+            }
+          },
+          {
+            "act": "home",
+            "tempo": {
+              "area": 1059.1,
+              "beyond": 5.37,
+              "score": 1595.7
+            },
+            "membrane": {
+              "area": 1261.6,
+              "beyond": 5.56,
+              "score": 1818
+            },
+            "amoeba": {
+              "area": 1059.1,
+              "beyond": 5.37,
+              "score": 1595.7
+            }
+          },
+          {
+            "act": "open:Aurora",
+            "tempo": {
+              "area": 261.8,
+              "beyond": 0.72,
+              "score": 333.8
+            },
+            "membrane": {
+              "area": 189392.5,
+              "beyond": 417.89,
+              "score": 231181.5
+            },
+            "amoeba": {
+              "area": 261.8,
+              "beyond": 0.72,
+              "score": 333.8
+            }
+          },
+          {
+            "act": "home",
+            "tempo": {
+              "area": 1063.4,
+              "beyond": 2.55,
+              "score": 1318.9
+            },
+            "membrane": {
+              "area": 1165.2,
+              "beyond": 12.8,
+              "score": 2445
+            },
+            "amoeba": {
+              "area": 1063.4,
+              "beyond": 2.55,
+              "score": 1318.9
+            }
+          },
+          {
+            "act": "open:Coal",
+            "tempo": {
+              "area": 262.3,
+              "beyond": 0.65,
+              "score": 327.3
+            },
+            "membrane": {
+              "area": 128.5,
+              "beyond": 0.01,
+              "score": 129.4
+            },
+            "amoeba": {
+              "area": 262.3,
+              "beyond": 0.65,
+              "score": 327.3
+            }
+          },
+          {
+            "act": "open:Aurora",
+            "tempo": {
+              "area": 1131.8,
+              "beyond": 9.61,
+              "score": 2092.6
+            },
+            "membrane": {
+              "area": 1675,
+              "beyond": 18.52,
+              "score": 3527.4
+            },
+            "amoeba": {
+              "area": 1131.8,
+              "beyond": 9.61,
+              "score": 2092.6
+            }
+          },
+          {
+            "act": "home",
+            "tempo": {
+              "area": 1061.6,
+              "beyond": 2.55,
+              "score": 1316.5
+            },
+            "membrane": {
+              "area": 2495.7,
+              "beyond": 3.32,
+              "score": 2827.8
+            },
+            "amoeba": {
+              "area": 1061.6,
+              "beyond": 2.55,
+              "score": 1316.5
+            }
+          },
+          {
+            "act": "open:Petal",
+            "tempo": {
+              "area": 265.7,
+              "beyond": 0.78,
+              "score": 343.9
+            },
+            "membrane": {
+              "area": 215.2,
+              "beyond": 0.02,
+              "score": 217.7
+            },
+            "amoeba": {
+              "area": 266.8,
+              "beyond": 0.78,
+              "score": 345.1
+            }
+          },
+          {
+            "act": "home",
+            "tempo": {
+              "area": 927.3,
+              "beyond": 12.89,
+              "score": 2216.3
+            },
+            "membrane": {
+              "area": 1375.3,
+              "beyond": 12.42,
+              "score": 2617
+            },
+            "amoeba": {
+              "area": 927.3,
+              "beyond": 12.89,
+              "score": 2216.3
+            }
+          },
+          {
+            "act": "open:Drift",
+            "tempo": {
+              "area": 13230.3,
+              "beyond": 82.81,
+              "score": 21511
+            },
+            "membrane": {
+              "area": 41767.3,
+              "beyond": 91.49,
+              "score": 50916.7
+            },
+            "amoeba": {
+              "area": 262.3,
+              "beyond": 0.6,
+              "score": 322.8
+            }
+          },
+          {
+            "act": "home",
+            "tempo": {
+              "area": 975.1,
+              "beyond": 9.33,
+              "score": 1907.8
+            },
+            "membrane": {
+              "area": 2549.3,
+              "beyond": 4.02,
+              "score": 2951.3
+            },
+            "amoeba": {
+              "area": 975.1,
+              "beyond": 9.33,
+              "score": 1907.8
+            }
+          },
+          {
+            "act": "open:Ember",
+            "tempo": {
+              "area": 3037.7,
+              "beyond": 18.87,
+              "score": 4924.6
+            },
+            "membrane": {
+              "area": 170.4,
+              "beyond": 0.02,
+              "score": 172
+            },
+            "amoeba": {
+              "area": 270.8,
+              "beyond": 1.44,
+              "score": 415.1
+            }
+          },
+          {
+            "act": "open:Tide",
+            "tempo": {
+              "area": 1324.5,
+              "beyond": 1.7,
+              "score": 1494.5
+            },
+            "membrane": {
+              "area": 9616,
+              "beyond": 5.06,
+              "score": 10122.5
+            },
+            "amoeba": {
+              "area": 1324.7,
+              "beyond": 1.7,
+              "score": 1494.8
+            }
+          },
+          {
+            "act": "home",
+            "tempo": {
+              "area": 1045.6,
+              "beyond": 0.59,
+              "score": 1104.7
+            },
+            "membrane": {
+              "area": 8220.8,
+              "beyond": 3.32,
+              "score": 8552.6
+            },
+            "amoeba": {
+              "area": 1045.9,
+              "beyond": 0.59,
+              "score": 1105
+            }
+          },
+          {
+            "act": "open:Dune",
+            "tempo": {
+              "area": 12163.5,
+              "beyond": 68.87,
+              "score": 19050.9
+            },
+            "membrane": {
+              "area": 1076.1,
+              "beyond": 5.25,
+              "score": 1601.1
+            },
+            "amoeba": {
+              "area": 811,
+              "beyond": 1.96,
+              "score": 1006.7
+            }
+          },
+          {
+            "act": "home",
+            "tempo": {
+              "area": 4023.4,
+              "beyond": 71.4,
+              "score": 11163.2
+            },
+            "membrane": {
+              "area": 43716.8,
+              "beyond": 315.73,
+              "score": 75289.3
+            },
+            "amoeba": {
+              "area": 4023.4,
+              "beyond": 71.4,
+              "score": 11163.2
+            }
+          },
+          {
+            "act": "open:Jazz",
+            "tempo": {
+              "area": 0.4,
+              "beyond": 0.01,
+              "score": 1.7
+            },
+            "membrane": {
+              "area": 220.1,
+              "beyond": 0.04,
+              "score": 224.4
+            },
+            "amoeba": {
+              "area": 0.2,
+              "beyond": 0.01,
+              "score": 1.5
+            }
+          },
+          {
+            "act": "home",
+            "tempo": {
+              "area": 1264.3,
+              "beyond": 0.65,
+              "score": 1329.8
+            },
+            "membrane": {
+              "area": 1746.9,
+              "beyond": 0.94,
+              "score": 1841.3
+            },
+            "amoeba": {
+              "area": 1264.3,
+              "beyond": 0.65,
+              "score": 1329.8
+            }
+          }
+        ]
+      }
+    },
+    "desk": {
+      "size": {
+        "width": 1440,
+        "height": 900,
+        "fields": 0.55
+      },
+      "budget": 16,
+      "shoal": {
+        "score": 25352.2,
+        "lurch": 9354.7,
+        "sliver": 218.5,
+        "split": 0,
+        "collisions": 34,
+        "shock": 1675.6
+      },
+      "tempo": {
+        "score": 22225.8,
+        "lurch": 7627,
+        "sliver": 195.1,
+        "split": 0,
+        "collisions": 29,
+        "shock": 1949.1
+      },
+      "membrane": {
+        "score": 23629.8,
+        "lurch": 11128.2,
+        "sliver": 60,
+        "split": 0,
+        "collisions": 31,
+        "shock": 6401.4
+      },
+      "amoeba": {
+        "score": 23575.1,
+        "lurch": 10917.6,
+        "sliver": 123.9,
+        "split": 4.6,
+        "collisions": 34,
+        "shock": 2132.7
+      },
+      "thinking": {
+        "changes": 23,
+        "rounds": 68,
+        "moves": 25,
+        "late": 0,
+        "framesChecked": 1284
+      },
+      "changes": [
+        {
+          "act": "scene:frame",
+          "shoal": 14.8,
+          "tempo": 30,
+          "membrane": 48.3,
+          "amoeba": 28.5,
+          "rounds": {
+            "moves": 1,
+            "late": 0,
+            "rounds": 3,
+            "framesChecked": 104
+          },
+          "rest": null
+        },
+        {
+          "act": "scene:sidebar",
+          "shoal": 102.4,
+          "tempo": 100.3,
+          "membrane": 272.6,
+          "amoeba": 700,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 6,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "scene:hero",
+          "shoal": 31.5,
+          "tempo": 62.6,
+          "membrane": 23.5,
+          "amoeba": 83.7,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 6,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "scene:flock",
+          "shoal": 23.7,
+          "tempo": 23.6,
+          "membrane": 3509.3,
+          "amoeba": 21.9,
+          "rounds": null,
+          "rest": null
+        },
+        {
+          "act": "scene:bento",
+          "shoal": 60.9,
+          "tempo": 109.5,
+          "membrane": 203.3,
+          "amoeba": 107.1,
+          "rounds": null,
+          "rest": null
+        },
+        {
+          "act": "scene:hero",
+          "shoal": 12.7,
+          "tempo": 27.4,
+          "membrane": 153.7,
+          "amoeba": 31.4,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "scene:bento",
+          "shoal": 111.5,
+          "tempo": 26,
+          "membrane": 216.6,
+          "amoeba": 435.6,
+          "rounds": {
+            "moves": 1,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Moss",
+          "shoal": 1225.9,
+          "tempo": 801.4,
+          "membrane": 266.5,
+          "amoeba": 315.6,
+          "rounds": {
+            "moves": 3,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 167
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9898,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 2185.2,
+          "tempo": 2104.9,
+          "membrane": 1816.8,
+          "amoeba": 2257.9,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Aurora",
+          "shoal": 924.2,
+          "tempo": 723.4,
+          "membrane": 502.6,
+          "amoeba": 671.1,
+          "rounds": {
+            "moves": 3,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 206
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 183.4,
+          "tempo": 201.7,
+          "membrane": 733.4,
+          "amoeba": 399.9,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Coal",
+          "shoal": 308.1,
+          "tempo": 127.9,
+          "membrane": 193.3,
+          "amoeba": 318.2,
+          "rounds": {
+            "moves": 2,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 0
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Aurora",
+          "shoal": 2327.3,
+          "tempo": 1832.5,
+          "membrane": 1107.7,
+          "amoeba": 1104.3,
+          "rounds": {
+            "moves": 3,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 211
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 181.2,
+          "tempo": 199.7,
+          "membrane": 355.2,
+          "amoeba": 394.4,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Petal",
+          "shoal": 1182,
+          "tempo": 659.2,
+          "membrane": 365.9,
+          "amoeba": 337.8,
+          "rounds": {
+            "moves": 2,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 102
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9881,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 1898.2,
+          "tempo": 1713.9,
+          "membrane": 1597.1,
+          "amoeba": 1464,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Drift",
+          "shoal": 415.4,
+          "tempo": 254.5,
+          "membrane": 299.4,
+          "amoeba": 272.1,
+          "rounds": {
+            "moves": 3,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 190
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 1,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 78,
+          "tempo": 90.3,
+          "membrane": 668.5,
+          "amoeba": 231,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Ember",
+          "shoal": 351.3,
+          "tempo": 247.5,
+          "membrane": 166,
+          "amoeba": 304.6,
+          "rounds": {
+            "moves": 2,
+            "late": 0,
+            "rounds": 5,
+            "framesChecked": 141
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9629,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "open:Tide",
+          "shoal": 6496.2,
+          "tempo": 6084.9,
+          "membrane": 3052.2,
+          "amoeba": 4647,
+          "rounds": {
+            "moves": 3,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 163
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.964,
+            "textCovers": 1,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 2263,
+          "tempo": 2150.3,
+          "membrane": 3099.6,
+          "amoeba": 3072.7,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Dune",
+          "shoal": 820.9,
+          "tempo": 376.1,
+          "membrane": 350.2,
+          "amoeba": 1038.2,
+          "rounds": {
+            "moves": 2,
+            "late": 0,
+            "rounds": 4,
+            "framesChecked": 0
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9928,
+            "textCovers": 0.9672,
+            "title": true,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 3335.2,
+          "tempo": 3532.8,
+          "membrane": 3465.7,
+          "amoeba": 4592.7,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        },
+        {
+          "act": "open:Jazz",
+          "shoal": 0.3,
+          "tempo": 0.2,
+          "membrane": 451.5,
+          "amoeba": 0.2,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 3,
+            "framesChecked": 0
+          },
+          "rest": {
+            "page": true,
+            "onRect": true,
+            "imageCovers": 0.9863,
+            "exact": true,
+            "why": "",
+            "field": false,
+            "oneSite": true
+          }
+        },
+        {
+          "act": "home",
+          "shoal": 818.9,
+          "tempo": 745.2,
+          "membrane": 710.9,
+          "amoeba": 745.2,
+          "rounds": {
+            "moves": 0,
+            "late": 0,
+            "rounds": 0,
+            "framesChecked": 0
+          },
+          "rest": null
+        }
+      ]
+    },
+    "pages": {
+      "desk": {
+        "changes": 56,
+        "edge": {
+          "tempo": 31541332,
+          "membrane": 9498729,
+          "amoeba": 24428683
+        },
+        "body": {
+          "membrane": {
+            "seaFrames": 11251,
+            "outlineOnSea": 0.2992,
+            "discsPerFrame": 0.294,
+            "discCellFrames": 3308,
+            "holePxFrames": 6013312,
+            "discs": [
+              {
+                "change": "Ember",
+                "cell": "Drift",
+                "frames": 107
+              },
+              {
+                "change": "Drift → Tide",
+                "cell": "Drift",
+                "frames": 30
+              },
+              {
+                "change": "Tide → Drift",
+                "cell": "Drift",
+                "frames": 3
+              },
+              {
+                "change": "Drift → Moss",
+                "cell": "Drift",
+                "frames": 94
+              },
+              {
+                "change": "Moss → Drift",
+                "cell": "Dune",
+                "frames": 14
+              },
+              {
+                "change": "Moss → Drift",
+                "cell": "Moss",
+                "frames": 41
+              },
+              {
+                "change": "Moss → Drift",
+                "cell": "Mint",
+                "frames": 6
+              },
+              {
+                "change": "Moss → Drift",
+                "cell": "Coal",
+                "frames": 1
+              },
+              {
+                "change": "Drift → Petal",
+                "cell": "Drift",
+                "frames": 106
+              },
+              {
+                "change": "Drift → Petal",
+                "cell": "Mint",
+                "frames": 9
+              },
+              {
+                "change": "Drift → Petal",
+                "cell": "Petal",
+                "frames": 14
+              },
+              {
+                "change": "Petal → Drift",
+                "cell": "Petal",
+                "frames": 25
+              },
+              {
+                "change": "Petal → Drift",
+                "cell": "Drift",
+                "frames": 1
+              },
+              {
+                "change": "Drift → Aurora",
+                "cell": "Drift",
+                "frames": 22
+              },
+              {
+                "change": "Aurora → Drift",
+                "cell": "Aurora",
+                "frames": 31
+              },
+              {
+                "change": "Drift → Dune",
+                "cell": "Drift",
+                "frames": 74
+              },
+              {
+                "change": "Drift → Dune",
+                "cell": "Mint",
+                "frames": 31
+              },
+              {
+                "change": "Drift → Dune",
+                "cell": "Ember",
+                "frames": 49
+              },
+              {
+                "change": "Dune → Drift",
+                "cell": "Dune",
+                "frames": 23
+              },
+              {
+                "change": "Drift → Jazz",
+                "cell": "Drift",
+                "frames": 61
+              },
+              {
+                "change": "Drift → Jazz",
+                "cell": "Jazz",
+                "frames": 49
+              },
+              {
+                "change": "Drift → Jazz",
+                "cell": "Coal",
+                "frames": 13
+              },
+              {
+                "change": "Jazz → Ember",
+                "cell": "Ember",
+                "frames": 8
+              },
+              {
+                "change": "Jazz → Ember",
+                "cell": "Jazz",
+                "frames": 55
+              },
+              {
+                "change": "Jazz → Ember",
+                "cell": "Coal",
+                "frames": 15
+              },
+              {
+                "change": "Jazz → Ember",
+                "cell": "Coral",
+                "frames": 6
+              },
+              {
+                "change": "Ember → Tide",
+                "cell": "Petal",
+                "frames": 5
+              },
+              {
+                "change": "Ember → Tide",
+                "cell": "Aurora",
+                "frames": 5
+              },
+              {
+                "change": "Ember → Tide",
+                "cell": "Jazz",
+                "frames": 5
+              },
+              {
+                "change": "Ember → Tide",
+                "cell": "Drift",
+                "frames": 1
+              },
+              {
+                "change": "Ember → Tide",
+                "cell": "Coral",
+                "frames": 32
+              },
+              {
+                "change": "Ember → Tide",
+                "cell": "Coal",
+                "frames": 18
+              },
+              {
+                "change": "Ember → Moss",
+                "cell": "Moss",
+                "frames": 5
+              },
+              {
+                "change": "Ember → Moss",
+                "cell": "Coal",
+                "frames": 3
+              },
+              {
+                "change": "Moss → Ember",
+                "cell": "Moss",
+                "frames": 14
+              },
+              {
+                "change": "Petal → Ember",
+                "cell": "Petal",
+                "frames": 35
+              },
+              {
+                "change": "Ember → Aurora",
+                "cell": "Aurora",
+                "frames": 12
+              },
+              {
+                "change": "Aurora → Ember",
+                "cell": "Aurora",
+                "frames": 56
+              },
+              {
+                "change": "Ember → Dune",
+                "cell": "Coal",
+                "frames": 28
+              },
+              {
+                "change": "Ember → Dune",
+                "cell": "Dune",
+                "frames": 2
+              },
+              {
+                "change": "Dune → Ember",
+                "cell": "Ember",
+                "frames": 17
+              },
+              {
+                "change": "Dune → Ember",
+                "cell": "Drift",
+                "frames": 15
+              },
+              {
+                "change": "Dune → Ember",
+                "cell": "Dune",
+                "frames": 31
+              },
+              {
+                "change": "Ember → Jazz",
+                "cell": "Jazz",
+                "frames": 27
+              },
+              {
+                "change": "Ember → Jazz",
+                "cell": "Moss",
+                "frames": 11
+              },
+              {
+                "change": "Ember → Jazz",
+                "cell": "Aurora",
+                "frames": 11
+              },
+              {
+                "change": "Jazz → Tide",
+                "cell": "Drift",
+                "frames": 35
+              },
+              {
+                "change": "Jazz → Tide",
+                "cell": "Jazz",
+                "frames": 21
+              },
+              {
+                "change": "Jazz → Tide",
+                "cell": "Moss",
+                "frames": 14
+              },
+              {
+                "change": "Tide → Moss",
+                "cell": "Coral",
+                "frames": 9
+              },
+              {
+                "change": "Tide → Moss",
+                "cell": "Moss",
+                "frames": 8
+              },
+              {
+                "change": "Aurora → Tide",
+                "cell": "Petal",
+                "frames": 7
+              },
+              {
+                "change": "Tide → Dune",
+                "cell": "Petal",
+                "frames": 16
+              },
+              {
+                "change": "Tide → Dune",
+                "cell": "Haze",
+                "frames": 3
+              },
+              {
+                "change": "Dune → Tide",
+                "cell": "Tide",
+                "frames": 2
+              },
+              {
+                "change": "Dune → Tide",
+                "cell": "Moss",
+                "frames": 2
+              },
+              {
+                "change": "Dune → Tide",
+                "cell": "Aurora",
+                "frames": 78
+              },
+              {
+                "change": "Dune → Tide",
+                "cell": "Coal",
+                "frames": 3
+              },
+              {
+                "change": "Dune → Tide",
+                "cell": "Coral",
+                "frames": 3
+              },
+              {
+                "change": "Dune → Tide",
+                "cell": "Ember",
+                "frames": 2
+              },
+              {
+                "change": "Dune → Tide",
+                "cell": "Drift",
+                "frames": 1
+              },
+              {
+                "change": "Dune → Tide",
+                "cell": "Dune",
+                "frames": 8
+              },
+              {
+                "change": "Dune → Tide",
+                "cell": "Petal",
+                "frames": 27
+              },
+              {
+                "change": "Dune → Tide",
+                "cell": "Mint",
+                "frames": 41
+              },
+              {
+                "change": "Tide → Jazz",
+                "cell": "Aurora",
+                "frames": 4
+              },
+              {
+                "change": "Tide → Jazz",
+                "cell": "Jazz",
+                "frames": 33
+              },
+              {
+                "change": "Jazz → Moss",
+                "cell": "Coral",
+                "frames": 27
+              },
+              {
+                "change": "Jazz → Moss",
+                "cell": "Jazz",
+                "frames": 62
+              },
+              {
+                "change": "Jazz → Moss",
+                "cell": "Mint",
+                "frames": 6
+              },
+              {
+                "change": "Jazz → Moss",
+                "cell": "Coal",
+                "frames": 20
+              },
+              {
+                "change": "Jazz → Moss",
+                "cell": "Moss",
+                "frames": 2
+              },
+              {
+                "change": "Moss → Petal",
+                "cell": "Dune",
+                "frames": 12
+              },
+              {
+                "change": "Moss → Petal",
+                "cell": "Moss",
+                "frames": 43
+              },
+              {
+                "change": "Petal → Moss",
+                "cell": "Petal",
+                "frames": 17
+              },
+              {
+                "change": "Moss → Aurora",
+                "cell": "Dune",
+                "frames": 11
+              },
+              {
+                "change": "Moss → Aurora",
+                "cell": "Moss",
+                "frames": 42
+              },
+              {
+                "change": "Aurora → Moss",
+                "cell": "Aurora",
+                "frames": 90
+              },
+              {
+                "change": "Moss → Dune",
+                "cell": "Aurora",
+                "frames": 21
+              },
+              {
+                "change": "Moss → Dune",
+                "cell": "Moss",
+                "frames": 15
+              },
+              {
+                "change": "Moss → Dune",
+                "cell": "Haze",
+                "frames": 13
+              },
+              {
+                "change": "Moss → Dune",
+                "cell": "Mint",
+                "frames": 3
+              },
+              {
+                "change": "Dune → Moss",
+                "cell": "Dune",
+                "frames": 76
+              },
+              {
+                "change": "Dune → Moss",
+                "cell": "Jazz",
+                "frames": 47
+              },
+              {
+                "change": "Moss → Jazz",
+                "cell": "Moss",
+                "frames": 42
+              },
+              {
+                "change": "Moss → Jazz",
+                "cell": "Jazz",
+                "frames": 69
+              },
+              {
+                "change": "Moss → Jazz",
+                "cell": "Aurora",
+                "frames": 8
+              },
+              {
+                "change": "Jazz → Petal",
+                "cell": "Jazz",
+                "frames": 64
+              },
+              {
+                "change": "Jazz → Petal",
+                "cell": "Haze",
+                "frames": 25
+              },
+              {
+                "change": "Jazz → Petal",
+                "cell": "Ember",
+                "frames": 2
+              },
+              {
+                "change": "Petal → Aurora",
+                "cell": "Petal",
+                "frames": 14
+              },
+              {
+                "change": "Petal → Aurora",
+                "cell": "Aurora",
+                "frames": 6
+              },
+              {
+                "change": "Aurora → Petal",
+                "cell": "Aurora",
+                "frames": 92
+              },
+              {
+                "change": "Aurora → Petal",
+                "cell": "Petal",
+                "frames": 16
+              },
+              {
+                "change": "Petal → Dune",
+                "cell": "Petal",
+                "frames": 24
+              },
+              {
+                "change": "Petal → Dune",
+                "cell": "Dune",
+                "frames": 18
+              },
+              {
+                "change": "Dune → Petal",
+                "cell": "Dune",
+                "frames": 80
+              },
+              {
+                "change": "Petal → Jazz",
+                "cell": "Petal",
+                "frames": 46
+              },
+              {
+                "change": "Petal → Jazz",
+                "cell": "Jazz",
+                "frames": 52
+              },
+              {
+                "change": "Jazz → Aurora",
+                "cell": "Jazz",
+                "frames": 70
+              },
+              {
+                "change": "Aurora → Dune",
+                "cell": "Aurora",
+                "frames": 80
+              },
+              {
+                "change": "Aurora → Dune",
+                "cell": "Tide",
+                "frames": 47
+              },
+              {
+                "change": "Aurora → Dune",
+                "cell": "Haze",
+                "frames": 5
+              },
+              {
+                "change": "Dune → Aurora",
+                "cell": "Dune",
+                "frames": 28
+              },
+              {
+                "change": "Dune → Aurora",
+                "cell": "Coal",
+                "frames": 4
+              },
+              {
+                "change": "Dune → Aurora",
+                "cell": "Ember",
+                "frames": 5
+              },
+              {
+                "change": "Aurora → Jazz",
+                "cell": "Aurora",
+                "frames": 55
+              },
+              {
+                "change": "Aurora → Jazz",
+                "cell": "Jazz",
+                "frames": 43
+              },
+              {
+                "change": "Aurora → Jazz",
+                "cell": "Drift",
+                "frames": 15
+              },
+              {
+                "change": "Jazz → Dune",
+                "cell": "Jazz",
+                "frames": 51
+              },
+              {
+                "change": "Jazz → Dune",
+                "cell": "Aurora",
+                "frames": 36
+              },
+              {
+                "change": "Jazz → Dune",
+                "cell": "Coral",
+                "frames": 17
+              },
+              {
+                "change": "Dune → Jazz",
+                "cell": "Dune",
+                "frames": 45
+              },
+              {
+                "change": "Dune → Jazz",
+                "cell": "Tide",
+                "frames": 44
+              },
+              {
+                "change": "Dune → Jazz",
+                "cell": "Jazz",
+                "frames": 60
+              },
+              {
+                "change": "Dune → Jazz",
+                "cell": "Drift",
+                "frames": 34
+              },
+              {
+                "change": "Dune → Jazz",
+                "cell": "Ember",
+                "frames": 15
+              },
+              {
+                "change": "Jazz → Drift",
+                "cell": "Jazz",
+                "frames": 51
+              }
+            ]
+          },
+          "amoeba": {
+            "seaFrames": 10301,
+            "outlineOnSea": 0.0961,
+            "discsPerFrame": 0.0006,
+            "discCellFrames": 6,
+            "holePxFrames": 1088,
+            "discs": [
+              {
+                "change": "Aurora → Moss",
+                "cell": "Aurora",
+                "frames": 5
+              },
+              {
+                "change": "Aurora → Petal",
+                "cell": "Aurora",
+                "frames": 1
+              }
+            ]
+          }
+        },
+        "start": {
+          "tempo": {
+            "score": 1028850.1,
+            "area": 528183.9,
+            "beyond": 5006.67
+          },
+          "membrane": {
+            "score": 1460759.6,
+            "area": 852140.2,
+            "beyond": 6086.22
+          },
+          "amoeba": {
+            "score": 357482.7,
+            "area": 234425.8,
+            "beyond": 1230.57
+          }
+        },
+        "shoal": {
+          "score": 165165.1,
+          "lurch": 56920.8,
+          "sliver": 1734.2,
+          "split": 0,
+          "collisions": 150,
+          "shock": 6572
+        },
+        "tempo": {
+          "score": 119095.3,
+          "lurch": 39586,
+          "sliver": 1173.1,
+          "split": 0,
+          "collisions": 143,
+          "shock": 6568.6
+        },
+        "membrane": {
+          "score": 96233.5,
+          "lurch": 23994.6,
+          "sliver": 412.4,
+          "split": 0,
+          "collisions": 141,
+          "shock": 37513.5
+        },
+        "amoeba": {
+          "score": 136779.3,
+          "lurch": 42625.7,
+          "sliver": 1160.8,
+          "split": 46.9,
+          "collisions": 150,
+          "shock": 11747.2
+        },
+        "thinking": {
+          "changes": 56,
+          "rounds": 330,
+          "moves": 122,
+          "late": 0,
+          "framesChecked": 9662
+        },
+        "worst": [
+          {
+            "from": "Dune",
+            "to": "Tide",
+            "shoal": 3865.9,
+            "tempo": 2937.7,
+            "membrane": 3811.6,
+            "amoeba": 17345.2
+          },
+          {
+            "from": "Dune",
+            "to": "Aurora",
+            "shoal": 5402,
+            "tempo": 4946.1,
+            "membrane": 3177,
+            "amoeba": 7203.2
+          },
+          {
+            "from": "Tide",
+            "to": "Ember",
+            "shoal": 9402.7,
+            "tempo": 4625,
+            "membrane": 2363.2,
+            "amoeba": 6829.4
+          },
+          {
+            "from": "Dune",
+            "to": "Drift",
+            "shoal": 3950,
+            "tempo": 3781,
+            "membrane": 3073.6,
+            "amoeba": 6342.6
+          },
+          {
+            "from": "Tide",
+            "to": "Dune",
+            "shoal": 6679,
+            "tempo": 5982.5,
+            "membrane": 2330.6,
+            "amoeba": 5476.5
+          },
+          {
+            "from": "Jazz",
+            "to": "Drift",
+            "shoal": 1846.8,
+            "tempo": 1295.3,
+            "membrane": 794.2,
+            "amoeba": 5239.5
+          },
+          {
+            "from": "Tide",
+            "to": "Aurora",
+            "shoal": 5148.2,
+            "tempo": 4114.1,
+            "membrane": 1555.2,
+            "amoeba": 5156.9
+          },
+          {
+            "from": "Dune",
+            "to": "Jazz",
+            "shoal": 2943.2,
+            "tempo": 2261,
+            "membrane": 3258.9,
+            "amoeba": 4949.9
+          },
+          {
+            "from": "Tide",
+            "to": "Jazz",
+            "shoal": 871.6,
+            "tempo": 721.3,
+            "membrane": 1670.8,
+            "amoeba": 4919.4
+          },
+          {
+            "from": "Dune",
+            "to": "Petal",
+            "shoal": 9265.6,
+            "tempo": 5687.7,
+            "membrane": 3861.5,
+            "amoeba": 4823.3
+          }
+        ]
+      }
+    },
+    "onPage": {
+      "budget": 16,
+      "thinking": {
+        "changes": 23,
+        "rounds": 80,
+        "moves": 22,
+        "late": 0,
+        "framesChecked": 1306
+      },
+      "drawn": {
+        "score": 22013.7,
+        "lurch": 8858.3,
+        "sliver": 140.7,
+        "split": 4.7,
+        "collisions": 31,
+        "shock": 2086.6
+      }
+    },
+    "story": {
+      "frames": 2040,
+      "identical": true,
+      "journeyFramesWatched": 19983,
+      "paced": 0,
+      "sea": 0,
+      "liquid": 0
+    },
+    "slides": [
+      {
+        "k": 0,
+        "cast": [
+          "Dune"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 1,
+        "cast": [
+          "Dune",
+          "Moss"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 13,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 2,
+        "cast": [
+          "Dune",
+          "Moss",
+          "Petal"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 12,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0
+        }
+      },
+      {
+        "k": 3,
+        "cast": [
+          "Tide"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 4,
+        "cast": [
+          "Tide",
+          "Aurora"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 13,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 5,
+        "cast": [
+          "Moss"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 14,
+        "rest": {
+          "rectangle": 1,
+          "voronoi": 11,
+          "cut": 0
+        }
+      },
+      {
+        "k": 6,
+        "cast": [
+          "Moss",
+          "Aurora"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 13,
+        "rest": {
+          "rectangle": 2,
+          "voronoi": 10,
+          "cut": 0
+        }
+      },
+      {
+        "k": 7,
+        "cast": [
+          "Moss",
+          "Aurora",
+          "Petal"
+        ],
+        "penCovered": 1,
+        "offRect": 0,
+        "voids": 12,
+        "rest": {
+          "rectangle": 3,
+          "voronoi": 9,
+          "cut": 0
+        }
+      }
+    ],
+    "changes": [
+      {
+        "k": 1,
+        "fresh": false,
+        "cast": [
+          "Dune",
+          "Moss"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 85.5,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.2
+      },
+      {
+        "k": 2,
+        "fresh": false,
+        "cast": [
+          "Dune",
+          "Moss",
+          "Petal"
+        ],
+        "kept": 2,
+        "penStayed": 9,
+        "penSettle": 67.9,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.2
+      },
+      {
+        "k": 3,
+        "fresh": true,
+        "cast": [
+          "Tide"
+        ],
+        "kept": 0,
+        "penStayed": 8,
+        "penSettle": 98.3,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.4
+      },
+      {
+        "k": 4,
+        "fresh": false,
+        "cast": [
+          "Tide",
+          "Aurora"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 93.7,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.3
+      },
+      {
+        "k": 5,
+        "fresh": true,
+        "cast": [
+          "Moss"
+        ],
+        "kept": 0,
+        "penStayed": 9,
+        "penSettle": 93.7,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2
+      },
+      {
+        "k": 6,
+        "fresh": false,
+        "cast": [
+          "Moss",
+          "Aurora"
+        ],
+        "kept": 1,
+        "penStayed": 10,
+        "penSettle": 93.7,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 2.4
+      },
+      {
+        "k": 7,
+        "fresh": false,
+        "cast": [
+          "Moss",
+          "Aurora",
+          "Petal"
+        ],
+        "kept": 2,
+        "penStayed": 9,
+        "penSettle": 52.5,
+        "closest": null,
+        "cardOverlap": 0,
+        "seconds": 1.6
+      }
+    ],
+    "back": {
+      "k": 0,
+      "cast": [
+        "Aurora"
+      ],
+      "penCovered": 1,
+      "offRect": 0,
+      "voids": 14,
+      "rest": {
+        "rectangle": 1,
+        "voronoi": 11,
+        "cut": 0
+      }
+    },
+    "hurried": [
+      {
+        "slides": [
+          0,
+          1,
+          2
+        ],
+        "landing": [
+          {
+            "name": "Moss",
+            "wallAfter": 62
+          }
+        ],
+        "still": [
+          "Dune"
+        ]
+      },
+      {
+        "slides": [
+          5,
+          6,
+          7
+        ],
+        "landing": [
+          {
+            "name": "Aurora",
+            "wallAfter": 122
+          }
+        ],
+        "still": [
+          "Tide"
+        ]
+      }
+    ],
+    "home": {
+      "cells": 12,
+      "scene": "bento"
+    },
+    "tell": {
+      "frames": 3060,
+      "fractured": 0
+    },
+    "motion": {
+      "desk": {
+        "tempo": {
+          "seedAccel": {
+            "mean": 376,
+            "p99": 1312
+          },
+          "planAccel": {
+            "p99": 1380,
+            "max": 3627
+          },
+          "peakOverMean": {
+            "median": 1.82,
+            "p90": 1.98
+          },
+          "hectic": {
+            "mean": 486,
+            "p99": 1611
+          }
+        },
+        "amoeba": {
+          "seedAccel": {
+            "mean": 425,
+            "p99": 1438
+          },
+          "planAccel": {
+            "p99": 1472,
+            "max": 3496
+          },
+          "peakOverMean": {
+            "median": 1.9,
+            "p90": 2.7
+          },
+          "hectic": {
+            "mean": 530,
+            "p99": 1718
+          }
+        }
+      }
+    }
+  }
+}
