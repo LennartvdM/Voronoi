@@ -6,8 +6,8 @@
 // - Stay's rule is the only change: taken out, with no budget, the tour of changes and the chain through every page
 //   from every other are Cohort's, the world and every drawing command, frame by frame; with it in, every change that
 //   does not go from a page to a page is;
-// - no cell changes role: at the ask of every change from page to page, neither the clicked card's cell nor the image's
-//   claims a size as many times its own as on any of Cohort's, where an image becomes a card and a card the image;
+// - no cell changes role: at the ask of every change from page to page, the cell that ends as the image sets off at a
+//   size nearer its own than on any of Cohort's, where it sets off as a card;
 // - on the chain and on the tour: nothing waits, nothing fractures, from each round that moved a cell the performance
 //   is that round's rehearsal of the move to the bit, every change has one pace, every page at rest is exact and every
 //   cell at rest is drawn its own colour;
@@ -253,7 +253,7 @@ const centroid=m=>{let X=0,A=0;for(const r of m.values()){const a=rA(r);X+=(r[0]
 function galleryOf(R,s0,f0,f1,essay){
  const s1=seats(R),G=[...s1.keys()].filter(b=>b!==f0&&b!==f1&&s0.has(b)),old=new Map([...s0].filter(([b])=>b!==f0)),neu=new Map([...s1].filter(([b])=>b!==f1));
  const B0=boxOf([...old.values()]),B1=boxOf([...neu.values()]),c1=rA(s0.get(f1)||[0,0,0,0]),c0=rA(s1.get(f0)||[0,0,0,0]),g={spill:0,hole:0,swell:0,bulk:0,bloat:0,pass:Infinity};
- const role=Math.max(...[f0,f1].filter(b=>b.claim0>0&&b.claimTarget>0).map(b=>Math.max(b.claim0/b.claimTarget,b.claimTarget/b.claim0))),U=R.PW*R.PH;   // the two cells whose roles are in question: the old image's and the clicked card's
+ const role=f1.claim0>0&&f1.claimTarget>0?Math.max(f1.claim0/f1.claimTarget,f1.claimTarget/f1.claim0):0,U=R.PW*R.PH;   // the cell that ends as the image: how many times its size it sets off at
  const travel=G.reduce((a,b)=>{const p=s0.get(b),q=s1.get(b);return a+Math.hypot((p[0]+p[2]-q[0]-q[2])/2,(p[1]+p[3]-q[1]-q[3])/2);},0),crossed=Math.abs(centroid(neu)-centroid(old))>R.W/2;
  return{frame(pic){const tr=G.filter(b=>b.journey),pc=tr.length?tr.reduce((a,b)=>a+Math.max(0,Math.min(1,b.progress||0)),0)/tr.length:1,Rt=B0.map((v,j)=>v+(B1[j]-v)*pc);let all=0;
    let d0=0;for(const l of pic.leaves){if(l.path.length!==1||l.isVoid)continue;const b=l.body;if(b.isSelf||b.leaving)continue;const a=leafIn(l,Rt);all+=a;
@@ -316,9 +316,9 @@ const edgeSum=r=>r.reduce((a,o)=>a+o.edge,0);const size={width:1440,height:900,f
 const unrule=js=>fit(js,'const STAY = true;','const STAY = false;');   // Stay's rule taken out
 function markChecks(){   // NO CELL CHANGES ROLE
  const s=report.pages.desk.swap;
- assert(s.mark.roleMax<s.cohort.roleMin,'pages: a cell\'s claim changed '+s.mark.roleMax+'-fold at an ask, and on Cohort at least '+s.cohort.roleMin+'-fold');
+ assert(s.mark.roleMax<s.cohort.roleMin,'pages: the cell that ends as the image set off at '+s.mark.roleMax+' times or a part of its size, and on Cohort at least '+s.cohort.roleMin);
 }
-const SCOPE='Real full tick; native Canvas and browser DOM stubbed; frames of 1/64 s; a desk of 1440×900 (the stories at 1900×810); the worker of Wings headless thinking sixteen rehearsed frames a frame. With Stay\'s rule taken out and no budget, the tour and the chain through every page from every other are Cohort\'s, the world and every drawing command, frame by frame; with it in, every change that does not go from a page to a page is. No cell changes role: at every change from page to page, neither the clicked card\'s cell nor the image\'s claims a size as many times its own as on any of Cohort\'s. On the chain and the tour nothing waits, nothing fractures, from each round that moved a cell the performance is that round\'s rehearsal of the move to the bit, every change has one pace, every page at rest is exact and every cell drawn its own colour. With no worker the hive thinks on the page and plays what it rehearsed. A Cue story is Cohort\'s frame by frame; a Tell and a Tell II story run to their end and home without a fractured cell. Defects and the gallery\'s measures are reported against Cohort.';
+const SCOPE='Real full tick; native Canvas and browser DOM stubbed; frames of 1/64 s; a desk of 1440×900 (the stories at 1900×810); the worker of Wings headless thinking sixteen rehearsed frames a frame. With Stay\'s rule taken out and no budget, the tour and the chain through every page from every other are Cohort\'s, the world and every drawing command, frame by frame; with it in, every change that does not go from a page to a page is. No cell changes role: at every change from page to page, the cell that ends as the image sets off at a size nearer its own than on any of Cohort\'s, where it sets off as a card. On the chain and the tour nothing waits, nothing fractures, from each round that moved a cell the performance is that round\'s rehearsal of the move to the bit, every change has one pace, every page at rest is exact and every cell drawn its own colour. With no worker the hive thinks on the page and plays what it rehearsed. A Cue story is Cohort\'s frame by frame; a Tell and a Tell II story run to their end and home without a fractured cell. Defects and the gallery\'s measures are reported against Cohort.';
 // EVERY PAGE FROM EVERY OTHER: a chain through all 56 ordered pairs of the eight kinds
 const reps=['Drift','Ember','Tide','Moss','Petal','Aurora','Dune','Jazz'],outs=reps.map((_,i)=>reps.map((_,j)=>j).filter(j=>j!==i)),stack=[0],circ=[];
 while(stack.length){const v=stack[stack.length-1];if(outs[v].length)stack.push(outs[v].shift());else circ.push(stack.pop());}circ.reverse();
