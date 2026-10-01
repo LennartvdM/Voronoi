@@ -1,0 +1,636 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed; frames of 1/64 s; a desk of 1440×900 (the stories at 1900×810); the worker of Wings headless thinking sixteen rehearsed frames a frame. With Slate's rule taken out and no budget, the tour and the chain through every page from every other are Cohort's, the world and every drawing command, frame by frame; with it in, home's scenes are. With the rule alone (no budget) over the tour and the chain, the images fill more of their boxes in the middle of a change than on Cohort. On the chain and the tour nothing waits, nothing fractures, from each round that moved a cell the performance is that round's rehearsal of the move to the bit, every change has one pace, every page at rest is exact and every cell drawn its own colour. With no worker the hive thinks on the page and plays what it rehearsed. A Cue story is Cohort's frame by frame; a Tell and a Tell II story run to their end and home without a fractured cell. Defects and the screen leaned on are reported against Cohort.",
+  "report": {
+    "trace": {
+      "tour": {
+        "frames": 11550,
+        "identical": true,
+        "rule": "taken out"
+      },
+      "pages": {
+        "frames": 25950,
+        "identical": true,
+        "rule": "taken out"
+      },
+      "scenes": {
+        "frames": 3450,
+        "identical": true,
+        "rule": "in"
+      }
+    },
+    "home": null,
+    "desk": {
+      "size": {
+        "width": 1440,
+        "height": 900,
+        "fields": 0.55
+      },
+      "budget": 16,
+      "cohort": {
+        "score": 26376.5,
+        "lurch": 11929.2,
+        "sliver": 165,
+        "split": 4.6,
+        "collisions": 31,
+        "shock": 2159.9
+      },
+      "mark": {
+        "score": 24173,
+        "lurch": 10099.1,
+        "sliver": 155.6,
+        "split": 4.6,
+        "collisions": 33,
+        "shock": 2055.3
+      },
+      "edge": {
+        "cohort": 5396770,
+        "mark": 5348185
+      },
+      "thinking": {
+        "changes": 23,
+        "rounds": 66,
+        "moves": 25,
+        "late": 0,
+        "framesChecked": 1527
+      },
+      "changes": [
+        {
+          "act": "scene:frame",
+          "cohort": 28.5,
+          "mark": 28.5
+        },
+        {
+          "act": "scene:sidebar",
+          "cohort": 700,
+          "mark": 700
+        },
+        {
+          "act": "scene:hero",
+          "cohort": 83.7,
+          "mark": 83.7
+        },
+        {
+          "act": "scene:flock",
+          "cohort": 21.9,
+          "mark": 21.9
+        },
+        {
+          "act": "scene:bento",
+          "cohort": 107.1,
+          "mark": 107.1
+        },
+        {
+          "act": "scene:hero",
+          "cohort": 31.4,
+          "mark": 31.4
+        },
+        {
+          "act": "scene:bento",
+          "cohort": 435.6,
+          "mark": 435.6
+        },
+        {
+          "act": "open:Moss",
+          "cohort": 315.6,
+          "mark": 315.8
+        },
+        {
+          "act": "home",
+          "cohort": 2257.9,
+          "mark": 2257.9
+        },
+        {
+          "act": "open:Aurora",
+          "cohort": 671.1,
+          "mark": 630.2
+        },
+        {
+          "act": "home",
+          "cohort": 399.9,
+          "mark": 399.9
+        },
+        {
+          "act": "open:Coal",
+          "cohort": 318.2,
+          "mark": 332.8
+        },
+        {
+          "act": "open:Aurora",
+          "cohort": 300.7,
+          "mark": 250.1
+        },
+        {
+          "act": "home",
+          "cohort": 380.6,
+          "mark": 380.6
+        },
+        {
+          "act": "open:Petal",
+          "cohort": 235.7,
+          "mark": 325.5
+        },
+        {
+          "act": "home",
+          "cohort": 2325.8,
+          "mark": 2325.8
+        },
+        {
+          "act": "open:Drift",
+          "cohort": 3000.6,
+          "mark": 2043.3
+        },
+        {
+          "act": "home",
+          "cohort": 302.3,
+          "mark": 302.3
+        },
+        {
+          "act": "open:Ember",
+          "cohort": 114.9,
+          "mark": 116.3
+        },
+        {
+          "act": "open:Tide",
+          "cohort": 5661,
+          "mark": 4432.1
+        },
+        {
+          "act": "home",
+          "cohort": 3404.4,
+          "mark": 3404.4
+        },
+        {
+          "act": "open:Dune",
+          "cohort": 862.6,
+          "mark": 830.8
+        },
+        {
+          "act": "home",
+          "cohort": 3289.9,
+          "mark": 3289.9
+        },
+        {
+          "act": "open:Jazz",
+          "cohort": 0.3,
+          "mark": 0.3
+        },
+        {
+          "act": "home",
+          "cohort": 1126.8,
+          "mark": 1126.8
+        }
+      ]
+    },
+    "pages": {
+      "desk": {
+        "changes": [
+          {
+            "from": "Drift",
+            "to": "Ember",
+            "cohort": 668.6,
+            "mark": 137
+          },
+          {
+            "from": "Ember",
+            "to": "Drift",
+            "cohort": 2135.2,
+            "mark": 2106.3
+          },
+          {
+            "from": "Drift",
+            "to": "Tide",
+            "cohort": 659.8,
+            "mark": 529.7
+          },
+          {
+            "from": "Tide",
+            "to": "Drift",
+            "cohort": 2284.1,
+            "mark": 2498.2
+          },
+          {
+            "from": "Drift",
+            "to": "Moss",
+            "cohort": 897.1,
+            "mark": 509.7
+          },
+          {
+            "from": "Moss",
+            "to": "Drift",
+            "cohort": 1065.2,
+            "mark": 1227.6
+          },
+          {
+            "from": "Drift",
+            "to": "Petal",
+            "cohort": 423.7,
+            "mark": 314.6
+          },
+          {
+            "from": "Petal",
+            "to": "Drift",
+            "cohort": 981.5,
+            "mark": 989.4
+          },
+          {
+            "from": "Drift",
+            "to": "Aurora",
+            "cohort": 289.8,
+            "mark": 300
+          },
+          {
+            "from": "Aurora",
+            "to": "Drift",
+            "cohort": 132.2,
+            "mark": 75.4
+          },
+          {
+            "from": "Drift",
+            "to": "Dune",
+            "cohort": 797,
+            "mark": 388.5
+          },
+          {
+            "from": "Dune",
+            "to": "Drift",
+            "cohort": 6683.2,
+            "mark": 9833.9
+          },
+          {
+            "from": "Drift",
+            "to": "Jazz",
+            "cohort": 153.5,
+            "mark": 385.5
+          },
+          {
+            "from": "Jazz",
+            "to": "Ember",
+            "cohort": 1036.2,
+            "mark": 1013
+          },
+          {
+            "from": "Ember",
+            "to": "Tide",
+            "cohort": 4553.3,
+            "mark": 3446.8
+          },
+          {
+            "from": "Tide",
+            "to": "Ember",
+            "cohort": 2766.7,
+            "mark": 2162.5
+          },
+          {
+            "from": "Ember",
+            "to": "Moss",
+            "cohort": 3963.7,
+            "mark": 4029
+          },
+          {
+            "from": "Moss",
+            "to": "Ember",
+            "cohort": 533.4,
+            "mark": 1012.1
+          },
+          {
+            "from": "Ember",
+            "to": "Petal",
+            "cohort": 2921.1,
+            "mark": 2843.6
+          },
+          {
+            "from": "Petal",
+            "to": "Ember",
+            "cohort": 4340,
+            "mark": 1914.4
+          },
+          {
+            "from": "Ember",
+            "to": "Aurora",
+            "cohort": 4633.5,
+            "mark": 4620.2
+          },
+          {
+            "from": "Aurora",
+            "to": "Ember",
+            "cohort": 442.6,
+            "mark": 949.5
+          },
+          {
+            "from": "Ember",
+            "to": "Dune",
+            "cohort": 5432.8,
+            "mark": 5605.6
+          },
+          {
+            "from": "Dune",
+            "to": "Ember",
+            "cohort": 3545.5,
+            "mark": 6359.9
+          },
+          {
+            "from": "Ember",
+            "to": "Jazz",
+            "cohort": 2162.2,
+            "mark": 2327.2
+          },
+          {
+            "from": "Jazz",
+            "to": "Tide",
+            "cohort": 1415.4,
+            "mark": 1894.7
+          },
+          {
+            "from": "Tide",
+            "to": "Moss",
+            "cohort": 1281.5,
+            "mark": 2605
+          },
+          {
+            "from": "Moss",
+            "to": "Tide",
+            "cohort": 219,
+            "mark": 180.3
+          },
+          {
+            "from": "Tide",
+            "to": "Petal",
+            "cohort": 2738.1,
+            "mark": 3024.9
+          },
+          {
+            "from": "Petal",
+            "to": "Tide",
+            "cohort": 3828.6,
+            "mark": 2382.9
+          },
+          {
+            "from": "Tide",
+            "to": "Aurora",
+            "cohort": 3476.5,
+            "mark": 3659.7
+          },
+          {
+            "from": "Aurora",
+            "to": "Tide",
+            "cohort": 274.2,
+            "mark": 286.1
+          },
+          {
+            "from": "Tide",
+            "to": "Dune",
+            "cohort": 3481,
+            "mark": 4381.1
+          },
+          {
+            "from": "Dune",
+            "to": "Tide",
+            "cohort": 5215.6,
+            "mark": 5542.7
+          },
+          {
+            "from": "Tide",
+            "to": "Jazz",
+            "cohort": 1481.7,
+            "mark": 2585
+          },
+          {
+            "from": "Jazz",
+            "to": "Moss",
+            "cohort": 1290.5,
+            "mark": 2886
+          },
+          {
+            "from": "Moss",
+            "to": "Petal",
+            "cohort": 257.8,
+            "mark": 308.8
+          },
+          {
+            "from": "Petal",
+            "to": "Moss",
+            "cohort": 2086.8,
+            "mark": 3124.8
+          },
+          {
+            "from": "Moss",
+            "to": "Aurora",
+            "cohort": 1340,
+            "mark": 572
+          },
+          {
+            "from": "Aurora",
+            "to": "Moss",
+            "cohort": 1095.7,
+            "mark": 1482.2
+          },
+          {
+            "from": "Moss",
+            "to": "Dune",
+            "cohort": 448.5,
+            "mark": 1189.9
+          },
+          {
+            "from": "Dune",
+            "to": "Moss",
+            "cohort": 1424,
+            "mark": 9855.6
+          },
+          {
+            "from": "Moss",
+            "to": "Jazz",
+            "cohort": 499.5,
+            "mark": 526.1
+          },
+          {
+            "from": "Jazz",
+            "to": "Petal",
+            "cohort": 1498,
+            "mark": 900.4
+          },
+          {
+            "from": "Petal",
+            "to": "Aurora",
+            "cohort": 1769.9,
+            "mark": 1984.7
+          },
+          {
+            "from": "Aurora",
+            "to": "Petal",
+            "cohort": 1428.4,
+            "mark": 1302.2
+          },
+          {
+            "from": "Petal",
+            "to": "Dune",
+            "cohort": 3667.1,
+            "mark": 3305
+          },
+          {
+            "from": "Dune",
+            "to": "Petal",
+            "cohort": 2036.5,
+            "mark": 4921.1
+          },
+          {
+            "from": "Petal",
+            "to": "Jazz",
+            "cohort": 1197.5,
+            "mark": 1333.8
+          },
+          {
+            "from": "Jazz",
+            "to": "Aurora",
+            "cohort": 303.8,
+            "mark": 137.9
+          },
+          {
+            "from": "Aurora",
+            "to": "Dune",
+            "cohort": 1530.1,
+            "mark": 776.2
+          },
+          {
+            "from": "Dune",
+            "to": "Aurora",
+            "cohort": 2703.3,
+            "mark": 12102.1
+          },
+          {
+            "from": "Aurora",
+            "to": "Jazz",
+            "cohort": 66,
+            "mark": 132.7
+          },
+          {
+            "from": "Jazz",
+            "to": "Dune",
+            "cohort": 468.8,
+            "mark": 3174
+          },
+          {
+            "from": "Dune",
+            "to": "Jazz",
+            "cohort": 4129.6,
+            "mark": 16575
+          },
+          {
+            "from": "Jazz",
+            "to": "Drift",
+            "cohort": 359.5,
+            "mark": 693.8
+          }
+        ],
+        "budget": 16,
+        "cohort": {
+          "score": 106514.8,
+          "lurch": 35580.2,
+          "sliver": 829.8,
+          "split": 27.9,
+          "collisions": 117,
+          "shock": 12125.1
+        },
+        "mark": {
+          "score": 149406.3,
+          "lurch": 68297.8,
+          "sliver": 904.1,
+          "split": 72,
+          "collisions": 115,
+          "shock": 9983.6
+        },
+        "edge": {
+          "cohort": 17740195,
+          "mark": 17883442
+        },
+        "thinking": {
+          "changes": 56,
+          "rounds": 261,
+          "moves": 119,
+          "late": 0,
+          "framesChecked": 9073
+        }
+      }
+    },
+    "onPage": {
+      "budget": 16,
+      "changes": 11,
+      "thinking": {
+        "changes": 12,
+        "rounds": 69,
+        "moves": 28,
+        "late": 0,
+        "framesChecked": 2059
+      },
+      "drawn": {
+        "score": 9268.6,
+        "lurch": 2101,
+        "sliver": 86.3,
+        "split": 1.8,
+        "collisions": 13,
+        "shock": 1180.7
+      }
+    },
+    "story": {
+      "frames": 2040,
+      "identical": true
+    },
+    "tell": {
+      "frames": 3060,
+      "fractured": 0
+    },
+    "pace": {},
+    "motion": {},
+    "edge": {},
+    "body": {},
+    "start": {},
+    "arrivals": {
+      "changes": 82,
+      "cohort": {
+        "images": {
+          "frames": 11187,
+          "fill": 0.685,
+          "fillLarge": 0.776,
+          "corners": 18.7
+        },
+        "crisp": {
+          "changes": 78,
+          "toGoMean": 12.7,
+          "toGoMost": 488
+        },
+        "lag": {
+          "seeds": 876,
+          "mean": 4,
+          "most": 40
+        },
+        "screen": {
+          "arriving": 77892,
+          "lastTenth": 13560,
+          "share": 0.174
+        }
+      },
+      "mark": {
+        "images": {
+          "frames": 11186,
+          "fill": 0.703,
+          "fillLarge": 0.815,
+          "corners": 17.9
+        },
+        "crisp": {
+          "changes": 78,
+          "toGoMean": 12.3,
+          "toGoMost": 474
+        },
+        "lag": {
+          "seeds": 876,
+          "mean": 4.1,
+          "most": 86
+        },
+        "screen": {
+          "arriving": 77896,
+          "lastTenth": 16704,
+          "share": 0.214
+        }
+      }
+    }
+  }
+}
