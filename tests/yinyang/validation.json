@@ -1,0 +1,2282 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed; frames of 1/64 s; a desk of 1440×900 (the stories at 1900×810); the worker of Wings headless thinking sixteen rehearsed frames a frame. With Yinyang's rules taken out and no budget, the tour and the chain through every page from every other are Cohort's, the world and every drawing command, frame by frame; with them in, every change that does not go from a page to a page is. The images swing round each other: at their closest they pass further apart, over their sizes, than on Cohort. On the chain and the tour nothing waits, nothing fractures, from each round that moved a cell the performance is that round's rehearsal of the move to the bit, every change has one pace, every page at rest is exact and every cell drawn its own colour; on the chain with Breathe at 40 nothing waits or fractures. With no worker the hive thinks on the page and plays what it rehearsed. A Cue story is Cohort's frame by frame; a Tell and a Tell II story run to their end and home without a fractured cell. Defects and the gallery's measures are reported against Cohort, and with Breathe at 40.",
+  "report": {
+    "trace": {
+      "tour": {
+        "frames": 11550,
+        "identical": true,
+        "rules": "taken out"
+      },
+      "pages": {
+        "frames": 25950,
+        "identical": true,
+        "rules": "taken out"
+      },
+      "home": {
+        "frames": 10650,
+        "identical": true,
+        "rules": "in"
+      }
+    },
+    "home": null,
+    "desk": {
+      "size": {
+        "width": 1440,
+        "height": 900,
+        "fields": 0.55
+      },
+      "budget": 16,
+      "cohort": {
+        "score": 26376.5,
+        "lurch": 11929.2,
+        "sliver": 165,
+        "split": 4.6,
+        "collisions": 31,
+        "shock": 2159.9
+      },
+      "mark": {
+        "score": 25368.7,
+        "lurch": 11096.9,
+        "sliver": 162.2,
+        "split": 4.6,
+        "collisions": 31,
+        "shock": 2125
+      },
+      "thinking": {
+        "changes": 23,
+        "rounds": 68,
+        "moves": 26,
+        "late": 0,
+        "framesChecked": 1529
+      },
+      "changes": [
+        {
+          "act": "scene:frame",
+          "cohort": 28.5,
+          "mark": 28.5
+        },
+        {
+          "act": "scene:sidebar",
+          "cohort": 700,
+          "mark": 700
+        },
+        {
+          "act": "scene:hero",
+          "cohort": 83.7,
+          "mark": 83.7
+        },
+        {
+          "act": "scene:flock",
+          "cohort": 21.9,
+          "mark": 21.9
+        },
+        {
+          "act": "scene:bento",
+          "cohort": 107.1,
+          "mark": 107.1
+        },
+        {
+          "act": "scene:hero",
+          "cohort": 31.4,
+          "mark": 31.4
+        },
+        {
+          "act": "scene:bento",
+          "cohort": 435.6,
+          "mark": 435.6
+        },
+        {
+          "act": "open:Moss",
+          "cohort": 315.6,
+          "mark": 315.6
+        },
+        {
+          "act": "home",
+          "cohort": 2257.9,
+          "mark": 2257.9
+        },
+        {
+          "act": "open:Aurora",
+          "cohort": 671.1,
+          "mark": 671.1
+        },
+        {
+          "act": "home",
+          "cohort": 399.9,
+          "mark": 399.9
+        },
+        {
+          "act": "open:Coal",
+          "cohort": 318.2,
+          "mark": 318.2
+        },
+        {
+          "act": "open:Aurora",
+          "cohort": 300.7,
+          "mark": 160.4
+        },
+        {
+          "act": "home",
+          "cohort": 380.6,
+          "mark": 380.6
+        },
+        {
+          "act": "open:Petal",
+          "cohort": 235.7,
+          "mark": 235.7
+        },
+        {
+          "act": "home",
+          "cohort": 2325.8,
+          "mark": 2325.8
+        },
+        {
+          "act": "open:Drift",
+          "cohort": 3000.6,
+          "mark": 3000.6
+        },
+        {
+          "act": "home",
+          "cohort": 302.3,
+          "mark": 302.3
+        },
+        {
+          "act": "open:Ember",
+          "cohort": 114.9,
+          "mark": 114.9
+        },
+        {
+          "act": "open:Tide",
+          "cohort": 5661,
+          "mark": 4793.5
+        },
+        {
+          "act": "home",
+          "cohort": 3404.4,
+          "mark": 3404.4
+        },
+        {
+          "act": "open:Dune",
+          "cohort": 862.6,
+          "mark": 862.6
+        },
+        {
+          "act": "home",
+          "cohort": 3289.9,
+          "mark": 3289.9
+        },
+        {
+          "act": "open:Jazz",
+          "cohort": 0.3,
+          "mark": 0.3
+        },
+        {
+          "act": "home",
+          "cohort": 1126.8,
+          "mark": 1126.8
+        }
+      ]
+    },
+    "pages": {
+      "desk": {
+        "changes": [
+          {
+            "from": "Drift",
+            "to": "Ember",
+            "cohort": {
+              "drawn": 668.6,
+              "from": "Drift",
+              "to": "Ember",
+              "essay": false,
+              "crossed": false,
+              "travel": 1067,
+              "spill": 5204248,
+              "hole": 3354088,
+              "swell": 1009387,
+              "bulk": 0,
+              "bloat": 1312,
+              "role": 19.71,
+              "pass": 0.609
+            },
+            "mark": {
+              "drawn": 214.2,
+              "from": "Drift",
+              "to": "Ember",
+              "essay": false,
+              "crossed": false,
+              "travel": 1067,
+              "spill": 4651324,
+              "hole": 3506873,
+              "swell": 1277172,
+              "bulk": 0,
+              "bloat": 587,
+              "role": 19.71,
+              "pass": 0.852
+            }
+          },
+          {
+            "from": "Ember",
+            "to": "Drift",
+            "cohort": {
+              "drawn": 2135.2,
+              "from": "Ember",
+              "to": "Drift",
+              "essay": false,
+              "crossed": false,
+              "travel": 1114,
+              "spill": 3773399,
+              "hole": 2240523,
+              "swell": 91507,
+              "bulk": 841556,
+              "bloat": 3676,
+              "role": 19.71,
+              "pass": 0.504
+            },
+            "mark": {
+              "drawn": 2243.5,
+              "from": "Ember",
+              "to": "Drift",
+              "essay": false,
+              "crossed": false,
+              "travel": 1114,
+              "spill": 3663559,
+              "hole": 1947851,
+              "swell": 56818,
+              "bulk": 1021827,
+              "bloat": 2939,
+              "role": 19.71,
+              "pass": 0.934
+            }
+          },
+          {
+            "from": "Drift",
+            "to": "Tide",
+            "cohort": {
+              "drawn": 659.8,
+              "from": "Drift",
+              "to": "Tide",
+              "essay": false,
+              "crossed": false,
+              "travel": 1486,
+              "spill": 5784274,
+              "hole": 6403298,
+              "swell": 1874217,
+              "bulk": 0,
+              "bloat": 1393,
+              "role": 14.34,
+              "pass": 0.857
+            },
+            "mark": {
+              "drawn": 2457.3,
+              "from": "Drift",
+              "to": "Tide",
+              "essay": false,
+              "crossed": false,
+              "travel": 1498,
+              "spill": 6390922,
+              "hole": 3146432,
+              "swell": 6782030,
+              "bulk": 0,
+              "bloat": 0,
+              "role": 14.34,
+              "pass": 0.519
+            }
+          },
+          {
+            "from": "Tide",
+            "to": "Drift",
+            "cohort": {
+              "drawn": 2284.1,
+              "from": "Tide",
+              "to": "Drift",
+              "essay": false,
+              "crossed": false,
+              "travel": 1498,
+              "spill": 4924931,
+              "hole": 1825549,
+              "swell": 65978,
+              "bulk": 1531171,
+              "bloat": 14288,
+              "role": 20.57,
+              "pass": 0.969
+            },
+            "mark": {
+              "drawn": 2385.1,
+              "from": "Tide",
+              "to": "Drift",
+              "essay": false,
+              "crossed": false,
+              "travel": 1498,
+              "spill": 4568163,
+              "hole": 588749,
+              "swell": 586991,
+              "bulk": 1446312,
+              "bloat": 11634,
+              "role": 20.57,
+              "pass": 0.692
+            }
+          },
+          {
+            "from": "Drift",
+            "to": "Moss",
+            "cohort": {
+              "drawn": 897.1,
+              "from": "Drift",
+              "to": "Moss",
+              "essay": false,
+              "crossed": false,
+              "travel": 1274,
+              "spill": 4435996,
+              "hole": 5906053,
+              "swell": 1242600,
+              "bulk": 26875,
+              "bloat": 1309,
+              "role": 18.51,
+              "pass": 0.533
+            },
+            "mark": {
+              "drawn": 957.6,
+              "from": "Drift",
+              "to": "Moss",
+              "essay": false,
+              "crossed": false,
+              "travel": 1274,
+              "spill": 7631916,
+              "hole": 4435643,
+              "swell": 3421679,
+              "bulk": 13285,
+              "bloat": 4491,
+              "role": 18.51,
+              "pass": 0.861
+            }
+          },
+          {
+            "from": "Moss",
+            "to": "Drift",
+            "cohort": {
+              "drawn": 1065.2,
+              "from": "Moss",
+              "to": "Drift",
+              "essay": false,
+              "crossed": false,
+              "travel": 2206,
+              "spill": 3465998,
+              "hole": 7534098,
+              "swell": 11863,
+              "bulk": 206894,
+              "bloat": 13304,
+              "role": 18.51,
+              "pass": 0.155
+            },
+            "mark": {
+              "drawn": 974.8,
+              "from": "Moss",
+              "to": "Drift",
+              "essay": false,
+              "crossed": false,
+              "travel": 2206,
+              "spill": 2685846,
+              "hole": 7409635,
+              "swell": 3831,
+              "bulk": 237640,
+              "bloat": 121851,
+              "role": 18.51,
+              "pass": 0.792
+            }
+          },
+          {
+            "from": "Drift",
+            "to": "Petal",
+            "cohort": {
+              "drawn": 423.7,
+              "from": "Drift",
+              "to": "Petal",
+              "essay": false,
+              "crossed": false,
+              "travel": 2516,
+              "spill": 7308791,
+              "hole": 7127890,
+              "swell": 1511583,
+              "bulk": 0,
+              "bloat": 1882,
+              "role": 16.71,
+              "pass": 1.002
+            },
+            "mark": {
+              "drawn": 735.4,
+              "from": "Drift",
+              "to": "Petal",
+              "essay": false,
+              "crossed": false,
+              "travel": 2516,
+              "spill": 7217511,
+              "hole": 7638506,
+              "swell": 1911643,
+              "bulk": 0,
+              "bloat": 611,
+              "role": 16.71,
+              "pass": 1.049
+            }
+          },
+          {
+            "from": "Petal",
+            "to": "Drift",
+            "cohort": {
+              "drawn": 981.5,
+              "from": "Petal",
+              "to": "Drift",
+              "essay": false,
+              "crossed": false,
+              "travel": 1416,
+              "spill": 4561597,
+              "hole": 10638364,
+              "swell": 172442,
+              "bulk": 311096,
+              "bloat": 21811,
+              "role": 11.77,
+              "pass": 0.298
+            },
+            "mark": {
+              "drawn": 954.6,
+              "from": "Petal",
+              "to": "Drift",
+              "essay": false,
+              "crossed": false,
+              "travel": 1416,
+              "spill": 4483372,
+              "hole": 8178359,
+              "swell": 658865,
+              "bulk": 550833,
+              "bloat": 7099,
+              "role": 11.77,
+              "pass": 0.346
+            }
+          },
+          {
+            "from": "Drift",
+            "to": "Aurora",
+            "cohort": {
+              "drawn": 289.8,
+              "from": "Drift",
+              "to": "Aurora",
+              "essay": false,
+              "crossed": false,
+              "travel": 957,
+              "spill": 5883445,
+              "hole": 4487532,
+              "swell": 417604,
+              "bulk": 0,
+              "bloat": 4014,
+              "role": 19.12,
+              "pass": 1.219
+            },
+            "mark": {
+              "drawn": 270.6,
+              "from": "Drift",
+              "to": "Aurora",
+              "essay": false,
+              "crossed": false,
+              "travel": 957,
+              "spill": 5658669,
+              "hole": 4187456,
+              "swell": 381528,
+              "bulk": 0,
+              "bloat": 3361,
+              "role": 19.12,
+              "pass": 0.952
+            }
+          },
+          {
+            "from": "Aurora",
+            "to": "Drift",
+            "cohort": {
+              "drawn": 132.2,
+              "from": "Aurora",
+              "to": "Drift",
+              "essay": false,
+              "crossed": false,
+              "travel": 970,
+              "spill": 4070697,
+              "hole": 2641474,
+              "swell": 17521,
+              "bulk": 0,
+              "bloat": 1319,
+              "role": 19.12,
+              "pass": 0.57
+            },
+            "mark": {
+              "drawn": 397.6,
+              "from": "Aurora",
+              "to": "Drift",
+              "essay": false,
+              "crossed": false,
+              "travel": 970,
+              "spill": 3408788,
+              "hole": 3574970,
+              "swell": 14323,
+              "bulk": 0,
+              "bloat": 549375,
+              "role": 19.12,
+              "pass": 0.946
+            }
+          },
+          {
+            "from": "Drift",
+            "to": "Dune",
+            "cohort": {
+              "drawn": 797,
+              "from": "Drift",
+              "to": "Dune",
+              "essay": true,
+              "crossed": false,
+              "travel": 5503,
+              "spill": 88450,
+              "hole": 21222082,
+              "swell": 24103653,
+              "bulk": 643569,
+              "bloat": 2162,
+              "role": 30.36,
+              "pass": 1.687
+            },
+            "mark": {
+              "drawn": 386.2,
+              "from": "Drift",
+              "to": "Dune",
+              "essay": true,
+              "crossed": false,
+              "travel": 5514,
+              "spill": 89244,
+              "hole": 21070413,
+              "swell": 24069556,
+              "bulk": 715419,
+              "bloat": 2213,
+              "role": 30.36,
+              "pass": 1.687
+            }
+          },
+          {
+            "from": "Dune",
+            "to": "Drift",
+            "cohort": {
+              "drawn": 6683.2,
+              "from": "Dune",
+              "to": "Drift",
+              "essay": true,
+              "crossed": false,
+              "travel": 3444,
+              "spill": 2993504,
+              "hole": 17471376,
+              "swell": 1516,
+              "bulk": 29113698,
+              "bloat": 320936,
+              "role": 30.36,
+              "pass": 1.642
+            },
+            "mark": {
+              "drawn": 7839.1,
+              "from": "Dune",
+              "to": "Drift",
+              "essay": true,
+              "crossed": false,
+              "travel": 3444,
+              "spill": 2377827,
+              "hole": 17371874,
+              "swell": 8265,
+              "bulk": 28875835,
+              "bloat": 331216,
+              "role": 30.36,
+              "pass": 1.642
+            }
+          },
+          {
+            "from": "Drift",
+            "to": "Jazz",
+            "cohort": {
+              "drawn": 153.5,
+              "from": "Drift",
+              "to": "Jazz",
+              "essay": false,
+              "crossed": false,
+              "travel": 1384,
+              "spill": 5091257,
+              "hole": 3587053,
+              "swell": 1088979,
+              "bulk": 0,
+              "bloat": 3018,
+              "role": 36,
+              "pass": 0.869
+            },
+            "mark": {
+              "drawn": 569,
+              "from": "Drift",
+              "to": "Jazz",
+              "essay": false,
+              "crossed": false,
+              "travel": 1384,
+              "spill": 5334804,
+              "hole": 3579866,
+              "swell": 1496391,
+              "bulk": 0,
+              "bloat": 5901,
+              "role": 36,
+              "pass": 0.979
+            }
+          },
+          {
+            "from": "Jazz",
+            "to": "Ember",
+            "cohort": {
+              "drawn": 1036.2,
+              "from": "Jazz",
+              "to": "Ember",
+              "essay": false,
+              "crossed": false,
+              "travel": 1428,
+              "spill": 3303461,
+              "hole": 1342913,
+              "swell": 797139,
+              "bulk": 837000,
+              "bloat": 109,
+              "role": 34.5,
+              "pass": 0.357
+            },
+            "mark": {
+              "drawn": 1263.3,
+              "from": "Jazz",
+              "to": "Ember",
+              "essay": false,
+              "crossed": false,
+              "travel": 1428,
+              "spill": 2695428,
+              "hole": 1575867,
+              "swell": 891495,
+              "bulk": 942190,
+              "bloat": 503,
+              "role": 34.5,
+              "pass": 0.836
+            }
+          },
+          {
+            "from": "Ember",
+            "to": "Tide",
+            "cohort": {
+              "drawn": 4553.3,
+              "from": "Ember",
+              "to": "Tide",
+              "essay": false,
+              "crossed": false,
+              "travel": 1667,
+              "spill": 4613942,
+              "hole": 2184483,
+              "swell": 1833624,
+              "bulk": 1539253,
+              "bloat": 339,
+              "role": 34.5,
+              "pass": 0.741
+            },
+            "mark": {
+              "drawn": 3692,
+              "from": "Ember",
+              "to": "Tide",
+              "essay": false,
+              "crossed": false,
+              "travel": 1667,
+              "spill": 4031550,
+              "hole": 2355612,
+              "swell": 1735743,
+              "bulk": 1974960,
+              "bloat": 1178,
+              "role": 34.5,
+              "pass": 0.99
+            }
+          },
+          {
+            "from": "Tide",
+            "to": "Ember",
+            "cohort": {
+              "drawn": 2766.7,
+              "from": "Tide",
+              "to": "Ember",
+              "essay": false,
+              "crossed": false,
+              "travel": 1570,
+              "spill": 4720971,
+              "hole": 642201,
+              "swell": 866319,
+              "bulk": 1086543,
+              "bloat": 417,
+              "role": 34.5,
+              "pass": 0.116
+            },
+            "mark": {
+              "drawn": 2026.2,
+              "from": "Tide",
+              "to": "Ember",
+              "essay": false,
+              "crossed": false,
+              "travel": 1570,
+              "spill": 4969376,
+              "hole": 696997,
+              "swell": 1710266,
+              "bulk": 1059115,
+              "bloat": 2271,
+              "role": 34.5,
+              "pass": 0.654
+            }
+          },
+          {
+            "from": "Ember",
+            "to": "Moss",
+            "cohort": {
+              "drawn": 3963.7,
+              "from": "Ember",
+              "to": "Moss",
+              "essay": false,
+              "crossed": false,
+              "travel": 1299,
+              "spill": 4238316,
+              "hole": 3430992,
+              "swell": 2184642,
+              "bulk": 1513184,
+              "bloat": 2185,
+              "role": 22.26,
+              "pass": 0.698
+            },
+            "mark": {
+              "drawn": 4066,
+              "from": "Ember",
+              "to": "Moss",
+              "essay": false,
+              "crossed": false,
+              "travel": 1299,
+              "spill": 4230043,
+              "hole": 3451694,
+              "swell": 2126144,
+              "bulk": 1503883,
+              "bloat": 374,
+              "role": 22.26,
+              "pass": 0.633
+            }
+          },
+          {
+            "from": "Moss",
+            "to": "Ember",
+            "cohort": {
+              "drawn": 533.4,
+              "from": "Moss",
+              "to": "Ember",
+              "essay": false,
+              "crossed": false,
+              "travel": 2547,
+              "spill": 3478875,
+              "hole": 5660181,
+              "swell": 969811,
+              "bulk": 541017,
+              "bloat": 404,
+              "role": 22.26,
+              "pass": 0.491
+            },
+            "mark": {
+              "drawn": 1243.5,
+              "from": "Moss",
+              "to": "Ember",
+              "essay": false,
+              "crossed": false,
+              "travel": 2547,
+              "spill": 4030113,
+              "hole": 5438024,
+              "swell": 1332338,
+              "bulk": 601476,
+              "bloat": 851,
+              "role": 22.26,
+              "pass": 0.692
+            }
+          },
+          {
+            "from": "Ember",
+            "to": "Petal",
+            "cohort": {
+              "drawn": 2921.1,
+              "from": "Ember",
+              "to": "Petal",
+              "essay": false,
+              "crossed": false,
+              "travel": 3242,
+              "spill": 7317188,
+              "hole": 5718312,
+              "swell": 1520378,
+              "bulk": 1648199,
+              "bloat": 334,
+              "role": 21.23,
+              "pass": 0.237
+            },
+            "mark": {
+              "drawn": 3127.3,
+              "from": "Ember",
+              "to": "Petal",
+              "essay": false,
+              "crossed": false,
+              "travel": 3242,
+              "spill": 10529146,
+              "hole": 3376665,
+              "swell": 6340972,
+              "bulk": 1719301,
+              "bloat": 1250,
+              "role": 21.23,
+              "pass": 0.42
+            }
+          },
+          {
+            "from": "Petal",
+            "to": "Ember",
+            "cohort": {
+              "drawn": 4340,
+              "from": "Petal",
+              "to": "Ember",
+              "essay": false,
+              "crossed": false,
+              "travel": 1460,
+              "spill": 3016222,
+              "hole": 7251627,
+              "swell": 1388634,
+              "bulk": 931443,
+              "bloat": 1905376,
+              "role": 21.23,
+              "pass": 0.105
+            },
+            "mark": {
+              "drawn": 2467.2,
+              "from": "Petal",
+              "to": "Ember",
+              "essay": false,
+              "crossed": false,
+              "travel": 1460,
+              "spill": 2724951,
+              "hole": 6533213,
+              "swell": 1491323,
+              "bulk": 947402,
+              "bloat": 2229261,
+              "role": 21.23,
+              "pass": 0.933
+            }
+          },
+          {
+            "from": "Ember",
+            "to": "Aurora",
+            "cohort": {
+              "drawn": 4633.5,
+              "from": "Ember",
+              "to": "Aurora",
+              "essay": false,
+              "crossed": false,
+              "travel": 1413,
+              "spill": 4108489,
+              "hole": 2974740,
+              "swell": 460546,
+              "bulk": 823906,
+              "bloat": 125199,
+              "role": 23,
+              "pass": 0.722
+            },
+            "mark": {
+              "drawn": 6268.6,
+              "from": "Ember",
+              "to": "Aurora",
+              "essay": false,
+              "crossed": false,
+              "travel": 1413,
+              "spill": 3885880,
+              "hole": 2116773,
+              "swell": 490660,
+              "bulk": 1243506,
+              "bloat": 4684,
+              "role": 23,
+              "pass": 1.24
+            }
+          },
+          {
+            "from": "Aurora",
+            "to": "Ember",
+            "cohort": {
+              "drawn": 442.6,
+              "from": "Aurora",
+              "to": "Ember",
+              "essay": false,
+              "crossed": false,
+              "travel": 1252,
+              "spill": 4698402,
+              "hole": 2851340,
+              "swell": 712479,
+              "bulk": 12897,
+              "bloat": 5862,
+              "role": 23,
+              "pass": 0.099
+            },
+            "mark": {
+              "drawn": 123.4,
+              "from": "Aurora",
+              "to": "Ember",
+              "essay": false,
+              "crossed": false,
+              "travel": 1238,
+              "spill": 3629912,
+              "hole": 2809936,
+              "swell": 1087610,
+              "bulk": 0,
+              "bloat": 861,
+              "role": 23,
+              "pass": 0.924
+            }
+          },
+          {
+            "from": "Ember",
+            "to": "Dune",
+            "cohort": {
+              "drawn": 5432.8,
+              "from": "Ember",
+              "to": "Dune",
+              "essay": true,
+              "crossed": false,
+              "travel": 5410,
+              "spill": 487755,
+              "hole": 18633853,
+              "swell": 24634857,
+              "bulk": 3455485,
+              "bloat": 4738,
+              "role": 95.46,
+              "pass": 1.454
+            },
+            "mark": {
+              "drawn": 5237.4,
+              "from": "Ember",
+              "to": "Dune",
+              "essay": true,
+              "crossed": false,
+              "travel": 5410,
+              "spill": 540293,
+              "hole": 18536073,
+              "swell": 24899651,
+              "bulk": 3848041,
+              "bloat": 4046,
+              "role": 95.46,
+              "pass": 1.613
+            }
+          },
+          {
+            "from": "Dune",
+            "to": "Ember",
+            "cohort": {
+              "drawn": 3545.5,
+              "from": "Dune",
+              "to": "Ember",
+              "essay": true,
+              "crossed": false,
+              "travel": 3154,
+              "spill": 1337233,
+              "hole": 15009325,
+              "swell": 2735162,
+              "bulk": 29211036,
+              "bloat": 1776,
+              "role": 36.51,
+              "pass": 0.941
+            },
+            "mark": {
+              "drawn": 3127.1,
+              "from": "Dune",
+              "to": "Ember",
+              "essay": true,
+              "crossed": false,
+              "travel": 3154,
+              "spill": 1325320,
+              "hole": 14670905,
+              "swell": 6270832,
+              "bulk": 26010045,
+              "bloat": 4017,
+              "role": 36.51,
+              "pass": 0.94
+            }
+          },
+          {
+            "from": "Ember",
+            "to": "Jazz",
+            "cohort": {
+              "drawn": 2162.2,
+              "from": "Ember",
+              "to": "Jazz",
+              "essay": false,
+              "crossed": false,
+              "travel": 1350,
+              "spill": 4624184,
+              "hole": 1766458,
+              "swell": 841533,
+              "bulk": 1324192,
+              "bloat": 2190,
+              "role": 162.58,
+              "pass": 1.032
+            },
+            "mark": {
+              "drawn": 1724.5,
+              "from": "Ember",
+              "to": "Jazz",
+              "essay": false,
+              "crossed": false,
+              "travel": 1350,
+              "spill": 1730077,
+              "hole": 974833,
+              "swell": 2002069,
+              "bulk": 1372366,
+              "bloat": 30,
+              "role": 162.58,
+              "pass": 0.524
+            }
+          },
+          {
+            "from": "Jazz",
+            "to": "Tide",
+            "cohort": {
+              "drawn": 1415.4,
+              "from": "Jazz",
+              "to": "Tide",
+              "essay": false,
+              "crossed": false,
+              "travel": 1103,
+              "spill": 3452371,
+              "hole": 3228724,
+              "swell": 910228,
+              "bulk": 702295,
+              "bloat": 370,
+              "role": 31.5,
+              "pass": 0.206
+            },
+            "mark": {
+              "drawn": 1686.5,
+              "from": "Jazz",
+              "to": "Tide",
+              "essay": false,
+              "crossed": false,
+              "travel": 1103,
+              "spill": 2529602,
+              "hole": 3273648,
+              "swell": 1712778,
+              "bulk": 730523,
+              "bloat": 179,
+              "role": 31.5,
+              "pass": 0.489
+            }
+          },
+          {
+            "from": "Tide",
+            "to": "Moss",
+            "cohort": {
+              "drawn": 1281.5,
+              "from": "Tide",
+              "to": "Moss",
+              "essay": false,
+              "crossed": false,
+              "travel": 1683,
+              "spill": 3421839,
+              "hole": 2551672,
+              "swell": 1620310,
+              "bulk": 1551668,
+              "bloat": 2286,
+              "role": 27.9,
+              "pass": 0.552
+            },
+            "mark": {
+              "drawn": 1341.7,
+              "from": "Tide",
+              "to": "Moss",
+              "essay": false,
+              "crossed": false,
+              "travel": 1683,
+              "spill": 4330570,
+              "hole": 2507187,
+              "swell": 2339487,
+              "bulk": 2743077,
+              "bloat": 808,
+              "role": 27.9,
+              "pass": 0.645
+            }
+          },
+          {
+            "from": "Moss",
+            "to": "Tide",
+            "cohort": {
+              "drawn": 219,
+              "from": "Moss",
+              "to": "Tide",
+              "essay": false,
+              "crossed": false,
+              "travel": 2627,
+              "spill": 2097174,
+              "hole": 5304384,
+              "swell": 1387729,
+              "bulk": 246701,
+              "bloat": 11293,
+              "role": 23.23,
+              "pass": 0.429
+            },
+            "mark": {
+              "drawn": 206.8,
+              "from": "Moss",
+              "to": "Tide",
+              "essay": false,
+              "crossed": false,
+              "travel": 2627,
+              "spill": 1780336,
+              "hole": 7580308,
+              "swell": 746294,
+              "bulk": 252887,
+              "bloat": 2045,
+              "role": 23.23,
+              "pass": 0.685
+            }
+          },
+          {
+            "from": "Tide",
+            "to": "Petal",
+            "cohort": {
+              "drawn": 2738.1,
+              "from": "Tide",
+              "to": "Petal",
+              "essay": false,
+              "crossed": false,
+              "travel": 3181,
+              "spill": 5951766,
+              "hole": 4263129,
+              "swell": 1568179,
+              "bulk": 1379320,
+              "bloat": 2065,
+              "role": 29.25,
+              "pass": 0.789
+            },
+            "mark": {
+              "drawn": 3001.7,
+              "from": "Tide",
+              "to": "Petal",
+              "essay": false,
+              "crossed": false,
+              "travel": 3181,
+              "spill": 5910245,
+              "hole": 8074167,
+              "swell": 503330,
+              "bulk": 1756875,
+              "bloat": 34,
+              "role": 29.25,
+              "pass": 0.917
+            }
+          },
+          {
+            "from": "Petal",
+            "to": "Tide",
+            "cohort": {
+              "drawn": 3828.6,
+              "from": "Petal",
+              "to": "Tide",
+              "essay": false,
+              "crossed": false,
+              "travel": 1970,
+              "spill": 3352889,
+              "hole": 6138410,
+              "swell": 848215,
+              "bulk": 472557,
+              "bloat": 1439543,
+              "role": 29.25,
+              "pass": 0.164
+            },
+            "mark": {
+              "drawn": 4019.1,
+              "from": "Petal",
+              "to": "Tide",
+              "essay": false,
+              "crossed": false,
+              "travel": 1970,
+              "spill": 2811779,
+              "hole": 5847995,
+              "swell": 3767141,
+              "bulk": 470003,
+              "bloat": 1566165,
+              "role": 29.25,
+              "pass": 0.533
+            }
+          },
+          {
+            "from": "Tide",
+            "to": "Aurora",
+            "cohort": {
+              "drawn": 3476.5,
+              "from": "Tide",
+              "to": "Aurora",
+              "essay": false,
+              "crossed": false,
+              "travel": 1051,
+              "spill": 3198484,
+              "hole": 1380450,
+              "swell": 131142,
+              "bulk": 1096404,
+              "bloat": 5861,
+              "role": 28.5,
+              "pass": 1.334
+            },
+            "mark": {
+              "drawn": 3431.4,
+              "from": "Tide",
+              "to": "Aurora",
+              "essay": false,
+              "crossed": false,
+              "travel": 1051,
+              "spill": 2845713,
+              "hole": 823570,
+              "swell": 96622,
+              "bulk": 1268052,
+              "bloat": 1586,
+              "role": 28.5,
+              "pass": 1.211
+            }
+          },
+          {
+            "from": "Aurora",
+            "to": "Tide",
+            "cohort": {
+              "drawn": 274.2,
+              "from": "Aurora",
+              "to": "Tide",
+              "essay": false,
+              "crossed": false,
+              "travel": 1194,
+              "spill": 3796010,
+              "hole": 3778156,
+              "swell": 1077754,
+              "bulk": 0,
+              "bloat": 5898,
+              "role": 24,
+              "pass": 0.216
+            },
+            "mark": {
+              "drawn": 107.3,
+              "from": "Aurora",
+              "to": "Tide",
+              "essay": false,
+              "crossed": false,
+              "travel": 1194,
+              "spill": 3364205,
+              "hole": 3427741,
+              "swell": 1514504,
+              "bulk": 0,
+              "bloat": 346,
+              "role": 24,
+              "pass": 0.602
+            }
+          },
+          {
+            "from": "Tide",
+            "to": "Dune",
+            "cohort": {
+              "drawn": 3481,
+              "from": "Tide",
+              "to": "Dune",
+              "essay": true,
+              "crossed": false,
+              "travel": 5575,
+              "spill": 463809,
+              "hole": 14910610,
+              "swell": 29407477,
+              "bulk": 5931750,
+              "bloat": 2825,
+              "role": 38.1,
+              "pass": 1.347
+            },
+            "mark": {
+              "drawn": 3164.4,
+              "from": "Tide",
+              "to": "Dune",
+              "essay": true,
+              "crossed": false,
+              "travel": 5575,
+              "spill": 488007,
+              "hole": 15149182,
+              "swell": 29399933,
+              "bulk": 6089480,
+              "bloat": 3204,
+              "role": 38.1,
+              "pass": 1.362
+            }
+          },
+          {
+            "from": "Dune",
+            "to": "Tide",
+            "cohort": {
+              "drawn": 5215.6,
+              "from": "Dune",
+              "to": "Tide",
+              "essay": true,
+              "crossed": false,
+              "travel": 3133,
+              "spill": 1726236,
+              "hole": 19837233,
+              "swell": 3167910,
+              "bulk": 34641099,
+              "bloat": 232,
+              "role": 38.1,
+              "pass": 0.893
+            },
+            "mark": {
+              "drawn": 4499.4,
+              "from": "Dune",
+              "to": "Tide",
+              "essay": true,
+              "crossed": false,
+              "travel": 3133,
+              "spill": 1465095,
+              "hole": 18765686,
+              "swell": 6457567,
+              "bulk": 31970681,
+              "bloat": 1096,
+              "role": 38.1,
+              "pass": 0.893
+            }
+          },
+          {
+            "from": "Tide",
+            "to": "Jazz",
+            "cohort": {
+              "drawn": 1481.7,
+              "from": "Tide",
+              "to": "Jazz",
+              "essay": false,
+              "crossed": false,
+              "travel": 823,
+              "spill": 3296930,
+              "hole": 835936,
+              "swell": 1270356,
+              "bulk": 1070049,
+              "bloat": 1291,
+              "role": 63,
+              "pass": 0.862
+            },
+            "mark": {
+              "drawn": 1602.6,
+              "from": "Tide",
+              "to": "Jazz",
+              "essay": false,
+              "crossed": false,
+              "travel": 823,
+              "spill": 2352875,
+              "hole": 378780,
+              "swell": 1778683,
+              "bulk": 1390009,
+              "bloat": 2,
+              "role": 63,
+              "pass": 0.733
+            }
+          },
+          {
+            "from": "Jazz",
+            "to": "Moss",
+            "cohort": {
+              "drawn": 1290.5,
+              "from": "Jazz",
+              "to": "Moss",
+              "essay": false,
+              "crossed": false,
+              "travel": 1754,
+              "spill": 2866981,
+              "hole": 2901502,
+              "swell": 1446450,
+              "bulk": 610700,
+              "bloat": 1285,
+              "role": 40.65,
+              "pass": 0.113
+            },
+            "mark": {
+              "drawn": 979.6,
+              "from": "Jazz",
+              "to": "Moss",
+              "essay": false,
+              "crossed": false,
+              "travel": 1754,
+              "spill": 3706574,
+              "hole": 3150053,
+              "swell": 2658066,
+              "bulk": 776014,
+              "bloat": 89,
+              "role": 40.65,
+              "pass": 0.593
+            }
+          },
+          {
+            "from": "Moss",
+            "to": "Petal",
+            "cohort": {
+              "drawn": 257.8,
+              "from": "Moss",
+              "to": "Petal",
+              "essay": false,
+              "crossed": false,
+              "travel": 4328,
+              "spill": 10472484,
+              "hole": 10526104,
+              "swell": 2664278,
+              "bulk": 146829,
+              "bloat": 3836,
+              "role": 14.15,
+              "pass": 0.819
+            },
+            "mark": {
+              "drawn": 416.2,
+              "from": "Moss",
+              "to": "Petal",
+              "essay": false,
+              "crossed": false,
+              "travel": 4328,
+              "spill": 9290692,
+              "hole": 11313217,
+              "swell": 1260645,
+              "bulk": 192823,
+              "bloat": 9932,
+              "role": 14.15,
+              "pass": 0.989
+            }
+          },
+          {
+            "from": "Petal",
+            "to": "Moss",
+            "cohort": {
+              "drawn": 2086.8,
+              "from": "Petal",
+              "to": "Moss",
+              "essay": false,
+              "crossed": false,
+              "travel": 1986,
+              "spill": 3261383,
+              "hole": 5178927,
+              "swell": 135054,
+              "bulk": 151558,
+              "bloat": 55793,
+              "role": 18.87,
+              "pass": 0.538
+            },
+            "mark": {
+              "drawn": 2404.6,
+              "from": "Petal",
+              "to": "Moss",
+              "essay": false,
+              "crossed": false,
+              "travel": 1986,
+              "spill": 3636951,
+              "hole": 7236413,
+              "swell": 162807,
+              "bulk": 193038,
+              "bloat": 54750,
+              "role": 18.87,
+              "pass": 0.523
+            }
+          },
+          {
+            "from": "Moss",
+            "to": "Aurora",
+            "cohort": {
+              "drawn": 1340,
+              "from": "Moss",
+              "to": "Aurora",
+              "essay": false,
+              "crossed": false,
+              "travel": 2611,
+              "spill": 4381805,
+              "hole": 10284612,
+              "swell": 41214,
+              "bulk": 149433,
+              "bloat": 26318,
+              "role": 13.79,
+              "pass": 0.882
+            },
+            "mark": {
+              "drawn": 420.2,
+              "from": "Moss",
+              "to": "Aurora",
+              "essay": false,
+              "crossed": false,
+              "travel": 2611,
+              "spill": 3270875,
+              "hole": 9037750,
+              "swell": 60928,
+              "bulk": 173700,
+              "bloat": 7652,
+              "role": 13.79,
+              "pass": 0.8
+            }
+          },
+          {
+            "from": "Aurora",
+            "to": "Moss",
+            "cohort": {
+              "drawn": 1095.7,
+              "from": "Aurora",
+              "to": "Moss",
+              "essay": false,
+              "crossed": false,
+              "travel": 1238,
+              "spill": 1887814,
+              "hole": 5803155,
+              "swell": 113089,
+              "bulk": 2299,
+              "bloat": 1730,
+              "role": 18.39,
+              "pass": 0.704
+            },
+            "mark": {
+              "drawn": 830,
+              "from": "Aurora",
+              "to": "Moss",
+              "essay": false,
+              "crossed": false,
+              "travel": 1240,
+              "spill": 2770392,
+              "hole": 8980695,
+              "swell": 129500,
+              "bulk": 31,
+              "bloat": 191,
+              "role": 18.39,
+              "pass": 0.882
+            }
+          },
+          {
+            "from": "Moss",
+            "to": "Dune",
+            "cohort": {
+              "drawn": 448.5,
+              "from": "Moss",
+              "to": "Dune",
+              "essay": true,
+              "crossed": false,
+              "travel": 4200,
+              "spill": 251510,
+              "hole": 13884106,
+              "swell": 23758978,
+              "bulk": 3702923,
+              "bloat": 152,
+              "role": 29.52,
+              "pass": 1.61
+            },
+            "mark": {
+              "drawn": 736.8,
+              "from": "Moss",
+              "to": "Dune",
+              "essay": true,
+              "crossed": false,
+              "travel": 4200,
+              "spill": 443817,
+              "hole": 14411365,
+              "swell": 24506434,
+              "bulk": 1731921,
+              "bloat": 770,
+              "role": 29.52,
+              "pass": 1.581
+            }
+          },
+          {
+            "from": "Dune",
+            "to": "Moss",
+            "cohort": {
+              "drawn": 1424,
+              "from": "Dune",
+              "to": "Moss",
+              "essay": true,
+              "crossed": false,
+              "travel": 2805,
+              "spill": 2665230,
+              "hole": 5725106,
+              "swell": 293409,
+              "bulk": 35728941,
+              "bloat": 1645,
+              "role": 29.52,
+              "pass": 1.176
+            },
+            "mark": {
+              "drawn": 1399.9,
+              "from": "Dune",
+              "to": "Moss",
+              "essay": true,
+              "crossed": false,
+              "travel": 2805,
+              "spill": 2623778,
+              "hole": 5814068,
+              "swell": 292697,
+              "bulk": 35591178,
+              "bloat": 2186,
+              "role": 29.52,
+              "pass": 1.176
+            }
+          },
+          {
+            "from": "Moss",
+            "to": "Jazz",
+            "cohort": {
+              "drawn": 499.5,
+              "from": "Moss",
+              "to": "Jazz",
+              "essay": false,
+              "crossed": false,
+              "travel": 2839,
+              "spill": 4930128,
+              "hole": 9583195,
+              "swell": 1581778,
+              "bulk": 231605,
+              "bloat": 1813,
+              "role": 112.1,
+              "pass": 1.214
+            },
+            "mark": {
+              "drawn": 382.3,
+              "from": "Moss",
+              "to": "Jazz",
+              "essay": false,
+              "crossed": false,
+              "travel": 2839,
+              "spill": 3620718,
+              "hole": 7262123,
+              "swell": 2589080,
+              "bulk": 260987,
+              "bloat": 493,
+              "role": 112.1,
+              "pass": 0.836
+            }
+          },
+          {
+            "from": "Jazz",
+            "to": "Petal",
+            "cohort": {
+              "drawn": 1498,
+              "from": "Jazz",
+              "to": "Petal",
+              "essay": false,
+              "crossed": false,
+              "travel": 2858,
+              "spill": 4474054,
+              "hole": 2874640,
+              "swell": 1331929,
+              "bulk": 845541,
+              "bloat": 651,
+              "role": 38.77,
+              "pass": 0.169
+            },
+            "mark": {
+              "drawn": 2112.5,
+              "from": "Jazz",
+              "to": "Petal",
+              "essay": false,
+              "crossed": false,
+              "travel": 2858,
+              "spill": 3435565,
+              "hole": 6212608,
+              "swell": 178772,
+              "bulk": 627263,
+              "bloat": 0,
+              "role": 38.77,
+              "pass": 0.654
+            }
+          },
+          {
+            "from": "Petal",
+            "to": "Aurora",
+            "cohort": {
+              "drawn": 1769.9,
+              "from": "Petal",
+              "to": "Aurora",
+              "essay": false,
+              "crossed": false,
+              "travel": 1763,
+              "spill": 5016069,
+              "hole": 7500945,
+              "swell": 492428,
+              "bulk": 499038,
+              "bloat": 9631,
+              "role": 19.5,
+              "pass": 0.568
+            },
+            "mark": {
+              "drawn": 1996.6,
+              "from": "Petal",
+              "to": "Aurora",
+              "essay": false,
+              "crossed": false,
+              "travel": 1763,
+              "spill": 4553985,
+              "hole": 7828708,
+              "swell": 688843,
+              "bulk": 476716,
+              "bloat": 8759,
+              "role": 19.5,
+              "pass": 1.007
+            }
+          },
+          {
+            "from": "Aurora",
+            "to": "Petal",
+            "cohort": {
+              "drawn": 1428.4,
+              "from": "Aurora",
+              "to": "Petal",
+              "essay": false,
+              "crossed": false,
+              "travel": 2582,
+              "spill": 4853288,
+              "hole": 4490681,
+              "swell": 1100999,
+              "bulk": 57361,
+              "bloat": 5139,
+              "role": 65,
+              "pass": 0.111
+            },
+            "mark": {
+              "drawn": 569.9,
+              "from": "Aurora",
+              "to": "Petal",
+              "essay": false,
+              "crossed": false,
+              "travel": 2524,
+              "spill": 3742851,
+              "hole": 6421002,
+              "swell": 497370,
+              "bulk": 0,
+              "bloat": 732,
+              "role": 56.73,
+              "pass": 0.94
+            }
+          },
+          {
+            "from": "Petal",
+            "to": "Dune",
+            "cohort": {
+              "drawn": 3667.1,
+              "from": "Petal",
+              "to": "Dune",
+              "essay": true,
+              "crossed": false,
+              "travel": 5653,
+              "spill": 2313089,
+              "hole": 21357342,
+              "swell": 25709513,
+              "bulk": 2626630,
+              "bloat": 6026,
+              "role": 30.95,
+              "pass": 1.685
+            },
+            "mark": {
+              "drawn": 3191.4,
+              "from": "Petal",
+              "to": "Dune",
+              "essay": true,
+              "crossed": false,
+              "travel": 5653,
+              "spill": 2253387,
+              "hole": 21446314,
+              "swell": 25844412,
+              "bulk": 2651448,
+              "bloat": 12384,
+              "role": 30.95,
+              "pass": 1.685
+            }
+          },
+          {
+            "from": "Dune",
+            "to": "Petal",
+            "cohort": {
+              "drawn": 2036.5,
+              "from": "Dune",
+              "to": "Petal",
+              "essay": true,
+              "crossed": false,
+              "travel": 4115,
+              "spill": 2872626,
+              "hole": 18066046,
+              "swell": 498078,
+              "bulk": 31074596,
+              "bloat": 14094,
+              "role": 30.95,
+              "pass": 1.215
+            },
+            "mark": {
+              "drawn": 3773.6,
+              "from": "Dune",
+              "to": "Petal",
+              "essay": true,
+              "crossed": false,
+              "travel": 4115,
+              "spill": 2925649,
+              "hole": 18612221,
+              "swell": 500887,
+              "bulk": 30729204,
+              "bloat": 15015,
+              "role": 30.95,
+              "pass": 1.215
+            }
+          },
+          {
+            "from": "Petal",
+            "to": "Jazz",
+            "cohort": {
+              "drawn": 1197.5,
+              "from": "Petal",
+              "to": "Jazz",
+              "essay": false,
+              "crossed": false,
+              "travel": 2235,
+              "spill": 4471748,
+              "hole": 4675881,
+              "swell": 2124395,
+              "bulk": 442767,
+              "bloat": 38569,
+              "role": 38.77,
+              "pass": 0.152
+            },
+            "mark": {
+              "drawn": 1028.2,
+              "from": "Petal",
+              "to": "Jazz",
+              "essay": false,
+              "crossed": false,
+              "travel": 2235,
+              "spill": 4327827,
+              "hole": 5535120,
+              "swell": 2278967,
+              "bulk": 329526,
+              "bloat": 20372,
+              "role": 38.77,
+              "pass": 0.83
+            }
+          },
+          {
+            "from": "Jazz",
+            "to": "Aurora",
+            "cohort": {
+              "drawn": 303.8,
+              "from": "Jazz",
+              "to": "Aurora",
+              "essay": false,
+              "crossed": false,
+              "travel": 1182,
+              "spill": 3404587,
+              "hole": 1352596,
+              "swell": 32950,
+              "bulk": 747423,
+              "bloat": 3943,
+              "role": 42,
+              "pass": 0.557
+            },
+            "mark": {
+              "drawn": 1293.4,
+              "from": "Jazz",
+              "to": "Aurora",
+              "essay": false,
+              "crossed": false,
+              "travel": 1182,
+              "spill": 3170333,
+              "hole": 999888,
+              "swell": 109778,
+              "bulk": 1002608,
+              "bloat": 54,
+              "role": 42,
+              "pass": 0.933
+            }
+          },
+          {
+            "from": "Aurora",
+            "to": "Dune",
+            "cohort": {
+              "drawn": 1530.1,
+              "from": "Aurora",
+              "to": "Dune",
+              "essay": true,
+              "crossed": false,
+              "travel": 5441,
+              "spill": 58666,
+              "hole": 25440528,
+              "swell": 26570446,
+              "bulk": 29145,
+              "bloat": 2719,
+              "role": 30.16,
+              "pass": 1.687
+            },
+            "mark": {
+              "drawn": 2578.9,
+              "from": "Aurora",
+              "to": "Dune",
+              "essay": true,
+              "crossed": false,
+              "travel": 5436,
+              "spill": 43944,
+              "hole": 21667355,
+              "swell": 30122470,
+              "bulk": 36208,
+              "bloat": 1424,
+              "role": 30.16,
+              "pass": 1.686
+            }
+          },
+          {
+            "from": "Dune",
+            "to": "Aurora",
+            "cohort": {
+              "drawn": 2703.3,
+              "from": "Dune",
+              "to": "Aurora",
+              "essay": true,
+              "crossed": false,
+              "travel": 3377,
+              "spill": 2527081,
+              "hole": 17289401,
+              "swell": 3299,
+              "bulk": 33708925,
+              "bloat": 790881,
+              "role": 30.16,
+              "pass": 1.643
+            },
+            "mark": {
+              "drawn": 4093.5,
+              "from": "Dune",
+              "to": "Aurora",
+              "essay": true,
+              "crossed": false,
+              "travel": 3377,
+              "spill": 2516792,
+              "hole": 18607246,
+              "swell": 7567,
+              "bulk": 33163013,
+              "bloat": 337797,
+              "role": 30.16,
+              "pass": 1.642
+            }
+          },
+          {
+            "from": "Aurora",
+            "to": "Jazz",
+            "cohort": {
+              "drawn": 66,
+              "from": "Aurora",
+              "to": "Jazz",
+              "essay": false,
+              "crossed": false,
+              "travel": 1155,
+              "spill": 5676702,
+              "hole": 4287500,
+              "swell": 798516,
+              "bulk": 0,
+              "bloat": 4076,
+              "role": 42,
+              "pass": 0.773
+            },
+            "mark": {
+              "drawn": 502.5,
+              "from": "Aurora",
+              "to": "Jazz",
+              "essay": false,
+              "crossed": false,
+              "travel": 1155,
+              "spill": 4954239,
+              "hole": 4363820,
+              "swell": 1166659,
+              "bulk": 0,
+              "bloat": 1229,
+              "role": 42,
+              "pass": 0.531
+            }
+          },
+          {
+            "from": "Jazz",
+            "to": "Dune",
+            "cohort": {
+              "drawn": 468.8,
+              "from": "Jazz",
+              "to": "Dune",
+              "essay": true,
+              "crossed": false,
+              "travel": 5477,
+              "spill": 3318201,
+              "hole": 13121810,
+              "swell": 41950522,
+              "bulk": 7855802,
+              "bloat": 4830,
+              "role": 66.67,
+              "pass": 1.128
+            },
+            "mark": {
+              "drawn": 361.7,
+              "from": "Jazz",
+              "to": "Dune",
+              "essay": true,
+              "crossed": false,
+              "travel": 5477,
+              "spill": 3334002,
+              "hole": 17626995,
+              "swell": 37296157,
+              "bulk": 7966296,
+              "bloat": 2002,
+              "role": 66.67,
+              "pass": 1.122
+            }
+          },
+          {
+            "from": "Dune",
+            "to": "Jazz",
+            "cohort": {
+              "drawn": 4129.6,
+              "from": "Dune",
+              "to": "Jazz",
+              "essay": true,
+              "crossed": false,
+              "travel": 3107,
+              "spill": 3960962,
+              "hole": 15249193,
+              "swell": 4430367,
+              "bulk": 38918215,
+              "bloat": 87408,
+              "role": 66.67,
+              "pass": 1.087
+            },
+            "mark": {
+              "drawn": 4087.4,
+              "from": "Dune",
+              "to": "Jazz",
+              "essay": true,
+              "crossed": false,
+              "travel": 3107,
+              "spill": 3967220,
+              "hole": 15380484,
+              "swell": 4447526,
+              "bulk": 38745273,
+              "bloat": 81004,
+              "role": 66.67,
+              "pass": 1.081
+            }
+          },
+          {
+            "from": "Jazz",
+            "to": "Drift",
+            "cohort": {
+              "drawn": 359.5,
+              "from": "Jazz",
+              "to": "Drift",
+              "essay": false,
+              "crossed": false,
+              "travel": 1257,
+              "spill": 2846379,
+              "hole": 815614,
+              "swell": 0,
+              "bulk": 760943,
+              "bloat": 1248,
+              "role": 36,
+              "pass": 0.119
+            },
+            "mark": {
+              "drawn": 240.2,
+              "from": "Jazz",
+              "to": "Drift",
+              "essay": false,
+              "crossed": false,
+              "travel": 1257,
+              "spill": 1976869,
+              "hole": 889928,
+              "swell": 0,
+              "bulk": 1158711,
+              "bloat": 2325,
+              "role": 36,
+              "pass": 0.515
+            }
+          }
+        ],
+        "budget": 16,
+        "gallery": {
+          "cohort": {
+            "changes": 42,
+            "crossed": 0,
+            "travel": 74536,
+            "spill": 185735568,
+            "hole": 187325382,
+            "swell": 39755779,
+            "bulk": 24339717,
+            "bloat": 3732380,
+            "roleMax": 162.58,
+            "roleMin": 11.77,
+            "passMean": 0.5584285714285716
+          },
+          "mark": {
+            "changes": 42,
+            "crossed": 0,
+            "travel": 74478,
+            "spill": 176534546,
+            "hole": 188668675,
+            "swell": 60040145,
+            "bulk": 28436939,
+            "bloat": 4626855,
+            "roleMax": 162.58,
+            "roleMin": 11.77,
+            "passMean": 0.7765714285714287
+          }
+        },
+        "essay": {
+          "cohort": {
+            "changes": 14,
+            "crossed": 0,
+            "travel": 60394,
+            "spill": 25064352,
+            "hole": 237218011,
+            "swell": 207265187,
+            "bulk": 256641814,
+            "bloat": 1240424,
+            "roleMax": 95.46,
+            "roleMin": 29.52,
+            "passMean": 1.3710714285714285
+          },
+          "mark": {
+            "changes": 14,
+            "crossed": 0,
+            "travel": 60400,
+            "spill": 24394375,
+            "hole": 239130181,
+            "swell": 214123954,
+            "bulk": 248124042,
+            "bloat": 798374,
+            "roleMax": 95.46,
+            "roleMin": 29.52,
+            "passMean": 1.3803571428571426
+          }
+        },
+        "swap": {
+          "cohort": {
+            "changes": 56,
+            "roleMax": 162.58,
+            "roleMin": 11.77,
+            "passMean": 0.762
+          },
+          "mark": {
+            "changes": 56,
+            "roleMax": 162.58,
+            "roleMin": 11.77,
+            "passMean": 0.928
+          }
+        },
+        "split": {
+          "cohort": {
+            "essay": 41563,
+            "other": 64951.8
+          },
+          "mark": {
+            "essay": 44476.8,
+            "other": 66735
+          }
+        },
+        "cohort": {
+          "score": 106514.8,
+          "lurch": 35580.2,
+          "sliver": 829.8,
+          "split": 27.9,
+          "collisions": 117,
+          "shock": 12125.1
+        },
+        "mark": {
+          "score": 111211.8,
+          "lurch": 37116.5,
+          "sliver": 905.7,
+          "split": 28.1,
+          "collisions": 112,
+          "shock": 11988.9
+        },
+        "thinking": {
+          "changes": 56,
+          "rounds": 245,
+          "moves": 109,
+          "late": 0,
+          "framesChecked": 9192
+        }
+      }
+    },
+    "onPage": {
+      "budget": 16,
+      "changes": 11,
+      "thinking": {
+        "changes": 12,
+        "rounds": 61,
+        "moves": 29,
+        "late": 0,
+        "framesChecked": 2323
+      },
+      "drawn": {
+        "score": 12741.7,
+        "lurch": 3122.1,
+        "sliver": 117.2,
+        "split": 0.9,
+        "collisions": 15,
+        "shock": 2072.6
+      }
+    },
+    "story": {
+      "frames": 2040,
+      "identical": true
+    },
+    "tell": {
+      "frames": 3060,
+      "fractured": 0
+    },
+    "pace": {},
+    "motion": {},
+    "edge": {},
+    "body": {},
+    "start": {},
+    "extra": {
+      "breathe40": {
+        "drawn": {
+          "score": 120964.8,
+          "lurch": 37983.8,
+          "sliver": 938.5,
+          "split": 62.1,
+          "collisions": 118,
+          "shock": 11884.2
+        },
+        "gallery": {
+          "changes": 42,
+          "crossed": 0,
+          "travel": 74478,
+          "spill": 71055809,
+          "hole": 346003319,
+          "swell": 107560821,
+          "bulk": 40304457,
+          "bloat": 4452320,
+          "roleMax": 162.58,
+          "roleMin": 11.77,
+          "passMean": 0.7905476190476193
+        },
+        "essay": {
+          "changes": 14,
+          "crossed": 0,
+          "travel": 60400,
+          "spill": 16869191,
+          "hole": 298230205,
+          "swell": 228177782,
+          "bulk": 259012313,
+          "bloat": 3522684,
+          "roleMax": 95.46,
+          "roleMin": 29.52,
+          "passMean": 1.3802142857142858
+        },
+        "swap": {
+          "changes": 56,
+          "roleMax": 162.58,
+          "roleMin": 11.77,
+          "passMean": 0.938
+        },
+        "split": {
+          "essay": 48174.6,
+          "other": 72790.2
+        },
+        "thinking": {
+          "changes": 56,
+          "rounds": 249,
+          "moves": 107,
+          "late": 0,
+          "framesChecked": 10127
+        }
+      }
+    }
+  }
+}
