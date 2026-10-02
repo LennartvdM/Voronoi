@@ -4972,13 +4972,16 @@ class Hive {
     return (-s + Math.sqrt(s * s + 4 * (g - 1) * W * H)) / 4;
   }
 
-  // HINGE: THE GROUND IS THE AUCTION'S BOX, WITH WALLS AND HOLES AS WITHOUT. A
-  // ground cut from the page alone gave the page's change, which may overflow
-  // the screen, a third less room the frame its last wall or hole went, and
-  // every cell grew by as much in one frame. Scoped to Frame II's belt and its
-  // way back; everything else is Conveyor's.
+  // HINGE: THE GROUND THE BELT'S CELLS LEAVE IS THE GROUND THE AUCTION TAKES UP.
+  // A ground cut from the page alone (as Conveyor's is whenever there is a wall
+  // or a hole) gave the page's change, which may overflow the screen into the
+  // auction's box, a third less room than it has with neither, and when the
+  // last of the belt's cells closed every cell grew by as much in one frame.
+  // So while Frame II's cells are holes the ground is the box, unless a wall of
+  // the page's own is there, which keeps it to the page after they close too.
+  // Everything else is Conveyor's.
   hingeBox() {
-    if (HINGE && this.depth === 0 && this.bodies.some(b => b.conveyWall || b.conveyShape || b.conveyBack)) return this.plBox();
+    if (HINGE && this.depth === 0 && this.bodies.some(b => b.conveyShape || b.conveyBack) && !(this.walls || []).some(w => !w.conveyWall)) return this.plBox();
     return [0, 0, this.W, this.H];
   }
   // HINGE: the cells going back cut again, each to the cell this frame's shadow
@@ -5371,7 +5374,7 @@ class Hive {
       const c = cellOf.get(b.subs[0]);
       const parts = c ? (c.pieces || [c]).filter(pc => pc.pts.length >= 3) : [];
       const shape = parts.length ? cellCoreAndArms(parts, b.hole.rect) : null;
-      if (b.conveyBack) { if (shape) { b.conveyBack.to = shape.core; b.conveyBack.sea = parts.flatMap(pc => pc.pts.map((p, i) => pc.labs && pc.labs[i] === SEA ? [p, pc.pts[(i + 1) % pc.pts.length]] : null).filter(Boolean)); } b.holeLinger = false; b.lingerTime = 0; b.holeCore = null; continue; }   // HINGE: a cell going back to the auction goes to the cell the auction would give it (and keeps where that cell meets the sea)
+      if (b.conveyBack) { if (shape) b.conveyBack.to = shape.core; b.holeLinger = false; b.lingerTime = 0; b.holeCore = null; continue; }   // HINGE: a cell going back to the auction goes to the cell the auction would give it
       if (!shape) { b.holeLinger = false; b.lingerTime = 0; continue; }
       // CAUGHT UP? The core against the cell the auction hands it, as a
       // share of that cell — and asked EVERY frame, not only at crystal 0.

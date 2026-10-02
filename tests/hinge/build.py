@@ -36,10 +36,11 @@ Hinge draws the belt's cells as the band itself, cut by fronts.
   When the sea is all in, halfway through the change, every cell is its
   auction cell, and they all close in one frame, the auction taking up the
   weights that drew them.
-- While Frame II's cells are holes the auction's ground is its own box, with
-  walls and holes as without them (a ground cut from the page alone lost the
-  room the page's change may overflow into the frame the last wall or hole
-  went), and on the way back, ground nobody bids for is whitespace, the sea's.
+- While Frame II's cells are holes the auction's ground is the one it will
+  have when they close: the box the change may overflow into, unless a wall of
+  the page's own keeps it to the page (a ground cut from the page alone while
+  they were holes lost a third of the room the frame they closed). On the way
+  back, ground nobody bids for is whitespace, the sea's.
 
 Everything else is Conveyor's to the bit.
 
@@ -259,7 +260,7 @@ function conveyFlow(dt) {
 # the shadow hands each its target; the auction takes up the shadow's weights when they close together
 replace("""      const shape = parts.length ? cellCoreAndArms(parts, b.hole.rect) : null;
       if (!shape) { b.holeLinger = false; b.lingerTime = 0; continue; }""", """      const shape = parts.length ? cellCoreAndArms(parts, b.hole.rect) : null;
-      if (b.conveyBack) { if (shape) { b.conveyBack.to = shape.core; b.conveyBack.sea = parts.flatMap(pc => pc.pts.map((p, i) => pc.labs && pc.labs[i] === SEA ? [p, pc.pts[(i + 1) % pc.pts.length]] : null).filter(Boolean)); } b.holeLinger = false; b.lingerTime = 0; b.holeCore = null; continue; }   // HINGE: a cell going back to the auction goes to the cell the auction would give it (and keeps where that cell meets the sea)
+      if (b.conveyBack) { if (shape) b.conveyBack.to = shape.core; b.holeLinger = false; b.lingerTime = 0; b.holeCore = null; continue; }   // HINGE: a cell going back to the auction goes to the cell the auction would give it
       if (!shape) { b.holeLinger = false; b.lingerTime = 0; continue; }""")
 replace("""    if (this.shadowOn && !this.holes.length && this.shadowAt === this.shadowSig()) {""", """    const adopt = this.conveyAdopt; this.conveyAdopt = false;   // HINGE: the cells back from the belt close together, on the weights that drew them
     if (this.shadowOn && !this.holes.length && (this.shadowAt === this.shadowSig() || adopt)) {""")
@@ -269,13 +270,16 @@ replace("""    if (!poly) pieces = rects.length ? coverRects(0, 0, this.W, this.
     if (!poly) pieces = rects.length ? coverRects(X0, Y0, X1, Y1, rects) : [[[X0, Y0], [X1, Y0], [X1, Y1], [X0, Y1]]];""")
 replace("""    if (!pieces) pieces = [[[0, 0], [this.W, 0], [this.W, this.H], [0, this.H]]];""", """    if (!pieces) { const [X0, Y0, X1, Y1] = this.hingeBox(); pieces = [[[X0, Y0], [X1, Y0], [X1, Y1], [X0, Y1]]]; }   // HINGE: as the main auction's""")
 replace("""  plBox() {
-    const m = this.plM();""", """  // HINGE: THE GROUND IS THE AUCTION'S BOX, WITH WALLS AND HOLES AS WITHOUT. A
-  // ground cut from the page alone gave the page's change, which may overflow
-  // the screen, a third less room the frame its last wall or hole went, and
-  // every cell grew by as much in one frame. Scoped to Frame II's belt and its
-  // way back; everything else is Conveyor's.
+    const m = this.plM();""", """  // HINGE: THE GROUND THE BELT'S CELLS LEAVE IS THE GROUND THE AUCTION TAKES UP.
+  // A ground cut from the page alone (as Conveyor's is whenever there is a wall
+  // or a hole) gave the page's change, which may overflow the screen into the
+  // auction's box, a third less room than it has with neither, and when the
+  // last of the belt's cells closed every cell grew by as much in one frame.
+  // So while Frame II's cells are holes the ground is the box, unless a wall of
+  // the page's own is there, which keeps it to the page after they close too.
+  // Everything else is Conveyor's.
   hingeBox() {
-    if (HINGE && this.depth === 0 && this.bodies.some(b => b.conveyWall || b.conveyShape || b.conveyBack)) return this.plBox();
+    if (HINGE && this.depth === 0 && this.bodies.some(b => b.conveyShape || b.conveyBack) && !(this.walls || []).some(w => !w.conveyWall)) return this.plBox();
     return [0, 0, this.W, this.H];
   }
   plBox() {
@@ -352,6 +356,7 @@ replace("""        if (!live2[k] && this.holes.length) { this.adoptGround(comp.g
 
 replace("""    const active = subs.filter(s => claimOf(s) >= ACTIVE_MIN && !s.body.hole && !s.body.conveyWall);   // CONVEYOR: the frame's middle, a wall, bids nothing""", """    let active = subs.filter(s => claimOf(s) >= ACTIVE_MIN && !s.body.hole && !s.body.conveyWall);   // CONVEYOR: the frame's middle, a wall, bids nothing
     if (HINGE && this.depth === 0 && active.every(s => s.body.isVoid) && this.holes.some(b => b.conveyBack)) active = [];   // HINGE: while the cells go back, whitespace alone has nothing to draw; when they close, the auction takes up the shadow's weights, the whitespace's with them""")
+
 
 out = ROOT / 'hinge.html'
 out.write_bytes(s.encode())
