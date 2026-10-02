@@ -9,8 +9,8 @@
 //   every page from every other are Conveyor's, the world and every drawing command, frame by frame;
 // - from Bento, Frame II is Frame frame by frame until the change has landed; then, for a minute from when the belt is
 //   up to speed, every cell is drawn, nothing fractures, nothing is drawn in the middle, every seed goes clockwise
-//   round the middle and never back, no faster than 40 px/s, every cell is drawn at its share of the band and they
-//   tile it, and every front in a corner passes through the middle's corner (on Conveyor, reported);
+//   round the middle and never back, no faster than 40 px/s, every cell is drawn exactly its stretch and they tile
+//   the band, and every front in a corner passes through the middle's corner (on Conveyor, reported);
 // - at every count from 4 to 30 cells tried, the belt starts with nothing moving further than on Conveyor;
 // - leaving the belt early, mid-way and late for Bento, Frame, Sidebar and a page: no cell moves further in a frame
 //   than on Conveyor (to half a pixel), and nothing fractures;
@@ -359,7 +359,8 @@ function frame2(file,scene,secs,count=12){
   for(const b of cs){if(!st.pic.leaves.some(l=>l.path[0]&&l.path[0].body===b))o.lost++;const p=prev.get(b.id);
    if(p){o.fastest=Math.max(o.fastest,Math.hypot(b.x-p[0],b.y-p[1])*64);let da=Math.atan2(b.y-cy,b.x-cx)-Math.atan2(p[1]-cy,p[0]-cx);da-=2*Math.PI*Math.round(da/(2*Math.PI));if(da<-1e-6)o.back++;o.turned.set(b.id,(o.turned.get(b.id)||0)+da);}
    prev.set(b.id,[b.x,b.y]);claims+=b.claim;A+=(b.loops||[]).reduce((q,l)=>q+Math.abs(ringA(l)),0);}
-  for(const b of cs){const a=(b.loops||[]).reduce((q,l)=>q+Math.abs(ringA(l)),0),share=band*b.claim/claims;o.share=Math.max(o.share,Math.abs(a-share)/share);}
+  // each cell drawn at its stretch, its share of the band when the belt started; how far the claims have moved since, reported
+  const cv=e.convey&&e.convey();if(cv)for(const c of cv.cells){const b=c.b;if(b.leaving)continue;const a=(b.loops||[]).reduce((q,l)=>q+Math.abs(ringA(l)),0),str=c.a*PW*PH;o.share=Math.max(o.share,Math.abs(a-str)/str);o.drift=Math.max(o.drift||0,Math.abs(c.a/cv.belt.A-b.claim/claims)/(c.a/cv.belt.A));}
   o.tiled=Math.max(o.tiled,Math.abs(A-band)/band);
   for(let i=0;i<cs.length;i++)for(let j=i+1;j<cs.length;j++){if(!cs[i].loops||!cs[j].loops)continue;const f=frontOf(cs[i],cs[j]);if(!f)continue;
    const mx=(f.a[0]+f.b[0])/2/PW,my=(f.a[1]+f.b[1])/2/PH,Hn=mx<2&&my<1?[2,1]:mx>C-2&&my<1?[C-2,1]:mx>C-2&&my>RR-1?[C-2,RR-1]:mx<2&&my>RR-1?[2,RR-1]:null;if(!Hn)continue;
@@ -368,7 +369,7 @@ function frame2(file,scene,secs,count=12){
   o.fractured+=shapes(st).fractured;}
  const turns=[...o.turned.values()].map(a=>a/(2*Math.PI)),c=o.cost.sort((a,b)=>a-b);
  return{digests:d,landed,started,startJump:+startJump.toFixed(3),frames:o.frames,lost:o.lost,fractured:o.fractured,inMiddle:o.inMiddle,back:o.back,fastest:+o.fastest.toFixed(1),
-  shareOff:+o.share.toExponential(2),bandOff:+o.tiled.toExponential(2),cornerFronts:o.corner,offHinge:o.offHinge,hingeMax:+o.hingeMax.toFixed(2),hingeMean:+(o.hingeSum/Math.max(1,o.corner)).toFixed(2),
+  shareOff:+o.share.toExponential(2),claimDrift:+(o.drift||0).toExponential(2),bandOff:+o.tiled.toExponential(2),cornerFronts:o.corner,offHinge:o.offHinge,hingeMax:+o.hingeMax.toFixed(2),hingeMean:+(o.hingeSum/Math.max(1,o.corner)).toFixed(2),
   turnsLeast:turns.length?+Math.min(...turns).toFixed(3):0,turnsMost:turns.length?+Math.max(...turns).toFixed(3):0,costMedian:c.length?+c[c.length>>1].toFixed(2):0,costP90:c.length?+c[Math.floor(c.length*.9)].toFixed(2):0};
 }
 const CONVEY_EASE_S=3;
@@ -385,7 +386,7 @@ const CONVEY_EASE_S=3;
  assert.equal(g.back,0,'Frame II: a seed went back');
  assert(g.turnsLeast>0,'Frame II: a cell did not go round');
  assert(g.fastest<=40,'Frame II: a seed went '+g.fastest+' px/s');
- assert(g.shareOff<1e-6,'Frame II: a cell drawn '+g.shareOff+' off its share of the band');
+ assert(g.shareOff<1e-9,'Frame II: a cell drawn '+g.shareOff+' off its stretch');
  assert(g.bandOff<1e-6,'Frame II: the cells cover the band '+g.bandOff+' off');
  assert(g.cornerFronts>0&&g.offHinge===0&&g.hingeMax<0.5,'Frame II: a front in a corner missed its hinge by '+g.hingeMax+' px');
  assert(was.offHinge>0,'Conveyor\'s fronts all pass through the hinges: nothing to show');
@@ -400,7 +401,7 @@ const CONVEY_EASE_S=3;
  for(const n of [4,5,6,7,8,9,10,12,13,16,20,25,30]){const g=frame2(files[1],'frame2',12,n),was=frame2(files[0],'frame2',12,n);
   assert.equal(g.lost+g.fractured+g.inMiddle,0,n+' cells: undrawn '+g.lost+', fractured '+g.fractured+', in the middle '+g.inMiddle);
   assert(g.offHinge===0,n+' cells: a front in a corner missed its hinge by '+g.hingeMax+' px');
-  assert(g.shareOff<1e-6&&g.bandOff<1e-6,n+' cells: off the band\'s shares');
+  assert(g.shareOff<1e-9&&g.bandOff<1e-6,n+' cells: a cell off its stretch, or the band not covered');
   assert(g.startJump<=Math.max(0.05,was.startJump),n+' cells: the belt starts with a cell moving '+g.startJump+' px (Conveyor '+was.startJump+')');
   report.counts.push({cells:n,startJump:g.startJump,conveyorStartJump:was.startJump,cornerFronts:g.cornerFronts,conveyorOffHinge:was.offHinge,conveyorHingeMax:was.hingeMax});}
  console.log('counts',JSON.stringify(report.counts));
@@ -439,7 +440,7 @@ const CONVEY_EASE_S=3;
  const d0=run(files[0]),d1=run(files[1]),at=d1.findIndex((x,i)=>x!==d0[i]);assert.equal(at,-1,'the Cue story left Conveyor\'s at frame '+at);
  report.story={frames:d0.length,identical:true};
 }
-const SCOPE='Real full tick; native Canvas and browser DOM stubbed; frames of 1/64 s; a desk of 1440×900 (the Cue story at 1900×810); the worker of Wings headless thinking sixteen rehearsed frames a frame. With the rule in and no budget, the tour and the chain through every page from every other (none of them Frame II) are Conveyor\'s, the world and every drawing command, frame by frame. From Bento, Frame II is Frame frame by frame until the change has landed; then, from when its belt is up to speed and for a minute, every cell is drawn, nothing fractures, no cell is drawn in the middle, every seed goes clockwise round the middle and never back, no faster than 40 px/s, every cell is drawn at its share of the band and the cells cover it, and every front between two cells in a corner block passes through the middle\'s corner (on Conveyor, reported). At every count tried from 4 to 30 cells the same holds for 12 s, and the belt starts with no cell moving further in a frame than on Conveyor. Leaving the belt as it gets up to speed, 12 s and 45 s after the ask, for Bento, Frame, Sidebar and a page, no cell moves further in a frame than on Conveyor, to half a pixel (moves over 300 px aside), and nothing fractures (a cell on its way back fractures only by a dent). Into Frame II and out of it to a page, home and two scenes, with the worker thinking, nothing waits or fractures, what is rehearsed is what is played, every change has one pace and every page at rest is exact. A Cue story is Conveyor\'s frame by frame.';
+const SCOPE='Real full tick; native Canvas and browser DOM stubbed; frames of 1/64 s; a desk of 1440×900 (the Cue story at 1900×810); the worker of Wings headless thinking sixteen rehearsed frames a frame. With the rule in and no budget, the tour and the chain through every page from every other (none of them Frame II) are Conveyor\'s, the world and every drawing command, frame by frame. From Bento, Frame II is Frame frame by frame until the change has landed; then, from when its belt is up to speed and for a minute, every cell is drawn, nothing fractures, no cell is drawn in the middle, every seed goes clockwise round the middle and never back, no faster than 40 px/s, every cell is drawn exactly its stretch (its share of the band when the belt started) and the cells cover the band, and every front between two cells in a corner block passes through the middle\'s corner (on Conveyor, reported). At every count tried from 4 to 30 cells the same holds for 12 s, and the belt starts with no cell moving further in a frame than on Conveyor. Leaving the belt as it gets up to speed, 12 s and 45 s after the ask, for Bento, Frame, Sidebar and a page, no cell moves further in a frame than on Conveyor, to half a pixel (moves over 300 px aside), and nothing fractures (a cell on its way back fractures only by a dent). Into Frame II and out of it to a page, home and two scenes, with the worker thinking, nothing waits or fractures, what is rehearsed is what is played, every change has one pace and every page at rest is exact. A Cue story is Conveyor\'s frame by frame.';
 const result={scope:SCOPE,report};
 fs.writeFileSync(path.join(__dirname,'validation.json'),JSON.stringify(result,null,2)+'\n');
 console.log(JSON.stringify({trace:report.trace,frame2:report.frame2,inOut:{conveyor:report.inOut.conveyor.score,mark:report.inOut.mark.score},story:report.story}));
