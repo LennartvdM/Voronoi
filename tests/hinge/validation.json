@@ -1,0 +1,452 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed; frames of 1/64 s; a desk of 1440×900 (the Cue story at 1900×810); the worker of Wings headless thinking sixteen rehearsed frames a frame. With the rule in and no budget, the tour and the chain through every page from every other (none of them Frame II) are Conveyor's, the world and every drawing command, frame by frame. From Bento, Frame II is Frame frame by frame until the change has landed; then, from when its belt is up to speed and for a minute, every cell is drawn, nothing fractures, no cell is drawn in the middle, every seed goes clockwise round the middle and never back, no faster than 40 px/s, every cell is drawn as its stretch (its share of the band when the belt started) and the cells cover the band, both to the outline builder's 0.05 px, and every front between two cells in a corner block passes through the middle's corner (on Conveyor, reported). At every count tried from 4 to 30 cells the same holds for 12 s, and the belt starts with no cell moving further in a frame than on Conveyor, to half a pixel. Leaving the belt as it gets up to speed, 12 s and 45 s after the ask, for Bento, Frame, Sidebar and a page, over the twelve no cell moves further in a frame than on Conveyor and the largest moves of each sum to no more (moves over 300 px aside), and nothing fractures (a cell on its way back fractures only by a dent). Into Frame II and out of it to a page, home and two scenes, with the worker thinking, nothing waits or fractures, what is rehearsed is what is played, every change has one pace and every page at rest is exact. A Cue story is Conveyor's frame by frame.",
+  "report": {
+    "trace": {
+      "tour": {
+        "frames": 11550,
+        "identical": true
+      },
+      "pages": {
+        "frames": 25950,
+        "identical": true
+      }
+    },
+    "home": null,
+    "desk": null,
+    "pages": null,
+    "onPage": null,
+    "story": {
+      "frames": 2040,
+      "identical": true
+    },
+    "tell": null,
+    "pace": {},
+    "motion": {},
+    "edge": {},
+    "body": {},
+    "start": {},
+    "frame2": {
+      "leftFrameAt": 120,
+      "landedAt": 120,
+      "hinge": {
+        "landed": 120,
+        "started": 120,
+        "startJump": 2.037,
+        "frames": 3721,
+        "lost": 0,
+        "fractured": 0,
+        "inMiddle": 0,
+        "back": 0,
+        "fastest": 28,
+        "shareOffPx": 0.00743,
+        "claimDrift": 0.00000147,
+        "bandOffPx": 0.000734,
+        "cornerFronts": 7252,
+        "offHinge": 0,
+        "hingeMax": 0.01,
+        "hingeMean": 0,
+        "turnsLeast": 0.187,
+        "turnsMost": 0.354,
+        "costMedian": 2.9,
+        "costP90": 5.14
+      },
+      "conveyor": {
+        "landed": 120,
+        "started": 120,
+        "startJump": 3.508,
+        "frames": 3721,
+        "lost": 0,
+        "fractured": 0,
+        "inMiddle": 0,
+        "back": 0,
+        "fastest": 28,
+        "shareOffPx": 0.00554,
+        "claimDrift": 0.00000184,
+        "bandOffPx": 0.000683,
+        "cornerFronts": 7294,
+        "offHinge": 6980,
+        "hingeMax": 116.9,
+        "hingeMean": 33.76,
+        "turnsLeast": 0.187,
+        "turnsMost": 0.354,
+        "costMedian": 2.6,
+        "costP90": 4.28
+      }
+    },
+    "counts": [
+      {
+        "cells": 4,
+        "startJump": 0.008,
+        "conveyorStartJump": 0,
+        "cornerFronts": 736,
+        "conveyorOffHinge": 474,
+        "conveyorHingeMax": 80.18
+      },
+      {
+        "cells": 5,
+        "startJump": 0.008,
+        "conveyorStartJump": 0.005,
+        "cornerFronts": 864,
+        "conveyorOffHinge": 792,
+        "conveyorHingeMax": 80.09
+      },
+      {
+        "cells": 6,
+        "startJump": 0.011,
+        "conveyorStartJump": 0.003,
+        "cornerFronts": 1095,
+        "conveyorOffHinge": 1056,
+        "conveyorHingeMax": 175.16
+      },
+      {
+        "cells": 7,
+        "startJump": 0.01,
+        "conveyorStartJump": 0.014,
+        "cornerFronts": 1342,
+        "conveyorOffHinge": 1408,
+        "conveyorHingeMax": 173.21
+      },
+      {
+        "cells": 8,
+        "startJump": 0.008,
+        "conveyorStartJump": 0.001,
+        "cornerFronts": 1492,
+        "conveyorOffHinge": 1376,
+        "conveyorHingeMax": 112.7
+      },
+      {
+        "cells": 9,
+        "startJump": 0.021,
+        "conveyorStartJump": 0.02,
+        "cornerFronts": 1918,
+        "conveyorOffHinge": 1975,
+        "conveyorHingeMax": 131.5
+      },
+      {
+        "cells": 10,
+        "startJump": 0.007,
+        "conveyorStartJump": 0.001,
+        "cornerFronts": 1504,
+        "conveyorOffHinge": 1430,
+        "conveyorHingeMax": 106.76
+      },
+      {
+        "cells": 12,
+        "startJump": 2.037,
+        "conveyorStartJump": 3.508,
+        "cornerFronts": 1816,
+        "conveyorOffHinge": 1650,
+        "conveyorHingeMax": 76.35
+      },
+      {
+        "cells": 13,
+        "startJump": 0.029,
+        "conveyorStartJump": 0.028,
+        "cornerFronts": 2054,
+        "conveyorOffHinge": 2250,
+        "conveyorHingeMax": 133.17
+      },
+      {
+        "cells": 16,
+        "startJump": 0.065,
+        "conveyorStartJump": 0.027,
+        "cornerFronts": 1882,
+        "conveyorOffHinge": 1812,
+        "conveyorHingeMax": 61.26
+      },
+      {
+        "cells": 20,
+        "startJump": 0.012,
+        "conveyorStartJump": 0.002,
+        "cornerFronts": 1890,
+        "conveyorOffHinge": 1840,
+        "conveyorHingeMax": 56.64
+      },
+      {
+        "cells": 25,
+        "startJump": 0.01,
+        "conveyorStartJump": 0.01,
+        "cornerFronts": 2557,
+        "conveyorOffHinge": 2800,
+        "conveyorHingeMax": 123.41
+      },
+      {
+        "cells": 30,
+        "startJump": 0.014,
+        "conveyorStartJump": 0.02,
+        "cornerFronts": 2524,
+        "conveyorOffHinge": 2448,
+        "conveyorHingeMax": 82.07
+      }
+    ],
+    "leave": [
+      {
+        "act": "scene:bento",
+        "wait": 3.5,
+        "conveyor": {
+          "max": 42.2,
+          "p99": 10.8,
+          "msPerFrame": 23.4
+        },
+        "hinge": {
+          "max": 16.6,
+          "p99": 10.8,
+          "backFrames": 55,
+          "msPerFrame": 32.6
+        }
+      },
+      {
+        "act": "scene:frame",
+        "wait": 3.5,
+        "conveyor": {
+          "max": 9.2,
+          "p99": 8.5,
+          "msPerFrame": 12.7
+        },
+        "hinge": {
+          "max": 9.2,
+          "p99": 8.5,
+          "backFrames": 31,
+          "msPerFrame": 16.1
+        }
+      },
+      {
+        "act": "scene:sidebar",
+        "wait": 3.5,
+        "conveyor": {
+          "max": 25.7,
+          "p99": 15.4,
+          "msPerFrame": 56.4
+        },
+        "hinge": {
+          "max": 16.7,
+          "p99": 15.2,
+          "backFrames": 67,
+          "msPerFrame": 60.7
+        }
+      },
+      {
+        "act": "open:Moss",
+        "wait": 3.5,
+        "conveyor": {
+          "max": 40.6,
+          "p99": 40.3,
+          "msPerFrame": 94.1
+        },
+        "hinge": {
+          "max": 46.8,
+          "p99": 31.5,
+          "backFrames": 90,
+          "msPerFrame": 107.2
+        }
+      },
+      {
+        "act": "scene:bento",
+        "wait": 12,
+        "conveyor": {
+          "max": 44,
+          "p99": 10.6,
+          "msPerFrame": 22.8
+        },
+        "hinge": {
+          "max": 12.7,
+          "p99": 11.1,
+          "backFrames": 53,
+          "msPerFrame": 23.1
+        }
+      },
+      {
+        "act": "scene:frame",
+        "wait": 12,
+        "conveyor": {
+          "max": 42.5,
+          "p99": 7.3,
+          "msPerFrame": 26.5
+        },
+        "hinge": {
+          "max": 10,
+          "p99": 9.6,
+          "backFrames": 46,
+          "msPerFrame": 26
+        }
+      },
+      {
+        "act": "scene:sidebar",
+        "wait": 12,
+        "conveyor": {
+          "max": 23.8,
+          "p99": 20,
+          "msPerFrame": 55.3
+        },
+        "hinge": {
+          "max": 20.3,
+          "p99": 19.4,
+          "backFrames": 69,
+          "msPerFrame": 54.8
+        }
+      },
+      {
+        "act": "open:Moss",
+        "wait": 12,
+        "conveyor": {
+          "max": 37.9,
+          "p99": 33,
+          "msPerFrame": 90
+        },
+        "hinge": {
+          "max": 31.1,
+          "p99": 27.9,
+          "backFrames": 91,
+          "msPerFrame": 90.3
+        }
+      },
+      {
+        "act": "scene:bento",
+        "wait": 45,
+        "conveyor": {
+          "max": 54.6,
+          "p99": 10.5,
+          "msPerFrame": 22
+        },
+        "hinge": {
+          "max": 11.8,
+          "p99": 11.7,
+          "backFrames": 63,
+          "msPerFrame": 26.8
+        }
+      },
+      {
+        "act": "scene:frame",
+        "wait": 45,
+        "conveyor": {
+          "max": 163.4,
+          "p99": 9.2,
+          "msPerFrame": 29.2
+        },
+        "hinge": {
+          "max": 9.3,
+          "p99": 8.9,
+          "backFrames": 72,
+          "msPerFrame": 40.6
+        }
+      },
+      {
+        "act": "scene:sidebar",
+        "wait": 45,
+        "conveyor": {
+          "max": 31.3,
+          "p99": 17.5,
+          "msPerFrame": 41.4
+        },
+        "hinge": {
+          "max": 22.3,
+          "p99": 20.4,
+          "backFrames": 70,
+          "msPerFrame": 47.7
+        }
+      },
+      {
+        "act": "open:Moss",
+        "wait": 45,
+        "conveyor": {
+          "max": 126.3,
+          "p99": 57.7,
+          "msPerFrame": 85.2
+        },
+        "hinge": {
+          "max": 19.3,
+          "p99": 17.8,
+          "backFrames": 109,
+          "msPerFrame": 89.4
+        }
+      }
+    ],
+    "leaveTotals": {
+      "hinge": {
+        "largest": 46.8,
+        "sum": 226.1
+      },
+      "conveyor": {
+        "largest": 163.4,
+        "sum": 641.5
+      }
+    },
+    "inOut": {
+      "acts": [
+        "scene:frame2",
+        "open:Moss",
+        "scene:frame2",
+        "home",
+        "scene:frame2",
+        "scene:sidebar",
+        "scene:frame2",
+        "scene:bento"
+      ],
+      "conveyor": {
+        "score": 3760.8,
+        "lurch": 1936.4,
+        "sliver": 0.9,
+        "split": 0.9,
+        "collisions": 5,
+        "shock": 1090.2
+      },
+      "mark": {
+        "score": 1390.9,
+        "lurch": 587.2,
+        "sliver": 3.7,
+        "split": 0,
+        "collisions": 4,
+        "shock": 216.3
+      },
+      "thinking": {
+        "changes": 8,
+        "rounds": 28,
+        "moves": 8,
+        "late": 0,
+        "framesChecked": 657
+      },
+      "changes": [
+        {
+          "act": "scene:frame2",
+          "conveyor": 28.5,
+          "mark": 28.5
+        },
+        {
+          "act": "open:Moss",
+          "conveyor": 882.3,
+          "mark": 630.9
+        },
+        {
+          "act": "scene:frame2",
+          "conveyor": 217.2,
+          "mark": 217.2
+        },
+        {
+          "act": "home",
+          "conveyor": 917.7,
+          "mark": 8.6
+        },
+        {
+          "act": "scene:frame2",
+          "conveyor": 26.6,
+          "mark": 26.6
+        },
+        {
+          "act": "scene:sidebar",
+          "conveyor": 983.1,
+          "mark": 102.1
+        },
+        {
+          "act": "scene:frame2",
+          "conveyor": 369.5,
+          "mark": 369.5
+        },
+        {
+          "act": "scene:bento",
+          "conveyor": 335.9,
+          "mark": 7.5
+        }
+      ]
+    }
+  }
+}
