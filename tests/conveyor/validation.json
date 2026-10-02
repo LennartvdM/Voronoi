@@ -1,0 +1,120 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed; frames of 1/64 s; a desk of 1440×900 (the Cue story at 1900×810); the worker of Wings headless thinking sixteen rehearsed frames a frame. With the rule in and no budget, the tour and the chain through every page from every other (none of them Frame II) are Cohort's, the world and every drawing command, frame by frame. From Bento, Frame II is Frame frame by frame until the change has landed; then, from when its belt is up to speed and for a minute, every cell is drawn, nothing fractures, no cell is drawn in the middle, every seed goes clockwise round the middle and never back, no faster than 40 px/s, and the auction ends on its claims every frame. Into Frame II and out of it to a page, home and two scenes, with the worker thinking, nothing waits or fractures, what is rehearsed is what is played, every change has one pace and every page at rest is exact. A Cue story is Cohort's frame by frame.",
+  "report": {
+    "trace": {
+      "tour": {
+        "frames": 11550,
+        "identical": true
+      },
+      "pages": {
+        "frames": 25950,
+        "identical": true
+      }
+    },
+    "home": null,
+    "desk": null,
+    "pages": null,
+    "onPage": null,
+    "story": {
+      "frames": 2040,
+      "identical": true
+    },
+    "tell": null,
+    "pace": {},
+    "motion": {},
+    "edge": {},
+    "body": {},
+    "start": {},
+    "frame2": {
+      "leftFrameAt": 120,
+      "landedAt": 120,
+      "landed": 120,
+      "frames": 3720,
+      "lost": 0,
+      "fractured": 0,
+      "inMiddle": 0,
+      "back": 0,
+      "fastest": 28,
+      "auctionOff": 0,
+      "turnsLeast": 0.187,
+      "turnsMost": 0.354
+    },
+    "inOut": {
+      "acts": [
+        "scene:frame2",
+        "open:Moss",
+        "scene:frame2",
+        "home",
+        "scene:frame2",
+        "scene:sidebar",
+        "scene:frame2",
+        "scene:bento"
+      ],
+      "cohort": {
+        "score": 2940,
+        "lurch": 408,
+        "sliver": 1.9,
+        "split": 5.6,
+        "collisions": 5,
+        "shock": 813.3
+      },
+      "mark": {
+        "score": 3760.8,
+        "lurch": 1936.4,
+        "sliver": 0.9,
+        "split": 0.9,
+        "collisions": 5,
+        "shock": 1090.2
+      },
+      "thinking": {
+        "changes": 8,
+        "rounds": 28,
+        "moves": 10,
+        "late": 0,
+        "framesChecked": 759
+      },
+      "changes": [
+        {
+          "act": "scene:frame2",
+          "cohort": 28.5,
+          "mark": 28.5
+        },
+        {
+          "act": "open:Moss",
+          "cohort": 1544.4,
+          "mark": 882.3
+        },
+        {
+          "act": "scene:frame2",
+          "cohort": 217.2,
+          "mark": 217.2
+        },
+        {
+          "act": "home",
+          "cohort": 177.2,
+          "mark": 917.7
+        },
+        {
+          "act": "scene:frame2",
+          "cohort": 26.6,
+          "mark": 26.6
+        },
+        {
+          "act": "scene:sidebar",
+          "cohort": 387.7,
+          "mark": 983.1
+        },
+        {
+          "act": "scene:frame2",
+          "cohort": 384.1,
+          "mark": 369.5
+        },
+        {
+          "act": "scene:bento",
+          "cohort": 174.3,
+          "mark": 335.9
+        }
+      ]
+    }
+  }
+}
