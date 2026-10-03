@@ -13,18 +13,24 @@ Pivot places the sites so that the auction's own bisectors are the fronts.
 - A front is a cut across the band at an area along the belt: square across a
   straight; in a corner block a ray from the middle's corner, the hinge, that
   swings round it by area. Each cell is the band between its two fronts.
-- A cell is split at the band's pieces into parts, each a site: a slice of a
-  straight, or a sector of a corner. A part under 0.3 lattice units is folded
-  into the cell's neighbouring part (its own site would stand far off, and the
-  auction would lose it). One site for a cell spanning a corner would have to
-  stand where its two fronts' normals meet, often far from the cell, and the
-  auction loses it; tried, and not in.
+- A cell is one site as long as its stretch holds at most one corner: a slice
+  of a straight, or a slice with a corner (an L round the hinge, which one site
+  draws, since the middle cuts the corner out of its convex cell). A longer
+  cell is split across the middle of each straight it spans whole, so every
+  part holds one corner at most; the seam inside a cell is invisible, and may
+  be anywhere. (A cell split at the block's edge instead pins its sector's
+  site to the next slice's line, where the auction cannot use it: tried, and
+  not in.)
 - The sites are placed so that every front is the bisector of the two sites
   it lies between: perpendicular to their difference, and, through a hinge, at
   equal power from it. A slice's site stays on the centre line and moves along
-  it only as the loop's weights must close; a sector's site goes where its two
-  fronts put it; a slice's move is cheap and a sector's dear, so a sector's
-  site is not pushed onto a slice's. The weights follow from the fronts, and the auction, given
+  it only as the loop's weights must close; a site with a corner goes where
+  its two fronts put it; and no two sites come within 20 px of each other,
+  which the fronts alone would allow, and which puts two cells' sites on one
+  point.
+  Two sites of one cell that come within 8 px are one site: their parts are
+  joined, and the one site, free, serves both fronts. The weights follow from
+  the fronts, and the auction, given
   those sites and weights, has nothing left to solve: its diagram is the band
   cut by fronts, to the precision of the arithmetic.
 - The cells come onto the belt from where they rest: as the belt gets up to
@@ -61,7 +67,7 @@ replace('<a class="back" href="index.html">&larr; Back · Conveyor</a>', '<a cla
 replace("""const CONVEYOR = true;                              // CONVEYOR: Frame II, its cells going round the frame""",
 """const CONVEYOR = true;                              // CONVEYOR: Frame II, its cells going round the frame
 const PIVOT = true;                                 // PIVOT: the belt's cells are the auction's own, their sites placed so the fronts are its bisectors
-const PIVOT_MERGE = 0.3;                            // lattice units: a part of a cell smaller than this is folded into its neighbour""")
+const PIVOT_APART = 20;                             // px: no two sites come closer than this""")
 
 # the band's fronts, and the sites that make them the auction's bisectors
 replace("""// CONVEYOR: the belt starts once Frame II has landed: each cell a stretch as""", """// PIVOT: THE BAND CUT BY FRONTS. A front at area u along the belt is a cut
@@ -70,7 +76,8 @@ replace("""// CONVEYOR: the belt starts once Frame II has landed: each cell a st
 // of its two outer edges about the hinge, each edge one lattice unit of it).
 // front(u): a point on it, its unit direction, and its hinge if it has one;
 // slice(lo, hi): the band between two fronts, as convex pieces in px;
-// parts(lo, hi): the stretch split at the band's pieces.
+// parts(lo, hi): the stretch split across the middle of each straight it spans
+// whole, so that each part holds one corner at most.
 function pivotBand(C, R, PW, PH) {
   const fan = (hinge, B) => ({ area: 2, hinge, B }), cut = (area, rect) => ({ area, rect });
   const pcs = [
@@ -106,8 +113,20 @@ function pivotBand(C, R, PW, PH) {
     return out;
   };
   const parts = (lo, hi) => {
-    const out = []; let u = lo;
-    while (u < hi - 1e-9) { const [p, a] = at(u); const end = Math.min(hi, u + (p.area - a)); out.push({ lo: u, hi: end, kind: p.rect ? 'slice' : 'sector', line: p.rect ? (Math.abs(p.rect(0, 0)[0] - p.rect(0, 0)[2]) < 1e-9 ? 'h' : 'v') : null }); u = end; }
+    const pcsIn = []; let u = lo;   // the pieces the stretch runs through
+    while (u < hi - 1e-9) { const [p, a] = at(u); const end = Math.min(hi, u + (p.area - a)); pcsIn.push({ lo: u, hi: end, p, whole: a < 1e-9 && end - u >= p.area - 1e-9 }); u = end; }
+    const out = []; let cur = null, corners = 0;
+    for (const q of pcsIn) {
+      if (!cur) { cur = { lo: q.lo, hi: q.hi, corner: !q.p.rect, line: q.p.rect ? (Math.abs(q.p.rect(0, 0)[0] - q.p.rect(0, 0)[2]) < 1e-9 ? 'h' : 'v') : null }; continue; }
+      if (!q.p.rect && cur.corner) {   // a second corner: cut across the middle of the straight before it (spanned whole, so the cut is inside the cell)
+        const last = pcsIn[pcsIn.indexOf(q) - 1], mid = (last.lo + last.hi) / 2;
+        out.push({ lo: cur.lo, hi: mid, kind: cur.corner ? 'free' : 'slice', line: cur.line });
+        cur = { lo: mid, hi: q.hi, corner: true, line: last.p.rect ? (Math.abs(last.p.rect(0, 0)[0] - last.p.rect(0, 0)[2]) < 1e-9 ? 'h' : 'v') : null };
+        continue;
+      }
+      cur.hi = q.hi; if (!q.p.rect) cur.corner = true;
+    }
+    if (cur) out.push({ lo: cur.lo, hi: cur.hi, kind: cur.corner ? 'free' : 'slice', line: cur.line });
     return out;
   };
   return { A, front, slice, parts };
@@ -122,26 +141,26 @@ function pivotBand(C, R, PW, PH) {
 // at each part's middle, by Gauss-Newton on the loop. The weights follow.
 function pivotSites(band, belt, cells, s) {
   const sites = [];
-  for (const c of cells) {
-    const lo = c.lo + s, hi = c.hi + s, parts = band.parts(lo, hi);
-    for (let i = 0; i < parts.length;) {
-      if (parts.length > 1 && parts[i].hi - parts[i].lo < PIVOT_MERGE) { const j = i > 0 ? i - 1 : i + 1, q = parts[j]; q.lo = Math.min(q.lo, parts[i].lo); q.hi = Math.max(q.hi, parts[i].hi); parts.splice(i, 1); if (j > i) continue; }
-      i++;
-    }
-    for (const p of parts) sites.push({ cell: c, lo: p.lo, hi: p.hi, kind: p.kind, line: p.line, nat: belt.at((p.lo + p.hi) / 2), pieces: band.slice(p.lo, p.hi), area: 0 });
-  }
+  for (const c of cells) for (const p of band.parts(c.lo + s, c.hi + s)) sites.push({ cell: c, lo: p.lo, hi: p.hi, kind: p.kind, line: p.line, nat: belt.at((p.lo + p.hi) / 2), pieces: band.slice(p.lo, p.hi), area: 0 });
   const n = sites.length;
   if (!n) return sites;
   for (const st of sites) st.area = st.pieces.reduce((q, P) => q + Math.abs(ringArea(P)), 0);
   const F = sites.map(st => band.front(st.hi));
-  const dof = [], cost = [];   // a slice moves along its line, cheaply; anything else anywhere, dearly
-  for (let i = 0; i < n; i++) { if (sites[i].kind === 'slice') { dof.push([i, sites[i].line === 'h' ? [1, 0] : [0, 1]]); cost.push(0.05); } else { dof.push([i, [1, 0]]); dof.push([i, [0, 1]]); cost.push(1); cost.push(1); } }
+  // a slice moves along its line; a site with a corner anywhere
+  const dof = [], cost = [];
+  for (let i = 0; i < n; i++) { if (sites[i].kind === 'slice') { dof.push([i, sites[i].line === 'h' ? [1, 0] : [0, 1]]); cost.push(1); } else { dof.push([i, [1, 0]]); dof.push([i, [0, 1]]); cost.push(1); cost.push(1); } }
+  const vec = ([, v]) => v;
   const a = sites.map(st => st.nat.slice());
-  const resid = () => {
+  // the residuals: each front's perpendicularity, the loop's closure, and, for
+  // every pair of sites closer than PIVOT_APART, how much closer
+  const pairs = () => { const o = []; for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) if (Math.hypot(a[j][0] - a[i][0], a[j][1] - a[i][1]) < PIVOT_APART) o.push([i, j]); return o; };
+  const resid = (P) => {
     const r = [];
     for (let i = 0; i < n; i++) { const j = (i + 1) % n; r.push((a[j][0] - a[i][0]) * F[i].d[0] + (a[j][1] - a[i][1]) * F[i].d[1]); }
     let g = 0; for (let i = 0; i < n; i++) { const j = (i + 1) % n, q = F[i].q; g += (q[0] - a[j][0]) ** 2 + (q[1] - a[j][1]) ** 2 - (q[0] - a[i][0]) ** 2 - (q[1] - a[i][1]) ** 2; }
-    r.push(g); return r;
+    r.push(g);
+    for (const [i, j] of P || []) r.push(PIVOT_APART - Math.hypot(a[j][0] - a[i][0], a[j][1] - a[i][1]));
+    return r;
   };
   const solve = (J, r) => {   // the least step, each move at its cost: C^-1 J^T (J C^-1 J^T)^-1 (-r)
     const m = J.length, k = J[0].length, M = Array.from({ length: m }, (_, i) => Array.from({ length: m }, (_, j) => J[i].reduce((q, v, t) => q + v * J[j][t] / cost[t], 0)));
@@ -157,21 +176,22 @@ function pivotSites(band, belt, cells, s) {
     return Array.from({ length: k }, (_, t) => J.reduce((q, row, i) => q + row[t] * y[i], 0) / cost[t]);
   };
   let worst = Infinity;
-  for (let it = 0; it < 40; it++) {
-    const r = resid(); worst = Math.max(...r.map(Math.abs)); if (worst < 1e-9) break;
-    const J = [];
-    for (let i = 0; i < n; i++) { const j = (i + 1) % n; J.push(dof.map(([k, v]) => ((k === j ? 1 : 0) - (k === i ? 1 : 0)) * (v[0] * F[i].d[0] + v[1] * F[i].d[1]))); }
+  for (let it = 0; it < 60; it++) {
+    const P = pairs(), r = resid(P); worst = Math.max(...r.map(Math.abs)); if (worst < 1e-9) break;
+    const D = dof.map(vec), J = [];
+    for (let i = 0; i < n; i++) { const j = (i + 1) % n; J.push(dof.map(([k], t) => ((k === j ? 1 : 0) - (k === i ? 1 : 0)) * (D[t][0] * F[i].d[0] + D[t][1] * F[i].d[1]))); }
     const g = sites.map(() => [0, 0]);
     for (let i = 0; i < n; i++) { const j = (i + 1) % n, q = F[i].q; g[j][0] += -2 * (q[0] - a[j][0]); g[j][1] += -2 * (q[1] - a[j][1]); g[i][0] += 2 * (q[0] - a[i][0]); g[i][1] += 2 * (q[1] - a[i][1]); }
-    J.push(dof.map(([k, v]) => g[k][0] * v[0] + g[k][1] * v[1]));
+    J.push(dof.map(([k], t) => g[k][0] * D[t][0] + g[k][1] * D[t][1]));
+    for (const [i, j] of P) { const dx = a[j][0] - a[i][0], dy = a[j][1] - a[i][1], L = Math.hypot(dx, dy) || 1e-9, ux = dx / L, uy = dy / L; J.push(dof.map(([k], t) => ((k === i ? 1 : 0) - (k === j ? 1 : 0)) * (ux * D[t][0] + uy * D[t][1]))); }
     const d = solve(J, r);
-    dof.forEach(([k, v], t) => { a[k][0] += d[t] * v[0]; a[k][1] += d[t] * v[1]; });
+    dof.forEach(([k], t) => { a[k][0] += d[t] * D[t][0]; a[k][1] += d[t] * D[t][1]; });
   }
   const w = new Array(n).fill(0);
   for (let i = 0; i < n - 1; i++) { const j = i + 1, q = F[i].q; w[j] = w[i] + ((q[0] - a[j][0]) ** 2 + (q[1] - a[j][1]) ** 2) - ((q[0] - a[i][0]) ** 2 + (q[1] - a[i][1]) ** 2); }
   const base = -Math.min(...w);
   sites.forEach((st, i) => { st.x = a[i][0]; st.y = a[i][1]; st.w = w[i] + base; });
-  sites.resid = Math.max(...resid().map(Math.abs));   // how far the loop is from closing, for the validator
+  sites.resid = Math.max(...resid(pairs()).map(Math.abs));   // how far the loop is from closing, for the validator
   return sites;
 }
 // CONVEYOR: the belt starts once Frame II has landed: each cell a stretch as""")
@@ -209,7 +229,7 @@ replace("""  for (const c of convey.cells) {
   // nothing left to solve. The first site is the cell's largest part.
   if (convey.band) {
     const sites = pivotSites(convey.band, convey.belt, convey.cells.filter(c => !c.b.leaving), convey.s), U = root.PW * root.PH;
-    convey.sites = sites.length; convey.resid = sites.resid;
+    convey.sites = sites.length; convey.resid = sites.resid; convey.joins = sites.filter(st => st.kind === 'free').length;   // joins: the sites with a corner
     for (const c of convey.cells) {
       const b = c.b; if (b.leaving) continue;
       const own = sites.filter(st => st.cell === c); if (!own.length) { b.conveySites = null; continue; }
@@ -288,6 +308,11 @@ replace("""    if (!poly) pieces = rects.length ? coverRects(0, 0, this.W, this.
     if (!poly) pieces = rects.length ? coverRects(X0, Y0, X1, Y1, rects) : [[[X0, Y0], [X1, Y0], [X1, Y1], [X0, Y1]]];""")
 replace("""    if (!pieces) pieces = [[[0, 0], [this.W, 0], [this.W, this.H], [0, this.H]]];""",
 """    if (!pieces) { const [X0, Y0, X1, Y1] = PIVOT && this.depth === 0 ? this.plBox() : [0, 0, this.W, this.H]; pieces = [[[X0, Y0], [X1, Y0], [X1, Y1], [X0, Y1]]]; }   // PIVOT: as the main auction's""")
+
+# while the cells come onto the belt the auction takes its full stride: sites and claims move fast, and three steps fall behind
+replace("""  iterBudget() {""", """  iterBudget() {
+    if (PIVOT && this.depth === 0 && convey && convey.t < CONVEY_EASE) return 8;   // PIVOT: the cells coming onto the belt: their sites and claims move, and the auction keeps up
+""")
 
 out = ROOT / 'pivot.html'
 out.write_bytes(s.encode())
