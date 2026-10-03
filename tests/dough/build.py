@@ -15,7 +15,8 @@ surface is rounded only where it faces the air.
   cut from the page whenever a wall was in the frame (a reel's parked cards, on
   every page's change) and was the box the cells may overflow into otherwise,
   so cells overflowed on the home scenes and never on a page. Now it is the
-  box less the walls, always.
+  box less the walls, on every change of the page's own (a story choreographs
+  its own whitespace, and keeps Facet's ground).
 - The mass is conserved. From page to page the closing image shrinks exactly
   as the opening one grows, each over its whole journey, so what the cells and
   the whitespace hold adds up to the pan at every instant; nothing is free
@@ -53,10 +54,10 @@ replace("""        if (this.depth === 0 && b.seaLiquid > 0 && !b.isVoid && !b.re
 
 # the ground is the box less the walls, as it is without them
 replace("""    if (!poly) pieces = rects.length ? coverRects(0, 0, this.W, this.H, rects) : [[[0, 0], [this.W, 0], [this.W, this.H], [0, this.H]]];""",
-"""    const [X0, Y0, X1, Y1] = DOUGH && this.depth === 0 ? this.plBox() : [0, 0, this.W, this.H];   // DOUGH: the pan is the same with a wall in it as without: the box the cells may overflow into, less the walls
+"""    const [X0, Y0, X1, Y1] = DOUGH && this.seaOpen() ? this.plBox() : [0, 0, this.W, this.H];   // DOUGH: the pan is the same with a wall in it as without: the box the cells may overflow into, less the walls (on the page's own changes; a story choreographs its own)
     if (!poly) pieces = rects.length ? coverRects(X0, Y0, X1, Y1, rects) : [[[X0, Y0], [X1, Y0], [X1, Y1], [X0, Y1]]];""")
 replace("""    if (!pieces) pieces = [[[0, 0], [this.W, 0], [this.W, this.H], [0, this.H]]];""",
-"""    if (!pieces) { const [X0, Y0, X1, Y1] = DOUGH && this.depth === 0 ? this.plBox() : [0, 0, this.W, this.H]; pieces = [[[X0, Y0], [X1, Y0], [X1, Y1], [X0, Y1]]]; }   // DOUGH: as the main auction's""")
+"""    if (!pieces) { const [X0, Y0, X1, Y1] = DOUGH && this.seaOpen() ? this.plBox() : [0, 0, this.W, this.H]; pieces = [[[X0, Y0], [X1, Y0], [X1, Y1], [X0, Y1]]]; }   // DOUGH: as the main auction's""")
 
 # the mass is conserved: the images hand over as they go, and nothing is free ground
 replace("""function portalWindows(h, content, was, rectOf) {

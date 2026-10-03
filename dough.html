@@ -4687,7 +4687,7 @@ class Hive {
     const morphs = withHoles ? [] : this.holes.flatMap(b => b.hole.raw.map(p => convexPlanes(p)));
     if (!rects.length && !morphs.length) return poly ? triangulatePts(poly) : null;
     let pieces = null;
-    const [X0, Y0, X1, Y1] = DOUGH && this.depth === 0 ? this.plBox() : [0, 0, this.W, this.H];   // DOUGH: the pan is the same with a wall in it as without: the box the cells may overflow into, less the walls
+    const [X0, Y0, X1, Y1] = DOUGH && this.seaOpen() ? this.plBox() : [0, 0, this.W, this.H];   // DOUGH: the pan is the same with a wall in it as without: the box the cells may overflow into, less the walls (on the page's own changes; a story choreographs its own)
     if (!poly) pieces = rects.length ? coverRects(X0, Y0, X1, Y1, rects) : [[[X0, Y0], [X1, Y0], [X1, Y1], [X0, Y1]]];
     else {
       pieces = triangulatePts(poly);
@@ -5061,7 +5061,7 @@ class Hive {
     const bidders = subs.filter(s => !s.body.wall && claimOf(s) >= ACTIVE_MIN);
     const seaBodies = seaOn ? this.bodies.filter(b => !b.isSelf && !b.wall && !b.hole && this.seaClaimOf(b) > 0) : [];
     let pieces = this.domainPieces(true);
-    if (!pieces) { const [X0, Y0, X1, Y1] = DOUGH && this.depth === 0 ? this.plBox() : [0, 0, this.W, this.H]; pieces = [[[X0, Y0], [X1, Y0], [X1, Y1], [X0, Y1]]]; }   // DOUGH: as the main auction's
+    if (!pieces) { const [X0, Y0, X1, Y1] = DOUGH && this.seaOpen() ? this.plBox() : [0, 0, this.W, this.H]; pieces = [[[X0, Y0], [X1, Y0], [X1, Y1], [X0, Y1]]]; }   // DOUGH: as the main auction's
     if (!bidders.length || !pieces.length) {
       for (const s of subs) s.shadowLive = false;
       for (const b of this.holes) b.holeLinger = false;
