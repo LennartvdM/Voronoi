@@ -1,0 +1,630 @@
+{
+  "scope": "Real full tick; native Canvas and browser DOM stubbed; frames of 1/64 s; a desk of 1440×900 (the stories at 1900×810); the worker of Wings headless thinking sixteen rehearsed frames a frame. The sea's gauge, with no budget, in every solve of the page's with the sea over the chain through every page from every other: on Datum no gauge from a solve without a shore leaves the sea more than a tenth of the ground from its area, none from any case leaves it more than half, fewer than a tenth as many as on Facet run to their last step, and fewer sites sit a solve out than on Facet, where every gauge from a solve without a shore misses. With Datum's rule taken out and no budget, the tour and the chain are Facet's, the world and every drawing command, frame by frame. On the chain and the tour with the worker thinking nothing waits, nothing fractures, from each round that moved a cell the performance is that round's rehearsal of the move to the bit, every change has one pace, every page at rest is exact and every cell drawn its own colour; defects drawn and the screen leaned on are reported against Facet. With no worker the hive thinks on the page and plays what it rehearsed. A Cue story is Facet's frame by frame; a Tell and a Tell II story run to their end and home without a fractured cell.",
+  "report": {
+    "trace": {
+      "tour": {
+        "frames": 11550,
+        "identical": true,
+        "rule": "taken out"
+      },
+      "pages": {
+        "frames": 25950,
+        "identical": true,
+        "rule": "taken out"
+      }
+    },
+    "home": null,
+    "desk": {
+      "size": {
+        "width": 1440,
+        "height": 900,
+        "fields": 0.55
+      },
+      "budget": 16,
+      "facet": {
+        "score": 21690.1,
+        "lurch": 9529.8,
+        "sliver": 137.9,
+        "split": 0,
+        "collisions": 32,
+        "shock": 2069.5
+      },
+      "mark": {
+        "score": 16125.3,
+        "lurch": 4025.4,
+        "sliver": 137.9,
+        "split": 0,
+        "collisions": 32,
+        "shock": 2009.2
+      },
+      "edge": {
+        "facet": 5386304,
+        "mark": 5371443
+      },
+      "thinking": {
+        "changes": 23,
+        "rounds": 66,
+        "moves": 25,
+        "late": 0,
+        "framesChecked": 2018
+      },
+      "changes": [
+        {
+          "act": "scene:frame",
+          "facet": 30,
+          "mark": 30
+        },
+        {
+          "act": "scene:sidebar",
+          "facet": 203.7,
+          "mark": 204.8
+        },
+        {
+          "act": "scene:hero",
+          "facet": 62,
+          "mark": 56.8
+        },
+        {
+          "act": "scene:flock",
+          "facet": 25.9,
+          "mark": 25.5
+        },
+        {
+          "act": "scene:bento",
+          "facet": 94.9,
+          "mark": 93.3
+        },
+        {
+          "act": "scene:hero",
+          "facet": 121.3,
+          "mark": 121.3
+        },
+        {
+          "act": "scene:bento",
+          "facet": 139.6,
+          "mark": 139.6
+        },
+        {
+          "act": "open:Moss",
+          "facet": 104.6,
+          "mark": 104.6
+        },
+        {
+          "act": "home",
+          "facet": 3833.5,
+          "mark": 1936.1
+        },
+        {
+          "act": "open:Aurora",
+          "facet": 346.5,
+          "mark": 327.1
+        },
+        {
+          "act": "home",
+          "facet": 204.3,
+          "mark": 201.2
+        },
+        {
+          "act": "open:Coal",
+          "facet": 2662.5,
+          "mark": 191.6
+        },
+        {
+          "act": "open:Aurora",
+          "facet": 595.3,
+          "mark": 595.3
+        },
+        {
+          "act": "home",
+          "facet": 194.1,
+          "mark": 194.1
+        },
+        {
+          "act": "open:Petal",
+          "facet": 288.9,
+          "mark": 288.9
+        },
+        {
+          "act": "home",
+          "facet": 2041.5,
+          "mark": 1989.9
+        },
+        {
+          "act": "open:Drift",
+          "facet": 1212.1,
+          "mark": 101.7
+        },
+        {
+          "act": "home",
+          "facet": 312,
+          "mark": 306.1
+        },
+        {
+          "act": "open:Ember",
+          "facet": 302.3,
+          "mark": 302.3
+        },
+        {
+          "act": "open:Tide",
+          "facet": 3267.7,
+          "mark": 3267.7
+        },
+        {
+          "act": "home",
+          "facet": 1422.9,
+          "mark": 1422.9
+        },
+        {
+          "act": "open:Dune",
+          "facet": 394.7,
+          "mark": 394.7
+        },
+        {
+          "act": "home",
+          "facet": 2458.9,
+          "mark": 2458.9
+        },
+        {
+          "act": "open:Jazz",
+          "facet": 245.1,
+          "mark": 245.1
+        },
+        {
+          "act": "home",
+          "facet": 1125.8,
+          "mark": 1125.8
+        }
+      ]
+    },
+    "pages": {
+      "desk": {
+        "changes": [
+          {
+            "from": "Drift",
+            "to": "Ember",
+            "facet": 1278.1,
+            "mark": 289.4
+          },
+          {
+            "from": "Ember",
+            "to": "Drift",
+            "facet": 3525.2,
+            "mark": 2313
+          },
+          {
+            "from": "Drift",
+            "to": "Tide",
+            "facet": 1805.5,
+            "mark": 268
+          },
+          {
+            "from": "Tide",
+            "to": "Drift",
+            "facet": 2271.7,
+            "mark": 2271.7
+          },
+          {
+            "from": "Drift",
+            "to": "Moss",
+            "facet": 240,
+            "mark": 243
+          },
+          {
+            "from": "Moss",
+            "to": "Drift",
+            "facet": 1133.8,
+            "mark": 1133.4
+          },
+          {
+            "from": "Drift",
+            "to": "Petal",
+            "facet": 436.6,
+            "mark": 212
+          },
+          {
+            "from": "Petal",
+            "to": "Drift",
+            "facet": 936.8,
+            "mark": 988.2
+          },
+          {
+            "from": "Drift",
+            "to": "Aurora",
+            "facet": 1284.5,
+            "mark": 385.6
+          },
+          {
+            "from": "Aurora",
+            "to": "Drift",
+            "facet": 187.4,
+            "mark": 187.4
+          },
+          {
+            "from": "Drift",
+            "to": "Dune",
+            "facet": 947.1,
+            "mark": 1091.5
+          },
+          {
+            "from": "Dune",
+            "to": "Drift",
+            "facet": 1450.8,
+            "mark": 1450.8
+          },
+          {
+            "from": "Drift",
+            "to": "Jazz",
+            "facet": 155.8,
+            "mark": 137.8
+          },
+          {
+            "from": "Jazz",
+            "to": "Ember",
+            "facet": 1092.9,
+            "mark": 1076.7
+          },
+          {
+            "from": "Ember",
+            "to": "Tide",
+            "facet": 5421.8,
+            "mark": 5421.8
+          },
+          {
+            "from": "Tide",
+            "to": "Ember",
+            "facet": 2049.4,
+            "mark": 2049.4
+          },
+          {
+            "from": "Ember",
+            "to": "Moss",
+            "facet": 4747.3,
+            "mark": 4747.3
+          },
+          {
+            "from": "Moss",
+            "to": "Ember",
+            "facet": 502.9,
+            "mark": 502.9
+          },
+          {
+            "from": "Ember",
+            "to": "Petal",
+            "facet": 3636.7,
+            "mark": 3636.7
+          },
+          {
+            "from": "Petal",
+            "to": "Ember",
+            "facet": 923,
+            "mark": 911.5
+          },
+          {
+            "from": "Ember",
+            "to": "Aurora",
+            "facet": 5862.7,
+            "mark": 4796.6
+          },
+          {
+            "from": "Aurora",
+            "to": "Ember",
+            "facet": 1990.4,
+            "mark": 742
+          },
+          {
+            "from": "Ember",
+            "to": "Dune",
+            "facet": 4499.9,
+            "mark": 4499.9
+          },
+          {
+            "from": "Dune",
+            "to": "Ember",
+            "facet": 1531.4,
+            "mark": 1633.1
+          },
+          {
+            "from": "Ember",
+            "to": "Jazz",
+            "facet": 1930.4,
+            "mark": 1922.6
+          },
+          {
+            "from": "Jazz",
+            "to": "Tide",
+            "facet": 1493.3,
+            "mark": 1489.2
+          },
+          {
+            "from": "Tide",
+            "to": "Moss",
+            "facet": 2649.7,
+            "mark": 2650.6
+          },
+          {
+            "from": "Moss",
+            "to": "Tide",
+            "facet": 230.8,
+            "mark": 230.8
+          },
+          {
+            "from": "Tide",
+            "to": "Petal",
+            "facet": 2596.3,
+            "mark": 2737.3
+          },
+          {
+            "from": "Petal",
+            "to": "Tide",
+            "facet": 2607.3,
+            "mark": 2702.2
+          },
+          {
+            "from": "Tide",
+            "to": "Aurora",
+            "facet": 3194.6,
+            "mark": 3194.6
+          },
+          {
+            "from": "Aurora",
+            "to": "Tide",
+            "facet": 1539.3,
+            "mark": 296.5
+          },
+          {
+            "from": "Tide",
+            "to": "Dune",
+            "facet": 4077.6,
+            "mark": 4074.1
+          },
+          {
+            "from": "Dune",
+            "to": "Tide",
+            "facet": 1322.2,
+            "mark": 1322.2
+          },
+          {
+            "from": "Tide",
+            "to": "Jazz",
+            "facet": 2512,
+            "mark": 2512
+          },
+          {
+            "from": "Jazz",
+            "to": "Moss",
+            "facet": 1233.1,
+            "mark": 1082.9
+          },
+          {
+            "from": "Moss",
+            "to": "Petal",
+            "facet": 262.7,
+            "mark": 262.7
+          },
+          {
+            "from": "Petal",
+            "to": "Moss",
+            "facet": 802.7,
+            "mark": 706.4
+          },
+          {
+            "from": "Moss",
+            "to": "Aurora",
+            "facet": 267.3,
+            "mark": 267.3
+          },
+          {
+            "from": "Aurora",
+            "to": "Moss",
+            "facet": 478.8,
+            "mark": 492.3
+          },
+          {
+            "from": "Moss",
+            "to": "Dune",
+            "facet": 113.1,
+            "mark": 46.3
+          },
+          {
+            "from": "Dune",
+            "to": "Moss",
+            "facet": 2020.3,
+            "mark": 1179.7
+          },
+          {
+            "from": "Moss",
+            "to": "Jazz",
+            "facet": 531.1,
+            "mark": 531.1
+          },
+          {
+            "from": "Jazz",
+            "to": "Petal",
+            "facet": 1173.7,
+            "mark": 941.1
+          },
+          {
+            "from": "Petal",
+            "to": "Aurora",
+            "facet": 1410.4,
+            "mark": 1592.1
+          },
+          {
+            "from": "Aurora",
+            "to": "Petal",
+            "facet": 623.2,
+            "mark": 623.2
+          },
+          {
+            "from": "Petal",
+            "to": "Dune",
+            "facet": 4486.8,
+            "mark": 4324.5
+          },
+          {
+            "from": "Dune",
+            "to": "Petal",
+            "facet": 1370.8,
+            "mark": 985.1
+          },
+          {
+            "from": "Petal",
+            "to": "Jazz",
+            "facet": 565.2,
+            "mark": 467.3
+          },
+          {
+            "from": "Jazz",
+            "to": "Aurora",
+            "facet": 2284.5,
+            "mark": 2284.5
+          },
+          {
+            "from": "Aurora",
+            "to": "Dune",
+            "facet": 1051.8,
+            "mark": 1158.6
+          },
+          {
+            "from": "Dune",
+            "to": "Aurora",
+            "facet": 1215.8,
+            "mark": 1215.8
+          },
+          {
+            "from": "Aurora",
+            "to": "Jazz",
+            "facet": 65.4,
+            "mark": 65.4
+          },
+          {
+            "from": "Jazz",
+            "to": "Dune",
+            "facet": 374.7,
+            "mark": 374.7
+          },
+          {
+            "from": "Dune",
+            "to": "Jazz",
+            "facet": 1675.7,
+            "mark": 1260.9
+          },
+          {
+            "from": "Jazz",
+            "to": "Drift",
+            "facet": 876.4,
+            "mark": 873.4
+          }
+        ],
+        "budget": 16,
+        "facet": {
+          "score": 94948.7,
+          "lurch": 19843.5,
+          "sliver": 1009.7,
+          "split": 0,
+          "collisions": 113,
+          "shock": 13320.7
+        },
+        "mark": {
+          "score": 84857.1,
+          "lurch": 13776.3,
+          "sliver": 1041.6,
+          "split": 0,
+          "collisions": 115,
+          "shock": 7502.9
+        },
+        "edge": {
+          "facet": 20138118,
+          "mark": 20143366
+        },
+        "thinking": {
+          "changes": 56,
+          "rounds": 272,
+          "moves": 121,
+          "late": 0,
+          "framesChecked": 9692
+        }
+      }
+    },
+    "onPage": {
+      "budget": 16,
+      "changes": 11,
+      "thinking": {
+        "changes": 12,
+        "rounds": 68,
+        "moves": 26,
+        "late": 0,
+        "framesChecked": 2279
+      },
+      "drawn": {
+        "score": 9442,
+        "lurch": 1764,
+        "sliver": 103.1,
+        "split": 0,
+        "collisions": 14,
+        "shock": 1121.9
+      }
+    },
+    "story": {
+      "frames": 2040,
+      "identical": true
+    },
+    "tell": {
+      "frames": 3060,
+      "fractured": 0
+    },
+    "pace": {},
+    "motion": {},
+    "edge": {},
+    "body": {},
+    "start": {},
+    "gauge": {
+      "facet": {
+        "frames": 10210,
+        "solves": 41176,
+        "gauges": {
+          "noshore": 95,
+          "empty": 773
+        },
+        "missOverTenth": {
+          "noshore": 95,
+          "empty": 1
+        },
+        "missOverHalf": {
+          "noshore": 13,
+          "empty": 0
+        },
+        "lastStep": {
+          "noshore": 95,
+          "empty": 172
+        },
+        "missMax": 0.6119,
+        "solvesWithSitesOut": 110,
+        "sitesOut": 196
+      },
+      "mark": {
+        "frames": 10210,
+        "solves": 41176,
+        "gauges": {
+          "noshore": 95,
+          "empty": 778
+        },
+        "missOverTenth": {
+          "noshore": 0,
+          "empty": 0
+        },
+        "missOverHalf": {
+          "noshore": 0,
+          "empty": 0
+        },
+        "lastStep": {
+          "noshore": 1,
+          "empty": 155
+        },
+        "missMax": 0.053,
+        "solvesWithSitesOut": 80,
+        "sitesOut": 101
+      }
+    }
+  }
+}
