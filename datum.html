@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dough — Hive</title>
+<title>Datum — Hive</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; overflow: hidden; }
@@ -52,7 +52,7 @@
 </head>
 <body>
   <div class="stage">
-    <a class="back" href="index.html">&larr; Back · Dough</a>
+    <a class="back" href="index.html">&larr; Back · Datum</a>
     <canvas id="c"></canvas>
     <div class="meters" id="meters">
       area err <b id="mArea">–</b> · gap <b id="mGap">–</b> · overlap <b id="mOver">–</b> · rect <b id="mRect">–</b> · cells <b id="mSeeds">–</b> · solve <b id="mIter">–</b> · fields <b id="mInner">–</b>
@@ -1312,8 +1312,7 @@ const PORTAL_PORTRAIT = {
 const PORTAL_KINDS = ['spread', 'folio', 'showcase', 'band', 'lead', 'documentation', 'essay', 'caption'];
 let portalFocus = null;                             // the body a page is open on; null at home
 const COHORT = true;                                // COHORT: from page to page, the gallery is one body
-const FACET = true;
-const DOUGH = true;                                 // DOUGH: the hive wets the pan: nothing holds a liquid cell clear of the screen, and the ground is the box less the walls, always                                 // FACET: while the page changes, a cell reaches as far as its own rectangle
+const FACET = true;                                 // FACET: while the page changes, a cell reaches as far as its own rectangle
 const STEADY = true;                                // STEADY: a site with no ground sits the solve out
 const STRIDE = true;                                // STRIDE: while the sea is in, Newton takes 8 steps a frame
 const DATUM = true;                                 // DATUM: the sea's gauge brackets from the first reach to touch
@@ -4173,7 +4172,7 @@ class Hive {
         const e = b.progress, m = 1 - e, p = b.path;
         let px = m * m * p.sx + 2 * m * e * p.cx + e * e * p.ex;
         let py = m * m * p.sy + 2 * m * e * p.cy + e * e * p.ey;
-        if (!DOUGH && this.depth === 0 && b.seaLiquid > 0 && !b.isVoid && !b.reelPinned) {   // MEMBRANE: a liquid cell keeps its plan its own radius clear of the screen   // DOUGH: it does not: the screen is the pan, and a cell pressed against it spreads along it
+        if (this.depth === 0 && b.seaLiquid > 0 && !b.isVoid && !b.reelPinned) {   // MEMBRANE: a liquid cell keeps its plan its own radius clear of the screen
           const r = b.seaLiquid * Math.sqrt(Math.max(0, b.claim) * this.PW * this.PH / Math.PI);   // AMOEBA: a cell keeps its size
           px = 2 * r >= W ? W / 2 : Math.min(W - r, Math.max(r, px));
           py = 2 * r >= H ? H / 2 : Math.min(H - r, Math.max(r, py));
@@ -4564,7 +4563,7 @@ class Hive {
   // past it. From page to page, while either image is on its way, the sea
   // claims whatever the cells and the whitespace leave unclaimed, and every
   // cell is drawn the size it claims.
-  seaFreeOn() { return !DOUGH && COHORT && this.seaOpen() && this.bodies.some(b => b.journey && b.journey.win && b.progress < 1); }   // DOUGH: nothing is free ground: the bids add up to the pan
+  seaFreeOn() { return COHORT && this.seaOpen() && this.bodies.some(b => b.journey && b.journey.win && b.progress < 1); }
   // how much of a whitespace's claim is its own cell, not the sea's: all of
   // it at rest; whitespace that closes melts into the sea as a cell melts,
   // over MELT from when the change reaches it; whitespace that opens is sea
@@ -4699,8 +4698,7 @@ class Hive {
     const morphs = withHoles ? [] : this.holes.flatMap(b => b.hole.raw.map(p => convexPlanes(p)));
     if (!rects.length && !morphs.length) return poly ? triangulatePts(poly) : null;
     let pieces = null;
-    const [X0, Y0, X1, Y1] = DOUGH && this.seaOpen() ? this.plBox() : [0, 0, this.W, this.H];   // DOUGH: the pan is the same with a wall in it as without: the box the cells may overflow into, less the walls (on the page's own changes; a story choreographs its own)
-    if (!poly) pieces = rects.length ? coverRects(X0, Y0, X1, Y1, rects) : [[[X0, Y0], [X1, Y0], [X1, Y1], [X0, Y1]]];
+    if (!poly) pieces = rects.length ? coverRects(0, 0, this.W, this.H, rects) : [[[0, 0], [this.W, 0], [this.W, this.H], [0, this.H]]];
     else {
       pieces = triangulatePts(poly);
       if (!pieces) pieces = coverRects(0, 0, this.W, this.H, rects);
@@ -5073,7 +5071,7 @@ class Hive {
     const bidders = subs.filter(s => !s.body.wall && claimOf(s) >= ACTIVE_MIN);
     const seaBodies = seaOn ? this.bodies.filter(b => !b.isSelf && !b.wall && !b.hole && this.seaClaimOf(b) > 0) : [];
     let pieces = this.domainPieces(true);
-    if (!pieces) { const [X0, Y0, X1, Y1] = DOUGH && this.seaOpen() ? this.plBox() : [0, 0, this.W, this.H]; pieces = [[[X0, Y0], [X1, Y0], [X1, Y1], [X0, Y1]]]; }   // DOUGH: as the main auction's
+    if (!pieces) pieces = [[[0, 0], [this.W, 0], [this.W, this.H], [0, this.H]]];
     if (!bidders.length || !pieces.length) {
       for (const s of subs) s.shadowLive = false;
       for (const b of this.holes) b.holeLinger = false;
@@ -6829,12 +6827,6 @@ function portalGalleryAt(h) {
 // once along the paths.
 function portalWindows(h, content, was, rectOf) {
   const H0 = portalWas, H1 = portalFocus, on = r => { const cx = (r[0] + r[2]) / 2, cy = (r[1] + r[3]) / 2; return cx > 0 && cx < h.COLS && cy > 0 && cy < h.ROWS; };
-  // DOUGH: THE MASS IS CONSERVED. The closing image shrinks exactly as the
-  // opening one grows, each on its whole journey, so what the cells and the
-  // whitespace hold adds up to the pan at every instant, and the two images
-  // press on each other as they pass, as dough does. Cohort's windows, which
-  // emptied the page between the one and the other, are not taken.
-  if (DOUGH) { if (H0.journey) H0.journey.win = [0, 1]; if (H1.journey) H1.journey.win = [0, 1]; return; }
   const G = content.filter(b => b !== H0 && b !== H1 && was.get(b) && rectOf.get(b) && on(was.get(b)) && on(rectOf.get(b)));
   if (!G.length) return;
   const px = r => [r[0] * h.PW, r[1] * h.PH, r[2] * h.PW, r[3] * h.PH], lerp = (a, z, p) => a.map((v, i) => v + (z[i] - v) * p);

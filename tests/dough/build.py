@@ -1,4 +1,4 @@
-"""Build Dough from Facet: the hive wets the pan.
+"""Build Dough from Datum: the hive wets the pan.
 
 Since Membrane a liquid cell has kept its plan its own radius clear of the
 screen, so the hive floats clear of the screen as one rounded body: its reach
@@ -16,7 +16,7 @@ surface is rounded only where it faces the air.
   every page's change) and was the box the cells may overflow into otherwise,
   so cells overflowed on the home scenes and never on a page. Now it is the
   box less the walls, on every change of the page's own (a story choreographs
-  its own whitespace, and keeps Facet's ground).
+  its own whitespace, and keeps Datum's ground).
 - The mass is conserved. From page to page the closing image shrinks exactly
   as the opening one grows, each over its whole journey, so what the cells and
   the whitespace hold adds up to the pan at every instant; nothing is free
@@ -25,7 +25,7 @@ surface is rounded only where it faces the air.
   after, which left the page to the sea in between: at the middle of Dune to
   Jazz the cells held 13 of 96 slots.
 - Scope. The page's own changes. The stories and the fields inside cells are
-  Facet's.
+  Datum's.
 
 The header carries no captions.
 """
@@ -34,8 +34,8 @@ import hashlib
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
-raw = (ROOT / 'facet.html').read_bytes()
-assert hashlib.sha256(raw).hexdigest() == '17087c3d4e4145f947614cfaa06f17d5158dc54269187053cc1f576a1e5eee6a'
+raw = (ROOT / 'datum.html').read_bytes()
+assert hashlib.sha256(raw).hexdigest() == 'e2e2745a5cc2b25e42c60b6f0030a976a1e974dc9c154ce6635a7233e5c88f94'
 s = raw.decode()
 
 def replace(old, new, n=1):
@@ -43,8 +43,8 @@ def replace(old, new, n=1):
     assert s.count(old) == n, (old[:80], s.count(old))
     s = s.replace(old, new)
 
-replace('<title>Facet — Hive</title>', '<title>Dough — Hive</title>')
-replace('<a class="back" href="index.html">&larr; Back · Facet</a>', '<a class="back" href="index.html">&larr; Back · Dough</a>')
+replace('<title>Datum — Hive</title>', '<title>Dough — Hive</title>')
+replace('<a class="back" href="index.html">&larr; Back · Datum</a>', '<a class="back" href="index.html">&larr; Back · Dough</a>')
 replace("""const FACET = true;""", """const FACET = true;
 const DOUGH = true;                                 // DOUGH: the hive wets the pan: nothing holds a liquid cell clear of the screen, and the ground is the box less the walls, always""")
 

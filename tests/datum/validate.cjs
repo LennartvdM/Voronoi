@@ -1,22 +1,22 @@
-// Dough: the hive wets the pan. From page to page the closing image shrinks exactly as the opening one grows, each over
-// its whole journey, so what the cells and the whitespace hold adds up to the pan at every instant and nothing is free
-// ground; the two images press on each other as they pass. Nothing holds a liquid cell clear of the screen, and the
-// auction's ground is the box less the walls, with a wall in the frame as without. Built from Datum.
+// Datum: the sea's gauge brackets from the first reach to touch, over every site the sea cuts. With the sea, the auction's
+// weights have one gauge, a shift of them all that gives the sea its area; when a solve begins with no sea, Membrane
+// bracketed the shift from all-sea to the LEAST of the cells' touching shifts, where the sea is nearly the whole ground,
+// and read the cells alone, though since Facet whitespace reaches too. Built from Facet.
 // Checked on a desk (1440×900), at frames of 1/64 s, with the worker of Wings (headless, a second copy of the page's
 // script) thinking sixteen rehearsed frames a frame:
-// - Dough's rule is the only change: taken out, with no budget, the tour of changes and the chain through every page
-//   from every other are Datum's, the world and every drawing command, frame by frame;
-// - with the rule alone (no budget), over the chain and the tour, while a change runs: more of the screen, of its
-//   perimeter and of its corner squares is under a cell than on Datum, the mass the cells and the whitespace hold
-//   never falls as low, and the sea never takes as much of the pan;
+// - the sea's gauge, with no budget, over the chain through every page from every other: on Datum no gauge from a solve
+//   without a shore leaves the sea more than a tenth of the ground from its area or runs to its last step, and none from
+//   any case leaves it more than half; on Facet they do; fewer sites sit a solve out than on Facet;
+// - Datum's rule is the only change: taken out, with no budget, the tour of changes and the chain are Facet's, the world
+//   and every drawing command, frame by frame;
 // - every page from every other, and the tour, with the worker thinking: nothing waits or fractures, what is rehearsed
-//   is what is played, every change has one pace, every page at rest is exact; defects drawn reported against Datum;
+//   is what is played, every change has one pace, every page at rest is exact; defects drawn reported against Facet;
 // - with no worker the hive thinks on the page and plays what it rehearsed;
-// - a Cue story is Datum's frame by frame; a Tell and a Tell II story run to their end without a fractured cell.
+// - a Cue story is Facet's frame by frame; a Tell and a Tell II story run to their end without a fractured cell.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),crypto=require('node:crypto');
 const {loadEngine}=require('./probe.cjs');
 const rectsEqual=(a,b)=>a&&b&&a.length>=4&&b.length>=4&&a.slice(0,4).every((v,i)=>Math.abs(v-b[i])<1e-6);
-const files=[path.resolve(__dirname,'../../datum.html'),path.resolve(__dirname,'../../dough.html')];
+const files=[path.resolve(__dirname,'../../facet.html'),path.resolve(__dirname,'../../datum.html')];
 const report={trace:null,home:null,desk:null,pages:null,onPage:null,story:null,tell:null};
 // --- the story ------------------------------------------------------------------
 const area=l=>Math.abs(l.loops[0].reduce((q,p,i,a)=>{const m=a[(i+1)%a.length];return q+p[0]*m[1]-m[0]*p[1];},0)/2);
@@ -281,7 +281,7 @@ function tour(file,size,{improv=false,transform,digests=null,budget,acts=TOUR,wo
   if(mv)mv.end();
   if(improv){assert.equal(waits,0,label+': the page waited '+waits+' frames');assert.equal(frac,0,label+': a fractured cell '+JSON.stringify(worst));}
   let rounds=null;const log=e.rehearsal();if(improv&&log&&log!==was&&log.rounds)rounds=checkRounds(log,live,label);
-  // A PAGE AT REST, as on Datum: the image on its rectangle, the text over its own, the whitespace exact, no field, one site a cell
+  // A PAGE AT REST, as on Cohort: the image on its rectangle, the text over its own, the whitespace exact, no field, one site a cell
   let rest=null;
   if(act.startsWith('open:')){const hero=body(act.slice(5)),kind=K[hero.id%K.length],n=cells().length,slot=e.scenes[e.config.scene](R.COLS,R.ROWS,n).content[0];
    rest={page:e.focus()===hero&&e.config.scene===kind,onRect:rectsEqual(hero.rect,slot)};
@@ -297,8 +297,8 @@ function tour(file,size,{improv=false,transform,digests=null,budget,acts=TOUR,wo
 }
 const restChecks=(now,was)=>now.forEach((o,i)=>{if(!o.rest)return;const r=o.rest,t=was[i].rest;
  assert(r.page,o.label+': the page did not open');assert(r.onRect,o.label+': the image is not on its rectangle');
- assert(r.imageCovers>=Math.min(0.99,t.imageCovers-0.002),o.label+': the image covers '+(100*r.imageCovers).toFixed(1)+'% of its rectangle, on Datum '+(100*t.imageCovers).toFixed(1)+'%');
- if(r.textCovers!==undefined){assert(r.textCovers>=Math.min(0.99,t.textCovers-0.002),o.label+': the text covers '+(100*r.textCovers).toFixed(1)+'% of its rectangle, on Datum '+(100*t.textCovers).toFixed(1)+'%');assert(r.title,o.label+': no title in the text');}
+ assert(r.imageCovers>=Math.min(0.99,t.imageCovers-0.002),o.label+': the image covers '+(100*r.imageCovers).toFixed(1)+'% of its rectangle, on Cohort '+(100*t.imageCovers).toFixed(1)+'%');
+ if(r.textCovers!==undefined){assert(r.textCovers>=Math.min(0.99,t.textCovers-0.002),o.label+': the text covers '+(100*r.textCovers).toFixed(1)+'% of its rectangle, on Cohort '+(100*t.textCovers).toFixed(1)+'%');assert(r.title,o.label+': no title in the text');}
  assert(r.exact,o.label+': '+r.why);assert(r.ownColour,o.label+': a cell at rest is not drawn its own colour');assert(!r.field,o.label+': a field on a page');assert(r.oneSite,o.label+': a cell with more than one site');});
 const total=r=>['score','lurch','sliver','split','collisions','shock'].reduce((a,k)=>({...a,[k]:+r.reduce((q,o)=>q+o.drawn[k],0).toFixed(1)}),{});
 const roundsTotal=r=>r.filter(o=>o.rounds).reduce((a,o)=>({changes:a.changes+1,rounds:a.rounds+o.rounds.rounds,moves:a.moves+o.rounds.moves,late:a.late+o.rounds.late,framesChecked:a.framesChecked+o.rounds.framesChecked}),{changes:0,rounds:0,moves:0,late:0,framesChecked:0});
@@ -310,56 +310,47 @@ const unsea=js=>fit(js,'seaOpen() { return this.depth === 0 && !tell && !tell2 &
 const untandem=js=>fit(js,'const hj = hero.journey, hp =','const hj = null, hp =');   // the hero's own clock for the text's room taken out
 const acc0=()=>({seed:[],plan:[],peak:[],hectic:[]});
 const edgeSum=r=>r.reduce((a,o)=>a+o.edge,0);const size={width:1440,height:900,fields:.55};
-const unrule=js=>fit(js,'const DOUGH = true;','const DOUGH = false;');   // Dough's rule taken out
+const unrule=js=>fit(js,'const DATUM = true;','const DATUM = false;');   // Datum's rule taken out
 // EVERY PAGE FROM EVERY OTHER: a chain through all 56 ordered pairs of the eight kinds
 const reps=['Drift','Ember','Tide','Moss','Petal','Aurora','Dune','Jazz'],outs=reps.map((_,i)=>reps.map((_,j)=>j).filter(j=>j!==i)),stack=[0],circ=[];
 while(stack.length){const v=stack[stack.length-1];if(outs[v].length)stack.push(outs[v].shift());else circ.push(stack.pop());}circ.reverse();
 const CHAIN=circ.map(i=>'open:'+reps[i]);
 
-// HOW THE HIVE WETS THE PAN, with no thinking (the rule alone), over the chain and the tour, every other frame while a
-// change runs: of the screen (on a grid a quarter of a lattice unit apart), of its perimeter (a pixel in, every 8 px)
-// and of its four corner squares (a lattice unit each, 36 points), the share under a cell; the sea's share of the pan
-// (what the auction gives it, in slots) at its largest and on average; and the mass, what the cells and the whitespace
-// hold as their own, at its least
-function wet(file,acts){
- const e=loadEngine(file,{...size,count:12,record:true}),st={e,pic:null};e.budget(0);let ms=1000;const step=()=>{e.clear();st.pic=e.advance(ms);ms+=FMS;};
- e.pointer(-1e9,-1e9);for(let i=0;i<300;i++)step();const R=e.root,W=R.W,H=R.H,PW=R.PW,PH=R.PH,slots=R.COLS*R.ROWS,body=n=>R.bodies.find(b=>b.name===n);
- const click=n=>{const b=body(n),l=st.pic.leaves.find(l=>l.path[0]&&l.path[0].body===b),c=(l&&cenOf(l))||[b.x,b.y];return e.click(c[0],c[1]);};
- const inPoly=(x,y,pts)=>{let o=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const xi=pts[i][0],yi=pts[i][1],xj=pts[j][0],yj=pts[j][1];if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))o=!o;}return o;};
- const per=[];for(let x=4;x<W;x+=8){per.push([x,1]);per.push([x,H-1]);}for(let y=4;y<H;y+=8){per.push([1,y]);per.push([W-1,y]);}
- const corners=[];for(const [x0,y0] of [[0,0],[W-PW,0],[W-PW,H-PH],[0,H-PH]])for(let i=0;i<6;i++)for(let j=0;j<6;j++)corners.push([x0+(i+.5)*PW/6,y0+(j+.5)*PH/6]);
- const grid=[];for(let x=PW/8;x<W;x+=PW/4)for(let y=PH/8;y<H;y+=PH/4)grid.push([x,y]);
- const under=p=>{for(const l of st.pic.leaves){if(l.isVoid||!l.loops)continue;for(const L of l.loops)if(inPoly(p[0],p[1],L))return true;}return false;};
- const share=P=>{let a=0;for(const p of P)if(under(p))a++;return a/P.length;};
- const o={frames:0,screen:0,perimeter:0,corners:0,seaSum:0,seaMax:0,massMin:Infinity};
- for(const act of acts){if(act==='home')e.home();else if(act.startsWith('open:'))assert(click(act.slice(5)),act+': the click missed');else e.scene(act.slice(6));
-  let k=0;while(k<450&&(k<3||e.changeLeft()>0)){step();k++;if(k%2)continue;o.frames++;
-   o.screen+=share(grid);o.perimeter+=share(per);o.corners+=share(corners);
-   let sea=0,mass=0;for(const b of R.bodies){if(b.isSelf)continue;const c=Math.max(0,b.claim);if(b.isVoid){const s=R.seaClaimOf(b);sea+=s;mass+=c-s;}else mass+=c;}
-   if(R.seaFreeOn())sea+=Math.max(0,slots-mass-sea);
-   o.seaSum+=sea/slots;o.seaMax=Math.max(o.seaMax,sea/slots);o.massMin=Math.min(o.massMin,mass/slots);}
-  for(let i=k;i<450;i++)step();}
- const f=o.frames;return{frames:f,screen:+(o.screen/f).toFixed(3),perimeter:+(o.perimeter/f).toFixed(3),corners:+(o.corners/f).toFixed(3),seaMean:+(o.seaSum/f).toFixed(3),seaMax:+o.seaMax.toFixed(3),massLeast:+o.massMin.toFixed(3)};
+{ // THE SEA'S GAUGE, with no thinking, in every solve of the page's with the sea over the chain: whether the gauge ran and from
+  // which case (no shore: every reach covers its cell; a site with no ground), how many steps of its bracket it took (24 is
+  // its last), how far it left the sea from its area (as a share of the ground), and how many sites then sat the solve out
+ const instrument=js=>{js=fit(js,'let diag = diagramAt(w); evals++;','let diag = diagramAt(w); evals++; const __L = { n }; if (globalThis.__gauge && n >= 8) globalThis.__gauge.push(__L);');
+  js=fit(js,'    if (minOf(diag.areas) <= 0 || !shore()) {\n      let hi = reach - wmin;','    __L.branch = minOf(diag.areas) <= 0 ? \'empty\' : \'noshore\';\n    if (minOf(diag.areas) <= 0 || !shore()) {\n      let hi = reach - wmin;');
+  js=fit(js,'        best = { mid, d };','        best = { mid, d }; __L.steps = (__L.steps || 0) + 1;');
+  js=fit(js,'w = Float64Array.from(w, q => q + best.mid); diag = best.d;','w = Float64Array.from(w, q => q + best.mid); diag = best.d; __L.gauge = 1; __L.miss = Math.abs(seaOf(diag) - seaTgt) / domainArea;');
+  js=fit(js,'const out = Uint8Array.from(diag.areas, a => STEADY && opts.steady && !(a > 0) ? 1 : 0), anyOut = out.some(x => x);','const out = Uint8Array.from(diag.areas, a => STEADY && opts.steady && !(a > 0) ? 1 : 0), anyOut = out.some(x => x); __L.out = out.reduce((a, b) => a + b, 0);');
+  return js;};
+ const gauge=file=>{const e=loadEngine(file,{...size,count:12,record:true,transform:instrument}),st={e,pic:null};e.budget(0);let ms=1000;const step=()=>{e.clear();st.pic=e.advance(ms);ms+=FMS;};
+  e.pointer(-1e9,-1e9);for(let i=0;i<300;i++)step();const R=e.root,body=n=>R.bodies.find(b=>b.name===n);
+  const click=n=>{const b=body(n),l=st.pic.leaves.find(l=>l.path[0]&&l.path[0].body===b),c=(l&&cenOf(l))||[b.x,b.y];return e.click(c[0],c[1]);};
+  const C={frames:0,solves:0,gauges:{noshore:0,empty:0},missOverTenth:{noshore:0,empty:0},missOverHalf:{noshore:0,empty:0},lastStep:{noshore:0,empty:0},missMax:0,solvesWithSitesOut:0,sitesOut:0};
+  const flush=()=>{for(const L of globalThis.__gauge){C.solves++;if(L.gauge){C.gauges[L.branch]++;if(L.miss>0.1)C.missOverTenth[L.branch]++;if(L.miss>0.5)C.missOverHalf[L.branch]++;if(L.steps>=24)C.lastStep[L.branch]++;C.missMax=Math.max(C.missMax,L.miss);}if(L.out){C.sitesOut+=L.out;C.solvesWithSitesOut++;}}globalThis.__gauge=[];};
+  globalThis.__gauge=[];
+  for(const act of CHAIN){assert(click(act.slice(5)),act+': the click missed');let k=0;while(k<450&&(k<3||e.changeLeft()>0)){step();k++;C.frames++;}flush();for(let i=k;i<450;i++)step();flush();}
+  globalThis.__gauge=null;C.missMax=+C.missMax.toFixed(4);return C;};
+ const was=gauge(files[0]),now=gauge(files[1]);report.gauge={facet:was,mark:now};
+ console.log('gauge',JSON.stringify(report.gauge));
+ assert(was.missOverTenth.noshore>0,'on Facet no gauge from a solve without a shore missed the sea by a tenth of the ground: nothing to fix');
+ assert.equal(now.missOverTenth.noshore,0,'a gauge from a solve without a shore left the sea more than a tenth of the ground from its area');
+ assert.equal(now.missOverHalf.noshore+now.missOverHalf.empty,0,'a gauge left the sea more than half the ground from its area');
+ assert.equal(now.lastStep.noshore,0,'a gauge from a solve without a shore ran to its last step');
+ assert(now.sitesOut<was.sitesOut,'sites sat a solve out '+now.sitesOut+' times, on Facet '+was.sitesOut);
 }
-{ // DOUGH'S RULE IS THE ONLY CHANGE: taken out, with no budget, the tour and the chain are Datum's to the last drawing
+{ // DATUM'S RULE IS THE ONLY CHANGE: taken out, with no budget, the tour and the chain are Facet's to the last drawing
   // command
  report.trace={};
  for(const [name,acts] of [['tour',TOUR],['pages',CHAIN]]){
   const d0=[],d1=[];tour(files[0],size,{budget:0,digests:d0,acts});tour(files[1],size,{budget:0,digests:d1,acts,transform:unrule});
   assert.equal(d1.length,d0.length,name+': the runs ran '+d0.length+' and '+d1.length+' frames');
-  const at=d1.findIndex((d,i)=>d!==d0[i]);assert.equal(at,-1,name+': with the rule taken out the run left Datum\'s at frame '+at);
+  const at=d1.findIndex((d,i)=>d!==d0[i]);assert.equal(at,-1,name+': with the rule taken out the run left Facet\'s at frame '+at);
   report.trace[name]={frames:d0.length,identical:true,rule:'taken out'};
  }
  console.log('trace',JSON.stringify(report.trace));
-}
-{ // THE HIVE WETS THE PAN: the rule alone, against Datum, over the chain and the tour
- report.wet={};
- for(const [name,acts] of [['pages',CHAIN],['tour',TOUR]]){
-  const was=wet(files[0],acts),now=wet(files[1],acts);report.wet[name]={datum:was,mark:now};
-  console.log('wet',name,JSON.stringify(report.wet[name]));
-  assert(now.screen>was.screen&&now.perimeter>was.perimeter&&now.corners>was.corners,name+': under cells, screen '+now.screen+' perimeter '+now.perimeter+' corners '+now.corners+' (Datum '+was.screen+', '+was.perimeter+', '+was.corners+')');
-  assert(now.seaMax<was.seaMax&&now.massLeast>was.massLeast,name+': the sea at its largest '+now.seaMax+' of the pan and the mass at its least '+now.massLeast+' (Datum '+was.seaMax+', '+was.massLeast+')');
- }
 }
 let chainWas=null,chainNow=null;
 { // EVERY PAGE FROM EVERY OTHER, with the worker thinking: nothing waits or fractures, what is rehearsed is what is played,
@@ -369,45 +360,35 @@ let chainWas=null,chainNow=null;
  assert(now.some(o=>o.rounds&&o.rounds.moves>0),'pages: the worker made no move');
  restChecks(now,was);chainWas=was;chainNow=now;
  const cut=r=>r.slice(1),W0=total(cut(was)),W1=total(cut(now));
- report.pages={desk:{changes:CHAIN.length-1,budget:BUDGET,datum:W0,mark:W1,edge:{datum:edgeSum(cut(was)),mark:edgeSum(cut(now))},thinking:roundsTotal(cut(now)),
-  changes:cut(now).map((o,i)=>({from:CHAIN[i].slice(5),to:o.act.slice(5),datum:was[i+1].drawn.score,mark:o.drawn.score}))}};
- console.log('pages',JSON.stringify({datum:W0,mark:W1,edge:report.pages.desk.edge,thinking:report.pages.desk.thinking}));
+ report.pages={desk:{changes:CHAIN.length-1,budget:BUDGET,facet:W0,mark:W1,edge:{facet:edgeSum(cut(was)),mark:edgeSum(cut(now))},thinking:roundsTotal(cut(now)),
+  changes:cut(now).map((o,i)=>({from:CHAIN[i].slice(5),to:o.act.slice(5),facet:was[i+1].drawn.score,mark:o.drawn.score}))}};
+ console.log('pages',JSON.stringify({facet:W0,mark:W1,edge:report.pages.desk.edge,thinking:report.pages.desk.thinking}));
 }
 { // THE TOUR, with the worker thinking: home's scenes, home to a page of every kind and back, and page to page
  const w0=offstage(BUDGET,files[0]),was=tour(files[0],size,{improv:true,budget:BUDGET,worker:w0});w0.done();
  const w1=offstage(BUDGET),now=tour(files[1],size,{improv:true,budget:BUDGET,worker:w1,paced:true,sea:true});w1.done();
  restChecks(now,was);const W0=total(was),W1=total(now);
- report.desk={size,budget:BUDGET,datum:W0,mark:W1,edge:{datum:edgeSum(was),mark:edgeSum(now)},thinking:roundsTotal(now),changes:now.map((o,i)=>({act:o.act,datum:was[i].drawn.score,mark:o.drawn.score}))};
- console.log('tour',JSON.stringify({datum:W0.score,mark:W1.score,edge:report.desk.edge,thinking:report.desk.thinking}));
+ report.desk={size,budget:BUDGET,facet:W0,mark:W1,edge:{facet:edgeSum(was),mark:edgeSum(now)},thinking:roundsTotal(now),changes:now.map((o,i)=>({act:o.act,facet:was[i].drawn.score,mark:o.drawn.score}))};
+ console.log('tour',JSON.stringify({facet:W0.score,mark:W1.score,edge:report.desk.edge,thinking:report.desk.thinking}));
 }
 { // NO WORKER TO BE HAD: the hive thinks on the page, and plays what it rehearsed there
  const now=tour(files[1],size,{improv:true,budget:16,transform:traced,sea:true,acts:CHAIN.slice(0,12)});
  const th=roundsTotal(now);assert(th.moves>0,'on the page the hive made no move');assert(th.framesChecked>0,'on the page no move was laid on the performance');
  report.onPage={budget:16,changes:11,thinking:th,drawn:total(now)};
 }
-{ // A STORY IS DATUM'S: every frame of a Cue story, the page's world (every cell and whitespace: seat, claim, weight, state) to a
-  // millionth of a pixel; and a Tell and a Tell II story run to their end and home, nothing fractured. The home scene the story
-  // starts from settles under Dough's rule (its cells are liquid as they take their seats), so the world the story starts from is
-  // Datum's to floating noise, not to the bit, and the fields inside the cells, a flow of their own, take a path of their own from
-  // it: the story's page is compared, its fields are not.
- const run=file=>{const e=loadEngine(file,{...desk,count:12,record:true}),d=[];let ms=1000;
-  const snap=()=>e.root.bodies.map(b=>({id:`${b.name||b.id}${b.isVoid?'~':''}`,x:b.x,y:b.y,claim:b.claim,w:b.subs[0]?b.subs[0].w:0,flags:`${b.leaving?1:0}${b.hole?1:0}${b.wall?1:0}${b.journey?1:0}${b.subs.length}`}));
-  const step=n=>{for(let i=0;i<n;i++){e.clear();e.advance(ms);ms+=1000/60;d.push(snap());}};
+{ // A STORY IS FACET'S: every frame of a Cue story, the world and every drawing command; and a Tell and a Tell II story
+  // run to their end and home, nothing fractured
+ const run=file=>{const e=loadEngine(file,{...desk,count:12,record:true}),d=[];let ms=1000;const step=n=>{for(let i=0;i<n;i++){e.clear();e.advance(ms);ms+=1000/60;d.push(digest(e));}};
   step(300);e.cueStart();step(420);for(let k=1;k<4;k++){e.cueGo(k);step(300);}e.cuePush(-100);step(420);return d;};
- const d0=run(files[0]),d1=run(files[1]);assert.equal(d1.length,d0.length,'the Cue story ran a different length');
- const TOL=1e-6;let worst=0,worstW=0;
- for(let f=300;f<d0.length;f++){const a=d0[f],b=d1[f];assert.equal(b.length,a.length,'the Cue story has a different cast at frame '+f);
-  for(let i=0;i<a.length;i++){assert.equal(b[i].id,a[i].id,'the Cue story has a different body at frame '+f);assert.equal(b[i].flags,a[i].flags,`the Cue story's ${a[i].id} is in a different state at frame ${f}`);
-   const d=Math.max(Math.abs(b[i].x-a[i].x),Math.abs(b[i].y-a[i].y),Math.abs(b[i].claim-a[i].claim)),dw=Math.abs(b[i].w-a[i].w)/Math.max(1,Math.abs(a[i].w));worst=Math.max(worst,d);worstW=Math.max(worstW,dw);
-   assert(d<=TOL&&dw<=TOL,`the Cue story's ${a[i].id} left Datum's at frame ${f} by ${d.toExponential(1)} px (weight ${dw.toExponential(1)})`);}}
- report.story={frames:d0.length-300,page:'Datum\'s',tolerance:TOL,worstPx:+worst.toExponential(2),worstWeightRel:+worstW.toExponential(2)};
+ const d0=run(files[0]),d1=run(files[1]),at=d1.findIndex((x,i)=>x!==d0[i]);assert.equal(at,-1,'the Cue story left Facet\'s at frame '+at);
+ report.story={frames:d0.length,identical:true};
  const st=fresh(desk),e=st.e;let frac=0;const go=n=>{for(let f=0;f<n;f++){st.step(1);frac+=shapes(st).fractured;}};
  e.tellStart();go(420);for(let k=0;k<3;k++){e.tellPush(100);go(240);}e.home();go(300);
  e.tell2Start();go(420);for(let k=0;k<3;k++){e.tell2Push(100);go(300);}e.home();go(300);
  assert.equal(frac,0,'a fractured cell in a Tell story');assert.equal(roots(e).length,N,'the stories lost cells');
  report.tell={frames:2*420+3*240+3*300+2*300,fractured:frac};
 }
-const SCOPE='Real full tick; native Canvas and browser DOM stubbed; frames of 1/64 s; a desk of 1440×900 (the stories at 1900×810); the worker of Wings headless thinking sixteen rehearsed frames a frame. With Dough\'s rule taken out and no budget, the tour and the chain through every page from every other are Datum\'s, the world and every drawing command, frame by frame. With the rule alone (no budget), over the chain and the tour while a change runs, more of the screen, of its perimeter and of its corner squares is under a cell than on Datum, the mass the cells and the whitespace hold as their own never falls as low, and the sea never takes as much of the pan. On the chain and the tour with the worker thinking nothing waits, nothing fractures, from each round that moved a cell the performance is that round\'s rehearsal of the move to the bit, every change has one pace, every page at rest is exact and every cell drawn its own colour; defects drawn and the screen leaned on are reported against Datum. With no worker the hive thinks on the page and plays what it rehearsed. A Cue story is Datum\'s frame by frame; a Tell and a Tell II story run to their end and home without a fractured cell.';
+const SCOPE='Real full tick; native Canvas and browser DOM stubbed; frames of 1/64 s; a desk of 1440×900 (the stories at 1900×810); the worker of Wings headless thinking sixteen rehearsed frames a frame. The sea\'s gauge, with no budget, in every solve of the page\'s with the sea over the chain through every page from every other: on Datum no gauge from a solve without a shore leaves the sea more than a tenth of the ground from its area or runs to its last step, none from any case leaves it more than half, and fewer sites sit a solve out than on Facet, where the gauge from a solve without a shore misses. With Datum\'s rule taken out and no budget, the tour and the chain are Facet\'s, the world and every drawing command, frame by frame. On the chain and the tour with the worker thinking nothing waits, nothing fractures, from each round that moved a cell the performance is that round\'s rehearsal of the move to the bit, every change has one pace, every page at rest is exact and every cell drawn its own colour; defects drawn and the screen leaned on are reported against Facet. With no worker the hive thinks on the page and plays what it rehearsed. A Cue story is Facet\'s frame by frame; a Tell and a Tell II story run to their end and home without a fractured cell.';
 const result={scope:SCOPE,report};
 fs.writeFileSync(path.join(__dirname,'validation.json'),JSON.stringify(result,null,2)+'\n');
-console.log(JSON.stringify({trace:report.trace,wet:report.wet,pages:{datum:report.pages.desk.datum.score,mark:report.pages.desk.mark.score},tour:{datum:report.desk.datum.score,mark:report.desk.mark.score},story:report.story,tell:report.tell}));
+console.log(JSON.stringify({gauge:report.gauge,trace:report.trace,pages:{facet:report.pages.desk.facet.score,mark:report.pages.desk.mark.score},tour:{facet:report.desk.facet.score,mark:report.desk.mark.score},story:report.story,tell:report.tell}));
