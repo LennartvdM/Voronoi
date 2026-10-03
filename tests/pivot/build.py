@@ -16,12 +16,15 @@ Pivot places the sites so that the auction's own bisectors are the fronts.
 - A cell is split at the band's pieces into parts, each a site: a slice of a
   straight, or a sector of a corner. A part under 0.3 lattice units is folded
   into the cell's neighbouring part (its own site would stand far off, and the
-  auction would lose it).
+  auction would lose it). One site for a cell spanning a corner would have to
+  stand where its two fronts' normals meet, often far from the cell, and the
+  auction loses it; tried, and not in.
 - The sites are placed so that every front is the bisector of the two sites
   it lies between: perpendicular to their difference, and, through a hinge, at
   equal power from it. A slice's site stays on the centre line and moves along
   it only as the loop's weights must close; a sector's site goes where its two
-  fronts put it. The weights follow from the fronts, and the auction, given
+  fronts put it; a slice's move is cheap and a sector's dear, so a sector's
+  site is not pushed onto a slice's. The weights follow from the fronts, and the auction, given
   those sites and weights, has nothing left to solve: its diagram is the band
   cut by fronts, to the precision of the arithmetic.
 - The cells come onto the belt from where they rest: as the belt gets up to
@@ -125,14 +128,14 @@ function pivotSites(band, belt, cells, s) {
       if (parts.length > 1 && parts[i].hi - parts[i].lo < PIVOT_MERGE) { const j = i > 0 ? i - 1 : i + 1, q = parts[j]; q.lo = Math.min(q.lo, parts[i].lo); q.hi = Math.max(q.hi, parts[i].hi); parts.splice(i, 1); if (j > i) continue; }
       i++;
     }
-    for (const p of parts) sites.push({ cell: c, lo: p.lo, hi: p.hi, kind: p.kind, line: p.line, nat: belt.at((p.lo + p.hi) / 2), area: 0 });
+    for (const p of parts) sites.push({ cell: c, lo: p.lo, hi: p.hi, kind: p.kind, line: p.line, nat: belt.at((p.lo + p.hi) / 2), pieces: band.slice(p.lo, p.hi), area: 0 });
   }
   const n = sites.length;
   if (!n) return sites;
-  for (const st of sites) st.area = band.slice(st.lo, st.hi).reduce((q, P) => q + Math.abs(ringArea(P)), 0);
+  for (const st of sites) st.area = st.pieces.reduce((q, P) => q + Math.abs(ringArea(P)), 0);
   const F = sites.map(st => band.front(st.hi));
-  const dof = [];
-  for (let i = 0; i < n; i++) { if (sites[i].kind === 'slice') dof.push([i, sites[i].line === 'h' ? [1, 0] : [0, 1]]); else { dof.push([i, [1, 0]]); dof.push([i, [0, 1]]); } }
+  const dof = [], cost = [];   // a slice moves along its line, cheaply; anything else anywhere, dearly
+  for (let i = 0; i < n; i++) { if (sites[i].kind === 'slice') { dof.push([i, sites[i].line === 'h' ? [1, 0] : [0, 1]]); cost.push(0.05); } else { dof.push([i, [1, 0]]); dof.push([i, [0, 1]]); cost.push(1); cost.push(1); } }
   const a = sites.map(st => st.nat.slice());
   const resid = () => {
     const r = [];
@@ -140,8 +143,8 @@ function pivotSites(band, belt, cells, s) {
     let g = 0; for (let i = 0; i < n; i++) { const j = (i + 1) % n, q = F[i].q; g += (q[0] - a[j][0]) ** 2 + (q[1] - a[j][1]) ** 2 - (q[0] - a[i][0]) ** 2 - (q[1] - a[i][1]) ** 2; }
     r.push(g); return r;
   };
-  const solve = (J, r) => {   // the least step: J^T (J J^T)^-1 (-r)
-    const m = J.length, k = J[0].length, M = Array.from({ length: m }, (_, i) => Array.from({ length: m }, (_, j) => J[i].reduce((q, v, t) => q + v * J[j][t], 0)));
+  const solve = (J, r) => {   // the least step, each move at its cost: C^-1 J^T (J C^-1 J^T)^-1 (-r)
+    const m = J.length, k = J[0].length, M = Array.from({ length: m }, (_, i) => Array.from({ length: m }, (_, j) => J[i].reduce((q, v, t) => q + v * J[j][t] / cost[t], 0)));
     for (let i = 0; i < m; i++) M[i][i] += 1e-9;
     const b = r.map(v => -v);
     for (let i = 0; i < m; i++) {
@@ -151,10 +154,11 @@ function pivotSites(band, belt, cells, s) {
     }
     const y = new Array(m).fill(0);
     for (let i = m - 1; i >= 0; i--) { let v = b[i]; for (let u = i + 1; u < m; u++) v -= M[i][u] * y[u]; y[i] = v / M[i][i]; }
-    return Array.from({ length: k }, (_, t) => J.reduce((q, row, i) => q + row[t] * y[i], 0));
+    return Array.from({ length: k }, (_, t) => J.reduce((q, row, i) => q + row[t] * y[i], 0) / cost[t]);
   };
+  let worst = Infinity;
   for (let it = 0; it < 40; it++) {
-    const r = resid(); if (Math.max(...r.map(Math.abs)) < 1e-9) break;
+    const r = resid(); worst = Math.max(...r.map(Math.abs)); if (worst < 1e-9) break;
     const J = [];
     for (let i = 0; i < n; i++) { const j = (i + 1) % n; J.push(dof.map(([k, v]) => ((k === j ? 1 : 0) - (k === i ? 1 : 0)) * (v[0] * F[i].d[0] + v[1] * F[i].d[1]))); }
     const g = sites.map(() => [0, 0]);
@@ -167,6 +171,7 @@ function pivotSites(band, belt, cells, s) {
   for (let i = 0; i < n - 1; i++) { const j = i + 1, q = F[i].q; w[j] = w[i] + ((q[0] - a[j][0]) ** 2 + (q[1] - a[j][1]) ** 2) - ((q[0] - a[i][0]) ** 2 + (q[1] - a[i][1]) ** 2); }
   const base = -Math.min(...w);
   sites.forEach((st, i) => { st.x = a[i][0]; st.y = a[i][1]; st.w = w[i] + base; });
+  sites.resid = Math.max(...resid().map(Math.abs));   // how far the loop is from closing, for the validator
   return sites;
 }
 // CONVEYOR: the belt starts once Frame II has landed: each cell a stretch as""")
@@ -204,6 +209,7 @@ replace("""  for (const c of convey.cells) {
   // nothing left to solve. The first site is the cell's largest part.
   if (convey.band) {
     const sites = pivotSites(convey.band, convey.belt, convey.cells.filter(c => !c.b.leaving), convey.s), U = root.PW * root.PH;
+    convey.sites = sites.length; convey.resid = sites.resid;
     for (const c of convey.cells) {
       const b = c.b; if (b.leaving) continue;
       const own = sites.filter(st => st.cell === c); if (!own.length) { b.conveySites = null; continue; }
@@ -270,6 +276,11 @@ replace("""  refreshFormation(b) {
 replace("""  v.conveyWall = true; v.conveyRect = [mid[0] * root.PW, mid[1] * root.PH, mid[2] * root.PW, mid[3] * root.PH]; v.conveyMid = v.conveyRect.slice();""",
 """  v.conveyWall = true; v.conveyRect = [mid[0] * root.PW, mid[1] * root.PH, mid[2] * root.PW, mid[3] * root.PH]; v.conveyMid = v.conveyRect.slice();
   for (const c of cells) { c.b.conveySites = null; c.b.conveyDrain = null; }   // PIVOT: fresh""")
+
+# the whitespace's site-placing leaves a belt cell's sites alone
+replace("""    if (!b.isSelf && (b.formRect || b.rect || (b.isVoid && b.plCurrent))) live.push(b);""",
+"""    if (PIVOT && (b.conveySites || b.conveyDrain)) continue;   // PIVOT: a cell on the belt, or back from it, places its own sites
+    if (!b.isSelf && (b.formRect || b.rect || (b.isVoid && b.plCurrent))) live.push(b);""")
 
 # the ground is the box less the walls, with a wall in the frame as without
 replace("""    if (!poly) pieces = rects.length ? coverRects(0, 0, this.W, this.H, rects) : [[[0, 0], [this.W, 0], [this.W, this.H], [0, this.H]]];""",
